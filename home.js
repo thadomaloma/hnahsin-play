@@ -90,6 +90,96 @@
     addEventListener('appinstalled', () => { $('#install').hidden = true; });
   }
 
+  // ------------------------------------------------ how far down the page you are
+  const bar = $('.progress');
+  let barQueued = false;
+  const showProgress = () => {
+    barQueued = false;
+    const max = document.documentElement.scrollHeight - innerHeight;
+    bar.style.transform = `scaleX(${max > 0 ? Math.min(1, scrollY / max) : 0})`;
+  };
+  addEventListener('scroll', () => { if (!barQueued) { barQueued = true; requestAnimationFrame(showProgress); } }, { passive: true });
+  showProgress();
+
+  // ------------------------------------------------ turning a card over
+  // Turn it edge-on, change what it shows, and turn it back.
+  function turnOver(el, change, ms = 460) {
+    if (calm) { change(); return; }
+    el.animate([{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(90deg)' }], { duration: ms / 2, easing: 'ease-in' }).onfinish = () => {
+      change();
+      el.animate([{ transform: 'rotateY(-90deg)' }, { transform: 'rotateY(0deg)' }], { duration: ms / 2 + 80, easing: 'cubic-bezier(.3,1.5,.5,1)' });
+    };
+  }
+
+  // ------------------------------------------------ word of the day: tap to turn it over
+  // The same word all day, from the words in the ticker; "Another word" picks the next one.
+  const card = $('#wotd'), face = $('.face', card), today = Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 86400000);
+  let wi = today % WORDS.length;
+  const showWord = () => {
+    const [m, e, g] = WORDS[wi], over = card.classList.contains('over');
+    $('.e', card).hidden = over;
+    $('.m', card).textContent = over ? g : m;
+    $('.sub', card).hidden = !over; $('.sub', card).textContent = m;
+    $('.hint', card).textContent = over ? 'Tap to turn it back' : 'Tap to see what it means';
+    $('.e', card).textContent = e;
+    card.setAttribute('aria-label', over ? `${m} means ${g}. Tap to turn it back.` : `${m}. Tap to see what it means.`);
+  };
+  card.addEventListener('click', () => {
+    turnOver(face, () => {
+      card.classList.toggle('over');
+      showWord();
+      if (card.classList.contains('over') && !calm) confetti(card);
+    });
+  });
+  $('#wotd-next').addEventListener('click', () => {
+    turnOver(face, () => { wi = (wi + 1) % WORDS.length; card.classList.remove('over'); showWord(); });
+  });
+  showWord();
+  function confetti(box) {
+    const r = box.getBoundingClientRect();
+    for (let i = 0; i < 26; i++) {
+      const c = document.createElement('i');
+      c.className = 'confetti';
+      c.style.left = r.width / 2 + 'px'; c.style.top = r.height / 2 + 'px';
+      c.style.background = ['#f06292', '#ffc94a', '#6dbe5e', '#3c9fea', '#9c7cf0'][i % 5];
+      box.appendChild(c);
+      const a = Math.random() * Math.PI * 2, d = 90 + Math.random() * 90;
+      c.animate([
+        { transform: 'translate(-50%, -50%) rotate(0deg)', opacity: 1 },
+        { transform: `translate(calc(-50% + ${Math.cos(a) * d}px), calc(-50% + ${Math.sin(a) * d * .7 + 40}px)) rotate(${Math.random() * 720 - 360}deg)`, opacity: 0 },
+      ], { duration: 900 + Math.random() * 400, easing: 'cubic-bezier(.2,.7,.3,1)' }).onfinish = () => c.remove();
+    }
+  }
+
+  // ------------------------------------------------ back to the top
+  $('#to-top').addEventListener('click', () => scrollTo({ top: 0, behavior: calm ? 'auto' : 'smooth' }));
+
+  // ------------------------------------------------ Touch and learn card: name tags on the picture
+  // pics/things-house.json says where each part is in the picture (written by source/things/snapshot.js).
+  const thingsCover = $('.cover.things'), pin = $('.pin', thingsCover), tag = $('.q', thingsCover);
+  fetch('pics/things-house.json').then(r => r.json()).then(({ box, tags }) => {
+    let ti = 0;
+    const place = () => {
+      const w = thingsCover.clientWidth, h = thingsCover.clientHeight;
+      if (!w) return;
+      const k = Math.max(w / box[2], h / box[3]);   // the picture covers the card, cropped in the middle
+      const [m, en, x, y] = tags[ti % tags.length];
+      const px = (w - box[2] * k) / 2 + (x - box[0]) * k, py = (h - box[3] * k) / 2 + (y - box[1]) * k;
+      pin.hidden = false;
+      pin.style.left = px + 'px'; pin.style.top = py + 'px';
+      tag.innerHTML = `<b>${m}</b> · ${en}`;
+      tag.classList.add('moving');
+      const tw = tag.offsetWidth, th = tag.offsetHeight;
+      tag.style.right = 'auto'; tag.style.bottom = 'auto';
+      tag.style.left = Math.max(8, Math.min(w - tw - 8, px - tw / 2)) + 'px';
+      tag.style.top = (py - th - 16 < 8 ? py + 16 : py - th - 16) + 'px';
+      if (!calm) { tag.classList.remove('pop'); void tag.offsetWidth; tag.classList.add('pop'); }
+    };
+    place();
+    addEventListener('resize', place);
+    if (!calm) setInterval(() => { if (!document.hidden && thingsCover.getBoundingClientRect().bottom > 0) { ti++; place(); } }, 2600);
+  }).catch(() => {});
+
   // A canvas that draws Rova at the screen's sharpness.
   const rovaOn = (canvas, draw = drawRova) => {
     const ctx = canvas.getContext('2d');
@@ -260,6 +350,27 @@
         { transform: `translate(calc(-50% + ${Math.cos(a) * d}px), calc(-50% + ${Math.sin(a) * d}px)) scale(0)`, opacity: 0 }],
         { duration: 700, easing: 'cubic-bezier(.2,.8,.2,1)' }).onfinish = () => s.remove();
     }
+  }
+
+  // ------------------------------------------------ Playground cover: tiles turn over to show a game
+  const GAME_NAMES = ['Bazar', 'I Spy', 'Rova run', "Rova's family", 'Sort it', 'Bubble pop', 'Whack the rat', 'Weather report'];
+  const labTiles = $$('.cover.lab span').map(t => [t, t.textContent]);
+  let li = 0;
+  setInterval(() => {
+    if (document.hidden) return;
+    const i = li++ % labTiles.length, [t, icon] = labTiles[i];
+    turnOver(t, () => { t.textContent = GAME_NAMES[i]; t.classList.add('name'); });
+    setTimeout(() => turnOver(t, () => { t.textContent = icon; t.classList.remove('name'); }), 1900);
+  }, 900);
+
+  // ------------------------------------------------ stars behind the page at night (dark mode)
+  const sky = $('.stars');
+  for (let i = 0; i < 40; i++) {
+    const s = document.createElement('i');
+    s.style.left = Math.random() * 100 + '%'; s.style.top = Math.random() * 100 + '%';
+    s.style.setProperty('--t', 2 + Math.random() * 3 + 's'); s.style.setProperty('--d', -Math.random() * 5 + 's');
+    if (i % 7 === 0) { s.style.width = s.style.height = '4px'; s.style.background = '#ffe28a'; }
+    sky.appendChild(s);
   }
 
   // ------------------------------------------------ cards lean toward the pointer
