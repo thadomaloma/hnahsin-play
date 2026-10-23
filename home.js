@@ -154,13 +154,21 @@
   // ------------------------------------------------ back to the top
   $('#to-top').addEventListener('click', () => scrollTo({ top: 0, behavior: calm ? 'auto' : 'smooth' }));
 
-  // ------------------------------------------------ Touch and learn card: name tags on the picture
-  // pics/things-house.json says where each part is in the picture (written by source/things/snapshot.js).
-  const thingsCover = $('.cover.things'), pin = $('.pin', thingsCover), tag = $('.q', thingsCover);
-  fetch('pics/things-house.json').then(r => r.json()).then(({ box, tags }) => {
-    let ti = 0;
+  // ------------------------------------------------ Touch and learn card: name tags on the pictures
+  // The card shows the house, then pi at her loom, and back. The .json files say where each part is
+  // in the pictures (written by source/things/snapshot.js). A tap opens the one on show.
+  const thingsCover = $('.cover.things'), thingsCard = thingsCover.closest('a'), pin = $('.pin', thingsCover), tag = $('.q', thingsCover);
+  const which = $$('.which span', thingsCover);
+  Promise.all(['house', 'loom'].map(n => fetch(`pics/things-${n}.json`).then(r => r.json()))).then(scenes => {
+    let si = 0, ti = 0;
+    const PER = 4;   // name tags shown on each picture before it changes
+    const show = () => {
+      thingsCover.classList.toggle('on-loom', si === 1);
+      which.forEach((w, i) => w.classList.toggle('on', i === si));
+      thingsCard.href = si ? 'things.html#loom' : 'things.html';
+    };
     const place = () => {
-      const w = thingsCover.clientWidth, h = thingsCover.clientHeight;
+      const { box, tags } = scenes[si], w = thingsCover.clientWidth, h = thingsCover.clientHeight;
       if (!w) return;
       const k = Math.max(w / box[2], h / box[3]);   // the picture covers the card, cropped in the middle
       const [m, en, x, y] = tags[ti % tags.length];
@@ -172,12 +180,17 @@
       const tw = tag.offsetWidth, th = tag.offsetHeight;
       tag.style.right = 'auto'; tag.style.bottom = 'auto';
       tag.style.left = Math.max(8, Math.min(w - tw - 8, px - tw / 2)) + 'px';
-      tag.style.top = (py - th - 16 < 8 ? py + 16 : py - th - 16) + 'px';
+      tag.style.top = (py - th - 16 < 48 ? py + 16 : py - th - 16) + 'px';   // keep clear of the In / Puan tah labels
       if (!calm) { tag.classList.remove('pop'); void tag.offsetWidth; tag.classList.add('pop'); }
     };
-    place();
+    show(); place();
     addEventListener('resize', place);
-    if (!calm) setInterval(() => { if (!document.hidden && thingsCover.getBoundingClientRect().bottom > 0) { ti++; place(); } }, 2600);
+    let n = 0;
+    setInterval(() => {
+      if (document.hidden || thingsCover.getBoundingClientRect().bottom < 0) return;
+      if (++n % PER === 0) { si = 1 - si; ti = 0; show(); } else ti++;
+      place();
+    }, calm ? 5000 : 2600);
   }).catch(() => {});
 
   // A canvas that draws Rova at the screen's sharpness.
