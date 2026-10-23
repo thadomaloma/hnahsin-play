@@ -4,6 +4,24 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.3.0 (23 October 2026)
+
+### Touch and learn: time, weather and people
+
+- **Times of day.** One button moves the day on: morning (zîng), daytime
+  (chhun), evening (tlai) and night (zân). The sky changes, the sun rises on
+  the left and sets on the right, and the shadows turn with it.
+- **Wind (thli).** The bamboo bends, the tree and flowers sway, leaves blow
+  past and the washing flies.
+- **Rainbow (chhimbâl)** after the rain.
+- **The family.** Nu (mother) sweeps the porch with a broom, pa (father)
+  walks to the gate, pi (grandmother) washes clothes in a tub of water, and
+  naupang (child) chases the pig. Tap them to see what they are doing. At
+  night they are inside, by the hearth.
+- **Rova and Mami visit.** They come in at the gate and play tag in the yard.
+- **Labels** now show one group at a time: House, Yard, Family, Sky.
+- 59 words now, all from the Hnahsin app.
+
 ## 1.2.0 (23 October 2026)
 
 ### Touch and learn: more to find
