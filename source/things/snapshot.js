@@ -6,6 +6,7 @@ const ctx = { Math, Object, Array, Map, JSON, String, Number };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(__dirname + '/ink3d.js', 'utf8'), ctx);
+vm.runInContext(fs.readFileSync(__dirname + '/people.js', 'utf8') + '\nglobalThis.Ink3DPeople = Ink3DPeople;', ctx);
 vm.runInContext(fs.readFileSync(__dirname + '/house.js', 'utf8') + '\nglobalThis.HOUSE = HOUSE;', ctx);
 const { Ink3D, HOUSE } = ctx;
 const st = HOUSE.init();

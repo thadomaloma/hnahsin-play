@@ -353,55 +353,9 @@ const HOUSE = (() => {
   }
 
   // ---------- the family ----------
-  const SKIN = { l: '#efc29b', m: '#d9a47c', d: '#7a4f33' };
   const HAIR = '#1d1b22', GREY_HAIR = '#cfcac2';
-  // A person standing at `at`, facing angle `dir` (radians). o: h (height), shirt, lower ('skirt' or 'shorts'),
-  // lowerPal, bands (skirt stripes), hair, bun, pose ('walk', 'run', 'sweep', 'wash'), phase.
-  function person(at, dir, o) {
-    const d = [Math.cos(dir), Math.sin(dir), 0], sd = [-d[1], d[0], 0], h = o.h, ph = o.phase || 0;
-    const P = (f, sv, z) => add(add(add(at, mul(d, f)), mul(sd, sv)), [0, 0, z]);
-    const kids = [], crouch = o.pose === 'wash' ? 0.32 * h : 0, lean = o.pose === 'sweep' ? 0.06 * h : o.pose === 'wash' ? 0.1 * h : 0;
-    const hip = 0.46 * h - crouch, run = o.pose === 'run' ? 1.6 : 1;
-    // Legs
-    for (const side of [-1, 1]) {
-      if (o.pose === 'wash') kids.push(line([P(0, side * 0.08 * h, hip), P(0.2 * h, side * 0.09 * h, 0.12 * h), P(-0.05 * h, side * 0.09 * h, 0.4)], { col: SKIN.m, w: 1.5 }));
-      else {
-        const sw = (o.pose === 'walk' || o.pose === 'run') ? Math.sin(ph + (side > 0 ? 0 : Math.PI)) * 0.16 * h * run : 0;
-        kids.push(line([P(0, side * 0.07 * h, hip), P(sw, side * 0.08 * h, 0.4)], { col: SKIN.m, w: 1.6 }));
-        if (o.shoes) kids.push(ball(P(sw + 0.03 * h, side * 0.08 * h, 0.6), 0.06 * h, { fill: o.shoes, w: 0.6 }));
-      }
-    }
-    // Lower body: a puan skirt with stripes, or shorts
-    const Z = at[2];   // the floor they stand on
-    if (o.lower === 'skirt') kids.push(cyl(P(lean * 0.3, 0, 0).slice(0, 2), Z + Math.max(0.3, 0.16 * h - crouch), Z + 0.52 * h - crouch, 0.2 * h, 0.14 * h, { pal: o.lowerPal, bands: o.bands ? o.bands.map(f => Z + f * h - crouch) : [], cap: false }));
-    else kids.push(cyl(P(0, 0, 0).slice(0, 2), Z + 0.36 * h - crouch, Z + 0.52 * h - crouch, 0.15 * h, 0.14 * h, { pal: o.lowerPal, cap: false }));
-    // Body and head
-    const body = P(lean, 0, 0);
-    kids.push(cyl(body.slice(0, 2), Z + 0.5 * h - crouch, Z + 0.79 * h - crouch, 0.14 * h, 0.115 * h, { pal: o.shirt }));
-    if (o.stripe) kids.push(cyl(body.slice(0, 2), Z + 0.6 * h - crouch, Z + 0.645 * h - crouch, 0.137 * h, 0.134 * h, { pal: o.stripe, cap: false }));
-    const head = P(lean * 1.4, 0, 0.9 * h - crouch), r = 0.13 * h;
-    kids.push(ball(add(head, add(mul(d, -0.22 * r), [0, 0, 0.18 * r])), r * 1.04, { fill: o.hair }));
-    kids.push(ball(add(head, mul(d, 0.12 * r)), r, { pal: SKIN }));
-    if (o.bun) kids.push(ball(add(head, add(mul(d, -0.95 * r), [0, 0, 0.35 * r])), 0.45 * r, { fill: o.hair }));
-    if (o.ponytail) {   // swings as she runs
-      const sw = Math.sin(ph * 2) * 0.25 * r;
-      kids.push(ball(add(head, add(add(mul(d, -1.15 * r), mul(sd, sw)), [0, 0, 0.1 * r])), 0.42 * r, { fill: o.hair }));
-      kids.push(ball(add(head, add(add(mul(d, -1.5 * r), mul(sd, sw * 1.6)), [0, 0, -0.35 * r])), 0.32 * r, { fill: o.hair }));
-      kids.push(ball(add(head, add(mul(d, -0.95 * r), [0, 0, 0.3 * r])), 0.2 * r, { fill: o.tie || '#c2185b' }));
-    }
-    for (const e of [-1, 1]) kids.push(ball(add(head, add(add(mul(d, 0.95 * r), mul(sd, 0.38 * r * e)), [0, 0, 0.12 * r])), 0.09 * r + 0.15, { fill: '#231e16', ink: false }));
-    // Arms
-    for (const side of [-1, 1]) {
-      const sh = P(lean, side * 0.15 * h, 0.75 * h - crouch);
-      let hand;
-      if (o.pose === 'sweep') hand = P(lean + 0.2 * h, side * 0.04 * h, 0.5 * h + side * 0.06 * h);
-      else if (o.pose === 'wash') hand = P(0.36 * h, side * 0.07 * h, 0.3 * h - crouch * 0.4 + 0.05 * h * Math.sin(s_t * 7 + side));
-      else { const sw = (o.pose === 'walk' || o.pose === 'run') ? -Math.sin(ph + (side > 0 ? 0 : Math.PI)) * 0.14 * h * run : 0; hand = P(lean + sw, side * 0.19 * h, 0.45 * h - crouch); }
-      kids.push(line([sh, hand], { col: o.shirt.m, w: 1.5 }));
-      kids.push(ball(hand, 0.06 * h, { fill: SKIN.m, w: 0.5 }));
-    }
-    return kids;
-  }
+  // People are drawn by people.js; s_t is the clock for their hands.
+  const person = (at, dir, o) => Ink3DPeople.person(at, dir, { t: s_t, ...o });
   let s_t = 0;   // the clock, for the people's hands
   const NU = { h: 22, shirt: { l: '#f48fb1', m: '#e0457b', d: '#7a1f43' }, lower: 'skirt', lowerPal: PUAN, bands: [0.24, 0.32, 0.4], hair: HAIR, bun: true };
   const PA = { h: 24, shirt: { l: '#7fb3e6', m: '#4f86c6', d: '#1f3a63' }, lower: 'shorts', lowerPal: { l: '#5a5f6b', m: '#41454f', d: '#1f2128' }, hair: HAIR };

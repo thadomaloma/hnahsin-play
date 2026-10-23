@@ -160,7 +160,8 @@
     const P = cam.P, d3 = (pts, open) => d2(pts.map(P), open);
     const tag = part => part ? ` data-p="${part}"${part === o.hl ? ' class="hl"' : ''}` : '';
     const col = (c, glow) => glow ? c : T(c);
-    const depthOf = p => p._d ?? (p._d = cam.depth(p.c && p.t === 'ball' ? p.c : centroid(vertsOf(p))) + (p.bias || 0));
+    // A shape sorts by its centre, or by `at` when given (a group that should sort as one point).
+    const depthOf = p => p._d ?? (p._d = cam.depth(p.at || (p.c && p.t === 'ball' ? p.c : centroid(vertsOf(p)))) + (p.bias || 0));
     const light2 = (() => { const s = P(Lt), l = Math.hypot(s[0], s[1]) || 1; return [s[0] / l, s[1] / l]; })();
 
     function decal(d, part) {

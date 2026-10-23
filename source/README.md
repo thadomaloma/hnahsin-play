@@ -84,11 +84,14 @@ Things you can tap, turn and play with, drawn in 3D by our own small engine.
 | File | What it is |
 |---|---|
 | `ink3d.js` | The engine: shapes (boxes, cylinders, balls, lines), the turning camera, shading, shadows and the pen look. It writes SVG |
+| `people.js` | People (the family, Rova and Mami, the weaver), shared by the figures |
 | `house.js` | The Mizo house and its yard: parts, buttons, sky, weather and labels |
-| `template.html` | The page; `__INK3D__`, `__HOUSE__`, `__WORDS__` and `__STATS__` are filled in by the build |
+| `loom.js` | Puan tah: pi weaves a puan on a backstrap loom; pick the yarn, add a pattern, finish it |
+| `template.html` | The page; `__INK3D__`, `__PEOPLE__`, `__HOUSE__`, `__LOOM__`, `__WORDS__` and `__STATS__` are filled in by the build |
 | `snapshot.js` | Writes `pics/things-house.svg`, the picture on the home page card (`node snapshot.js`) |
 
-Every Mizo word in a figure's `words` list must be in `../journey/words.json` (the Hnahsin content);
+Every Mizo word in a figure's `words` list must be in `../journey/words.json` (the Hnahsin content)
+or `../journey/dict_words.json` (the dictionary words);
 the build stops and names any that are not.
 
 ## The Flutter app under `app/`

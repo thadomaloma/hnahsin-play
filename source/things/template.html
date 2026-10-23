@@ -42,6 +42,10 @@
   .score { flex: none; font-weight: 800; background: var(--panel); border: 1.5px solid var(--ink); border-radius: 99px; padding: 6px 12px; font-variant-numeric: tabular-nums; }
 
   .card { background: var(--panel); border: 1.5px solid var(--ink); border-radius: 22px; overflow: hidden; box-shadow: 0 3px 0 var(--ink); }
+  .tabs { display: flex; gap: 6px; padding: 10px 12px 0; overflow-x: auto; scrollbar-width: none; }
+  .tabs button { flex: none; min-height: 40px; padding: 6px 14px; border-radius: 99px; border: 1.5px solid var(--ink); background: var(--panel); font-weight: 800; font-size: 15px; }
+  .tabs button[aria-selected="true"] { background: var(--ink); color: #fff; }
+  .act[disabled] { opacity: .45; box-shadow: none; transform: none; cursor: default; }
   .fig-title { display: flex; align-items: baseline; gap: 8px; padding: 12px 16px 0; }
   .fig-title b { font-family: "Baloo 2", sans-serif; font-size: 26px; line-height: 1; }
   .fig-title span { color: var(--muted); font-weight: 600; font-size: 15px; }
@@ -95,6 +99,7 @@
   </header>
 
   <main class="card">
+    <div class="tabs" id="tabs" role="tablist" aria-label="Things to play with"></div>
     <div class="fig-title"><b id="fname"></b><span id="fsub"></span></div>
     <div class="stage" id="stage">
       <svg id="svg" role="img"></svg>
@@ -130,27 +135,29 @@ __STATS__
 __INK3D__
 </script>
 <script>
+__PEOPLE__
+</script>
+<script>
 __HOUSE__
+</script>
+<script>
+__LOOM__
 </script>
 <script>
 (() => {
   const WORDS = __WORDS__;   // Mizo → English, from the Hnahsin content
-  const fig = HOUSE;
+  // The things you can play with; #loom in the address opens the loom.
+  const FIGS = [HOUSE, LOOM];
+  let fig = FIGS.find(f => '#' + f.id === location.hash) || FIGS[0];
   const $ = id => document.getElementById(id);
   const svg = $('svg'), stage = $('stage'), wordEl = $('word');
-  const [VX, VY, VW, VH] = fig.view.box.split(' ').map(Number);
-  svg.setAttribute('viewBox', fig.view.box);
-  svg.setAttribute('aria-label', `${fig.name}: ${fig.sub}. Tap a part to see its Mizo name.`);
-  $('fname').textContent = fig.name;
-  $('fsub').textContent = `${WORDS[fig.name.toLowerCase()] ? '· ' : ''}${fig.sub}`;
-  const st = fig.init();
+  let VX, VY, VW, VH, st;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let yaw = fig.view.yaw, spin = false, labels = 0, pen = true, hl = null, hlUntil = 0;
   let stars = 0;
   try { stars = +localStorage.getItem('hn-things-stars') || 0; } catch (e) {}
   const showStars = () => { $('score').textContent = `⭐ ${stars}`; };
   showStars();
-  hnStat(`things/${fig.id}`, `Touch and learn: ${fig.sub}`);
 
   // ---------- the caption under the figure ----------
   // also: one word or a list of words to show after it (a verb, or what a friend says).
@@ -201,7 +208,7 @@ __HOUSE__
   }
   function draw() {
     const cam = Ink3D.camera(yaw, fig.view.pitch);
-    const body = Ink3D.render(fig.scene(st, cam), cam, { tint: fig.tint(st), hl, wobble: pen ? 0.45 : 0, light: fig.light && fig.light(st) });
+    const body = Ink3D.render(fig.scene(st, cam), cam, { tint: fig.tint(st), hl, ink: fig.view.ink || 1, wobble: pen ? 0.45 * (fig.view.ink || 1) : 0, light: fig.light && fig.light(st) });
     svg.innerHTML = fig.sky(st) + body + fig.over(st) + (labels ? labelLayer(cam) : '');
   }
 
@@ -261,20 +268,22 @@ __HOUSE__
   }
 
   // ---------- buttons ----------
+  // Redrawn only when their words change (a button can also be not ready yet, like Finish).
   function drawActs() {
-    $('acts').innerHTML = fig.actions.map((a, i) => {
-      const w = a.word(st);
-      return `<button class="act" type="button" data-i="${i}">${a.label(st)}${w ? `<span class="chip">${w}</span>` : ''}</button>`;
+    const html = fig.actions.map((a, i) => {
+      const w = a.word(st), off = a.ready && !a.ready(st);
+      return `<button class="act" type="button" data-i="${i}"${off ? ' disabled' : ''}>${a.label(st)}${w ? `<span class="chip">${w}</span>` : ''}</button>`;
     }).join('');
+    if ($('acts').dataset.html !== html) { $('acts').innerHTML = html; $('acts').dataset.html = html; }
   }
   $('acts').addEventListener('click', e => {
-    const b = e.target.closest('.act'); if (!b) return;
+    const b = e.target.closest('.act'); if (!b || b.disabled) return;
     const a = fig.actions[+b.dataset.i], w = a.word(st);
     a.run(st);
     if (w && !find) say(w);
     drawActs();
   });
-  drawActs();
+  setInterval(() => { drawActs(); syncSwatches(); }, 400);
 
   const toggle = (id, on) => $(id).setAttribute('aria-pressed', on);
   // Labels step through the figure's groups (House, Yard, …), then off.
@@ -289,13 +298,19 @@ __HOUSE__
   $('t-front').onclick = () => { spin = false; toggle('t-turn', false); yaw = fig.view.yaw; };
   $('t-pen').onclick = () => { pen = !pen; toggle('t-pen', pen); };
 
-  const sw = fig.swatches;
-  $('swlabel').textContent = sw.label;
-  $('swatches').innerHTML = Object.entries(sw.list).map(([k, c]) => `<button class="swatch" type="button" data-k="${k}" style="background:${c}" aria-label="${k}" aria-pressed="${st[sw.key] === k}"></button>`).join('');
+  // Colour swatches: a swatch named by a Mizo word says it when picked.
+  function drawSwatches() {
+    const sw = fig.swatches;
+    $('swlabel').textContent = sw.label;
+    $('swatches').innerHTML = Object.entries(sw.list).map(([k, c]) => `<button class="swatch" type="button" data-k="${k}" style="background:${c}" aria-label="${WORDS[k] ? `${k}, ${WORDS[k]}` : k}"></button>`).join('');
+    syncSwatches();
+  }
+  const syncSwatches = () => document.querySelectorAll('.swatch').forEach(x => x.setAttribute('aria-pressed', st[fig.swatches.key] === x.dataset.k));
   $('swatches').addEventListener('click', e => {
     const b = e.target.closest('.swatch'); if (!b) return;
-    st[sw.key] = b.dataset.k;
-    document.querySelectorAll('.swatch').forEach(x => x.setAttribute('aria-pressed', x === b));
+    st[fig.swatches.key] = b.dataset.k;
+    syncSwatches();
+    if (WORDS[b.dataset.k] && !find) say(b.dataset.k);
   });
 
   // ---------- Find it: tap the part that is named ----------
@@ -334,5 +349,26 @@ __HOUSE__
   }
   $('t-find').onclick = () => find ? stopFind() : startFind();
   $('skip').onclick = () => { if (find) nextFind(); };
+
+  // ---------- choosing a thing ----------
+  function useFig(f) {
+    fig = f; st = f.init();
+    [VX, VY, VW, VH] = f.view.box.split(' ').map(Number);
+    svg.setAttribute('viewBox', f.view.box);
+    svg.style.aspectRatio = `${VW} / ${VH}`;
+    svg.setAttribute('aria-label', `${f.name}: ${f.sub}. Tap a part to see its Mizo name.`);
+    $('fname').textContent = f.name;
+    $('fsub').textContent = `· ${f.sub}`;
+    yaw = f.view.yaw; spin = false; toggle('t-turn', false); hl = null;
+    stopFind(); showLabels(0);
+    wordEl.className = 'word idle'; wordEl.innerHTML = '<b>Tap anything</b><span>to see its Mizo name</span>';
+    $('acts').dataset.html = ''; drawActs(); drawSwatches();
+    document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.id === f.id));
+    try { history.replaceState(null, '', '#' + f.id); } catch (e) {}
+    hnStat(`things/${f.id}`, `Touch and learn: ${f.sub}`);
+  }
+  $('tabs').innerHTML = FIGS.map(f => `<button type="button" role="tab" data-id="${f.id}">${f.name}</button>`).join('');
+  $('tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.id !== fig.id) useFig(FIGS.find(f => f.id === b.dataset.id)); });
+  useFig(fig);
 })();
 </script>
