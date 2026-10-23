@@ -9,8 +9,11 @@ source/
   playground/   Hnahsin Playground (20 games)
 ```
 
-The home page (`index.html`, `theme.css`, `home.js`), `sw.js` and
+The home page (`index.html`, `theme.css`, `home.js`, `rova.js`), `sw.js` and
 `manifest.webmanifest` are written by hand at the top level; they have no build.
+After changing `theme.css`, `home.js` or `rova.js`, run `python3 source/stamp.py`: it
+puts a fingerprint of each file in its URL (`home.js?v=…`) in `index.html` and `sw.js`,
+so phones and browsers fetch the new file instead of a saved old one.
 
 ## Rebuild a page
 

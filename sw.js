@@ -2,9 +2,9 @@
 // phone, so the games open without internet. Pages are fetched fresh when
 // online (so updates show), and fall back to the kept copy when offline.
 // The Flutter app under app/ is kept as it is fetched (it is too big to fetch all up front).
-const VERSION = 'hnahsin-8';
+const VERSION = 'hnahsin-9';
 const CORE = [
-  './', 'index.html', 'theme.css', 'home.js', 'rova.js', 'journey.html', 'playground.html',
+  './', 'index.html', 'theme.css?v=d03db89c', 'home.js?v=a352c5a2', 'rova.js?v=f71d0f8b', 'journey.html', 'playground.html',
   'favicon.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'manifest.webmanifest',
   'https://cdnjs.cloudflare.com/ajax/libs/phaser/3.90.0/phaser.min.js',
 ];
@@ -40,14 +40,17 @@ self.addEventListener('fetch', e => {
   }
 
   if (req.mode === 'navigate') {
-    e.respondWith(fetch(req).then(res => keep(req, res))
+    // GitHub lets browsers reuse a page for 10 minutes; ask the server each time instead
+    // (a quick “has it changed?”), so an update shows on the next open.
+    e.respondWith(fetch(req, { cache: 'no-cache' }).then(res => keep(req, res))
       .catch(() => caches.match(req, { ignoreSearch: true }).then(hit => hit || caches.match('index.html'))));
     return;
   }
 
   // Files of ours, fonts and the game engine: answer from the phone at once, refresh in the background.
   if (!mine && !/(^|\.)fonts\.(googleapis|gstatic)\.com$|^cdnjs\.cloudflare\.com$/.test(url.hostname)) return;
-  e.respondWith(caches.match(req, { ignoreSearch: mine }).then(hit => {
+  // Our files carry a fingerprint (?v=…), so the exact URL is matched: a new fingerprint is fetched fresh.
+  e.respondWith(caches.match(req).then(hit => {
     const fresh = fetch(req).then(res => keep(req, res)).catch(() => hit);
     return hit || fresh;
   }));
