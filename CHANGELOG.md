@@ -4,6 +4,24 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.1.0 (23 October 2026)
+
+### New: Touch and learn
+
+- A Mizo house on stilts, with its yard, drawn in 3D with a hand-inked look.
+- Tap any part to see its Mizo name: door, window, roof, floor, wall, lamp,
+  cat, hen, basket, path, fence, tree, bamboo, flowers, hills and the sky.
+- Buttons with Mizo words: open the door and windows, make it night or
+  morning, make it rain, light the fire.
+- Labels show every part's Mizo name. Find it asks you to tap a named part
+  and gives a star for each one you find.
+- Drag to turn the house, or let it turn by itself. Pick the roof colour.
+- All 30 words come from the Hnahsin app.
+
+### Also
+
+- A copyright note in the README.
+
 ## 1.0.0 (23 October 2026)
 
 The first release.
