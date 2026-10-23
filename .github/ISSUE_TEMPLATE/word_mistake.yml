@@ -1,0 +1,23 @@
+name: A word is wrong
+description: A Mizo word, its meaning, its picture or a sentence is not right.
+labels: ["words"]
+body:
+  - type: input
+    id: word
+    attributes:
+      label: Which word?
+      placeholder: e.g. sakhi
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Which game?
+      placeholder: e.g. I Spy, Rova's Journey level 3
+  - type: textarea
+    id: what
+    attributes:
+      label: What is wrong, and what should it be?
+      placeholder: e.g. The picture shows a deer, but sakhi is a barking deer.
+    validations:
+      required: true

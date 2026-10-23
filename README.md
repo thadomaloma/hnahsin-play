@@ -47,4 +47,12 @@ The pages are plain HTML, CSS and JavaScript, served by GitHub Pages.
 `source/` holds what the game pages are built from, and
 [source/README.md](source/README.md) says how to rebuild them.
 
+## Versions and feedback
+
+- What changed in each version: [CHANGELOG.md](CHANGELOG.md) and
+  [Releases](https://github.com/thadomaloma/hnahsin-play/releases).
+- Found a wrong word, a broken game or have an idea?
+  [Open an issue](https://github.com/thadomaloma/hnahsin-play/issues/new/choose).
+- Where the words, pictures and tools come from: [CREDITS.md](CREDITS.md).
+
 Developed by Maloma Thado.

@@ -1,0 +1,23 @@
+name: Something doesn't work
+description: A game breaks, freezes or looks wrong.
+labels: ["bug"]
+body:
+  - type: input
+    id: game
+    attributes:
+      label: Which game or page?
+      placeholder: e.g. Waffle
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, and what went wrong? A screenshot helps.
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Phone or computer
+      placeholder: e.g. iPhone 15, Safari, dark mode
