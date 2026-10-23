@@ -151,15 +151,17 @@
   // ---------- render ----------
   // scene: { ground: [shapes drawn first, in order], groundDecals: [...], clip: [3D points of the ground top],
   //          items: [shapes sorted far to near] }
-  // o: { tint(colour) → colour, hl: part to highlight, ink: line weight, wobble: pen look strength }
+  // o: { tint(colour) → colour, hl: part to highlight, ink: line weight, wobble: pen look strength,
+  //      light: direction toward the sun (unit vector) }
   function render(sc, cam, o = {}) {
     WOB = o.wobble || 0;
+    const Lt = o.light || LIGHT;   // where the sun is: shading and shadows follow it
     const T = o.tint || (c => c), W = o.ink || 1, out = [];
     const P = cam.P, d3 = (pts, open) => d2(pts.map(P), open);
     const tag = part => part ? ` data-p="${part}"${part === o.hl ? ' class="hl"' : ''}` : '';
     const col = (c, glow) => glow ? c : T(c);
     const depthOf = p => p._d ?? (p._d = cam.depth(p.c && p.t === 'ball' ? p.c : centroid(vertsOf(p))) + (p.bias || 0));
-    const light2 = (() => { const s = P(LIGHT), l = Math.hypot(s[0], s[1]) || 1; return [s[0] / l, s[1] / l]; })();
+    const light2 = (() => { const s = P(Lt), l = Math.hypot(s[0], s[1]) || 1; return [s[0] / l, s[1] / l]; })();
 
     function decal(d, part) {
       const fill = d.fill ? col(d.fill, d.glow) : 'none';
@@ -175,7 +177,7 @@
           for (const f of p.faces) if (f.both || dot(f.n, cam.view) > 1e-4) vis.push([cam.depth(centroid(f.pts)), f]);
           vis.sort((a, b) => a[0] - b[0]);
           for (const [, f] of vis) {
-            const fill = f.fill ? col(f.fill, f.glow) : T(tone(f.pal, dot(f.n, LIGHT)));
+            const fill = f.fill ? col(f.fill, f.glow) : T(tone(f.pal, dot(f.n, Lt)));
             const part = f.part ?? p.part;   // a face takes its group's name when it has none
             out.push(`<path d="${d3(f.pts)}" fill="${fill}" stroke="${INK}" stroke-width="${f1(W * (p.w || 1))}" stroke-linejoin="round"${tag(part)}/>`);
             if (f.decals) for (const d of f.decals) decal(d, part);
@@ -202,7 +204,7 @@
           for (let i = 0; i < N; i++) {
             const a = (i + 0.5) / N * 2 * Math.PI, n = norm([Math.cos(a), Math.sin(a), slope]);
             if (dot(n, cam.view) <= 0) continue;
-            const fill = T(tone(p.pal, dot(n, LIGHT))), j = (i + 1) % N;
+            const fill = T(tone(p.pal, dot(n, Lt))), j = (i + 1) % N;
             s += `<path d="${d3([B[i], B[j], U[j], U[i]])}" fill="${fill}" stroke="${fill}" stroke-width=".6"/>`;
           }
           for (const z of p.bands || []) {
@@ -228,7 +230,7 @@
         }
         case 'poly': {
           let n = newell(p.pts); if (dot(n, cam.view) < 0) n = mul(n, -1);
-          const fill = p.fill ? col(p.fill, p.glow) : T(tone(p.pal, dot(n, LIGHT)));
+          const fill = p.fill ? col(p.fill, p.glow) : T(tone(p.pal, dot(n, Lt)));
           out.push(`<path d="${d3(p.pts)}" fill="${fill}" stroke="${p.ink === false ? fill : INK}" stroke-width="${f1(W * (p.w || 0.9))}" stroke-linejoin="round"${tag(p.part)}/>`);
           break;
         }
@@ -244,7 +246,7 @@
     function shadow(p) {
       if (p.shadow === false) return '';
       if (p.t === 'group') return p.kids.map(shadow).join('');
-      const pts = vertsOf(p).map(v => { const z = Math.max(0, v[2]); return P([v[0] - LIGHT[0] * z / LIGHT[2], v[1] - LIGHT[1] * z / LIGHT[2], 0]); });
+      const pts = vertsOf(p).map(v => { const z = Math.max(0, v[2]); return P([v[0] - Lt[0] * z / Lt[2], v[1] - Lt[1] * z / Lt[2], 0]); });
       const h = hull(pts);
       return h.length > 2 ? `<path d="${d2(h)}"/>` : '';
     }

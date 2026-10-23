@@ -145,7 +145,7 @@ __HOUSE__
   $('fsub').textContent = `${WORDS[fig.name.toLowerCase()] ? '· ' : ''}${fig.sub}`;
   const st = fig.init();
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let yaw = fig.view.yaw, spin = false, labels = false, pen = true, hl = null, hlUntil = 0;
+  let yaw = fig.view.yaw, spin = false, labels = 0, pen = true, hl = null, hlUntil = 0;
   let stars = 0;
   try { stars = +localStorage.getItem('hn-things-stars') || 0; } catch (e) {}
   const showStars = () => { $('score').textContent = `⭐ ${stars}`; };
@@ -170,8 +170,9 @@ __HOUSE__
     const k = VW / (svg.clientWidth || 360);            // svg units per screen pixel
     const fs = 14 * k, pad = 5 * k, lh = 18 * k;   // Mizo only: a tap on a label shows the English
     const tags = [], seen = new Set();
+    const only = fig.labelGroups ? fig.labelGroups[labels - 1] : null;
     for (const a of visibleAnchors(cam)) {
-      if (seen.has(a.part)) continue;
+      if (seen.has(a.part) || (only && a.g && a.g !== only)) continue;
       seen.add(a.part);
       const s = a.s || cam.P(a.p);
       const m = a.part, w = m.length * 8.6 * k + pad * 2, h = lh + pad;
@@ -199,7 +200,7 @@ __HOUSE__
   }
   function draw() {
     const cam = Ink3D.camera(yaw, fig.view.pitch);
-    const body = Ink3D.render(fig.scene(st, cam), cam, { tint: fig.tint(st), hl, wobble: pen ? 0.45 : 0 });
+    const body = Ink3D.render(fig.scene(st, cam), cam, { tint: fig.tint(st), hl, wobble: pen ? 0.45 : 0, light: fig.light && fig.light(st) });
     svg.innerHTML = fig.sky(st) + body + fig.over(st) + (labels ? labelLayer(cam) : '');
   }
 
@@ -275,7 +276,14 @@ __HOUSE__
   drawActs();
 
   const toggle = (id, on) => $(id).setAttribute('aria-pressed', on);
-  $('t-labels').onclick = () => { labels = !labels; toggle('t-labels', labels); };
+  // Labels step through the figure's groups (House, Yard, …), then off.
+  const showLabels = n => {
+    const groups = fig.labelGroups || ['all'];
+    labels = n % (groups.length + 1);
+    toggle('t-labels', labels > 0);
+    $('t-labels').textContent = labels && fig.labelGroups ? `Labels: ${groups[labels - 1]}` : 'Labels';
+  };
+  $('t-labels').onclick = () => showLabels(labels + 1);
   $('t-turn').onclick = () => { spin = !spin; toggle('t-turn', spin); };
   $('t-front').onclick = () => { spin = false; toggle('t-turn', false); yaw = fig.view.yaw; };
   $('t-pen').onclick = () => { pen = !pen; toggle('t-pen', pen); };
@@ -301,7 +309,7 @@ __HOUSE__
   }
   function startFind() {
     find = { word: null, found: 0 };
-    labels = false; toggle('t-labels', false);
+    showLabels(0);
     $('findbar').hidden = false; toggle('t-find', true);
     nextFind();
   }
