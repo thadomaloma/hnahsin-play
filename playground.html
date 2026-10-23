@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
 <title>Hnahsin Playground</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Caveat:wght@600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Caveat:wght@600;700&display=swap">
 <style>
   :root {
     color-scheme: light;
@@ -86,11 +86,40 @@
   .brand span { color: var(--muted); font-size: 13px; font-weight: 600; }
   .score { font-weight: 800; background: var(--panel); border: 1px solid var(--line); border-radius: 99px; padding: 6px 12px; font-variant-numeric: tabular-nums; }
   [hidden] { display: none !important; }
-  nav.tabs { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 5px; }
-  nav.tabs button { border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 800; padding: 8px 4px; border-radius: 13px; cursor: pointer; display: grid; justify-items: center; gap: 2px; font-size: 12.5px; line-height: 1.2; text-align: center; }
-  nav.tabs button .e { font-size: 22px; line-height: 1; }
-  nav.tabs button[aria-selected="true"] { background: var(--brand); color: #fff; }
-  nav.tabs button:focus-visible, button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  button:focus-visible, a:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  header.top { position: sticky; top: 0; z-index: 20; margin-inline: -16px; padding: 10px 16px; background: color-mix(in srgb, var(--ground) 82%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+  .nav-link { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--panel); border: 1px solid var(--line); color: var(--brand); font-size: 20px; font-weight: 800; text-decoration: none; }
+  header.top .brand { flex: 1; min-width: 0; }
+  header.top .brand b { font-family: "Baloo 2", "Plus Jakarta Sans", sans-serif; font-size: 24px; line-height: 1.1; }
+  header.top .brand span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* The game library */
+  .library { display: grid; gap: 24px; }
+  .continue { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 20px; background: linear-gradient(135deg, var(--brand), #3c9fea); color: #fff; text-decoration: none; box-shadow: 0 10px 24px -12px rgba(13, 71, 161, .6); }
+  .continue i { font-style: normal; font-size: 30px; }
+  .continue span { display: grid; flex: 1; }
+  .continue small { opacity: .8; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  .continue b { font-size: 18px; }
+  .continue em { font-style: normal; font-weight: 800; background: rgba(255, 255, 255, .2); border-radius: 99px; padding: 6px 12px; }
+  .cat h2 { display: flex; align-items: baseline; gap: 8px; margin: 0 0 10px; font-size: 13px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .cat h2 span { font-size: 18px; }
+  .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  @media (min-width: 600px) { .cards { grid-template-columns: repeat(3, 1fr); } }
+  .gcard { position: relative; display: flex; flex-direction: column; overflow: hidden; border-radius: 20px; background: var(--panel); border: 1px solid var(--line); color: var(--ink); text-decoration: none; box-shadow: 0 1px 3px rgba(13, 71, 161, .05), 0 10px 22px -14px rgba(13, 71, 161, .35); transition: transform .25s cubic-bezier(.2, .8, .2, 1), box-shadow .25s; animation: cardIn .5s cubic-bezier(.2, .8, .2, 1) both; animation-delay: var(--d, 0ms); }
+  .gcard:hover { transform: translateY(-3px); box-shadow: 0 2px 6px rgba(13, 71, 161, .08), 0 16px 30px -14px rgba(13, 71, 161, .45); }
+  .gcard:active { transform: scale(.97); }
+  .gcard .cover { display: grid; place-items: center; height: 84px; background: linear-gradient(135deg, var(--c1), var(--c2)); }
+  .gcard .cover i { font-style: normal; font-size: 42px; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .18)); transition: transform .3s cubic-bezier(.2, .8, .2, 1); }
+  .gcard:hover .cover i { transform: scale(1.14) rotate(-6deg); }
+  .gcard b { padding: 10px 12px 0; font-size: 15px; }
+  .gcard small { padding: 2px 12px 12px; color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+  .gcard .tag { position: absolute; top: 8px; right: 8px; padding: 2px 8px; border-radius: 99px; background: #fff; color: var(--coral); font-size: 10.5px; font-weight: 800; letter-spacing: .06em; }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(14px) scale(.98); } }
+  .stage { animation: stageIn .35s cubic-bezier(.2, .8, .2, 1); }
+  @keyframes stageIn { from { opacity: 0; transform: translateY(12px); } }
+  @media (prefers-reduced-motion: reduce) { .gcard, .stage { animation: none; } }
+  ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .28s; }
+
   .stage { background: var(--panel); border: 1px solid var(--line); border-radius: 24px; padding: 16px; display: grid; gap: 14px; }
   .stage h2 { margin: 0; font-size: 19px; font-weight: 800; text-wrap: balance; }
   .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
@@ -313,33 +342,14 @@
 
 <div class="app">
   <header class="top">
-    <div class="brand"><b>Hnahsin Playground</b><span>Word games with our Mizo words</span></div>
+    <a class="nav-link" id="home" href="https://thadomaloma.github.io/hnahsin-play/" aria-label="Hnahsin Games home">←</a>
+    <a class="nav-link" id="back" href="#" aria-label="Back to all games" hidden>←</a>
+    <div class="brand"><b id="title">Playground</b><span id="subtitle">20 word games with our Mizo words</span></div>
     <div class="score" id="score" aria-live="polite">⭐ 0</div>
   </header>
-  <nav class="tabs" role="tablist" aria-label="Games">
-    <button role="tab" id="tab-bazar" aria-selected="true" data-game="bazar"><span class="e">🛒</span>Bazar</button>
-    <button role="tab" id="tab-spy" aria-selected="false" data-game="spy"><span class="e">🔍</span>I Spy</button>
-    <button role="tab" id="tab-sort" aria-selected="false" data-game="sort"><span class="e">⚡</span>Sort it</button>
-    <button role="tab" id="tab-duel" aria-selected="false" data-game="duel"><span class="e">👥</span>Showdown</button>
-    <button role="tab" id="tab-tubes" aria-selected="false" data-game="tubes"><span class="e">🧪</span>Word tubes</button>
-    <button role="tab" id="tab-run" aria-selected="false" data-game="run"><span class="e">🏃</span>Rova run</button>
-    <button role="tab" id="tab-count" aria-selected="false" data-game="count"><span class="e">🔢</span>Count</button>
-    <button role="tab" id="tab-dress" aria-selected="false" data-game="dress"><span class="e">👕</span>Dress Rova</button>
-    <button role="tab" id="tab-size" aria-selected="false" data-game="size"><span class="e">🐘</span>Big and small</button>
-    <button role="tab" id="tab-days" aria-selected="false" data-game="days"><span class="e">📅</span>Days and times</button>
-    <button role="tab" id="tab-says" aria-selected="false" data-game="says"><span class="e">👃</span>Rova says</button>
-    <button role="tab" id="tab-colour" aria-selected="false" data-game="colour"><span class="e">🎨</span>Colour it</button>
-    <button role="tab" id="tab-family" aria-selected="false" data-game="family"><span class="e">👪</span>Rova's family</button>
-    <button role="tab" id="tab-bubble" aria-selected="false" data-game="bubble"><span class="e">🫧</span>Bubble pop</button>
-    <button role="tab" id="tab-whack" aria-selected="false" data-game="whack"><span class="e">🐁</span>Whack the rat</button>
-    <button role="tab" id="tab-weather" aria-selected="false" data-game="weather"><span class="e">🌦️</span>Weather report</button>
-    <button role="tab" id="tab-stall" aria-selected="false" data-game="stall"><span class="e">🍲</span>Food stall</button>
-    <button role="tab" id="tab-bee" aria-selected="false" data-game="bee"><span class="e">🐝</span>Spelling bee</button>
-    <button role="tab" id="tab-waffle" aria-selected="false" data-game="waffle"><span class="e">🧇</span>Waffle</button>
-    <button role="tab" id="tab-strands" aria-selected="false" data-game="strands"><span class="e">🧵</span>Strands</button>
-  </nav>
+  <main class="library" id="library"></main>
 
-  <section class="stage" id="bazar">
+  <section class="stage" id="bazar" hidden>
     <div class="row"><span class="pill" id="bz-level">Level 1</span><button class="btn ghost" id="bz-new">New list</button></div>
     <h2>Pi sent you to the market. Buy what's on her list.</h2>
     <div class="list"><h3>Pi-in a ziak:</h3><ul id="bz-list"></ul></div>
@@ -603,15 +613,68 @@ document.querySelectorAll('.modes').forEach(box => {
   box.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { set(b.dataset.mode); onModeChange[g]?.(); } });
 });
 
-// Tabs
-document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => show(b.dataset.game)));
+// ---------------------------------------------------------------- Library
+// The games by kind; each opens on its own screen at #id, so the browser's
+// back button and shared links work.
+const KINDS = [
+  { id: 'puzzles', icon: '🧩', name: 'Word puzzles', c: ['#7569e8', '#3c9fea'] },
+  { id: 'quick', icon: '⚡', name: 'Quick play', c: ['#ff8a65', '#ffc94a'] },
+  { id: 'pictures', icon: '🖼️', name: 'Everyday Mizo', c: ['#6dbe5e', '#b5e3a1'] },
+];
+const GAMES = [
+  ['bee', 'puzzles', '🐝', 'Spelling bee', 'Make words from seven letters', 'NEW'],
+  ['waffle', 'puzzles', '🧇', 'Waffle', 'Swap letters into six words', 'NEW'],
+  ['strands', 'puzzles', '🧵', 'Strands', 'Find the theme words', 'NEW'],
+  ['tubes', 'puzzles', '🧪', 'Word tubes', 'Sort words into their groups'],
+  ['sort', 'puzzles', '⚡', 'Sort it', 'Which group? Be quick'],
+  ['run', 'quick', '🏃', 'Rova run', 'Run into the right picture'],
+  ['bubble', 'quick', '🫧', 'Bubble pop', 'Pop what the word names'],
+  ['whack', 'quick', '🐁', 'Whack the rat', 'Whack the right rats'],
+  ['duel', 'quick', '👥', 'Showdown', 'Two players, one phone'],
+  ['bazar', 'pictures', '🛒', 'Bazar', "Buy what's on Pi's list"],
+  ['spy', 'pictures', '🔍', 'I Spy', 'Find things in the village'],
+  ['count', 'pictures', '🔢', 'Count', 'How many? Say it in Mizo'],
+  ['dress', 'pictures', '👕', 'Dress Rova', 'Put on what the list says'],
+  ['size', 'pictures', '🐘', 'Big and small', 'Bigger or smaller?'],
+  ['days', 'pictures', '📅', 'Days and times', 'Put days and times in order'],
+  ['says', 'pictures', '👃', 'Rova says', 'Tap the body part named'],
+  ['colour', 'pictures', '🎨', 'Colour it', 'Paint in the colour named'],
+  ['family', 'pictures', '👪', "Rova's family", 'Who is who at home'],
+  ['weather', 'pictures', '🌦️', 'Weather report', "Put up the week's weather"],
+  ['stall', 'pictures', '🍲', 'Food stall', 'Serve what guests ask for'],
+].map(([id, kind, icon, name, blurb, tag]) => ({ id, kind, icon, name, blurb, tag }));
+
+function renderLibrary() {
+  const last = GAMES.find(g => g.id === store.get('lab.tab', ''));
+  let n = 0;
+  $('library').innerHTML = (last ? `<a class="continue" href="#${last.id}"><i>${last.icon}</i><span><small>Continue</small><b>${last.name}</b></span><em>Play ▸</em></a>` : '') +
+    KINDS.map(k => `<section class="cat" aria-labelledby="cat-${k.id}"><h2 id="cat-${k.id}"><span>${k.icon}</span>${k.name}</h2><div class="cards">${
+      GAMES.filter(g => g.kind === k.id).map(g => `<a class="gcard" href="#${g.id}" style="--c1:${k.c[0]};--c2:${k.c[1]};--d:${n++ * 35}ms">${g.tag ? `<span class="tag">${g.tag}</span>` : ''}<span class="cover"><i>${g.icon}</i></span><b>${g.name}</b><small>${g.blurb}</small></a>`).join('')
+    }</div></section>`).join('');
+}
 function show(game) {
-  document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.game === game)));
-  ['bazar', 'spy', 'sort', 'duel', 'tubes', 'run', 'count', 'dress', 'size', 'days', 'says', 'colour', 'family', 'bubble', 'whack', 'weather', 'stall', 'bee', 'waffle', 'strands'].forEach(g => $(g).hidden = g !== game);
-  store.set('lab.tab', game);
+  GAMES.forEach(g => $(g.id).hidden = g.id !== game);
+  if (game) store.set('lab.tab', game);
   requestAnimationFrame(() => document.dispatchEvent(new CustomEvent('showgame', { detail: game })));
 }
-show(store.get('lab.tab', 'bazar'));
+function route() {
+  const g = GAMES.find(x => x.id === location.hash.slice(1));
+  const swap = () => {
+    $('library').hidden = !!g; $('back').hidden = !g; $('home').hidden = !!g;
+    $('title').textContent = g ? `${g.icon} ${g.name}` : 'Playground';
+    $('subtitle').textContent = g ? g.blurb : `${GAMES.length} word games with our Mizo words`;
+    document.title = g ? `${g.name} · Hnahsin Playground` : 'Hnahsin Playground';
+    if (!g) { renderLibrary(); fromLibrary = true; }
+    show(g ? g.id : null);
+    scrollTo(0, 0);
+  };
+  if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(swap); else swap();
+}
+// Back returns to the library: through history when we came from it, so the browser's back stays tidy.
+let fromLibrary = false;
+$('back').addEventListener('click', e => { e.preventDefault(); if (fromLibrary) history.back(); else location.hash = ''; });
+addEventListener('hashchange', route);
+route();
 
 // ---------------------------------------------------------------- Bazar
 // Pi's list: a few foods with how many, in Mizo numbers. From level 3 the
