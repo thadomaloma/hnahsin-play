@@ -57,9 +57,9 @@
   .flower .stem { width: 4px; height: calc(var(--s) * .9); margin: -6px auto 0; background: var(--leaf-deep); border-radius: 4px; }
   @keyframes sway { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
   /* Rova is drawn on a canvas by rova.js and moved by home.js. */
-  .rova { position: absolute; top: 100%; left: 0; width: clamp(48px, 8vw, 70px); aspect-ratio: 3 / 4; will-change: transform; }
-  html:not(.js) .rova { display: none; }
-  .rova canvas, .cover .runner canvas { display: block; width: 100%; height: 100%; }
+  .kid { position: absolute; top: 100%; left: 0; width: clamp(48px, 8vw, 70px); aspect-ratio: 3 / 4; will-change: transform; transform-origin: 50% 100%; }
+  html:not(.js) .kid { display: none; }
+  .kid canvas, .cover .runner canvas { display: block; width: 100%; height: 100%; }
 
   /* ------------------------------------------------ numbers */
   .stats { position: relative; z-index: 2; margin-top: -44px; display: grid; grid-template-columns: repeat(4, 1fr); padding: 18px 8px; }
@@ -221,7 +221,8 @@
     <div class="flower" style="right:24%;--s:clamp(32px,5vw,52px);--d:-3s"><svg style="--petal-fill:#f48fb1"><use href="#cosmos"/></svg><div class="stem"></div></div>
     <div class="flower" style="right:11%;--s:clamp(48px,8vw,84px);--d:-1.8s"><svg style="--petal-fill:#9c7cf0"><use href="#cosmos"/></svg><div class="stem"></div></div>
     <div class="flower" style="right:2%;--s:clamp(36px,6vw,60px);--d:-.9s"><svg style="--petal-fill:#fbe4ee"><use href="#cosmos"/></svg><div class="stem"></div></div>
-    <div class="rova"><canvas></canvas></div>
+    <div class="kid mami"><canvas></canvas></div>
+    <div class="kid rova"><canvas></canvas></div>
   </div>
 </header>
 
