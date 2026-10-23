@@ -1,0 +1,1429 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
+<title>Hnahsin Playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Caveat:wght@600;700&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --ground: #e8f4fd;
+    --panel: #ffffff;
+    --panel-2: #f1f8fe;
+    --ink: #15213a;
+    --muted: #5b6b80;
+    --line: #d6e6f2;
+    --brand: #1565c0;
+    --brand-deep: #0d47a1;
+    --gold: #ffc94a;
+    --gold-deep: #f2a516;
+    --leaf: #4f9e3c;
+    --leaf-soft: #e3f4dd;
+    --coral: #c2185b;
+    --coral-soft: #fde4ec;
+    --paper: #fff8e6;
+    --paper-line: #e9d9ad;
+    --sky-top: #9fd8ff;
+    --sky-bottom: #e6f6ff;
+    --hill: #7cc65a;
+    --hill-deep: #5daE47;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #0d1626;
+      --panel: #16223a;
+      --panel-2: #1c2b47;
+      --ink: #e8f0fb;
+      --muted: #9fb0c8;
+      --line: #2a3b5c;
+      --brand: #5aa9f5;
+      --brand-deep: #3c8de0;
+      --leaf: #7fcf68;
+      --leaf-soft: #1e3a26;
+      --coral: #f06a9c;
+      --coral-soft: #3a1c2a;
+      --paper: #2a2617;
+      --paper-line: #4a4226;
+      --sky-top: #1d3a66;
+      --sky-bottom: #33548a;
+      --hill: #3f7f37;
+      --hill-deep: #2f6229;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #0d1626;
+    --panel: #16223a;
+    --panel-2: #1c2b47;
+    --ink: #e8f0fb;
+    --muted: #9fb0c8;
+    --line: #2a3b5c;
+    --brand: #5aa9f5;
+    --brand-deep: #3c8de0;
+    --leaf: #7fcf68;
+    --leaf-soft: #1e3a26;
+    --coral: #f06a9c;
+    --coral-soft: #3a1c2a;
+    --paper: #2a2617;
+    --paper-line: #4a4226;
+    --sky-top: #1d3a66;
+    --sky-bottom: #33548a;
+    --hill: #3f7f37;
+    --hill-deep: #2f6229;
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    padding-inline: 16px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .app { max-width: 520px; margin: 0 auto; padding-block: 14px 40px; display: grid; gap: 14px; }
+  header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .brand { display: grid; gap: 1px; }
+  .brand b { font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+  .brand span { color: var(--muted); font-size: 13px; font-weight: 600; }
+  .score { font-weight: 800; background: var(--panel); border: 1px solid var(--line); border-radius: 99px; padding: 6px 12px; font-variant-numeric: tabular-nums; }
+  nav.tabs { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 5px; }
+  nav.tabs button { border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 800; padding: 8px 4px; border-radius: 13px; cursor: pointer; display: grid; justify-items: center; gap: 2px; font-size: 12.5px; line-height: 1.2; text-align: center; }
+  nav.tabs button .e { font-size: 22px; line-height: 1; }
+  nav.tabs button[aria-selected="true"] { background: var(--brand); color: #fff; }
+  nav.tabs button:focus-visible, button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .stage { background: var(--panel); border: 1px solid var(--line); border-radius: 24px; padding: 16px; display: grid; gap: 14px; }
+  .stage h2 { margin: 0; font-size: 19px; font-weight: 800; text-wrap: balance; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .pill { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--brand); }
+  .note { color: var(--muted); font-size: 14px; margin: 0; }
+  .btn { border: 0; font: inherit; font-weight: 800; border-radius: 14px; padding: 12px 16px; cursor: pointer; background: var(--brand); color: #fff; }
+  .btn.ghost { background: var(--panel-2); color: var(--brand); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .feedback { min-height: 22px; font-weight: 700; font-size: 15px; }
+  .feedback.good { color: var(--leaf); }
+  .feedback.bad { color: var(--coral); }
+  @keyframes pop { 0% { transform: scale(.6); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(7px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(3px); } }
+  @keyframes hop { 0%,100% { transform: translateY(0); } 40% { transform: translateY(-12px); } }
+  .pop { animation: pop .35s ease-out; }
+  .shake { animation: shake .4s; }
+  .hop { animation: hop .45s ease-out; }
+  @media (prefers-reduced-motion: reduce) { .pop, .shake, .hop { animation: none; } }
+
+  /* Bazar */
+  .list { background: var(--paper); border: 1px solid var(--paper-line); border-radius: 6px 18px 18px 6px; padding: 12px 16px 14px 26px; position: relative; box-shadow: 0 6px 0 -3px var(--paper-line); }
+  .list::before { content: ""; position: absolute; left: 12px; top: 10px; bottom: 10px; border-left: 2px dashed var(--paper-line); }
+  .list h3 { margin: 0 0 4px; font-family: "Caveat", cursive; font-size: 26px; color: var(--muted); font-weight: 700; }
+  .list ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+  .list li { font-family: "Caveat", cursive; font-size: 28px; font-weight: 700; display: flex; justify-content: space-between; gap: 10px; }
+  .list li.done { color: var(--leaf); text-decoration: line-through; text-decoration-thickness: 2px; }
+  .stalls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .item { border: 1px solid var(--line); background: var(--panel-2); border-radius: 16px; padding: 8px 4px; display: grid; justify-items: center; gap: 2px; cursor: pointer; font: inherit; color: var(--ink); position: relative; }
+  .item .e { font-size: 34px; line-height: 1.1; }
+  .item .w { font-weight: 800; font-size: 13px; }
+  .item .n { position: absolute; top: -6px; right: -6px; min-width: 24px; height: 24px; border-radius: 12px; background: var(--gold); color: #3a2a00; font-weight: 800; font-size: 13px; display: grid; place-items: center; padding-inline: 4px; }
+  .basket { display: flex; flex-wrap: wrap; gap: 6px; min-height: 36px; align-items: center; background: var(--panel-2); border-radius: 14px; padding: 8px 10px; }
+  .basket .chip { background: var(--panel); border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; font-weight: 700; font-size: 14px; cursor: pointer; }
+
+  /* I Spy */
+  .targets { display: flex; flex-wrap: wrap; gap: 8px; }
+  .target { border: 2px dashed var(--line); border-radius: 99px; padding: 6px 14px; font-weight: 800; font-size: 17px; }
+  .target small { display: block; font-size: 11px; color: var(--muted); font-weight: 600; }
+  .target.found { border-style: solid; border-color: var(--leaf); background: var(--leaf-soft); color: var(--leaf); }
+  .scene { position: relative; width: 100%; aspect-ratio: 4 / 5; border-radius: 20px; overflow: hidden; background: linear-gradient(var(--sky-top), var(--sky-bottom) 48%, var(--hill) 48.2%, var(--hill-deep)); touch-action: manipulation; }
+  .scene .thing { position: absolute; transform: translate(-50%, -50%); border: 0; background: none; padding: 0; font-size: clamp(30px, 9vw, 42px); line-height: 1; cursor: pointer; filter: drop-shadow(0 2px 2px rgba(0,0,0,.18)); }
+  .scene .thing.found { filter: drop-shadow(0 0 6px var(--gold)); }
+  .scene .thing.hint { animation: hop .45s 3; }
+  .tip { position: absolute; transform: translate(-50%, -150%); background: var(--ink); color: var(--panel); font-weight: 700; font-size: 13px; padding: 3px 8px; border-radius: 8px; white-space: nowrap; pointer-events: none; }
+
+  /* Sort it */
+  .bins { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .bin { border: 0; border-radius: 18px; padding: 14px 8px; font: inherit; font-weight: 800; cursor: pointer; color: #fff; display: grid; gap: 4px; justify-items: center; text-align: center; }
+  .bin .arrow { font-size: 22px; }
+  .bin.left { background: var(--brand); }
+  .bin.right { background: var(--coral); }
+  .card { min-height: 150px; border-radius: 22px; background: var(--panel-2); border: 1px solid var(--line); display: grid; place-items: center; text-align: center; padding: 16px; touch-action: pan-y; user-select: none; transition: transform .15s ease-out; }
+  .card .e { font-size: 44px; line-height: 1.1; }
+  .card .w { font-size: 34px; font-weight: 800; letter-spacing: -.01em; }
+  .timer { height: 10px; border-radius: 99px; background: var(--panel-2); overflow: hidden; }
+  .timer i { display: block; height: 100%; background: linear-gradient(90deg, var(--leaf), var(--gold)); border-radius: 99px; }
+  .combo { font-weight: 800; color: var(--gold-deep); }
+  .missed { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+  .missed li { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); padding: 6px 0; }
+  .missed li span:last-child { color: var(--muted); }
+  footer { color: var(--muted); font-size: 12.5px; text-align: center; }
+
+  /* Showdown: two players face to face over one phone */
+  .duel { height: min(78vh, 620px); display: grid; grid-template-rows: 1fr auto 1fr; gap: 6px; }
+  .side { border-radius: 20px; padding: 10px; display: grid; grid-template-rows: auto 1fr; gap: 8px; }
+  .side.p1 { background: color-mix(in srgb, var(--brand) 14%, var(--panel)); }
+  .side.p2 { background: color-mix(in srgb, var(--coral) 14%, var(--panel)); transform: rotate(180deg); }
+  .side .say { display: flex; justify-content: space-between; align-items: center; font-weight: 800; }
+  .side .say .word { font-size: 26px; }
+  .side .pts { font-variant-numeric: tabular-nums; font-size: 20px; }
+  .side .pics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .side .pics button { border: 0; border-radius: 16px; background: var(--panel); font-size: clamp(34px, 11vw, 52px); cursor: pointer; }
+  .side.locked .pics button { opacity: .35; }
+  .side .pics button.right { background: var(--leaf-soft); }
+  .duel .mid { text-align: center; font-weight: 800; color: var(--muted); }
+
+  /* Ball sort: tubes of word balls */
+  .tubes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .tube { border: 2px solid var(--line); border-top: 0; border-radius: 0 0 22px 22px; min-height: 172px; padding: 6px 5px; display: flex; flex-direction: column-reverse; gap: 5px; cursor: pointer; background: var(--panel-2); }
+  .tube.picked { border-color: var(--gold-deep); }
+  .tube.done { border-color: var(--leaf); background: var(--leaf-soft); }
+  .tube .label { order: 99; text-align: center; font-size: 11px; font-weight: 800; color: var(--leaf); text-transform: uppercase; letter-spacing: .04em; }
+  .ball { border-radius: 99px; background: var(--panel); border: 1px solid var(--line); padding: 5px 4px; text-align: center; font-weight: 800; font-size: 13px; line-height: 1.15; overflow-wrap: anywhere; }
+  .ball.lift { transform: translateY(-8px); border-color: var(--gold-deep); box-shadow: 0 6px 12px -6px rgba(0,0,0,.35); }
+
+  /* Runner: Rova runs at the picture the word names */
+  .road { position: relative; height: min(70vh, 520px); border-radius: 22px; overflow: hidden; background: linear-gradient(var(--sky-top), var(--sky-bottom) 18%, var(--hill) 18.2%, var(--hill-deep)); touch-action: manipulation; user-select: none; }
+  .road::before { content: ""; position: absolute; left: 50%; top: 18%; bottom: 0; border-left: 3px dashed rgba(255,255,255,.55); }
+  .road .ask { position: absolute; left: 0; right: 0; top: 8px; text-align: center; font-weight: 800; font-size: 26px; color: #15213a; text-shadow: 0 1px 0 rgba(255,255,255,.7); }
+  .road .gate { position: absolute; width: 38%; transform: translateX(-50%); display: grid; place-items: center; height: 84px; border-radius: 18px; background: rgba(255,255,255,.88); font-size: 48px; box-shadow: 0 6px 0 rgba(0,0,0,.12); }
+  .road .runner { position: absolute; bottom: 18px; transform: translateX(-50%); font-size: 54px; transition: left .15s ease-out; }
+  .hearts { font-size: 20px; letter-spacing: 2px; }
+
+  /* Dress Rova */
+  .rova { position: relative; height: 300px; background: var(--panel-2); border-radius: 22px; overflow: hidden; }
+  .rova .body { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 250px; line-height: 1; opacity: .9; }
+  .rova .worn { position: absolute; transform: translate(-50%, -50%); border: 0; background: none; padding: 0; cursor: pointer; font-size: 56px; line-height: 1; }
+  .rova .worn.head { font-size: 60px; }
+  .rova .worn.outer { font-size: 74px; }
+  .rova .worn.socks, .rova .worn.feet { font-size: 40px; }
+  .wardrobe { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+
+  /* Big and small */
+  .op-board { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .op-board .opt { height: 170px; border: 1px solid var(--line); border-radius: 20px; background: var(--panel-2); cursor: pointer; display: grid; place-items: center; overflow: hidden; }
+  .op-board .opt span { display: inline-block; font-size: 52px; line-height: 1; }
+  .ask-line { font-size: 22px; font-weight: 700; text-align: center; }
+  .ask-line b { font-weight: 800; color: var(--brand); }
+
+  /* Rova says */
+  .choice.big { font-size: 40px; padding: 10px 4px; }
+  #rs-board { grid-template-columns: repeat(3, 1fr); }
+
+  /* Colour it */
+  .pic { width: 100%; max-width: 100%; height: auto; display: block; border-radius: 20px; background: var(--panel-2); }
+  .pic [data-part] { stroke: var(--ink); stroke-width: 2; transition: fill .3s; }
+  .pic .glow { stroke: var(--gold-deep); stroke-width: 5; stroke-dasharray: 8 6; animation: march 1s linear infinite; }
+  @keyframes march { to { stroke-dashoffset: -28; } }
+  @media (prefers-reduced-motion: reduce) { .pic .glow { animation: none; } }
+  .swatches { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+  .swatch { width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--line); cursor: pointer; }
+
+  /* Rova's family */
+  .tree { position: relative; height: 300px; border-radius: 22px; background: var(--panel-2); }
+  .tree::before { content: ""; position: absolute; left: 22%; right: 22%; top: 30%; bottom: 36%; border: 2px dashed var(--line); border-radius: 12px; }
+  .person { position: absolute; transform: translate(-50%, -50%); display: grid; justify-items: center; border: 0; background: var(--panel); border-radius: 18px; padding: 6px 10px; cursor: pointer; box-shadow: 0 2px 0 var(--line); color: var(--ink); font: inherit; }
+  .person span { font-size: 40px; line-height: 1.1; }
+  .person small { font-weight: 800; }
+  .person.me { cursor: default; background: var(--leaf-soft); }
+  .person.asked { outline: 3px dashed var(--gold-deep); outline-offset: 2px; }
+
+  /* Bubble pop */
+  .sea { position: relative; height: min(64vh, 480px); border-radius: 22px; overflow: hidden; background: linear-gradient(var(--sky-bottom), var(--sky-top)); touch-action: manipulation; }
+  .bubble { position: absolute; top: 105%; width: 64px; height: 64px; border-radius: 50%; border: 2px solid rgba(255,255,255,.85); background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.9), rgba(255,255,255,.25) 40%, rgba(160,210,255,.25)); font-size: 34px; cursor: pointer; transform: translate(-50%, -50%); }
+  .bubble.popped { transform: translate(-50%, -50%) scale(1.5); opacity: 0; transition: transform .2s, opacity .2s; }
+
+  /* Whack the rat */
+  .holes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .hole { position: relative; aspect-ratio: 1; border: 0; border-radius: 50%; background: radial-gradient(ellipse at 50% 70%, #3b2a1d 0 45%, var(--hill-deep) 46%); overflow: hidden; cursor: pointer; }
+  .hole .rat { position: absolute; left: 50%; bottom: -80%; transform: translateX(-50%); display: grid; justify-items: center; font-size: 42px; line-height: 1; transition: bottom .15s ease-out; }
+  .hole .held { font-size: 30px; background: rgba(255,255,255,.92); border-radius: 12px; padding: 2px 4px; }
+  .hole.up .rat { bottom: 8%; }
+  .hole.hit .rat { filter: grayscale(1) brightness(1.4); }
+
+  /* Weather report */
+  .forecast { margin: 0; padding: 12px 16px; list-style: none; display: grid; gap: 3px; background: var(--paper); border: 1px solid var(--paper-line); border-radius: 16px; font-size: 17px; }
+  .forecast b { color: var(--brand); }
+  .weather-icons { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .weather-icons .item .e { font-size: 28px; }
+  .item.chosen { outline: 3px solid var(--gold-deep); }
+  .days { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+  .day { border: 1px solid var(--line); background: var(--panel-2); border-radius: 16px; padding: 8px 4px; display: grid; justify-items: center; gap: 2px; font: inherit; color: var(--ink); cursor: pointer; }
+  .day .dname { font-weight: 800; font-size: 13px; }
+  .day .dicon { font-size: 30px; line-height: 1.1; min-height: 34px; }
+
+  /* Food stall */
+  .counter { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; background: var(--paper); border: 1px solid var(--paper-line); border-radius: 18px; padding: 12px; }
+  .counter .guest { font-size: 54px; line-height: 1; }
+  .counter .orders { display: grid; gap: 6px; }
+
+  /* Counting */
+  .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .choice { border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); border-radius: 16px; padding: 14px 8px; font: inherit; font-weight: 800; font-size: 18px; cursor: pointer; }
+  .choice:disabled { opacity: .5; cursor: default; }
+  .choice.right { background: var(--leaf-soft); border-color: var(--leaf); color: var(--leaf); opacity: 1; }
+  .choice.wrong { background: var(--coral-soft); border-color: var(--coral); color: var(--coral); opacity: 1; }
+  .count-board { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; background: var(--panel-2); border-radius: 18px; padding: 16px; min-height: 120px; align-content: center; font-size: clamp(30px, 9vw, 42px); line-height: 1; }
+
+
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand"><b>Hnahsin Playground</b><span>Three test games with our Mizo words</span></div>
+    <div class="score" id="score" aria-live="polite">⭐ 0</div>
+  </header>
+  <nav class="tabs" role="tablist" aria-label="Games">
+    <button role="tab" id="tab-bazar" aria-selected="true" data-game="bazar"><span class="e">🛒</span>Bazar</button>
+    <button role="tab" id="tab-spy" aria-selected="false" data-game="spy"><span class="e">🔍</span>I Spy</button>
+    <button role="tab" id="tab-sort" aria-selected="false" data-game="sort"><span class="e">⚡</span>Sort it</button>
+    <button role="tab" id="tab-duel" aria-selected="false" data-game="duel"><span class="e">👥</span>Showdown</button>
+    <button role="tab" id="tab-tubes" aria-selected="false" data-game="tubes"><span class="e">🧪</span>Word tubes</button>
+    <button role="tab" id="tab-run" aria-selected="false" data-game="run"><span class="e">🏃</span>Rova run</button>
+    <button role="tab" id="tab-count" aria-selected="false" data-game="count"><span class="e">🔢</span>Count</button>
+    <button role="tab" id="tab-dress" aria-selected="false" data-game="dress"><span class="e">👕</span>Dress Rova</button>
+    <button role="tab" id="tab-size" aria-selected="false" data-game="size"><span class="e">🐘</span>Big and small</button>
+    <button role="tab" id="tab-days" aria-selected="false" data-game="days"><span class="e">📅</span>Days and times</button>
+    <button role="tab" id="tab-says" aria-selected="false" data-game="says"><span class="e">👃</span>Rova says</button>
+    <button role="tab" id="tab-colour" aria-selected="false" data-game="colour"><span class="e">🎨</span>Colour it</button>
+    <button role="tab" id="tab-family" aria-selected="false" data-game="family"><span class="e">👪</span>Rova's family</button>
+    <button role="tab" id="tab-bubble" aria-selected="false" data-game="bubble"><span class="e">🫧</span>Bubble pop</button>
+    <button role="tab" id="tab-whack" aria-selected="false" data-game="whack"><span class="e">🐁</span>Whack the rat</button>
+    <button role="tab" id="tab-weather" aria-selected="false" data-game="weather"><span class="e">🌦️</span>Weather report</button>
+    <button role="tab" id="tab-stall" aria-selected="false" data-game="stall"><span class="e">🍲</span>Food stall</button>
+  </nav>
+
+  <section class="stage" id="bazar">
+    <div class="row"><span class="pill" id="bz-level">Level 1</span><button class="btn ghost" id="bz-new">New list</button></div>
+    <h2>Pi sent you to the market. Buy what's on her list.</h2>
+    <div class="list"><h3>Pi-in a ziak:</h3><ul id="bz-list"></ul></div>
+    <div class="stalls" id="bz-stalls"></div>
+    <div><p class="note">Your basket (tap to put one back)</p><div class="basket" id="bz-basket"></div></div>
+    <div class="feedback" id="bz-feedback" aria-live="polite"></div>
+    <button class="btn" id="bz-pay">Pay and go home</button>
+  </section>
+
+  <section class="stage" id="spy" hidden>
+    <div class="row"><span class="pill" id="sp-level">Level 1</span><button class="btn ghost" id="sp-hint">Hint</button></div>
+    <h2>Find these in the village</h2>
+    <div class="targets" id="sp-targets"></div>
+    <div class="scene" id="sp-scene"></div>
+    <div class="feedback" id="sp-feedback" aria-live="polite"></div>
+  </section>
+
+  <section class="stage" id="sort" hidden>
+    <div class="row"><span class="pill">45 seconds</span><span class="combo" id="so-combo"></span></div>
+    <h2 id="so-title">Sort each word into its group</h2>
+    <div class="timer"><i id="so-time" style="width:100%"></i></div>
+    <div class="card" id="so-card"><div><div class="e" id="so-emoji"></div><div class="w" id="so-word">Ready?</div></div></div>
+    <div class="bins">
+      <button class="bin left" id="so-left"><span class="arrow">⬅</span><span id="so-left-label"></span></button>
+      <button class="bin right" id="so-right"><span class="arrow">➡</span><span id="so-right-label"></span></button>
+    </div>
+    <div class="feedback" id="so-feedback" aria-live="polite"></div>
+    <button class="btn" id="so-start">Start</button>
+    <div id="so-result" hidden>
+      <h2 id="so-result-title"></h2>
+      <ul class="missed" id="so-missed"></ul>
+    </div>
+  </section>
+
+  <section class="stage" id="duel" hidden>
+    <div class="row"><span class="pill">Two players · one phone</span><button class="btn" id="du-start">Start</button></div>
+    <p class="note">Put the phone flat between you. When the word shows, tap its picture first. A wrong tap freezes you for a moment. First to 7 wins.</p>
+    <div class="duel">
+      <div class="side p2" id="du-p2"><div class="say"><span class="word">…</span><span class="pts">0</span></div><div class="pics"></div></div>
+      <div class="mid" id="du-mid" aria-live="polite">Tap Start</div>
+      <div class="side p1" id="du-p1"><div class="say"><span class="word">…</span><span class="pts">0</span></div><div class="pics"></div></div>
+    </div>
+  </section>
+
+  <section class="stage" id="tubes" hidden>
+    <div class="row"><span class="pill" id="tu-level">Level 1</span><span class="note" id="tu-moves">0 moves</span></div>
+    <h2>Sort the words so each tube holds one group</h2>
+    <p class="note" id="tu-groups"></p>
+    <div class="tubes" id="tu-tubes"></div>
+    <div class="feedback" id="tu-feedback" aria-live="polite"></div>
+    <button class="btn ghost" id="tu-new">New tubes</button>
+  </section>
+
+  <section class="stage" id="run" hidden>
+    <div class="row"><span class="hearts" id="ru-hearts">❤️❤️❤️</span><span class="score" id="ru-score">0</span></div>
+    <div class="road" id="ru-road">
+      <div class="ask" id="ru-ask">Tap Start</div>
+      <div class="runner" id="ru-rova" style="left:25%">🏃</div>
+    </div>
+    <p class="note">Run into the picture that matches the word. Tap a side of the road, swipe, or use the arrow keys.</p>
+    <div class="feedback" id="ru-feedback" aria-live="polite"></div>
+    <button class="btn" id="ru-start">Start</button>
+  </section>
+
+  <section class="stage" id="count" hidden>
+    <div class="row"><span class="pill" id="co-level">Up to 5</span><span class="note" id="co-score"></span></div>
+    <h2>How many? Pick the Mizo number</h2>
+    <div class="count-board" id="co-board"></div>
+    <div class="choices" id="co-choices"></div>
+    <div class="feedback" id="co-feedback" aria-live="polite"></div>
+  </section>
+
+  <section class="stage" id="dress" hidden>
+    <div class="row"><span class="pill" id="dr-level">Level 1</span><button class="btn ghost" id="dr-new">New list</button></div>
+    <h2>Dress Rova in what the list says</h2>
+    <div class="targets" id="dr-want"></div>
+    <div class="rova" id="dr-rova"></div>
+    <p class="note">Tap a piece to put it on. Tap it on Rova to take it off.</p>
+    <div class="wardrobe" id="dr-wardrobe"></div>
+    <div class="feedback" id="dr-feedback" aria-live="polite"></div>
+    <button class="btn" id="dr-done">Rova is dressed</button>
+  </section>
+
+  <section class="stage" id="size" hidden>
+    <div class="row"><span class="pill">Big and small</span><span class="note" id="op-score"></span></div>
+    <div class="ask-line" id="op-ask"></div>
+    <div class="op-board" id="op-board"></div>
+    <div class="feedback" id="op-feedback" aria-live="polite"></div>
+  </section>
+
+  <section class="stage" id="days" hidden>
+    <div class="row"><span class="pill">Days and times</span><span class="note" id="dt-score"></span></div>
+    <div class="ask-line" id="dt-ask"></div>
+    <div class="targets" id="dt-line"></div>
+    <div class="choices" id="dt-board"></div>
+    <div class="feedback" id="dt-feedback" aria-live="polite"></div>
+  </section>
+
+  <section class="stage" id="says" hidden>
+    <div class="row"><span class="hearts" id="rs-hearts">❤️❤️❤️</span><span class="score" id="rs-score">0</span></div>
+    <div class="ask-line" id="rs-ask">Tap the part of the body Rova names. Careful: only when he says “Rova says”!</div>
+    <div class="timer"><i id="rs-time" style="width:100%"></i></div>
+    <div class="choices" id="rs-board"></div>
+    <div class="feedback" id="rs-feedback" aria-live="polite"></div>
+    <button class="btn" id="rs-start">Start</button>
+  </section>
+
+  <section class="stage" id="colour" hidden>
+    <div class="ask-line" id="ci-ask"></div>
+    <svg class="pic" id="ci-pic" viewBox="0 0 320 260" role="img" aria-label="A house to colour">
+      <rect data-part="sky" x="0" y="0" width="320" height="170" fill="var(--panel)"/>
+      <path data-part="smoke" d="M226 34 q10 -12 22 -4 q12 -10 22 2 q10 2 6 14 q-10 10 -24 4 q-14 8 -26 -4 q-8 -6 0 -12z" fill="var(--panel)"/>
+      <rect data-part="grass" x="0" y="170" width="320" height="90" fill="var(--panel)"/>
+      <rect data-part="trunk" x="262" y="130" width="16" height="60" fill="var(--panel)"/>
+      <circle data-part="leaves" cx="270" cy="112" r="34" fill="var(--panel)"/>
+      <rect data-part="wall" x="60" y="110" width="150" height="90" fill="var(--panel)"/>
+      <path data-part="roof" d="M48 112 L135 52 L222 112 Z" fill="var(--panel)"/>
+      <rect data-part="door" x="120" y="146" width="32" height="54" fill="var(--panel)"/>
+      <rect data-part="window" x="76" y="128" width="30" height="26" fill="var(--panel)"/>
+      <rect data-part="window" x="166" y="128" width="30" height="26" fill="var(--panel)"/>
+    </svg>
+    <div class="swatches" id="ci-swatches"></div>
+    <div class="feedback" id="ci-feedback" aria-live="polite"></div>
+  </section>
+
+  <section class="stage" id="family" hidden>
+    <div class="row"><span class="pill">Rova's family</span><span class="note" id="fa-score"></span></div>
+    <div class="ask-line" id="fa-ask"></div>
+    <div class="tree" id="fa-tree"></div>
+    <div class="choices" id="fa-choices"></div>
+    <div class="feedback" id="fa-feedback" aria-live="polite"></div>
+  </section>
+
+  <section class="stage" id="bubble" hidden>
+    <div class="row"><span class="ask-line" id="bp-ask">Pop the bubbles the word names</span><span class="score" id="bp-score">0</span></div>
+    <div class="timer"><i id="bp-time" style="width:100%"></i></div>
+    <div class="sea" id="bp-sea"></div>
+    <div class="feedback" id="bp-feedback" aria-live="polite"></div>
+    <button class="btn" id="bp-start">Start</button>
+  </section>
+
+  <section class="stage" id="whack" hidden>
+    <div class="row"><span class="ask-line" id="wm-ask">Whack the rats holding what the word names</span><span class="score" id="wm-score">0</span></div>
+    <div class="timer"><i id="wm-time" style="width:100%"></i></div>
+    <div class="holes" id="wm-holes"></div>
+    <div class="feedback" id="wm-feedback" aria-live="polite"></div>
+    <button class="btn" id="wm-start">Start</button>
+  </section>
+
+  <section class="stage" id="weather" hidden>
+    <div class="row"><span class="pill" id="wr-level">Level 1</span><button class="btn ghost" id="wr-new">New forecast</button></div>
+    <h2>Put this week's weather on the board</h2>
+    <ul class="forecast" id="wr-forecast"></ul>
+    <p class="note">Pick a weather picture, then tap its day.</p>
+    <div class="weather-icons" id="wr-icons"></div>
+    <div class="days" id="wr-board"></div>
+    <div class="feedback" id="wr-feedback" aria-live="polite"></div>
+    <button class="btn" id="wr-check">Read the forecast</button>
+  </section>
+
+  <section class="stage" id="stall" hidden>
+    <div class="row"><span class="hearts" id="fs-hearts">❤️❤️❤️</span><span class="score">Served <span id="fs-served">0</span></span></div>
+    <div class="counter" id="fs-counter"><span class="guest" id="fs-guest">🧑</span><div class="orders"><span class="note">“Ka duh:”</span><div class="targets" id="fs-order"></div><div class="timer"><i id="fs-patience" style="width:100%"></i></div></div></div>
+    <div class="stalls" id="fs-kitchen"></div>
+    <div><p class="note">Plate (tap to take one off)</p><div class="basket" id="fs-plate"></div></div>
+    <div class="feedback" id="fs-feedback" aria-live="polite"></div>
+    <div class="row"><button class="btn" id="fs-start">Open the stall</button><button class="btn ghost" id="fs-serve">Serve</button></div>
+  </section>
+
+  <footer>Test games for Hnahsin, using 271 words from the live content.</footer>
+</div>
+
+<script>
+const DATA = {"words":{"word.bawng":["bâwng","Cow","🐄"],"word.beram-2":["beram","Sheep","🐑"],"word.chinghne-2":["chinghnia","Wolf","🐺"],"word.jf1011.sanghal":["sanghal","wild boar","🐗"],"word.jf178.chaite":["chaite","mouse","🐁"],"word.jf178.sakei":["sakei","tiger","🐅"],"word.jf300.keite":["keite","leopard","🐆"],"word.jf300.sabengtung":["sabengtung","donkey","🫏"],"word.jf300.sakawr":["sakawr","horse","🐎"],"word.jf300.sazupui":["sazupui","rabbit","🐇"],"word.jf300.sihal":["sihal","fox","🦊"],"word.jf300.ui":["ui","dog","🐕"],"word.jf300.vawk":["vawk","pig","🐖"],"word.jf300.zawhte":["zawhte","cat","🐈"],"word.kel-2":["kel","goat","🐐"],"word.sai-2":["sâi","Elephant","🐘"],"word.sakeibaknei":["sakeibaknei","Lion","🦁"],"word.sakhi":["sakhi","Barking deer","🦌"],"word.savawm":["savawm","Bear","🐻"],"word.sazu":["sazu","Rat","🐀"],"word.sazuk-3":["sazuk","Deer","🦌"],"word.zawng":["zawng","monkey","🐒"],"word.arpa":["arpa","Rooster","🐓"],"word.arpui":["arpui","hen","🐔"],"word.choak":["choâk","Crow","🐦‍⬛"],"word.jf178.chawngzawng":["chawngzawng","sparrow","🐦"],"word.jf300.arawn":["arawn","peacock","🦚"],"word.jf300.chhimbuk":["chhimbuk","owl","🦉"],"word.jf300.parva":["parva","pigeon","🕊️"],"word.jf300.sava":["sava","bird","🐦"],"word.jf300.varak":["varak","duck","🦆"],"word.mupui":["mupui","eagle","🦅"],"word.thuro":["thuro","Dove","🕊️"],"word.vatawk":["vatâwk","Goose","🪿"],"word.vate":["vatê","Little bird","🐦"],"word.fanghmir":["fanghmir","Ant","🐜"],"word.jf178.chengkawl":["chengkawl","snail","🐌"],"word.jf300.chukchu":["chukchu","cockroach","🪳"],"word.jf300.hrik":["hrik","louse",""],"word.jf300.maimawm":["maimawm","spider","🕷️"],"word.jf300.tit":["tit","centipede",""],"word.jf300.uihli":["uihli","flea",""],"word.khuai":["khuai","Bee","🐝"],"word.khawimu":["khawimû","Bumblebee","🐝"],"word.pangang":["pangang","Caterpillar","🐛"],"word.phengphehlep":["phêngphehlep","Butterfly","🦋"],"word.tho":["tho","Fly","🪰"],"word.thosi":["thosi","Mosquito","🦟"],"word.khau":["khau","Grasshopper","🦗"],"word.chakai":["chakai","Crab","🦀"],"word.jf300.ngharul":["ngharûl","eel",""],"word.jf300.sangha":["sangha","fish","🐟"],"word.kaikuang":["kaikuang","prawn","🦐"],"word.awle":["awle","Crocodile","🐊"],"word.satel":["satel","Tortoise","🐢"],"word.balhla":["balhla","Banana","🍌"],"word.grep":["grep","Grape","🍇"],"word.jf300.serthlum":["serthlum","orange (fruit)","🍊"],"word.theihai":["theihai","Mango","🥭"],"word.ser":["ser","Lemon","🍋"],"word.kawlthei":["kawlthei","Guava",""],"word.sapthei":["sâpthei","Passion fruit",""],"word.bawkbawn":["bawkbawn","Eggplant","🍆"],"word.fanghma":["fanghma","Cucumber","🥒"],"word.hmarcha":["hmarcha","Chilli pepper","🌶️"],"word.jf300.alu":["alu","potato","🥔"],"word.jf300.zikhlum":["zikhlum","cabbage","🥬"],"word.mai":["mâi","Pumpkin","🎃"],"word.purun":["purun","Onion","🧅"],"word.jf300.sawhthing":["sawhthing","ginger","🫚"],"word.iskut":["iskut","Chayote",""],"word.jf1011.bal":["bal","taro",""],"word.jf178.thingpui":["thingpui","tea","🍵"],"word.jf178.tui":["tui","water","💧"],"word.bawnghnute":["bawnghnute","Cow's milk","🥛"],"word.arsa":["arsa","Chicken meat","🍗"],"word.vawksa":["vawksa","Pork","🥓"],"word.jf300.bawngsa":["bâwng sa","beef","🥩"],"word.sa":["sa","Meat","🥩"],"word.beng":["beng","ear","👂"],"word.ha":["ha","Tooth","🦷"],"word.hnar":["hnar","Nose","👃"],"word.mit":["mit","Eye","👁️"],"word.lei-2":["lei","Tongue","👅"],"word.sam":["sam","Hair of the head",""],"word.jf300.biang":["biang","cheek",""],"word.jf300.chal":["chal","forehead",""],"word.jf300.khabe":["khabe","chin",""],"word.jf300.mitko":["mitko","eyebrow",""],"word.ke":["ke","Foot","🦶"],"word.kut":["kut","Hand","✋"],"word.ban":["bân","arm","💪"],"word.jf300.kutzungtang":["kutzungtang","finger","☝️"],"word.jf178.kutzungpui":["kutzungpui","thumb","👍"],"word.jf300.kiu":["kiu","elbow",""],"word.jf300.koki":["koki","shoulder",""],"word.jf300.kephah":["kephah","sole of the foot",""],"word.jf178.kezungtang":["kezungtang","toe",""],"word.jf300.nu":["nu","mother","👩‍👧"],"word.jf300.pa":["pa","father","👨‍👧"],"word.jf1011.pi":["pi","grandmother","👵"],"word.jf1011.pu":["pu","grandfather","👴"],"word.jf1011.nau":["nau","younger sibling","👶"],"word.jf178.fapa":["fapa","son",""],"word.jf300.fanu":["fanu","daughter",""],"word.jf300.unaupa":["unaupa","brother",""],"word.farnu":["farnu","A man's sister",""],"word.nupui":["nupui","Wife",""],"word.pasal":["pasal","Husband",""],"word.daktawr":["daktawr","Doctor","🧑‍⚕️"],"word.jf300.zirtirtu":["zirtîrtu","teacher","🧑‍🏫"],"word.sipai":["sipai","Soldier","🪖"],"word.mistiri":["mistiri","Craftsman","🧑‍🔧"],"word.jf300.roreltu":["rorêltu","judge","🧑‍⚖️"],"word.jf300.puithiam":["puithiam","priest",""],"word.chhum":["chhum","cloud","☁️"],"word.ruah":["ruah","Rain","🌧️"],"word.ni":["ni","Sun","☀️"],"word.thla":["thla","Moon","🌙"],"word.jf300.arsi":["arsi","star","⭐"],"word.jf300.van":["vân","sky","🌌"],"word.thli":["thli","wind","🌬️"],"word.jf178.vur":["vur","snow","☃️"],"word.jf300.rial":["rial","hail","🌨️"],"word.jf300.kawlphe":["kawlphe","lightning","⚡"],"word.chhimbal":["chhimbâl","Rainbow","🌈"],"word.jf300.lui":["lui","river","🏞️"],"word.jf300.tlang":["tlang","hill","⛰️"],"word.tuipui":["tuipui","Sea","🌊"],"word.dil":["dîl","To ask for",""],"word.ngaw":["ngaw","forest","🌲"],"word.lungpui":["lungpui","Boulder","🪨"],"word.jf300.tuifinriat":["tuifinriat","ocean","🌊"],"word.jf178.ruam":["ruam","valley","🏞️"],"word.jf300.khum":["khum","bed","🛏️"],"word.jf300.kawngkhar":["kawngkhar","door","🚪"],"word.jf300.tukverh":["tukverh","window","🪟"],"word.jf300.thutthleng":["ṭhutthlêng","chair","🪑"],"word.jf178.bang":["bang","wall","🧱"],"word.lukham":["lukham","Pillow",""],"word.jf300.khawnvar":["khawnvâr","lamp","🪔"],"word.jf1011.chabi":["chabi","key","🔑"],"word.bel":["bel","pot","🍲"],"word.no":["no","Cup","☕"],"word.thleng":["thlêng","Plate","🍽️"],"word.fian":["fian","Spoon","🥄"],"word.jf300.thirkut":["thîrkut","fork","🍴"],"word.jf300.chemte":["chemte","knife","🔪"],"word.jf300.chawhtawlh":["chawhtawlh","bowl","🥣"],"word.jf300.ketli":["ketli","kettle","🫖"],"word.kawr":["kawr","Shirt","👕"],"word.jf1011.kamis":["kamis","shirt","👕"],"word.kekawr":["kekawr","Trousers","👖"],"word.pheikhawk":["pheikhawk","Shoe","👞"],"word.lukhum":["lukhum","Hat","🧢"],"word.mawza":["mawza","Sock","🧦"],"word.jf300.kawrchung":["kawrchung","coat","🧥"],"word.jf178.vawthlep":["vawthlep","sandal","🩴"],"word.jf300.kawnghren":["kâwnghrên","belt",""],"word.jf300.lehkhabu":["lehkhabu","book","📖"],"word.jf300.pensil":["pensil","pencil","✏️"],"word.lehkha":["lehkha","Paper","📄"],"word.jf300.lehkhatui":["lehkhatui","ink","🖋️"],"word.jf300.hawrawp":["hawrawp","letter of the alphabet","🔤"],"word.jf300.pakhat":["pakhat","one","1️⃣"],"word.jf178.pahnih":["pahnih","two","2️⃣"],"word.jf1011.pathum":["pathum","three","3️⃣"],"word.jf1011.pali":["pali","four","4️⃣"],"word.jf1011.panga":["panga","five","5️⃣"],"word.jf1011.paruk":["paruk","six","6️⃣"],"word.jf178.pasarih":["pasarih","seven","7️⃣"],"word.jf300.pariat":["pariat","eight","8️⃣"],"word.jf300.pakua":["pakua","nine","9️⃣"],"word.jf178.sawm":["sâwm","ten","🔟"],"word.jf1011.thawhtanni":["Thawhtanni","Monday",""],"word.jf1011.thawhlehni":["Thawhlehni","Tuesday",""],"word.jf1011.nilaini":["Nilaini","Wednesday",""],"word.jf1011.ningani":["Ningani","Thursday",""],"word.jf1011.zirtawpni":["Zirtawpni","Friday",""],"word.jf1011.inrinni":["Inrinni","Saturday",""],"word.jf1011.pathianni":["Pathianni","Sunday",""],"word.jf300.zing":["zîng","morning","🌅"],"word.jf300.chhun":["chhun","daytime","☀️"],"word.jf300.tlai":["tlai","evening","🌆"],"word.jf300.zan":["zân","night","🌃"],"word.jf300.khawvar":["khawvâr","dawn","🌅"],"word.jf300.thimhlim":["thimhlim","dusk","🌆"],"word.sen":["sen","Red","🔴"],"word.dum":["dum","Black","⚫"],"word.var":["vâr","White","⚪"],"word.jf300.hring":["hring","green","🟢"],"word.jf300.dumpawl":["dumpâwl","blue","🔵"],"word.jf178.uk":["uk","brown","🟤"],"word.jf300.vutbuak":["vutbuak","grey","🩶"],"word.buang":["buang","Brown","🟤"],"word.khuang":["khuang","drum","🥁"],"word.phenglawng":["phênglâwng","Flute","🪈"],"word.tingtang":["ṭingṭang","Stringed musical instrument","🎸"],"word.darbu":["darbu","Set of small gongs",""],"word.bengbung":["bengbung","Traditional wooden xylophone",""],"word.jf178.tlan":["tlân","run","🏃"],"word.zuang":["zuang","To jump",""],"word.thlawk":["thlawk","To fly","🪽"],"word.jf178.hleuh":["hleuh","swim","🏊"],"word.jf300.kal":["kal","go","🚶"],"word.lawn":["lâwn","To climb","🧗"],"word.jf300.bawkvak":["bawkvak","crawl",""],"word.jf300.liluh":["liluh","dive","🤿"],"word.jf300.en":["en","look at","👀"],"word.jf300.hmu":["hmu","find","👀"],"word.jf300.ngaithla":["ngaithla","listen","👂"],"word.thlir":["thlîr","To look at","👀"],"word.enthla":["enthlâ","To watch","👀"],"word.jf300.ei":["ei","eat",""],"word.dawlh":["dawlh","To swallow whole",""],"word.jf178.lem":["lem","swallow",""],"word.jf300.thial":["thial","chew",""],"word.jf1011.hip":["hip","suck",""],"word.jf178.tem":["tem","taste",""],"word.thui":["ṭhui","To sew","🪡"],"word.jf178.tah":["tah","weave",""],"word.jf300.laphiar":["la phiar","knit","🧶"],"word.tuh":["tuh","To sow","🌱"],"word.jf300.phun":["phun","plant","🌱"],"word.jf300.seng":["seng","harvest","🌾"],"word.hlothlo":["hlo thlo","To weed",""],"word.jf178.thlum":["thlum","sweet",""],"word.jf1011.al":["al","salty",""],"word.jf178.thak":["thak","spicy",""],"word.jf300.kha":["khâ","bitter",""],"word.jf178.thur":["thur","sour",""],"word.jf300.lian":["lian","big",""],"word.jf178.te":["tê","small",""],"word.sei":["sei","Long",""],"word.tawi":["tawi","Short",""],"word.sang":["sâng","Tall",""],"word.jf300.hniam":["hniam","low",""],"word.jf178.cher":["cher","thin",""],"word.jf178.chhah":["chhah","thick",""],"word.jf300.hlim":["hlim","happy",""],"word.lungngai":["lungngai","Sad",""],"word.jf300.thinur":["thinur","angry",""],"word.hlau":["hlau","Afraid",""],"word.lungawi":["lungâwi","Pleased",""],"word.jf1011.ngui":["ngui","sad",""],"word.lum":["lum","Hot",""],"word.vawt":["vawt","cold","🥶"],"word.hul":["hul","Dry",""],"word.huh":["huh","Wet",""],"word.nimin":["nimin","Yesterday",""],"word.jf178.vawiin":["vawiin","today",""],"word.jf1011.naktuk":["naktuk","tomorrow",""],"word.jf1011.hmanni":["hmanni","day before yesterday",""],"word.jf1011.tu":["tu","who",""],"word.jf1011.khawiah":["khawiah","where",""],"word.jf1011.engtikah":["engtikah","when",""],"word.jf1011.engvangin":["engvangin","why",""],"word.jf178.engtiangin":["engtiangin","how",""],"word.jf178.thing":["thing","tree","🌳"],"word.hnah":["hnah","Leaf","🍃"],"word.pangpar":["pangpâr","Flower","🌸"],"word.jf300.mau":["mau","bamboo","🎋"],"word.zung":["zung","Root",""],"word.jf300.thingtang":["thingṭang","branch of a tree",""],"word.jf300.katchat":["katchat","fern","🌿"],"word.jf300.hrei":["hrei","axe","🪓"],"word.hreipui":["hreipui","Large axe","🪓"],"word.jf300.tuboh":["tuboh","hammer","🔨"],"word.chem":["chem","Dao","🔪"],"word.favah":["favah","Sickle",""],"word.tuthlawh":["tuthlawh","Hoe",""],"word.in":["in","House","🏠"],"word.pan":["pan","Thin",""]},"food":["word.balhla","word.grep","word.jf300.serthlum","word.theihai","word.ser","word.bawkbawn","word.fanghma","word.hmarcha","word.jf300.alu","word.jf300.zikhlum","word.mai","word.purun","word.jf300.sawhthing","word.arsa","word.vawksa","word.jf300.bawngsa","word.sa","word.jf178.thingpui","word.jf178.tui","word.bawnghnute"],"numbers":["word.jf300.pakhat","word.jf178.pahnih","word.jf1011.pathum","word.jf1011.pali","word.jf1011.panga","word.jf1011.paruk","word.jf178.pasarih","word.jf300.pariat","word.jf300.pakua","word.jf178.sawm"],"spy":["word.bawng","word.beram-2","word.chinghne-2","word.jf1011.sanghal","word.jf178.chaite","word.jf178.sakei","word.jf300.keite","word.jf300.sabengtung","word.jf300.sakawr","word.jf300.sazupui","word.jf300.sihal","word.jf300.ui","word.jf300.vawk","word.jf300.zawhte","word.kel-2","word.sai-2","word.sakeibaknei","word.sakhi","word.savawm","word.sazu","word.zawng","word.arpa","word.arpui","word.choak","word.jf178.chawngzawng","word.jf300.arawn","word.jf300.chhimbuk","word.jf300.parva","word.jf300.varak","word.mupui","word.vatawk","word.fanghmir","word.jf178.chengkawl","word.jf300.chukchu","word.jf300.maimawm","word.khuai","word.pangang","word.phengphehlep","word.tho","word.thosi","word.khau","word.chakai","word.jf300.sangha","word.kaikuang","word.awle","word.satel","word.balhla","word.grep","word.jf300.serthlum","word.theihai","word.ser","word.bawkbawn","word.fanghma","word.hmarcha","word.jf300.alu","word.jf300.zikhlum","word.mai","word.purun","word.jf300.sawhthing","word.daktawr","word.jf300.zirtirtu","word.sipai","word.mistiri","word.jf300.roreltu","word.chhum","word.ruah","word.ni","word.thla","word.jf300.arsi","word.jf300.van","word.thli","word.jf178.vur","word.jf300.rial","word.jf300.kawlphe","word.chhimbal","word.jf300.lui","word.jf300.tlang","word.tuipui","word.ngaw","word.lungpui","word.jf300.khum","word.jf300.kawngkhar","word.jf300.tukverh","word.jf300.thutthleng","word.jf178.bang","word.jf300.khawnvar","word.jf1011.chabi","word.bel","word.no","word.thleng","word.fian","word.jf300.thirkut","word.jf300.chemte","word.jf300.chawhtawlh","word.jf300.ketli","word.kawr","word.kekawr","word.pheikhawk","word.lukhum","word.mawza","word.jf300.kawrchung","word.jf178.vawthlep","word.jf300.lehkhabu","word.jf300.pensil","word.lehkha","word.jf300.lehkhatui","word.jf300.hawrawp","word.khuang","word.phenglawng","word.tingtang","word.jf178.thing","word.hnah","word.pangpar","word.jf300.mau","word.jf300.katchat","word.jf300.hrei","word.jf300.tuboh"],"groups":[{"id":"mammals","family":"creatures","label":"animals with four legs","words":["word.bawng","word.beram-2","word.chinghne-2","word.jf1011.sanghal","word.jf178.chaite","word.jf178.sakei","word.jf300.keite","word.jf300.sabengtung","word.jf300.sakawr","word.jf300.sazupui","word.jf300.sihal","word.jf300.ui","word.jf300.vawk","word.jf300.zawhte","word.kel-2","word.sai-2","word.sakeibaknei","word.sakhi","word.savawm","word.sazu","word.sazuk-3","word.zawng"]},{"id":"birds","family":"creatures","label":"birds","words":["word.arpa","word.arpui","word.choak","word.jf178.chawngzawng","word.jf300.arawn","word.jf300.chhimbuk","word.jf300.parva","word.jf300.sava","word.jf300.varak","word.mupui","word.thuro","word.vatawk","word.vate"]},{"id":"small_creatures","family":"creatures","label":"insects and small creatures","words":["word.fanghmir","word.jf178.chengkawl","word.jf300.chukchu","word.jf300.hrik","word.jf300.maimawm","word.jf300.tit","word.jf300.uihli","word.khuai","word.khawimu","word.pangang","word.phengphehlep","word.tho","word.thosi","word.khau"]},{"id":"water_animals","family":"creatures","label":"animals that live in water","words":["word.chakai","word.jf300.ngharul","word.jf300.sangha","word.kaikuang","word.awle","word.satel"]},{"id":"fruit","family":"food","label":"fruit","words":["word.balhla","word.grep","word.jf300.serthlum","word.theihai","word.ser","word.kawlthei","word.sapthei"]},{"id":"vegetables","family":"food","label":"vegetables","words":["word.bawkbawn","word.fanghma","word.hmarcha","word.jf300.alu","word.jf300.zikhlum","word.mai","word.purun","word.jf300.sawhthing","word.iskut","word.jf1011.bal"]},{"id":"head","family":"body","label":"parts of the head","words":["word.beng","word.ha","word.hnar","word.mit","word.lei-2","word.sam","word.jf300.biang","word.jf300.chal","word.jf300.khabe","word.jf300.mitko"]},{"id":"limbs","family":"body","label":"parts of the arms and legs","words":["word.ke","word.kut","word.ban","word.jf300.kutzungtang","word.jf178.kutzungpui","word.jf300.kiu","word.jf300.koki","word.jf300.kephah","word.jf178.kezungtang"]},{"id":"family","family":"people","label":"family","words":["word.jf300.nu","word.jf300.pa","word.jf1011.pi","word.jf1011.pu","word.jf1011.nau","word.jf178.fapa","word.jf300.fanu","word.jf300.unaupa","word.farnu","word.nupui","word.pasal"]},{"id":"jobs","family":"people","label":"people's work","words":["word.daktawr","word.jf300.zirtirtu","word.sipai","word.mistiri","word.jf300.roreltu","word.jf300.puithiam"]},{"id":"sky","family":"nature","label":"the sky and weather","words":["word.chhum","word.ruah","word.ni","word.thla","word.jf300.arsi","word.jf300.van","word.thli","word.jf178.vur","word.jf300.rial","word.jf300.kawlphe","word.chhimbal"]},{"id":"land","family":"nature","label":"land and water","words":["word.jf300.lui","word.jf300.tlang","word.tuipui","word.dil","word.ngaw","word.lungpui","word.jf300.tuifinriat","word.jf178.ruam"]},{"id":"house","family":"home","label":"things in a house","words":["word.jf300.khum","word.jf300.kawngkhar","word.jf300.tukverh","word.jf300.thutthleng","word.jf178.bang","word.lukham","word.jf300.khawnvar","word.jf1011.chabi"]},{"id":"kitchen","family":"home","label":"kitchen things","words":["word.bel","word.no","word.thleng","word.fian","word.jf300.thirkut","word.jf300.chemte","word.jf300.chawhtawlh","word.jf300.ketli"]},{"id":"clothes","family":"home","label":"clothes","words":["word.kawr","word.jf1011.kamis","word.kekawr","word.pheikhawk","word.lukhum","word.mawza","word.jf300.kawrchung","word.jf178.vawthlep","word.jf300.kawnghren"]},{"id":"school","family":"school","label":"school things","words":["word.jf300.lehkhabu","word.jf300.pensil","word.lehkha","word.jf300.lehkhatui","word.jf300.hawrawp"]},{"id":"numbers","family":"school","label":"numbers","words":["word.jf300.pakhat","word.jf178.pahnih","word.jf1011.pathum","word.jf1011.pali","word.jf1011.panga","word.jf1011.paruk","word.jf178.pasarih","word.jf300.pariat","word.jf300.pakua","word.jf178.sawm"]},{"id":"days","family":"time","label":"days of the week","words":["word.jf1011.thawhtanni","word.jf1011.thawhlehni","word.jf1011.nilaini","word.jf1011.ningani","word.jf1011.zirtawpni","word.jf1011.inrinni","word.jf1011.pathianni"]},{"id":"daytime","family":"time","label":"times of day","words":["word.jf300.zing","word.jf300.chhun","word.jf300.tlai","word.jf300.zan","word.jf300.khawvar","word.jf300.thimhlim"]},{"id":"colours","family":"colours","label":"colours","words":["word.sen","word.dum","word.var","word.jf300.hring","word.jf300.dumpawl","word.jf178.uk","word.jf300.vutbuak","word.buang"]},{"id":"music","family":"music","label":"musical instruments","words":["word.khuang","word.phenglawng","word.tingtang","word.darbu","word.bengbung"]},{"id":"moving","family":"actions","label":"ways of moving","words":["word.jf178.tlan","word.zuang","word.thlawk","word.jf178.hleuh","word.jf300.kal","word.lawn","word.jf300.bawkvak","word.jf300.liluh"]},{"id":"senses","family":"actions","label":"seeing and hearing","words":["word.jf300.en","word.jf300.hmu","word.jf300.ngaithla","word.thlir","word.enthla"]},{"id":"eating","family":"actions","label":"eating and drinking","words":["word.jf300.ei","word.dawlh","word.jf178.lem","word.jf300.thial","word.jf1011.hip","word.jf178.tem"]},{"id":"tastes","family":"describing","label":"tastes","words":["word.jf178.thlum","word.jf1011.al","word.jf178.thak","word.jf300.kha","word.jf178.thur"]},{"id":"sizes","family":"describing","label":"sizes and shapes","words":["word.jf300.lian","word.jf178.te","word.sei","word.tawi","word.sang","word.jf300.hniam","word.jf178.cher","word.jf178.chhah"]},{"id":"feelings","family":"describing","label":"feelings","words":["word.jf300.hlim","word.lungngai","word.jf300.thinur","word.hlau","word.lungawi","word.jf1011.ngui"]},{"id":"questions","family":"questions","label":"question words","words":["word.jf1011.tu","word.jf1011.khawiah","word.jf1011.engtikah","word.jf1011.engvangin","word.jf178.engtiangin"]},{"id":"plants","family":"nature","label":"trees and plants","words":["word.jf178.thing","word.hnah","word.pangpar","word.jf300.mau","word.zung","word.jf300.thingtang","word.jf300.katchat"]},{"id":"tools","family":"home","label":"tools","words":["word.jf300.hrei","word.hreipui","word.jf300.tuboh","word.chem","word.favah","word.tuthlawh"]}],"overlap":[["plants","fruit"],["plants","vegetables"],["eating","tastes"],["eating","drinks"],["hot_cold","sky"],["tools","kitchen"],["farming","plants"],["farming","vegetables"],["senses","head"]],"sets":{"clothes":{"head":["word.lukhum"],"top":["word.kawr"],"outer":["word.jf300.kawrchung"],"legs":["word.kekawr"],"socks":["word.mawza"],"feet":["word.pheikhawk","word.jf178.vawthlep"]},"sizes":[["word.jf300.lian","word.jf178.te"],["word.sei","word.tawi"],["word.sang","word.jf300.hniam"],["word.jf178.chhah","word.pan"]],"sizeThings":{"big":["word.jf300.ui","word.jf178.sakei","word.in"],"long":["word.jf300.pensil"],"tall":["word.jf178.thing"],"thick":["word.jf300.lehkhabu"]},"days":["word.jf1011.thawhtanni","word.jf1011.thawhlehni","word.jf1011.nilaini","word.jf1011.ningani","word.jf1011.zirtawpni","word.jf1011.inrinni","word.jf1011.pathianni"],"times":["word.jf300.khawvar","word.jf300.zing","word.jf300.chhun","word.jf300.tlai","word.jf300.thimhlim","word.jf300.zan"],"nearby":{"yesterday":"word.nimin","today":"word.jf178.vawiin","tomorrow":"word.jf1011.naktuk"},"body":["word.beng","word.ha","word.hnar","word.mit","word.lei-2","word.ke","word.kut","word.ban","word.jf300.kutzungtang","word.jf178.kutzungpui"],"colours":{"word.sen":"#e53935","word.dum":"#222831","word.var":"#ffffff","word.jf300.hring":"#43a047","word.jf300.dumpawl":"#1e88e5","word.jf178.uk":"#7b5236","word.jf300.vutbuak":"#9aa3ad"},"family":{"word.jf1011.pi":"👵","word.jf1011.pu":"👴","word.jf300.nu":"👩","word.jf300.pa":"👨","word.farnu":"👧","word.jf1011.nau":"👶"},"weather":["word.chhum","word.ruah","word.ni","word.thli","word.jf178.vur","word.jf300.kawlphe","word.chhimbal"]}};
+const W = DATA.words;           // id -> [mizo, english, emoji]
+const word = id => W[id][0];
+const gloss = id => W[id][1];
+const emoji = id => W[id][2];
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const pick = (a, n) => shuffle([...a]).slice(0, n);
+const $ = id => document.getElementById(id);
+const store = { get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+function flash(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+
+let stars = store.get('lab.stars', 0);
+function addStars(n) { stars += n; store.set('lab.stars', stars); $('score').textContent = '⭐ ' + stars; flash($('score'), 'pop'); }
+$('score').textContent = '⭐ ' + stars;
+
+// Tabs
+document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => show(b.dataset.game)));
+function show(game) {
+  document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.game === game)));
+  ['bazar', 'spy', 'sort', 'duel', 'tubes', 'run', 'count', 'dress', 'size', 'days', 'says', 'colour', 'family', 'bubble', 'whack', 'weather', 'stall'].forEach(g => $(g).hidden = g !== game);
+  store.set('lab.tab', game);
+}
+show(store.get('lab.tab', 'bazar'));
+
+// ---------------------------------------------------------------- Bazar
+// Pi's list: a few foods with how many, in Mizo numbers. From level 3 the
+// stalls show only pictures, so the list's words must be known.
+const seenEmoji = new Set();
+const FOOD = DATA.food.filter(id => word(id) !== 'tui' && !seenEmoji.has(emoji(id)) && seenEmoji.add(emoji(id)));
+const NUM = DATA.numbers; // pakhat .. sâwm
+let bz = { level: store.get('lab.bz', 1), list: [], basket: {}, stalls: [] };
+function bzNew() {
+  const items = Math.min(2 + bz.level, 5);
+  const most = Math.min(1 + bz.level, 5);
+  bz.list = pick(FOOD, items).map(id => ({ id, n: 1 + Math.floor(Math.random() * most) }));
+  const decoys = pick(FOOD.filter(id => !bz.list.some(l => l.id === id)), Math.max(0, 8 - items));
+  bz.stalls = shuffle([...bz.list.map(l => l.id), ...decoys]);
+  bz.basket = {};
+  $('bz-feedback').textContent = '';
+  $('bz-feedback').className = 'feedback';
+  bzRender();
+}
+function bzRender() {
+  $('bz-level').textContent = 'Level ' + bz.level;
+  $('bz-list').innerHTML = bz.list.map(l => `<li class="${(bz.basket[l.id] || 0) === l.n ? 'done' : ''}"><span>${word(l.id)}</span><span>${word(NUM[l.n - 1])}</span></li>`).join('');
+  const names = bz.level < 3;
+  $('bz-stalls').innerHTML = bz.stalls.map(id => `<button class="item" data-id="${id}" aria-label="${word(id)}"><span class="e">${emoji(id)}</span>${names ? `<span class="w">${word(id)}</span>` : ''}${bz.basket[id] ? `<span class="n">${bz.basket[id]}</span>` : ''}</button>`).join('');
+  const inBasket = Object.entries(bz.basket).filter(([, n]) => n > 0);
+  $('bz-basket').innerHTML = inBasket.length ? inBasket.map(([id, n]) => `<span class="chip" data-id="${id}">${emoji(id)} ${word(id)} × ${n}</span>`).join('') : '<span class="note">Empty</span>';
+}
+$('bz-stalls').addEventListener('click', e => {
+  const b = e.target.closest('.item'); if (!b) return;
+  bz.basket[b.dataset.id] = (bz.basket[b.dataset.id] || 0) + 1;
+  bzRender();
+  flash(document.querySelector(`#bz-stalls [data-id="${b.dataset.id}"]`), 'pop');
+});
+$('bz-basket').addEventListener('click', e => {
+  const c = e.target.closest('.chip'); if (!c) return;
+  bz.basket[c.dataset.id] -= 1; bzRender();
+});
+$('bz-new').addEventListener('click', bzNew);
+$('bz-pay').addEventListener('click', () => {
+  const wrong = [];
+  for (const l of bz.list) { const have = bz.basket[l.id] || 0; if (have !== l.n) wrong.push(`${word(l.id)} (${gloss(l.id)}): you have ${have}, Pi wants ${l.n} — ${word(NUM[l.n - 1])}`); }
+  for (const [id, n] of Object.entries(bz.basket)) if (n > 0 && !bz.list.some(l => l.id === id)) wrong.push(`${word(id)} (${gloss(id)}) isn't on the list`);
+  const fb = $('bz-feedback');
+  if (wrong.length) { fb.className = 'feedback bad'; fb.textContent = wrong[0]; flash($('bz-basket'), 'shake'); return; }
+  fb.className = 'feedback good';
+  fb.textContent = 'Pi is happy! Ka lâwm e! +' + (5 * bz.level) + ' stars';
+  addStars(5 * bz.level);
+  bz.level = Math.min(bz.level + 1, 6); store.set('lab.bz', bz.level);
+  setTimeout(bzNew, 1600);
+});
+bzNew();
+
+// ---------------------------------------------------------------- I Spy
+// A village scene with things scattered over it; find the three Mizo
+// words. Tapping something else says its Mizo name, so wrong taps teach.
+let sp = { level: store.get('lab.sp', 1), targets: [], found: new Set(), things: [] };
+function spNew() {
+  const count = Math.min(10 + sp.level * 2, 22);
+  sp.things = pick(DATA.spy, count);
+  sp.targets = pick(sp.things, 3);
+  sp.found = new Set();
+  const scene = $('sp-scene');
+  scene.innerHTML = '';
+  // Spread over a jittered grid so nothing hides another.
+  const cols = 4, rows = Math.ceil(count / cols);
+  const cells = shuffle([...Array(cols * rows).keys()]).slice(0, count);
+  sp.things.forEach((id, i) => {
+    const c = cells[i] % cols, r = Math.floor(cells[i] / cols);
+    const x = (c + .5 + (Math.random() - .5) * .5) / cols * 100;
+    const y = 8 + (r + .5 + (Math.random() - .5) * .4) / rows * 86;
+    const b = document.createElement('button');
+    b.className = 'thing'; b.dataset.id = id; b.textContent = emoji(id);
+    b.style.left = x + '%'; b.style.top = y + '%';
+    b.setAttribute('aria-label', 'Picture ' + (i + 1));
+    scene.appendChild(b);
+  });
+  $('sp-feedback').textContent = ''; $('sp-feedback').className = 'feedback';
+  spRender();
+}
+function spRender() {
+  $('sp-level').textContent = 'Level ' + sp.level;
+  $('sp-targets').innerHTML = sp.targets.map(id => `<span class="target ${sp.found.has(id) ? 'found' : ''}">${word(id)}${sp.found.has(id) ? `<small>${gloss(id)}</small>` : ''}</span>`).join('');
+}
+function spTip(el, text) {
+  const t = document.createElement('div'); t.className = 'tip'; t.textContent = text;
+  t.style.left = el.style.left; t.style.top = el.style.top;
+  $('sp-scene').appendChild(t); setTimeout(() => t.remove(), 1300);
+}
+$('sp-scene').addEventListener('click', e => {
+  const b = e.target.closest('.thing'); if (!b) return;
+  const id = b.dataset.id;
+  if (sp.targets.includes(id) && !sp.found.has(id)) {
+    sp.found.add(id); b.classList.add('found'); flash(b, 'pop'); spRender();
+    if (sp.found.size === sp.targets.length) {
+      $('sp-feedback').className = 'feedback good';
+      $('sp-feedback').textContent = 'You found them all! +' + (3 * sp.level) + ' stars';
+      addStars(3 * sp.level);
+      sp.level = Math.min(sp.level + 1, 6); store.set('lab.sp', sp.level);
+      setTimeout(spNew, 1500);
+    }
+  } else if (!sp.found.has(id)) {
+    flash(b, 'shake');
+    spTip(b, `${word(id)} · ${gloss(id)}`);
+  }
+});
+$('sp-hint').addEventListener('click', () => {
+  const left = sp.targets.find(id => !sp.found.has(id)); if (!left) return;
+  const b = document.querySelector(`#sp-scene [data-id="${left}"]`);
+  b.classList.remove('hint'); void b.offsetWidth; b.classList.add('hint');
+});
+spNew();
+
+// ---------------------------------------------------------------- Sort it
+// Two groups, words one by one: swipe or tap each to its group before the
+// time runs out. Groups that overlap are never paired.
+const OVER = new Set(DATA.overlap.map(([a, b]) => a + '|' + b));
+let so = { running: false, left: null, right: null, deck: [], current: null, score: 0, combo: 0, missed: [], ends: 0, timer: 0 };
+function soPair() {
+  for (let tries = 0; tries < 100; tries++) {
+    const [a, b] = pick(DATA.groups, 2);
+    if (a.family === b.family && Math.random() < .6) continue;
+    if (OVER.has(a.id + '|' + b.id) || OVER.has(b.id + '|' + a.id)) continue;
+    const shared = a.words.filter(id => b.words.includes(id));
+    if (!shared.length) return [a, b];
+  }
+  return pick(DATA.groups, 2);
+}
+function soStart() {
+  [so.left, so.right] = soPair();
+  so.deck = shuffle([...so.left.words.map(id => [id, 'left']), ...so.right.words.map(id => [id, 'right'])]);
+  so.score = 0; so.combo = 0; so.missed = []; so.running = true;
+  so.ends = Date.now() + 45000;
+  $('so-left-label').textContent = so.left.label;
+  $('so-right-label').textContent = so.right.label;
+  $('so-start').hidden = true; $('so-result').hidden = true;
+  $('so-feedback').textContent = '';
+  soNext();
+  clearInterval(so.timer);
+  so.timer = setInterval(() => {
+    const left = so.ends - Date.now();
+    $('so-time').style.width = Math.max(0, left / 450) + '%';
+    if (left <= 0) soEnd();
+  }, 100);
+}
+function soNext() {
+  if (!so.deck.length) so.deck = shuffle([...so.left.words.map(id => [id, 'left']), ...so.right.words.map(id => [id, 'right'])]);
+  so.current = so.deck.pop();
+  const [id] = so.current;
+  $('so-word').textContent = word(id);
+  $('so-emoji').textContent = so.score < 6 ? emoji(id) : '';
+  const card = $('so-card'); card.style.transform = ''; flash(card, 'pop');
+}
+function soAnswer(side) {
+  if (!so.running) return;
+  const [id, right] = so.current;
+  const fb = $('so-feedback');
+  if (side === right) {
+    so.score++; so.combo++;
+    fb.className = 'feedback good'; fb.textContent = `${word(id)} · ${gloss(id)}`;
+    $('so-combo').textContent = so.combo >= 3 ? `🔥 ${so.combo} in a row` : '';
+  } else {
+    so.combo = 0; so.missed.push(id);
+    fb.className = 'feedback bad';
+    fb.textContent = `${word(id)} (${gloss(id)}) goes in “${right === 'left' ? so.left.label : so.right.label}”`;
+    $('so-combo').textContent = '';
+    flash($('so-card'), 'shake');
+  }
+  soNext();
+}
+function soEnd() {
+  so.running = false; clearInterval(so.timer);
+  $('so-time').style.width = '0%';
+  const best = Math.max(store.get('lab.so', 0), so.score); store.set('lab.so', best);
+  addStars(so.score);
+  $('so-result').hidden = false;
+  $('so-result-title').textContent = `${so.score} sorted · best ${best}`;
+  $('so-missed').innerHTML = so.missed.length
+    ? [...new Set(so.missed)].map(id => `<li><span><b>${word(id)}</b></span><span>${gloss(id)}</span></li>`).join('')
+    : '<li><span>No mistakes. Ropui hle mai!</span><span></span></li>';
+  $('so-start').hidden = false; $('so-start').textContent = 'Play again';
+  $('so-word').textContent = 'Time!'; $('so-emoji').textContent = '⏱️';
+}
+$('so-start').addEventListener('click', soStart);
+$('so-left').addEventListener('click', () => soAnswer('left'));
+$('so-right').addEventListener('click', () => soAnswer('right'));
+document.addEventListener('keydown', e => {
+  if (!$('run').hidden) { if (e.key === 'ArrowLeft') ruMove(0); if (e.key === 'ArrowRight') ruMove(1); return; }
+  if ($('sort').hidden) return;
+  if (e.key === 'ArrowLeft') soAnswer('left');
+  if (e.key === 'ArrowRight') soAnswer('right');
+});
+// Swipe the card left or right.
+(() => {
+  const card = $('so-card'); let x0 = null;
+  card.addEventListener('pointerdown', e => { x0 = e.clientX; card.setPointerCapture(e.pointerId); });
+  card.addEventListener('pointermove', e => { if (x0 === null || !so.running) return; const dx = e.clientX - x0; card.style.transform = `translateX(${dx}px) rotate(${dx / 20}deg)`; });
+  card.addEventListener('pointerup', e => { if (x0 === null) return; const dx = e.clientX - x0; x0 = null; card.style.transform = ''; if (Math.abs(dx) > 60) soAnswer(dx < 0 ? 'left' : 'right'); });
+  card.addEventListener('pointercancel', () => { x0 = null; card.style.transform = ''; });
+})();
+
+// ---------------------------------------------------------------- Showdown
+// Two players, one phone: the word shows on both halves, and whoever taps
+// its picture first scores. A wrong tap freezes that player for a second.
+let du = { on: false, word: null, pts: [0, 0], locked: [false, false], round: 0 };
+function duRound() {
+  const four = pick(DATA.spy, 4);
+  du.word = four[0]; du.locked = [false, false];
+  du.round++;
+  [['du-p1', 0], ['du-p2', 1]].forEach(([el, p]) => {
+    const side = $(el);
+    side.classList.remove('locked');
+    side.querySelector('.word').textContent = word(du.word);
+    side.querySelector('.pics').innerHTML = shuffle([...four]).map(id => `<button data-id="${id}" data-p="${p}" aria-label="Picture">${emoji(id)}</button>`).join('');
+  });
+  $('du-mid').textContent = 'Round ' + du.round;
+}
+function duTap(e) {
+  const b = e.target.closest('button[data-id]'); if (!b || !du.on) return;
+  const p = Number(b.dataset.p);
+  if (du.locked[p]) return;
+  if (b.dataset.id === du.word) {
+    du.pts[p]++;
+    b.classList.add('right'); flash(b, 'pop');
+    $('du-p1').querySelector('.pts').textContent = du.pts[0];
+    $('du-p2').querySelector('.pts').textContent = du.pts[1];
+    $('du-mid').textContent = `${word(du.word)} · ${gloss(du.word)}`;
+    du.on = false;
+    if (du.pts[p] >= 7) {
+      $('du-mid').textContent = (p === 0 ? 'Blue' : 'Pink') + ' player wins! 🏆';
+      $('du-start').textContent = 'Play again'; $('du-start').hidden = false;
+      return;
+    }
+    setTimeout(() => { du.on = true; duRound(); }, 1100);
+  } else {
+    du.locked[p] = true;
+    const side = $(p === 0 ? 'du-p1' : 'du-p2');
+    side.classList.add('locked'); flash(b, 'shake');
+    setTimeout(() => { du.locked[p] = false; side.classList.remove('locked'); }, 1000);
+  }
+}
+$('du-p1').addEventListener('click', duTap);
+$('du-p2').addEventListener('click', duTap);
+$('du-start').addEventListener('click', () => {
+  du.pts = [0, 0]; du.round = 0; du.on = true;
+  $('du-p1').querySelector('.pts').textContent = 0;
+  $('du-p2').querySelector('.pts').textContent = 0;
+  $('du-start').hidden = true;
+  duRound();
+});
+
+// ---------------------------------------------------------------- Word tubes
+// Ball sort with words: four words from each of a few groups, mixed over
+// the tubes, plus empty ones. Move the top word of a tube onto any tube
+// with room; done when every tube holds one group.
+let tu = { level: store.get('lab.tu', 1), tubes: [], groups: [], held: null, moves: 0 };
+function tuNew() {
+  const k = Math.min(2 + tu.level, 5);
+  const pool = DATA.groups.filter(g => g.words.length >= 4);
+  let chosen = [];
+  for (let tries = 0; tries < 200 && chosen.length < k; tries++) {
+    const g = pick(pool, 1)[0];
+    if (chosen.includes(g)) continue;
+    if (chosen.some(c => OVER.has(c.id + '|' + g.id) || OVER.has(g.id + '|' + c.id) || c.words.some(w => g.words.includes(w)))) continue;
+    chosen.push(g);
+  }
+  tu.groups = chosen.map(g => ({ g, words: pick(g.words, 4) }));
+  const balls = shuffle(tu.groups.flatMap(({ g, words }) => words.map(id => ({ id, g: g.id }))));
+  tu.tubes = [];
+  for (let i = 0; i < k; i++) tu.tubes.push(balls.slice(i * 4, i * 4 + 4));
+  tu.tubes.push([], []);
+  tu.held = null; tu.moves = 0;
+  $('tu-feedback').textContent = ''; $('tu-feedback').className = 'feedback';
+  tuRender();
+}
+function tuDone(t) { return t.length === 4 && t.every(b => b.g === t[0].g); }
+function tuRender() {
+  $('tu-level').textContent = 'Level ' + tu.level;
+  $('tu-moves').textContent = tu.moves + ' moves';
+  $('tu-groups').textContent = 'Groups: ' + tu.groups.map(({ g }) => g.label).join(' · ');
+  const pictures = tu.level <= 2;
+  $('tu-tubes').innerHTML = tu.tubes.map((t, i) => {
+    const done = tuDone(t);
+    const label = done ? `<span class="label">${tu.groups.find(x => x.g.id === t[0].g).g.label}</span>` : '';
+    return `<div class="tube ${done ? 'done' : ''} ${tu.held === i ? 'picked' : ''}" data-i="${i}" role="button" aria-label="Tube ${i + 1}">${t.map((b, j) => `<div class="ball ${tu.held === i && j === t.length - 1 ? 'lift' : ''}">${pictures && emoji(b.id) ? emoji(b.id) + ' ' : ''}${word(b.id)}</div>`).join('')}${label}</div>`;
+  }).join('');
+}
+$('tu-tubes').addEventListener('click', e => {
+  const el = e.target.closest('.tube'); if (!el) return;
+  const i = Number(el.dataset.i);
+  if (tu.held === null) { if (tu.tubes[i].length && !tuDone(tu.tubes[i])) tu.held = i; tuRender(); return; }
+  if (tu.held === i) { tu.held = null; tuRender(); return; }
+  if (tu.tubes[i].length >= 4) { flash(el, 'shake'); return; }
+  const ball = tu.tubes[tu.held].pop();
+  tu.tubes[i].push(ball); tu.held = null; tu.moves++;
+  $('tu-feedback').className = 'feedback'; $('tu-feedback').textContent = `${word(ball.id)} · ${gloss(ball.id)}`;
+  tuRender();
+  if (tuDone(tu.tubes[i])) flash(document.querySelector(`#tu-tubes [data-i="${i}"]`), 'hop');
+  if (tu.tubes.filter(t => t.length).every(tuDone)) {
+    const won = 4 * tu.groups.length;
+    $('tu-feedback').className = 'feedback good';
+    $('tu-feedback').textContent = `Sorted in ${tu.moves} moves! +${won} stars`;
+    addStars(won);
+    tu.level = Math.min(tu.level + 1, 4); store.set('lab.tu', tu.level);
+    setTimeout(tuNew, 1800);
+  }
+});
+$('tu-new').addEventListener('click', tuNew);
+tuNew();
+
+// ---------------------------------------------------------------- Rova run
+// Rova runs up the road; a pair of pictures comes down. Be in the lane of
+// the picture the word names. Three hearts; it speeds up as you go.
+let ru = { on: false, lane: 0, gates: null, speed: 0, score: 0, hearts: 3, last: 0 };
+function ruMove(lane) { ru.lane = lane; $('ru-rova').style.left = lane ? '75%' : '25%'; }
+function ruGate() {
+  const [a, b] = pick(DATA.spy, 2);
+  const correct = Math.random() < .5 ? 0 : 1;
+  const ids = correct ? [b, a] : [a, b];
+  const road = $('ru-road');
+  road.querySelectorAll('.gate').forEach(g => g.remove());
+  const els = ids.map((id, lane) => {
+    const g = document.createElement('div'); g.className = 'gate'; g.textContent = emoji(id);
+    g.style.left = lane ? '75%' : '25%'; g.style.top = '18%'; road.appendChild(g); return g;
+  });
+  ru.gates = { ids, correct, target: ids[correct], y: 18, els };
+  $('ru-ask').textContent = word(ru.gates.target);
+}
+function ruTick(t) {
+  if (!ru.on) return;
+  const dt = Math.min(50, t - (ru.last || t)); ru.last = t;
+  const g = ru.gates;
+  g.y += ru.speed * dt / 1000;
+  g.els.forEach(el => el.style.top = g.y + '%');
+  if (g.y >= 74) {
+    const ok = ru.lane === g.correct;
+    const fb = $('ru-feedback');
+    if (ok) { ru.score++; ru.speed += 1.5; fb.className = 'feedback good'; fb.textContent = `${word(g.target)} · ${gloss(g.target)}`; flash($('ru-rova'), 'hop'); }
+    else { ru.hearts--; fb.className = 'feedback bad'; fb.textContent = `“${word(g.target)}” was ${emoji(g.target)} (${gloss(g.target)})`; flash($('ru-road'), 'shake'); }
+    $('ru-score').textContent = ru.score;
+    $('ru-hearts').textContent = '❤️'.repeat(Math.max(ru.hearts, 0)) + '🤍'.repeat(3 - Math.max(ru.hearts, 0));
+    if (ru.hearts <= 0) {
+      ru.on = false;
+      const best = Math.max(store.get('lab.ru', 0), ru.score); store.set('lab.ru', best);
+      addStars(ru.score);
+      $('ru-ask').textContent = `Run over · ${ru.score} · best ${best}`;
+      $('ru-start').hidden = false; $('ru-start').textContent = 'Run again';
+      return;
+    }
+    ruGate();
+  }
+  requestAnimationFrame(ruTick);
+}
+$('ru-start').addEventListener('click', () => {
+  ru = { on: true, lane: 0, gates: null, speed: 14, score: 0, hearts: 3, last: 0 };
+  ruMove(0);
+  $('ru-score').textContent = 0; $('ru-hearts').textContent = '❤️❤️❤️';
+  $('ru-feedback').textContent = '';
+  $('ru-start').hidden = true;
+  ruGate();
+  requestAnimationFrame(ruTick);
+});
+$('ru-road').addEventListener('pointerdown', e => {
+  const r = $('ru-road').getBoundingClientRect();
+  ruMove(e.clientX - r.left > r.width / 2 ? 1 : 0);
+});
+
+// ---------------------------------------------------------------- Count
+// Count the pictures and pick the Mizo number: one to five, then to ten.
+let co = { n: 0, right: 0, total: 0, done: false, thing: null };
+function coNew() {
+  const most = co.right >= 8 ? 10 : 5;
+  co.n = 1 + Math.floor(Math.random() * most);
+  co.done = false;
+  co.thing = pick(DATA.spy, 1)[0];
+  $('co-level').textContent = most === 10 ? 'Up to 10' : 'Up to 5';
+  $('co-board').innerHTML = Array.from({ length: co.n }, () => `<span>${emoji(co.thing)}</span>`).join('');
+  const options = new Set([co.n]);
+  while (options.size < 4) options.add(1 + Math.floor(Math.random() * most));
+  $('co-choices').innerHTML = shuffle([...options]).map(k => `<button class="choice" data-k="${k}">${word(NUM[k - 1])}</button>`).join('');
+  $('co-feedback').textContent = ''; $('co-feedback').className = 'feedback';
+}
+$('co-choices').addEventListener('click', e => {
+  const b = e.target.closest('.choice'); if (!b || co.done) return;
+  co.done = true; co.total++;
+  const right = Number(b.dataset.k) === co.n;
+  b.classList.add(right ? 'right' : 'wrong');
+  if (!right) $('co-choices').querySelector(`[data-k="${co.n}"]`).classList.add('right');
+  const fb = $('co-feedback');
+  fb.className = 'feedback ' + (right ? 'good' : 'bad');
+  fb.textContent = `${word(co.thing)} ${word(NUM[co.n - 1])} · ${co.n} × ${gloss(co.thing)}`;
+  if (right) { co.right++; addStars(1); flash($('co-board'), 'pop'); }
+  $('co-score').textContent = `${co.right} of ${co.total}`;
+  setTimeout(coNew, right ? 1200 : 2200);
+});
+coNew();
+
+// ---------------------------------------------------------------- Dress Rova
+// Dress Rova in what the list names. Each piece has its place (head, shirt,
+// coat, trousers, socks, shoes); tapping one puts it on, tapping it on Rova
+// takes it off. From level 3 the wardrobe shows pictures only.
+const SLOTS = DATA.sets.clothes;               // slot -> [word ids]
+const SLOT_OF = Object.fromEntries(Object.entries(SLOTS).flatMap(([slot, ids]) => ids.map(id => [id, slot])));
+const SLOT_POS = { head: [50, 9], top: [50, 41], outer: [50, 41], legs: [50, 68], socks: [50, 86], feet: [50, 92] };
+let dr = { level: store.get('lab.dr', 1), want: [], worn: {} };
+function drNew() {
+  const count = Math.min(1 + dr.level, 4);
+  const slots = pick(Object.keys(SLOTS), count);
+  dr.want = slots.map(slot => pick(SLOTS[slot], 1)[0]);
+  dr.worn = {};
+  $('dr-feedback').textContent = ''; $('dr-feedback').className = 'feedback';
+  drRender();
+}
+function drRender() {
+  $('dr-level').textContent = 'Level ' + dr.level;
+  $('dr-want').innerHTML = dr.want.map(id => `<span class="target ${Object.values(dr.worn).includes(id) ? 'found' : ''}">${word(id)}</span>`).join('');
+  $('dr-rova').innerHTML = '<span class="body">🧍</span>' + Object.entries(dr.worn).map(([slot, id]) =>
+    `<button class="worn ${slot}" data-slot="${slot}" style="left:${SLOT_POS[slot][0]}%;top:${SLOT_POS[slot][1]}%" aria-label="Take off ${word(id)}">${emoji(id)}</button>`).join('');
+  const names = dr.level < 3;
+  $('dr-wardrobe').innerHTML = Object.keys(SLOT_OF).map(id => `<button class="item" data-id="${id}" aria-label="${word(id)}"><span class="e">${emoji(id)}</span>${names ? `<span class="w">${word(id)}</span>` : ''}</button>`).join('');
+}
+$('dr-wardrobe').addEventListener('click', e => {
+  const b = e.target.closest('.item'); if (!b) return;
+  const id = b.dataset.id;
+  dr.worn[SLOT_OF[id]] = id;
+  $('dr-feedback').className = 'feedback'; $('dr-feedback').textContent = `${word(id)} · ${gloss(id)}`;
+  drRender();
+  flash(document.querySelector(`#dr-rova [data-slot="${SLOT_OF[id]}"]`), 'pop');
+});
+$('dr-rova').addEventListener('click', e => {
+  const b = e.target.closest('.worn'); if (!b) return;
+  delete dr.worn[b.dataset.slot]; drRender();
+});
+$('dr-done').addEventListener('click', () => {
+  const worn = Object.values(dr.worn);
+  const missing = dr.want.filter(id => !worn.includes(id));
+  const extra = worn.filter(id => !dr.want.includes(id));
+  const fb = $('dr-feedback');
+  if (missing.length || extra.length) {
+    fb.className = 'feedback bad';
+    fb.textContent = missing.length
+      ? `Rova still needs ${word(missing[0])} (${gloss(missing[0])}).`
+      : `${word(extra[0])} (${gloss(extra[0])}) isn't on the list.`;
+    flash($('dr-rova'), 'shake');
+    return;
+  }
+  fb.className = 'feedback good';
+  fb.textContent = `Rova is ready! +${2 * dr.want.length} stars`;
+  addStars(2 * dr.want.length);
+  flash($('dr-rova'), 'hop');
+  dr.level = Math.min(dr.level + 1, 4); store.set('lab.dr', dr.level);
+  setTimeout(drNew, 1500);
+});
+drNew();
+
+// ---------------------------------------------------------------- Big and small
+// Two of the same thing, different in one way: big or small, long or
+// short, tall or low, thick or thin (chhah, pan). Tap the one the words name.
+const PAIRS = DATA.sets.sizes;                  // [[lian, tê], [sei, tawi], [sâng, hniam], [chhah, pan]]
+const THINGS = DATA.sets.sizeThings;            // what each pair is shown on
+const PAIR_THINGS = [THINGS.big, THINGS.long, THINGS.tall, THINGS.thick];
+// How each side of a pair is drawn: [scaleX, scaleY].
+const LOOKS = [[[1.6, 1.6], [.7, .7]], [[2.2, 1], [.9, 1]], [[1, 2], [1, .9]], [[1, 1.9], [1, .55]]];
+let op = { right: 0, total: 0, target: null, done: false };
+function opNew() {
+  const p = Math.floor(Math.random() * (op.right < 4 ? 2 : PAIRS.length));
+  const thing = pick(PAIR_THINGS[p], 1)[0];
+  const side = Math.random() < .5 ? 0 : 1;
+  op.target = { p, side, thing };
+  op.done = false;
+  $('op-ask').innerHTML = `Tap: <b>${word(thing)} ${word(PAIRS[p][side])}</b>`;
+  const order = shuffle([0, 1]);
+  $('op-board').innerHTML = order.map(s => {
+    const [sx, sy] = LOOKS[p][s];
+    return `<button class="opt" data-side="${s}" aria-label="${s === 0 ? 'First' : 'Second'} picture"><span style="transform:scale(${sx},${sy})">${emoji(thing)}</span></button>`;
+  }).join('');
+  $('op-feedback').textContent = ''; $('op-feedback').className = 'feedback';
+}
+$('op-board').addEventListener('click', e => {
+  const b = e.target.closest('.opt'); if (!b || op.done) return;
+  op.done = true; op.total++;
+  const { p, side, thing } = op.target;
+  const right = Number(b.dataset.side) === side;
+  const fb = $('op-feedback');
+  fb.className = 'feedback ' + (right ? 'good' : 'bad');
+  fb.textContent = `${word(thing)} ${word(PAIRS[p][side])} · ${gloss(PAIRS[p][side])} ${gloss(thing)}  ·  ${word(PAIRS[p][1 - side])} · ${gloss(PAIRS[p][1 - side])}`;
+  if (right) { op.right++; addStars(1); flash(b, 'hop'); } else flash(b, 'shake');
+  $('op-score').textContent = `${op.right} of ${op.total}`;
+  setTimeout(opNew, right ? 1300 : 2400);
+});
+opNew();
+
+// ---------------------------------------------------------------- Days and times
+// Put the days of the week or the times of day in order, or say which day
+// tomorrow and yesterday are.
+const DAYS = DATA.sets.days, TIMES = DATA.sets.times, NEAR = DATA.sets.nearby;
+let dt = { kind: 0, order: [], tapped: [], right: 0, total: 0, answer: null, done: false };
+function dtNew() {
+  dt.kind = (dt.kind + 1) % 3;
+  dt.tapped = []; dt.done = false;
+  $('dt-feedback').textContent = ''; $('dt-feedback').className = 'feedback';
+  if (dt.kind === 0 || dt.kind === 1) {
+    const list = dt.kind === 0 ? DAYS : (dt.right >= 3 ? TIMES : [TIMES[1], TIMES[2], TIMES[3], TIMES[5]]);
+    const start = dt.kind === 0 ? Math.floor(Math.random() * 3) : 0;
+    const count = dt.kind === 0 ? Math.min(4 + Math.floor(dt.right / 3), 7) : list.length;
+    dt.order = dt.kind === 0 ? list.slice(start, start + count) : list;
+    $('dt-ask').textContent = dt.kind === 0 ? 'Tap the days in order, from the first' : 'Tap the times of day in order, from the earliest';
+    $('dt-board').innerHTML = shuffle([...dt.order]).map(id => `<button class="choice" data-id="${id}">${emoji(id) ? emoji(id) + ' ' : ''}${word(id)}</button>`).join('');
+    $('dt-line').innerHTML = '';
+  } else {
+    const today = Math.floor(Math.random() * 7);
+    const ask = Math.random() < .5 ? 'tomorrow' : 'yesterday';
+    dt.answer = DAYS[(today + (ask === 'tomorrow' ? 1 : 6)) % 7];
+    $('dt-ask').innerHTML = `<b>${word(NEAR.today)}</b> is <b>${word(DAYS[today])}</b>. Which day is <b>${word(NEAR[ask])}</b>?`;
+    const options = new Set([dt.answer]);
+    while (options.size < 4) options.add(pick(DAYS, 1)[0]);
+    $('dt-board').innerHTML = shuffle([...options]).map(id => `<button class="choice" data-id="${id}">${word(id)}</button>`).join('');
+    $('dt-line').innerHTML = '';
+    dt.ask = ask;
+  }
+}
+$('dt-board').addEventListener('click', e => {
+  const b = e.target.closest('.choice'); if (!b || dt.done || b.disabled) return;
+  const id = b.dataset.id;
+  const fb = $('dt-feedback');
+  if (dt.kind === 2) {
+    dt.done = true; dt.total++;
+    const right = id === dt.answer;
+    b.classList.add(right ? 'right' : 'wrong');
+    if (!right) $('dt-board').querySelector(`[data-id="${dt.answer}"]`).classList.add('right');
+    fb.className = 'feedback ' + (right ? 'good' : 'bad');
+    fb.textContent = `${word(NEAR[dt.ask])} (${dt.ask}) · ${word(dt.answer)} (${gloss(dt.answer)})`;
+    if (right) { dt.right++; addStars(2); }
+    $('dt-score').textContent = `${dt.right} of ${dt.total}`;
+    setTimeout(dtNew, right ? 1500 : 2600);
+    return;
+  }
+  const next = dt.order[dt.tapped.length];
+  if (id === next) {
+    dt.tapped.push(id);
+    b.disabled = true; b.classList.add('right');
+    $('dt-line').innerHTML = dt.tapped.map(t => `<span class="target found">${word(t)}<small>${gloss(t)}</small></span>`).join('');
+    if (dt.tapped.length === dt.order.length) {
+      dt.done = true; dt.total++; dt.right++;
+      fb.className = 'feedback good'; fb.textContent = `In order! +${dt.order.length} stars`;
+      addStars(dt.order.length);
+      $('dt-score').textContent = `${dt.right} of ${dt.total}`;
+      setTimeout(dtNew, 1600);
+    }
+  } else {
+    flash(b, 'shake');
+    fb.className = 'feedback bad';
+    fb.textContent = `${word(id)} is ${gloss(id)}. What comes before it?`;
+  }
+});
+dtNew();
+
+$('dr-new').addEventListener('click', drNew);
+
+// ---------------------------------------------------------------- Rova says
+// Tap the body part Rova names before the time runs out. From level 2,
+// when the words don't start "Rova says", don't tap: just wait.
+const BODY = DATA.sets.body;
+let rs = { on: false, target: null, says: true, ends: 0, timer: 0, score: 0, hearts: 3, tapped: false };
+function rsRound() {
+  const six = pick(BODY, 6);
+  rs.target = six[0];
+  rs.says = rs.score < 4 || Math.random() < .75;
+  rs.tapped = false;
+  const ms = Math.max(1600, 3200 - rs.score * 90);
+  rs.ends = Date.now() + ms;
+  $('rs-ask').innerHTML = rs.says ? `Rova says: tap <b>${word(rs.target)}</b>!` : `Tap <b>${word(rs.target)}</b>!`;
+  $('rs-board').innerHTML = shuffle([...six]).map(id => `<button class="choice big" data-id="${id}" aria-label="${gloss(id)}">${emoji(id)}</button>`).join('');
+  clearInterval(rs.timer);
+  rs.timer = setInterval(() => {
+    const left = rs.ends - Date.now();
+    $('rs-time').style.width = Math.max(0, left / ms * 100) + '%';
+    if (left <= 0) { clearInterval(rs.timer); rsResult(null); }
+  }, 50);
+}
+function rsResult(id) {
+  if (!rs.on) return;
+  clearInterval(rs.timer);
+  const fb = $('rs-feedback');
+  let ok;
+  if (!rs.says) ok = id === null;                 // a trick: not tapping wins
+  else ok = id === rs.target;
+  if (ok) {
+    rs.score++;
+    fb.className = 'feedback good';
+    fb.textContent = rs.says ? `${word(rs.target)} · ${gloss(rs.target)}` : `Well spotted! Rova didn't say it.`;
+  } else {
+    rs.hearts--;
+    fb.className = 'feedback bad';
+    fb.textContent = !rs.says ? `Rova didn't say “Rova says”!` : `${word(rs.target)} is ${emoji(rs.target)} (${gloss(rs.target)})`;
+    flash($('rs-board'), 'shake');
+  }
+  $('rs-score').textContent = rs.score;
+  $('rs-hearts').textContent = '❤️'.repeat(Math.max(rs.hearts, 0)) + '🤍'.repeat(3 - Math.max(rs.hearts, 0));
+  if (rs.hearts <= 0) {
+    rs.on = false;
+    const best = Math.max(store.get('lab.rs', 0), rs.score); store.set('lab.rs', best);
+    addStars(rs.score);
+    $('rs-ask').textContent = `Game over · ${rs.score} · best ${best}`;
+    $('rs-start').hidden = false; $('rs-start').textContent = 'Play again';
+    return;
+  }
+  setTimeout(() => rs.on && rsRound(), ok ? 700 : 1600);
+}
+$('rs-board').addEventListener('click', e => {
+  const b = e.target.closest('.choice'); if (!b || !rs.on || rs.tapped) return;
+  rs.tapped = true; flash(b, 'pop'); rsResult(b.dataset.id);
+});
+$('rs-start').addEventListener('click', () => {
+  rs = { ...rs, on: true, score: 0, hearts: 3 };
+  $('rs-score').textContent = 0; $('rs-hearts').textContent = '❤️❤️❤️';
+  $('rs-feedback').textContent = ''; $('rs-start').hidden = true;
+  rsRound();
+});
+
+// ---------------------------------------------------------------- Colour it
+// A house picture; one part at a time glows. Pick its colour from swatches
+// that show no names, by the Mizo colour word.
+const COLOURS = DATA.sets.colours;              // word id -> hex
+const COLOUR_OF = { sky: 'word.jf300.dumpawl', grass: 'word.jf300.hring', roof: 'word.sen', wall: 'word.var', door: 'word.jf178.uk', window: 'word.dum', smoke: 'word.jf300.vutbuak', leaves: 'word.jf300.hring', trunk: 'word.jf178.uk' };
+let ci = { order: [], at: 0 };
+function ciNew() {
+  ci.order = shuffle(Object.keys(COLOUR_OF)); ci.at = 0;
+  document.querySelectorAll('#ci-pic [data-part]').forEach(el => { el.setAttribute('fill', 'var(--panel)'); el.classList.remove('glow'); });
+  $('ci-swatches').innerHTML = shuffle(Object.keys(COLOURS)).map(id => `<button class="swatch" data-id="${id}" style="background:${COLOURS[id]}" aria-label="Colour"></button>`).join('');
+  $('ci-feedback').textContent = '';
+  ciAsk();
+}
+function ciAsk() {
+  document.querySelectorAll('#ci-pic .glow').forEach(el => el.classList.remove('glow'));
+  if (ci.at >= ci.order.length) {
+    $('ci-ask').innerHTML = 'Finished! <b>Ropui hle mai!</b>';
+    addStars(9);
+    setTimeout(ciNew, 2200);
+    return;
+  }
+  const part = ci.order[ci.at];
+  document.querySelectorAll(`#ci-pic [data-part="${part}"]`).forEach(el => el.classList.add('glow'));
+  $('ci-ask').innerHTML = `Paint the glowing part <b>${word(COLOUR_OF[part])}</b>`;
+}
+$('ci-swatches').addEventListener('click', e => {
+  const b = e.target.closest('.swatch'); if (!b || ci.at >= ci.order.length) return;
+  const part = ci.order[ci.at], want = COLOUR_OF[part];
+  const fb = $('ci-feedback');
+  if (b.dataset.id === want) {
+    document.querySelectorAll(`#ci-pic [data-part="${part}"]`).forEach(el => el.setAttribute('fill', COLOURS[want]));
+    fb.className = 'feedback good'; fb.textContent = `${word(want)} · ${gloss(want)}`;
+    ci.at++; ciAsk();
+  } else {
+    flash(b, 'shake');
+    fb.className = 'feedback bad'; fb.textContent = `That one is ${word(b.dataset.id)} (${gloss(b.dataset.id)}).`;
+  }
+});
+ciNew();
+
+// ---------------------------------------------------------------- Rova's family
+// Rova's family on a little tree. Tap the person the word names; later,
+// say which word a person is.
+const FAMILY = DATA.sets.family;                // word id -> picture
+const SEATS = { 'word.jf1011.pi': [30, 14], 'word.jf1011.pu': [70, 14], 'word.jf300.nu': [30, 45], 'word.jf300.pa': [70, 45], 'word.farnu': [20, 80], 'word.jf1011.nau': [80, 80] };
+let fa = { target: null, mode: 0, right: 0, total: 0, done: false };
+function faNew() {
+  fa.done = false;
+  fa.mode = fa.right >= 4 && Math.random() < .5 ? 1 : 0;
+  fa.target = pick(Object.keys(FAMILY), 1)[0];
+  const tree = $('fa-tree');
+  tree.innerHTML = `<div class="person me" style="left:50%;top:80%"><span>🧑</span><small>Rova</small></div>` +
+    Object.entries(SEATS).map(([id, [x, y]]) => `<button class="person ${fa.mode && id === fa.target ? 'asked' : ''}" data-id="${id}" style="left:${x}%;top:${y}%"><span>${FAMILY[id]}</span></button>`).join('');
+  $('fa-feedback').textContent = ''; $('fa-feedback').className = 'feedback';
+  if (fa.mode === 0) {
+    $('fa-ask').innerHTML = `Who is Rova's <b>${word(fa.target)}</b>?`;
+    $('fa-choices').innerHTML = '';
+  } else {
+    $('fa-ask').innerHTML = 'Who is the glowing person to Rova?';
+    const options = shuffle([fa.target, ...pick(Object.keys(FAMILY).filter(id => id !== fa.target), 3)]);
+    $('fa-choices').innerHTML = options.map(id => `<button class="choice" data-id="${id}">${word(id)}</button>`).join('');
+  }
+}
+function faAnswer(id, el) {
+  if (fa.done) return;
+  fa.done = true; fa.total++;
+  const right = id === fa.target;
+  const fb = $('fa-feedback');
+  fb.className = 'feedback ' + (right ? 'good' : 'bad');
+  fb.textContent = `${FAMILY[fa.target]} ${word(fa.target)} · Rova's ${gloss(fa.target).toLowerCase()}`;
+  if (right) { fa.right++; addStars(2); flash(el, 'hop'); } else flash(el, 'shake');
+  $('fa-score').textContent = `${fa.right} of ${fa.total}`;
+  setTimeout(faNew, right ? 1300 : 2400);
+}
+$('fa-tree').addEventListener('click', e => {
+  const b = e.target.closest('button.person'); if (!b || fa.mode !== 0) return;
+  faAnswer(b.dataset.id, b);
+});
+$('fa-choices').addEventListener('click', e => {
+  const b = e.target.closest('.choice'); if (!b) return;
+  faAnswer(b.dataset.id, b);
+});
+faNew();
+
+// ---------------------------------------------------------------- Bubble pop
+// Pictures float up in bubbles. Pop every bubble that matches the word at
+// the top before it gets away; a wrong pop costs a point. 45 seconds.
+let bp = { on: false, target: null, score: 0, ends: 0, bubbles: [], last: 0, spawn: 0, changes: 0 };
+function bpTarget() { bp.target = pick(DATA.spy, 1)[0]; bp.changes = 0; $('bp-ask').innerHTML = `Pop every <b>${word(bp.target)}</b>`; }
+function bpSpawn() {
+  const sea = $('bp-sea');
+  const id = Math.random() < .4 ? bp.target : pick(DATA.spy, 1)[0];
+  const b = document.createElement('button');
+  b.className = 'bubble'; b.textContent = emoji(id); b.dataset.id = id;
+  const x = 8 + Math.random() * 84;
+  b.style.left = x + '%';
+  sea.appendChild(b);
+  bp.bubbles.push({ el: b, y: 105, speed: 9 + Math.random() * 6 + bp.score * .3, wobble: Math.random() * 6 });
+}
+function bpTick(t) {
+  if (!bp.on) return;
+  const dt = Math.min(50, t - (bp.last || t)) / 1000; bp.last = t;
+  bp.spawn -= dt;
+  if (bp.spawn <= 0) { bpSpawn(); bp.spawn = Math.max(.45, 1.1 - bp.score * .02); }
+  for (const b of bp.bubbles) {
+    b.y -= b.speed * dt;
+    b.el.style.top = b.y + '%';
+    b.el.style.transform = `translate(-50%, -50%) translateX(${Math.sin(t / 400 + b.wobble) * 8}px)`;
+  }
+  bp.bubbles = bp.bubbles.filter(b => { if (b.y < -10) { b.el.remove(); return false; } return true; });
+  const left = bp.ends - Date.now();
+  $('bp-time').style.width = Math.max(0, left / 450) + '%';
+  if (left <= 0) return bpEnd();
+  requestAnimationFrame(bpTick);
+}
+function bpEnd() {
+  bp.on = false;
+  bp.bubbles.forEach(b => b.el.remove()); bp.bubbles = [];
+  const best = Math.max(store.get('lab.bp', 0), bp.score); store.set('lab.bp', best);
+  addStars(Math.max(0, bp.score));
+  $('bp-ask').textContent = `Time! ${bp.score} · best ${best}`;
+  $('bp-start').hidden = false; $('bp-start').textContent = 'Play again';
+}
+$('bp-sea').addEventListener('click', e => {
+  const el = e.target.closest('.bubble'); if (!el || !bp.on) return;
+  const fb = $('bp-feedback');
+  if (el.dataset.id === bp.target) {
+    bp.score++; fb.className = 'feedback good'; fb.textContent = `${word(bp.target)} · ${gloss(bp.target)}`;
+    if (++bp.changes >= 5) bpTarget();
+  } else {
+    bp.score--; fb.className = 'feedback bad'; fb.textContent = `That was ${word(el.dataset.id)} (${gloss(el.dataset.id)})`;
+  }
+  $('bp-score').textContent = bp.score;
+  el.classList.add('popped');
+  bp.bubbles = bp.bubbles.filter(b => b.el !== el);
+  setTimeout(() => el.remove(), 200);
+});
+$('bp-start').addEventListener('click', () => {
+  bp = { on: true, target: null, score: 0, ends: Date.now() + 45000, bubbles: [], last: 0, spawn: 0, changes: 0 };
+  $('bp-score').textContent = 0; $('bp-feedback').textContent = '';
+  $('bp-start').hidden = true;
+  bpTarget();
+  requestAnimationFrame(bpTick);
+});
+
+
+// ---------------------------------------------------------------- Whack the rat
+// Rats pop out of holes holding pictures. Whack the ones holding what the
+// word names; a wrong whack costs a point. 40 seconds.
+let wm = { on: false, target: null, score: 0, ends: 0, timer: 0, hits: 0 };
+function wmTarget() { wm.target = pick(DATA.spy, 1)[0]; wm.hits = 0; $('wm-ask').innerHTML = `Whack every rat holding <b>${word(wm.target)}</b>`; }
+function wmPop() {
+  if (!wm.on) return;
+  const holes = [...document.querySelectorAll('#wm-holes .hole')].filter(h => !h.classList.contains('up'));
+  if (holes.length) {
+    const h = pick(holes, 1)[0];
+    const id = Math.random() < .45 ? wm.target : pick(DATA.spy, 1)[0];
+    h.dataset.id = id;
+    h.querySelector('.held').textContent = emoji(id);
+    h.classList.add('up');
+    const stay = Math.max(700, 1500 - wm.score * 30);
+    setTimeout(() => h.classList.remove('up', 'hit'), stay);
+  }
+  wm.timer = setTimeout(wmPop, Math.max(380, 800 - wm.score * 15));
+}
+$('wm-holes').addEventListener('click', e => {
+  const h = e.target.closest('.hole'); if (!h || !wm.on || !h.classList.contains('up') || h.classList.contains('hit')) return;
+  h.classList.add('hit');
+  const fb = $('wm-feedback');
+  if (h.dataset.id === wm.target) {
+    wm.score++; fb.className = 'feedback good'; fb.textContent = `${word(wm.target)} · ${gloss(wm.target)}`;
+    if (++wm.hits >= 5) wmTarget();
+  } else {
+    wm.score--; fb.className = 'feedback bad'; fb.textContent = `That was ${word(h.dataset.id)} (${gloss(h.dataset.id)})`;
+  }
+  $('wm-score').textContent = wm.score;
+  setTimeout(() => h.classList.remove('up', 'hit'), 250);
+});
+$('wm-start').addEventListener('click', () => {
+  wm = { on: true, target: null, score: 0, ends: Date.now() + 40000, timer: 0, hits: 0 };
+  $('wm-score').textContent = 0; $('wm-feedback').textContent = ''; $('wm-start').hidden = true;
+  wmTarget(); wmPop();
+  const clock = setInterval(() => {
+    const left = wm.ends - Date.now();
+    $('wm-time').style.width = Math.max(0, left / 400) + '%';
+    if (left <= 0) {
+      clearInterval(clock); clearTimeout(wm.timer); wm.on = false;
+      document.querySelectorAll('#wm-holes .hole').forEach(h => h.classList.remove('up', 'hit'));
+      const best = Math.max(store.get('lab.wm', 0), wm.score); store.set('lab.wm', best);
+      addStars(Math.max(0, wm.score));
+      $('wm-ask').textContent = `Time! ${wm.score} · best ${best}`;
+      $('wm-start').hidden = false; $('wm-start').textContent = 'Play again';
+    }
+  }, 100);
+});
+$('wm-holes').innerHTML = Array.from({ length: 9 }, () => `<button class="hole" aria-label="Hole"><span class="rat"><span class="held"></span>🐁</span></button>`).join('');
+
+// ---------------------------------------------------------------- Weather report
+// Read the week's forecast in Mizo and put each day's weather on the
+// board: pick a weather picture, then tap its day.
+const WEATHER = DATA.sets.weather;
+let wr = { level: store.get('lab.wr', 1), days: [], want: {}, set: {}, picked: null };
+function wrNew() {
+  const count = Math.min(2 + wr.level, 7);
+  const start = Math.floor(Math.random() * (8 - count));
+  wr.days = DAYS.slice(start, start + count);
+  wr.want = Object.fromEntries(wr.days.map(d => [d, pick(WEATHER, 1)[0]]));
+  wr.set = {}; wr.picked = null;
+  $('wr-forecast').innerHTML = wr.days.map(d => `<li><b>${word(d)}</b>: ${word(wr.want[d])}</li>`).join('');
+  $('wr-feedback').textContent = ''; $('wr-feedback').className = 'feedback';
+  wrRender();
+}
+function wrRender() {
+  $('wr-level').textContent = 'Level ' + wr.level;
+  $('wr-icons').innerHTML = WEATHER.map(id => `<button class="item ${wr.picked === id ? 'chosen' : ''}" data-id="${id}" aria-label="Weather picture"><span class="e">${emoji(id)}</span></button>`).join('');
+  $('wr-board').innerHTML = wr.days.map(d => `<button class="day" data-day="${d}"><span class="dname">${word(d)}</span><span class="dicon">${wr.set[d] ? emoji(wr.set[d]) : '·'}</span></button>`).join('');
+}
+$('wr-icons').addEventListener('click', e => {
+  const b = e.target.closest('.item'); if (!b) return;
+  wr.picked = b.dataset.id; wrRender();
+});
+$('wr-board').addEventListener('click', e => {
+  const b = e.target.closest('.day'); if (!b) return;
+  if (!wr.picked) { $('wr-feedback').className = 'feedback bad'; $('wr-feedback').textContent = 'Pick a weather picture first.'; return; }
+  wr.set[b.dataset.day] = wr.picked;
+  $('wr-feedback').className = 'feedback'; $('wr-feedback').textContent = `${word(b.dataset.day)}: ${word(wr.picked)} · ${gloss(wr.picked)}`;
+  wrRender();
+  flash(document.querySelector(`#wr-board [data-day="${b.dataset.day}"]`), 'pop');
+});
+$('wr-check').addEventListener('click', () => {
+  const fb = $('wr-feedback');
+  const wrong = wr.days.find(d => wr.set[d] !== wr.want[d]);
+  if (wrong) {
+    fb.className = 'feedback bad';
+    fb.textContent = wr.set[wrong]
+      ? `${word(wrong)} (${gloss(wrong)}) should be ${word(wr.want[wrong])}, not ${word(wr.set[wrong])}.`
+      : `${word(wrong)} (${gloss(wrong)}) has no weather yet.`;
+    flash($('wr-board'), 'shake');
+    return;
+  }
+  fb.className = 'feedback good';
+  fb.textContent = `Great forecast! +${wr.days.length} stars`;
+  addStars(wr.days.length);
+  wr.level = Math.min(wr.level + 1, 5); store.set('lab.wr', wr.level);
+  setTimeout(wrNew, 1500);
+});
+wrNew();
+
+// ---------------------------------------------------------------- Food stall
+// Customers order in Mizo; serve what they ask for before they lose
+// patience. A plate holds what you tap; Serve hands it over.
+const STALL = FOOD.slice();
+const GUESTS = ['🧑', '👩', '👴', '👵', '👧', '👦', '🧔'];
+let fs = { on: false, order: [], plate: [], served: 0, hearts: 3, patience: 1, timer: 0, guest: '🧑' };
+function fsGuest() {
+  const n = fs.served < 3 ? 1 : fs.served < 8 ? 2 : 3;
+  fs.order = pick(STALL, n);
+  fs.plate = [];
+  fs.guest = pick(GUESTS, 1)[0];
+  fs.patience = 1;
+  fsRender();
+  clearInterval(fs.timer);
+  const span = Math.max(6000, 11000 - fs.served * 300);
+  const start = Date.now();
+  fs.timer = setInterval(() => {
+    fs.patience = 1 - (Date.now() - start) / span;
+    $('fs-patience').style.width = Math.max(0, fs.patience * 100) + '%';
+    if (fs.patience <= 0) { clearInterval(fs.timer); fsMiss(`The customer left. They wanted ${fs.order.map(id => `${word(id)} (${gloss(id)})`).join(', ')}.`); }
+  }, 100);
+}
+function fsRender() {
+  $('fs-guest').textContent = fs.guest;
+  $('fs-order').innerHTML = fs.order.map(id => `<span class="target ${fs.plate.includes(id) ? 'found' : ''}">${word(id)}</span>`).join('');
+  $('fs-plate').innerHTML = fs.plate.length ? fs.plate.map((id, i) => `<span class="chip" data-i="${i}">${emoji(id)}</span>`).join('') : '<span class="note">Empty plate</span>';
+  const names = fs.served < 5;
+  $('fs-kitchen').innerHTML = STALL.map(id => `<button class="item" data-id="${id}" aria-label="${word(id)}"><span class="e">${emoji(id)}</span>${names ? `<span class="w">${word(id)}</span>` : ''}</button>`).join('');
+  $('fs-served').textContent = fs.served;
+  $('fs-hearts').textContent = '❤️'.repeat(Math.max(fs.hearts, 0)) + '🤍'.repeat(3 - Math.max(fs.hearts, 0));
+}
+function fsMiss(text) {
+  fs.hearts--;
+  $('fs-feedback').className = 'feedback bad'; $('fs-feedback').textContent = text;
+  flash($('fs-counter'), 'shake');
+  if (fs.hearts <= 0) {
+    fs.on = false; clearInterval(fs.timer); fsRender();
+    const best = Math.max(store.get('lab.fs', 0), fs.served); store.set('lab.fs', best);
+    $('fs-feedback').textContent += ` Closed for today · ${fs.served} served · best ${best}`;
+    $('fs-start').hidden = false; $('fs-start').textContent = 'Open again';
+    return;
+  }
+  setTimeout(() => fs.on && fsGuest(), 1600);
+}
+$('fs-kitchen').addEventListener('click', e => {
+  const b = e.target.closest('.item'); if (!b || !fs.on || fs.plate.length >= 3) return;
+  fs.plate.push(b.dataset.id); fsRender();
+});
+$('fs-plate').addEventListener('click', e => {
+  const c = e.target.closest('.chip'); if (!c || !fs.on) return;
+  fs.plate.splice(Number(c.dataset.i), 1); fsRender();
+});
+$('fs-serve').addEventListener('click', () => {
+  if (!fs.on || !fs.plate.length) return;
+  clearInterval(fs.timer);
+  const same = fs.plate.length === fs.order.length && fs.order.every(id => fs.plate.includes(id));
+  if (same) {
+    fs.served++; addStars(fs.order.length);
+    $('fs-feedback').className = 'feedback good';
+    $('fs-feedback').textContent = `Ka lâwm e! ${fs.order.map(id => `${word(id)} · ${gloss(id)}`).join(', ')}`;
+    flash($('fs-guest'), 'hop');
+    setTimeout(() => fs.on && fsGuest(), 1100);
+  } else {
+    const missing = fs.order.find(id => !fs.plate.includes(id));
+    fsMiss(missing ? `Not quite: they asked for ${word(missing)} (${gloss(missing)}).` : `They didn't order ${fs.plate.filter(id => !fs.order.includes(id)).map(word).join(', ')}.`);
+  }
+});
+$('fs-start').addEventListener('click', () => {
+  fs = { ...fs, on: true, served: 0, hearts: 3 };
+  $('fs-feedback').textContent = ''; $('fs-start').hidden = true;
+  fsGuest();
+});
+
+$('wr-new').addEventListener('click', wrNew);
+</script>
+
+</body></html>

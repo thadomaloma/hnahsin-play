@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hnahsin Games</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Caveat:wght@700&display=swap">
+<style>
+  :root { --bg: #0f2a4a; --panel: #ffffff; --ink: #15213a; --soft: #5b6b84; --accent: #1565c0; --tint: #eef5ff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif; display: grid; place-items: center; padding: 16px; }
+  main { width: min(440px, 100%); background: var(--panel); border-radius: 26px; padding: 26px 20px; display: grid; gap: 14px; }
+  h1 { margin: 0; font-size: 34px; font-weight: 800; }
+  .sub { margin: -6px 0 4px; font-family: Caveat, cursive; font-size: 24px; color: var(--accent); }
+  a.game { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 18px; background: var(--tint); color: var(--ink); text-decoration: none; border: 2px solid transparent; }
+  a.game:hover, a.game:focus-visible { border-color: var(--accent); outline: none; }
+  .emoji { font-size: 38px; }
+  b { display: block; font-size: 19px; }
+  span.note { color: var(--soft); font-size: 14px; }
+  footer { color: var(--soft); font-size: 13px; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Hnahsin Games</h1>
+  <p class="sub">Mizo tawng, khel chungin</p>
+  <a class="game" href="journey.html"><span class="emoji">🏃</span><span><b>Rova's Journey</b><span class="note">Run, jump and pick the door with the right Mizo word.</span></span></a>
+  <a class="game" href="playground.html"><span class="emoji">🎮</span><span><b>Hnahsin Playground</b><span class="note">17 small word games in one place.</span></span></a>
+  <footer>Words from the Hnahsin app</footer>
+</main>
+</body>
+</html>
