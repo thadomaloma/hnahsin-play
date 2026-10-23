@@ -4,7 +4,8 @@ t = open('template.html', encoding='utf-8').read()
 data = open('data.json', encoding='utf-8').read().strip()
 dct = json.dumps([[w[0], w[1], w[7]] for w in json.load(open('../journey/dict_words.json', encoding='utf-8'))], ensure_ascii=False, separators=(',', ':'))
 puz = open('puzzles.json', encoding='utf-8').read().strip()
-for key, value in [('__DATA__', data), ('__DICT__', dct), ('__PUZZLES__', puz)]:
+rova = open('../../rova.js', encoding='utf-8').read().strip()
+for key, value in [('__DATA__', data), ('__DICT__', dct), ('__PUZZLES__', puz), ('__ROVA__', rova)]:
     assert t.count(key) == 1, key
     t = t.replace(key, value)
 open('preview.html', 'w', encoding='utf-8').write(t)

@@ -254,7 +254,8 @@
   .road::before { content: ""; position: absolute; left: 50%; top: 18%; bottom: 0; border-left: 3px dashed rgba(255,255,255,.55); }
   .road .ask { position: absolute; left: 0; right: 0; top: 8px; text-align: center; font-weight: 800; font-size: 26px; color: #15213a; text-shadow: 0 1px 0 rgba(255,255,255,.7); }
   .road .gate { position: absolute; width: 38%; transform: translateX(-50%); display: grid; place-items: center; height: 84px; border-radius: 18px; background: rgba(255,255,255,.88); font-size: 48px; box-shadow: 0 6px 0 rgba(0,0,0,.12); }
-  .road .runner { position: absolute; bottom: 18px; transform: translateX(-50%); font-size: 54px; transition: left .15s ease-out; }
+  .road .runner { position: absolute; bottom: 14px; transform: translateX(-50%); width: 60px; aspect-ratio: 3 / 4; transition: left .15s ease-out; }
+  .road .runner canvas { display: block; width: 100%; height: 100%; }
   .hearts { font-size: 20px; letter-spacing: 2px; }
 
   /* Dress Rova */
@@ -410,7 +411,7 @@
     <div class="modes" data-g="ru" role="group" aria-label="Words to play with"><button data-mode="pics">🖼️&nbsp; Pictures</button><button data-mode="dict">📖&nbsp; Dictionary words</button></div>
     <div class="road" id="ru-road">
       <div class="ask" id="ru-ask">Tap Start</div>
-      <div class="runner" id="ru-rova" style="left:25%">🏃</div>
+      <div class="runner" id="ru-rova" style="left:25%"><canvas aria-label="Rova"></canvas></div>
     </div>
     <p class="note">Run into the picture (or meaning) that matches the word. Tap a side of the road, swipe, or use the arrow keys.</p>
     <div class="feedback" id="ru-feedback" aria-live="polite"></div>
@@ -563,6 +564,7 @@
   <footer>Test games for Hnahsin, using 271 picture words from the live content and 1,928 dictionary words.</footer>
 </div>
 
+<script>__ROVA__</script>
 <script>
 const DATA = __DATA__;
 const W = DATA.words;           // id -> [mizo, english, emoji]
@@ -989,6 +991,16 @@ tuNew();
 // Rova runs up the road; a pair of pictures comes down. Be in the lane of
 // the picture the word names. Three hearts; it speeds up as you go.
 let ru = { on: false, lane: 0, gates: null, speed: 0, score: 0, hearts: 3, last: 0 };
+// Rova's legs run while the game runs (rova.js draws him).
+function ruDraw(phase) {
+  const c = $('ru-rova').firstElementChild, ctx = c.getContext('2d'), dpr = Math.min(devicePixelRatio || 1, 3);
+  if (!c.clientWidth) return;
+  if (c.width !== Math.round(c.clientWidth * dpr)) { c.width = Math.round(c.clientWidth * dpr); c.height = Math.round(c.clientHeight * dpr); }
+  ctx.setTransform(c.width / 120, 0, 0, c.height / 160, 0, 0);
+  ctx.clearRect(0, 0, 120, 160);
+  drawRova(ctx, phase, 'run');
+}
+document.addEventListener('showgame', e => { if (e.detail === 'run') ruDraw(.6); });
 function ruMove(lane) { ru.lane = lane; $('ru-rova').style.left = lane ? '75%' : '25%'; }
 function ruGate() {
   const [a, b] = pickThings('ru', 2);
@@ -1006,6 +1018,7 @@ function ruGate() {
 function ruTick(t) {
   if (!ru.on) return;
   const dt = Math.min(50, t - (ru.last || t)); ru.last = t;
+  ruDraw(t / (90 - Math.min(40, ru.speed)));
   const g = ru.gates;
   g.y += ru.speed * dt / 1000;
   g.els.forEach(el => el.style.top = g.y + '%');

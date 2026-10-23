@@ -53,10 +53,10 @@
   .flower svg { width: 100%; height: auto; aspect-ratio: 1; }
   .flower .stem { width: 4px; height: calc(var(--s) * .9); margin: -6px auto 0; background: var(--leaf-deep); border-radius: 4px; }
   @keyframes sway { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
-  .rova { position: absolute; bottom: 18%; left: 0; font-size: clamp(34px, 6vw, 52px); animation: run 16s linear infinite; }
-  .rova span { display: inline-block; transform: scaleX(-1); animation: bob .35s ease-in-out infinite alternate; }
-  @keyframes run { from { transform: translateX(-80px); } to { transform: translateX(calc(100vw + 80px)); } }
-  @keyframes bob { to { transform: scaleX(-1) translateY(-6px); } }
+  /* Rova is drawn on a canvas by rova.js and moved by home.js. */
+  .rova { position: absolute; top: 100%; left: 0; width: clamp(48px, 8vw, 70px); aspect-ratio: 3 / 4; will-change: transform; }
+  html:not(.js) .rova { display: none; }
+  .rova canvas, .cover .runner canvas { display: block; width: 100%; height: 100%; }
 
   /* ------------------------------------------------ numbers */
   .stats { position: relative; z-index: 2; margin-top: -44px; display: grid; grid-template-columns: repeat(4, 1fr); padding: 18px 8px; }
@@ -97,8 +97,7 @@
   .spark { position: absolute; z-index: 2; width: 9px; height: 9px; border-radius: 50%; pointer-events: none; }
   .door.d3 { right: 12%; bottom: 12px; animation-delay: -2s; }
   .q { position: absolute; z-index: 1; left: 16px; top: 16px; padding: 6px 12px; border-radius: 12px; background: rgba(255, 255, 255, .92); color: var(--ink); font-weight: 800; font-size: 14px; }
-  .cover .runner { position: absolute; z-index: 1; left: 22%; bottom: 14%; font-size: 52px; transform: scaleX(-1); animation: hop 1.2s var(--ease) infinite; }
-  @keyframes hop { 0%, 100% { transform: scaleX(-1) translateY(0); } 45% { transform: scaleX(-1) translateY(-70px) rotate(-8deg); } }
+  .cover .runner { position: absolute; z-index: 1; left: 20%; bottom: 12%; width: 62px; aspect-ratio: 3 / 4; }
   @keyframes float { to { transform: translateY(-5px); } }
 
   /* Cover: the Playground, a shelf of little games */
@@ -127,8 +126,6 @@
   .sky-layer { position: absolute; inset: 0; z-index: -1; will-change: transform; }
   .petals { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
   .field { left: -28px; right: -28px; will-change: transform; }
-  html.js .rova { top: 100%; bottom: auto; margin-top: -1.05em; line-height: 1; animation: none; will-change: transform; }
-  html.js .cover .runner { animation: none; }
 
   .tile.boing { opacity: 1; transform: rotate(var(--r)); animation: boing .7s var(--ease); }
   @keyframes boing { 0% { transform: rotate(var(--r)); } 25% { transform: translateY(-16px) rotate(calc(var(--r) * -2)) scale(1.06); } 50% { transform: translateY(2px) rotate(var(--r)) scale(.97, 1.03); } 75% { transform: translateY(-4px) rotate(var(--r)); } 100% { transform: rotate(var(--r)); } }
@@ -221,7 +218,7 @@
     <div class="flower" style="right:24%;--s:clamp(32px,5vw,52px);--d:-3s"><svg style="--petal-fill:#f48fb1"><use href="#cosmos"/></svg><div class="stem"></div></div>
     <div class="flower" style="right:11%;--s:clamp(48px,8vw,84px);--d:-1.8s"><svg style="--petal-fill:#9c7cf0"><use href="#cosmos"/></svg><div class="stem"></div></div>
     <div class="flower" style="right:2%;--s:clamp(36px,6vw,60px);--d:-.9s"><svg style="--petal-fill:#fbe4ee"><use href="#cosmos"/></svg><div class="stem"></div></div>
-    <div class="rova"><span>🏃</span></div>
+    <div class="rova"><canvas></canvas></div>
   </div>
 </header>
 
@@ -246,7 +243,7 @@
         <div class="cover journey" aria-hidden="true">
           <span class="q">Which one means “happy”?</span>
           <span class="door d1">inchhirna</span><span class="door d2 hit">hlim</span><span class="door d3">hlawh</span>
-          <span class="runner">🏃</span>
+          <span class="runner"><canvas></canvas></span>
         </div>
         <div class="body">
           <div class="tags"><span class="pill">🏆 5 levels</span><span class="pill">🏃 Runner</span><span class="pill">🗣️ Sayings</span></div>
@@ -296,9 +293,10 @@
 <footer class="wrap">
   <p>Hnahsin · Mizo Thumal Infiamna</p>
   <p>Dictionary words from J.F. Laldailova's English–Lushai Dictionary, used with permission.</p>
-  <p class="dev">Developer: <b>Maloma Thado</b></p>
+  <p class="dev">Developed by <b>Maloma Thado</b></p>
 </footer>
 
+<script src="rova.js" defer></script>
 <script src="home.js" defer></script>
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js'));</script>
 

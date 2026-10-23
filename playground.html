@@ -255,7 +255,8 @@
   .road::before { content: ""; position: absolute; left: 50%; top: 18%; bottom: 0; border-left: 3px dashed rgba(255,255,255,.55); }
   .road .ask { position: absolute; left: 0; right: 0; top: 8px; text-align: center; font-weight: 800; font-size: 26px; color: #15213a; text-shadow: 0 1px 0 rgba(255,255,255,.7); }
   .road .gate { position: absolute; width: 38%; transform: translateX(-50%); display: grid; place-items: center; height: 84px; border-radius: 18px; background: rgba(255,255,255,.88); font-size: 48px; box-shadow: 0 6px 0 rgba(0,0,0,.12); }
-  .road .runner { position: absolute; bottom: 18px; transform: translateX(-50%); font-size: 54px; transition: left .15s ease-out; }
+  .road .runner { position: absolute; bottom: 14px; transform: translateX(-50%); width: 60px; aspect-ratio: 3 / 4; transition: left .15s ease-out; }
+  .road .runner canvas { display: block; width: 100%; height: 100%; }
   .hearts { font-size: 20px; letter-spacing: 2px; }
 
   /* Dress Rova */
@@ -411,7 +412,7 @@
     <div class="modes" data-g="ru" role="group" aria-label="Words to play with"><button data-mode="pics">🖼️&nbsp; Pictures</button><button data-mode="dict">📖&nbsp; Dictionary words</button></div>
     <div class="road" id="ru-road">
       <div class="ask" id="ru-ask">Tap Start</div>
-      <div class="runner" id="ru-rova" style="left:25%">🏃</div>
+      <div class="runner" id="ru-rova" style="left:25%"><canvas aria-label="Rova"></canvas></div>
     </div>
     <p class="note">Run into the picture (or meaning) that matches the word. Tap a side of the road, swipe, or use the arrow keys.</p>
     <div class="feedback" id="ru-feedback" aria-live="polite"></div>
@@ -564,6 +565,105 @@
   <footer>Test games for Hnahsin, using 271 picture words from the live content and 1,928 dictionary words.</footer>
 </div>
 
+<script>// Rova, drawn from parts so his arms and legs can really run.
+// drawRova(ctx, phase, pose) paints him facing right in a 120 × 160 box with his feet
+// near the bottom. phase is the run cycle in radians; pose is 'run' or 'jump'.
+// Used by the home page and Rova's Journey, so he looks the same everywhere.
+(function (global) {
+  const C = {
+    skin: '#e9b48a', skinFar: '#cf9a72', hair: '#1d1b22', shirt: '#1565c0', shirtFar: '#0f4f9e',
+    stripe: '#ffc94a', shorts: '#0d2a4a', shortsFar: '#0a2038', shoe: '#ffffff', sole: '#c2185b', eye: '#1d1b22',
+  };
+  const rad = d => d * Math.PI / 180;
+
+  // A limb: two segments from a joint, angles in degrees from straight down (forward is positive).
+  function limb(ctx, x, y, a1, len1, a2, len2, w1, w2, c1, c2) {
+    const kx = x + Math.sin(rad(a1)) * len1, ky = y + Math.cos(rad(a1)) * len1;
+    const ex = kx + Math.sin(rad(a2)) * len2, ey = ky + Math.cos(rad(a2)) * len2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = c2; ctx.lineWidth = w2;
+    ctx.beginPath(); ctx.moveTo(kx, ky); ctx.lineTo(ex, ey); ctx.stroke();
+    ctx.strokeStyle = c1; ctx.lineWidth = w1;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(kx, ky); ctx.stroke();
+    return [ex, ey, a2];
+  }
+
+  function shoe(ctx, x, y, a, near) {
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(-rad(a) * .35);
+    ctx.fillStyle = near ? C.shoe : '#dfe6ee';
+    ctx.beginPath(); ctx.ellipse(5, 2, 10, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = C.sole; ctx.fillRect(-5, 5, 21, 3);
+    ctx.restore();
+  }
+
+  function leg(ctx, hip, phase, near, pose) {
+    let thigh, knee;
+    if (pose === 'jump') { thigh = near ? 55 : 20; knee = near ? -70 : -85; }
+    else {
+      thigh = 34 * Math.sin(phase);
+      // The knee folds while the leg swings forward, and straightens as it pushes back.
+      knee = -(14 + 62 * Math.max(0, Math.cos(phase)));
+    }
+    const skin = near ? C.skin : C.skinFar;
+    const [fx, fy, a] = limb(ctx, hip[0], hip[1], thigh, 25, thigh + knee, 26, 11, 10, skin, skin);
+    // Shorts cover the top half of the thigh.
+    ctx.strokeStyle = near ? C.shorts : C.shortsFar; ctx.lineWidth = 15; ctx.lineCap = 'butt';
+    ctx.beginPath(); ctx.moveTo(hip[0], hip[1]); ctx.lineTo(hip[0] + Math.sin(rad(thigh)) * 13, hip[1] + Math.cos(rad(thigh)) * 13); ctx.stroke();
+    shoe(ctx, fx, fy, a, near);
+  }
+
+  function arm(ctx, sh, phase, near, pose) {
+    let upper, fore;
+    if (pose === 'jump') { upper = near ? 120 : -55; fore = near ? 150 : -15; }
+    else { upper = -40 * Math.sin(phase); fore = upper + 78; }
+    const [hx, hy] = limb(ctx, sh[0], sh[1], upper, 20, fore, 18, 10, 8,
+      near ? C.shirt : C.shirtFar, near ? C.skin : C.skinFar);
+    ctx.fillStyle = near ? C.skin : C.skinFar;
+    ctx.beginPath(); ctx.arc(hx, hy, 4.5, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function drawRova(ctx, phase = 0, pose = 'run') {
+    const bob = pose === 'run' ? -Math.abs(Math.sin(phase)) * 5 : 0;
+    ctx.save();
+    ctx.translate(0, bob);
+    const lean = pose === 'run' ? 9 : 2;
+    const hip = [58, 96], sh = [hip[0] + Math.sin(rad(lean)) * 34, hip[1] - Math.cos(rad(lean)) * 34];
+
+    arm(ctx, sh, phase + Math.PI, false, pose);
+    leg(ctx, hip, phase + Math.PI, false, pose);
+
+    // Body: shirt with a gold stripe, shorts at the hips.
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = C.shirt; ctx.lineWidth = 26;
+    ctx.beginPath(); ctx.moveTo(hip[0], hip[1] - 6); ctx.lineTo(sh[0], sh[1] + 4); ctx.stroke();
+    ctx.strokeStyle = C.stripe; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(hip[0] - 13, hip[1] - 14); ctx.lineTo(hip[0] + 14, hip[1] - 12); ctx.stroke();
+    ctx.fillStyle = C.shorts;
+    ctx.beginPath(); ctx.ellipse(hip[0], hip[1] + 1, 15, 10, 0, 0, Math.PI * 2); ctx.fill();
+
+    leg(ctx, hip, phase, true, pose);
+
+    // Head: face, ear, hair, eye and a smile.
+    const hx = sh[0] + 6, hy = sh[1] - 22;
+    ctx.fillStyle = C.skin;
+    ctx.beginPath(); ctx.arc(hx, hy, 17, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = C.skinFar;
+    ctx.beginPath(); ctx.arc(hx - 4, hy + 2, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = C.hair;
+    ctx.beginPath(); ctx.arc(hx - 1, hy - 3, 17.5, Math.PI * .92, Math.PI * 2.08); ctx.lineTo(hx + 12, hy - 6);
+    ctx.quadraticCurveTo(hx + 2, hy - 2, hx - 6, hy - 8); ctx.quadraticCurveTo(hx - 12, hy - 2, hx - 17, hy + 4); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = C.eye;
+    ctx.beginPath(); ctx.ellipse(hx + 9, hy + 1, 2.2, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#9a4a3a'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(hx + 9, hy + 6, 4.5, rad(20), rad(110)); ctx.stroke();
+
+    arm(ctx, sh, phase, true, pose);
+    ctx.restore();
+  }
+
+  global.drawRova = drawRova;
+})(typeof window !== 'undefined' ? window : globalThis);</script>
 <script>
 const DATA = {"words":{"word.bawng":["bâwng","Cow","🐄"],"word.beram-2":["beram","Sheep","🐑"],"word.chinghne-2":["chinghnia","Wolf","🐺"],"word.jf1011.sanghal":["sanghal","wild boar","🐗"],"word.jf178.chaite":["chaite","mouse","🐁"],"word.jf178.sakei":["sakei","tiger","🐅"],"word.jf300.keite":["keite","leopard","🐆"],"word.jf300.sabengtung":["sabengtung","donkey","🫏"],"word.jf300.sakawr":["sakawr","horse","🐎"],"word.jf300.sazupui":["sazupui","rabbit","🐇"],"word.jf300.sihal":["sihal","fox","🦊"],"word.jf300.ui":["ui","dog","🐕"],"word.jf300.vawk":["vawk","pig","🐖"],"word.jf300.zawhte":["zawhte","cat","🐈"],"word.kel-2":["kel","goat","🐐"],"word.sai-2":["sâi","Elephant","🐘"],"word.sakeibaknei":["sakeibaknei","Lion","🦁"],"word.sakhi":["sakhi","Barking deer","🦌"],"word.savawm":["savawm","Bear","🐻"],"word.sazu":["sazu","Rat","🐀"],"word.sazuk-3":["sazuk","Deer","🦌"],"word.zawng":["zawng","monkey","🐒"],"word.arpa":["arpa","Rooster","🐓"],"word.arpui":["arpui","hen","🐔"],"word.choak":["choâk","Crow","🐦‍⬛"],"word.jf178.chawngzawng":["chawngzawng","sparrow","🐦"],"word.jf300.arawn":["arawn","peacock","🦚"],"word.jf300.chhimbuk":["chhimbuk","owl","🦉"],"word.jf300.parva":["parva","pigeon","🕊️"],"word.jf300.sava":["sava","bird","🐦"],"word.jf300.varak":["varak","duck","🦆"],"word.mupui":["mupui","eagle","🦅"],"word.thuro":["thuro","Dove","🕊️"],"word.vatawk":["vatâwk","Goose","🪿"],"word.vate":["vatê","Little bird","🐦"],"word.fanghmir":["fanghmir","Ant","🐜"],"word.jf178.chengkawl":["chengkawl","snail","🐌"],"word.jf300.chukchu":["chukchu","cockroach","🪳"],"word.jf300.hrik":["hrik","louse",""],"word.jf300.maimawm":["maimawm","spider","🕷️"],"word.jf300.tit":["tit","centipede",""],"word.jf300.uihli":["uihli","flea",""],"word.khuai":["khuai","Bee","🐝"],"word.khawimu":["khawimû","Bumblebee","🐝"],"word.pangang":["pangang","Caterpillar","🐛"],"word.phengphehlep":["phêngphehlep","Butterfly","🦋"],"word.tho":["tho","Fly","🪰"],"word.thosi":["thosi","Mosquito","🦟"],"word.khau":["khau","Grasshopper","🦗"],"word.chakai":["chakai","Crab","🦀"],"word.jf300.ngharul":["ngharûl","eel",""],"word.jf300.sangha":["sangha","fish","🐟"],"word.kaikuang":["kaikuang","prawn","🦐"],"word.awle":["awle","Crocodile","🐊"],"word.satel":["satel","Tortoise","🐢"],"word.balhla":["balhla","Banana","🍌"],"word.grep":["grep","Grape","🍇"],"word.jf300.serthlum":["serthlum","orange (fruit)","🍊"],"word.theihai":["theihai","Mango","🥭"],"word.ser":["ser","Lemon","🍋"],"word.kawlthei":["kawlthei","Guava",""],"word.sapthei":["sâpthei","Passion fruit",""],"word.bawkbawn":["bawkbawn","Eggplant","🍆"],"word.fanghma":["fanghma","Cucumber","🥒"],"word.hmarcha":["hmarcha","Chilli pepper","🌶️"],"word.jf300.alu":["alu","potato","🥔"],"word.jf300.zikhlum":["zikhlum","cabbage","🥬"],"word.mai":["mâi","Pumpkin","🎃"],"word.purun":["purun","Onion","🧅"],"word.jf300.sawhthing":["sawhthing","ginger","🫚"],"word.iskut":["iskut","Chayote",""],"word.jf1011.bal":["bal","taro",""],"word.jf178.thingpui":["thingpui","tea","🍵"],"word.jf178.tui":["tui","water","💧"],"word.bawnghnute":["bawnghnute","Cow's milk","🥛"],"word.arsa":["arsa","Chicken meat","🍗"],"word.vawksa":["vawksa","Pork","🥓"],"word.jf300.bawngsa":["bâwng sa","beef","🥩"],"word.sa":["sa","Meat","🥩"],"word.beng":["beng","ear","👂"],"word.ha":["ha","Tooth","🦷"],"word.hnar":["hnar","Nose","👃"],"word.mit":["mit","Eye","👁️"],"word.lei-2":["lei","Tongue","👅"],"word.sam":["sam","Hair of the head",""],"word.jf300.biang":["biang","cheek",""],"word.jf300.chal":["chal","forehead",""],"word.jf300.khabe":["khabe","chin",""],"word.jf300.mitko":["mitko","eyebrow",""],"word.ke":["ke","Foot","🦶"],"word.kut":["kut","Hand","✋"],"word.ban":["bân","arm","💪"],"word.jf300.kutzungtang":["kutzungtang","finger","☝️"],"word.jf178.kutzungpui":["kutzungpui","thumb","👍"],"word.jf300.kiu":["kiu","elbow",""],"word.jf300.koki":["koki","shoulder",""],"word.jf300.kephah":["kephah","sole of the foot",""],"word.jf178.kezungtang":["kezungtang","toe",""],"word.jf300.nu":["nu","mother","👩‍👧"],"word.jf300.pa":["pa","father","👨‍👧"],"word.jf1011.pi":["pi","grandmother","👵"],"word.jf1011.pu":["pu","grandfather","👴"],"word.jf1011.nau":["nau","younger sibling","👶"],"word.jf178.fapa":["fapa","son",""],"word.jf300.fanu":["fanu","daughter",""],"word.jf300.unaupa":["unaupa","brother",""],"word.farnu":["farnu","A man's sister",""],"word.nupui":["nupui","Wife",""],"word.pasal":["pasal","Husband",""],"word.daktawr":["daktawr","Doctor","🧑‍⚕️"],"word.jf300.zirtirtu":["zirtîrtu","teacher","🧑‍🏫"],"word.sipai":["sipai","Soldier","🪖"],"word.mistiri":["mistiri","Craftsman","🧑‍🔧"],"word.jf300.roreltu":["rorêltu","judge","🧑‍⚖️"],"word.jf300.puithiam":["puithiam","priest",""],"word.chhum":["chhum","cloud","☁️"],"word.ruah":["ruah","Rain","🌧️"],"word.ni":["ni","Sun","☀️"],"word.thla":["thla","Moon","🌙"],"word.jf300.arsi":["arsi","star","⭐"],"word.jf300.van":["vân","sky","🌌"],"word.thli":["thli","wind","🌬️"],"word.jf178.vur":["vur","snow","☃️"],"word.jf300.rial":["rial","hail","🌨️"],"word.jf300.kawlphe":["kawlphe","lightning","⚡"],"word.chhimbal":["chhimbâl","Rainbow","🌈"],"word.jf300.lui":["lui","river","🏞️"],"word.jf300.tlang":["tlang","hill","⛰️"],"word.tuipui":["tuipui","Sea","🌊"],"word.dil":["dîl","To ask for",""],"word.ngaw":["ngaw","forest","🌲"],"word.lungpui":["lungpui","Boulder","🪨"],"word.jf300.tuifinriat":["tuifinriat","ocean","🌊"],"word.jf178.ruam":["ruam","valley","🏞️"],"word.jf300.khum":["khum","bed","🛏️"],"word.jf300.kawngkhar":["kawngkhar","door","🚪"],"word.jf300.tukverh":["tukverh","window","🪟"],"word.jf300.thutthleng":["ṭhutthlêng","chair","🪑"],"word.jf178.bang":["bang","wall","🧱"],"word.lukham":["lukham","Pillow",""],"word.jf300.khawnvar":["khawnvâr","lamp","🪔"],"word.jf1011.chabi":["chabi","key","🔑"],"word.bel":["bel","pot","🍲"],"word.no":["no","Cup","☕"],"word.thleng":["thlêng","Plate","🍽️"],"word.fian":["fian","Spoon","🥄"],"word.jf300.thirkut":["thîrkut","fork","🍴"],"word.jf300.chemte":["chemte","knife","🔪"],"word.jf300.chawhtawlh":["chawhtawlh","bowl","🥣"],"word.jf300.ketli":["ketli","kettle","🫖"],"word.kawr":["kawr","Shirt","👕"],"word.jf1011.kamis":["kamis","shirt","👕"],"word.kekawr":["kekawr","Trousers","👖"],"word.pheikhawk":["pheikhawk","Shoe","👞"],"word.lukhum":["lukhum","Hat","🧢"],"word.mawza":["mawza","Sock","🧦"],"word.jf300.kawrchung":["kawrchung","coat","🧥"],"word.jf178.vawthlep":["vawthlep","sandal","🩴"],"word.jf300.kawnghren":["kâwnghrên","belt",""],"word.jf300.lehkhabu":["lehkhabu","book","📖"],"word.jf300.pensil":["pensil","pencil","✏️"],"word.lehkha":["lehkha","Paper","📄"],"word.jf300.lehkhatui":["lehkhatui","ink","🖋️"],"word.jf300.hawrawp":["hawrawp","letter of the alphabet","🔤"],"word.jf300.pakhat":["pakhat","one","1️⃣"],"word.jf178.pahnih":["pahnih","two","2️⃣"],"word.jf1011.pathum":["pathum","three","3️⃣"],"word.jf1011.pali":["pali","four","4️⃣"],"word.jf1011.panga":["panga","five","5️⃣"],"word.jf1011.paruk":["paruk","six","6️⃣"],"word.jf178.pasarih":["pasarih","seven","7️⃣"],"word.jf300.pariat":["pariat","eight","8️⃣"],"word.jf300.pakua":["pakua","nine","9️⃣"],"word.jf178.sawm":["sâwm","ten","🔟"],"word.jf1011.thawhtanni":["Thawhtanni","Monday",""],"word.jf1011.thawhlehni":["Thawhlehni","Tuesday",""],"word.jf1011.nilaini":["Nilaini","Wednesday",""],"word.jf1011.ningani":["Ningani","Thursday",""],"word.jf1011.zirtawpni":["Zirtawpni","Friday",""],"word.jf1011.inrinni":["Inrinni","Saturday",""],"word.jf1011.pathianni":["Pathianni","Sunday",""],"word.jf300.zing":["zîng","morning","🌅"],"word.jf300.chhun":["chhun","daytime","☀️"],"word.jf300.tlai":["tlai","evening","🌆"],"word.jf300.zan":["zân","night","🌃"],"word.jf300.khawvar":["khawvâr","dawn","🌅"],"word.jf300.thimhlim":["thimhlim","dusk","🌆"],"word.sen":["sen","Red","🔴"],"word.dum":["dum","Black","⚫"],"word.var":["vâr","White","⚪"],"word.jf300.hring":["hring","green","🟢"],"word.jf300.dumpawl":["dumpâwl","blue","🔵"],"word.jf178.uk":["uk","brown","🟤"],"word.jf300.vutbuak":["vutbuak","grey","🩶"],"word.buang":["buang","Brown","🟤"],"word.khuang":["khuang","drum","🥁"],"word.phenglawng":["phênglâwng","Flute","🪈"],"word.tingtang":["ṭingṭang","Stringed musical instrument","🎸"],"word.darbu":["darbu","Set of small gongs",""],"word.bengbung":["bengbung","Traditional wooden xylophone",""],"word.jf178.tlan":["tlân","run","🏃"],"word.zuang":["zuang","To jump",""],"word.thlawk":["thlawk","To fly","🪽"],"word.jf178.hleuh":["hleuh","swim","🏊"],"word.jf300.kal":["kal","go","🚶"],"word.lawn":["lâwn","To climb","🧗"],"word.jf300.bawkvak":["bawkvak","crawl",""],"word.jf300.liluh":["liluh","dive","🤿"],"word.jf300.en":["en","look at","👀"],"word.jf300.hmu":["hmu","find","👀"],"word.jf300.ngaithla":["ngaithla","listen","👂"],"word.thlir":["thlîr","To look at","👀"],"word.enthla":["enthlâ","To watch","👀"],"word.jf300.ei":["ei","eat",""],"word.dawlh":["dawlh","To swallow whole",""],"word.jf178.lem":["lem","swallow",""],"word.jf300.thial":["thial","chew",""],"word.jf1011.hip":["hip","suck",""],"word.jf178.tem":["tem","taste",""],"word.thui":["ṭhui","To sew","🪡"],"word.jf178.tah":["tah","weave",""],"word.jf300.laphiar":["la phiar","knit","🧶"],"word.tuh":["tuh","To sow","🌱"],"word.jf300.phun":["phun","plant","🌱"],"word.jf300.seng":["seng","harvest","🌾"],"word.hlothlo":["hlo thlo","To weed",""],"word.jf178.thlum":["thlum","sweet",""],"word.jf1011.al":["al","salty",""],"word.jf178.thak":["thak","spicy",""],"word.jf300.kha":["khâ","bitter",""],"word.jf178.thur":["thur","sour",""],"word.jf300.lian":["lian","big",""],"word.jf178.te":["tê","small",""],"word.sei":["sei","Long",""],"word.tawi":["tawi","Short",""],"word.sang":["sâng","Tall",""],"word.jf300.hniam":["hniam","low",""],"word.jf178.cher":["cher","thin",""],"word.jf178.chhah":["chhah","thick",""],"word.jf300.hlim":["hlim","happy",""],"word.lungngai":["lungngai","Sad",""],"word.jf300.thinur":["thinur","angry",""],"word.hlau":["hlau","Afraid",""],"word.lungawi":["lungâwi","Pleased",""],"word.jf1011.ngui":["ngui","sad",""],"word.lum":["lum","Hot",""],"word.vawt":["vawt","cold","🥶"],"word.hul":["hul","Dry",""],"word.huh":["huh","Wet",""],"word.nimin":["nimin","Yesterday",""],"word.jf178.vawiin":["vawiin","today",""],"word.jf1011.naktuk":["naktuk","tomorrow",""],"word.jf1011.hmanni":["hmanni","day before yesterday",""],"word.jf1011.tu":["tu","who",""],"word.jf1011.khawiah":["khawiah","where",""],"word.jf1011.engtikah":["engtikah","when",""],"word.jf1011.engvangin":["engvangin","why",""],"word.jf178.engtiangin":["engtiangin","how",""],"word.jf178.thing":["thing","tree","🌳"],"word.hnah":["hnah","Leaf","🍃"],"word.pangpar":["pangpâr","Flower","🌸"],"word.jf300.mau":["mau","bamboo","🎋"],"word.zung":["zung","Root",""],"word.jf300.thingtang":["thingṭang","branch of a tree",""],"word.jf300.katchat":["katchat","fern","🌿"],"word.jf300.hrei":["hrei","axe","🪓"],"word.hreipui":["hreipui","Large axe","🪓"],"word.jf300.tuboh":["tuboh","hammer","🔨"],"word.chem":["chem","Dao","🔪"],"word.favah":["favah","Sickle",""],"word.tuthlawh":["tuthlawh","Hoe",""],"word.in":["in","House","🏠"],"word.pan":["pan","Thin",""]},"food":["word.balhla","word.grep","word.jf300.serthlum","word.theihai","word.ser","word.bawkbawn","word.fanghma","word.hmarcha","word.jf300.alu","word.jf300.zikhlum","word.mai","word.purun","word.jf300.sawhthing","word.arsa","word.vawksa","word.jf300.bawngsa","word.sa","word.jf178.thingpui","word.jf178.tui","word.bawnghnute"],"numbers":["word.jf300.pakhat","word.jf178.pahnih","word.jf1011.pathum","word.jf1011.pali","word.jf1011.panga","word.jf1011.paruk","word.jf178.pasarih","word.jf300.pariat","word.jf300.pakua","word.jf178.sawm"],"spy":["word.bawng","word.beram-2","word.chinghne-2","word.jf1011.sanghal","word.jf178.chaite","word.jf178.sakei","word.jf300.keite","word.jf300.sabengtung","word.jf300.sakawr","word.jf300.sazupui","word.jf300.sihal","word.jf300.ui","word.jf300.vawk","word.jf300.zawhte","word.kel-2","word.sai-2","word.sakeibaknei","word.sakhi","word.savawm","word.sazu","word.zawng","word.arpa","word.arpui","word.choak","word.jf178.chawngzawng","word.jf300.arawn","word.jf300.chhimbuk","word.jf300.parva","word.jf300.varak","word.mupui","word.vatawk","word.fanghmir","word.jf178.chengkawl","word.jf300.chukchu","word.jf300.maimawm","word.khuai","word.pangang","word.phengphehlep","word.tho","word.thosi","word.khau","word.chakai","word.jf300.sangha","word.kaikuang","word.awle","word.satel","word.balhla","word.grep","word.jf300.serthlum","word.theihai","word.ser","word.bawkbawn","word.fanghma","word.hmarcha","word.jf300.alu","word.jf300.zikhlum","word.mai","word.purun","word.jf300.sawhthing","word.daktawr","word.jf300.zirtirtu","word.sipai","word.mistiri","word.jf300.roreltu","word.chhum","word.ruah","word.ni","word.thla","word.jf300.arsi","word.jf300.van","word.thli","word.jf178.vur","word.jf300.rial","word.jf300.kawlphe","word.chhimbal","word.jf300.lui","word.jf300.tlang","word.tuipui","word.ngaw","word.lungpui","word.jf300.khum","word.jf300.kawngkhar","word.jf300.tukverh","word.jf300.thutthleng","word.jf178.bang","word.jf300.khawnvar","word.jf1011.chabi","word.bel","word.no","word.thleng","word.fian","word.jf300.thirkut","word.jf300.chemte","word.jf300.chawhtawlh","word.jf300.ketli","word.kawr","word.kekawr","word.pheikhawk","word.lukhum","word.mawza","word.jf300.kawrchung","word.jf178.vawthlep","word.jf300.lehkhabu","word.jf300.pensil","word.lehkha","word.jf300.lehkhatui","word.jf300.hawrawp","word.khuang","word.phenglawng","word.tingtang","word.jf178.thing","word.hnah","word.pangpar","word.jf300.mau","word.jf300.katchat","word.jf300.hrei","word.jf300.tuboh"],"groups":[{"id":"mammals","family":"creatures","label":"animals with four legs","words":["word.bawng","word.beram-2","word.chinghne-2","word.jf1011.sanghal","word.jf178.chaite","word.jf178.sakei","word.jf300.keite","word.jf300.sabengtung","word.jf300.sakawr","word.jf300.sazupui","word.jf300.sihal","word.jf300.ui","word.jf300.vawk","word.jf300.zawhte","word.kel-2","word.sai-2","word.sakeibaknei","word.sakhi","word.savawm","word.sazu","word.sazuk-3","word.zawng"]},{"id":"birds","family":"creatures","label":"birds","words":["word.arpa","word.arpui","word.choak","word.jf178.chawngzawng","word.jf300.arawn","word.jf300.chhimbuk","word.jf300.parva","word.jf300.sava","word.jf300.varak","word.mupui","word.thuro","word.vatawk","word.vate"]},{"id":"small_creatures","family":"creatures","label":"insects and small creatures","words":["word.fanghmir","word.jf178.chengkawl","word.jf300.chukchu","word.jf300.hrik","word.jf300.maimawm","word.jf300.tit","word.jf300.uihli","word.khuai","word.khawimu","word.pangang","word.phengphehlep","word.tho","word.thosi","word.khau"]},{"id":"water_animals","family":"creatures","label":"animals that live in water","words":["word.chakai","word.jf300.ngharul","word.jf300.sangha","word.kaikuang","word.awle","word.satel"]},{"id":"fruit","family":"food","label":"fruit","words":["word.balhla","word.grep","word.jf300.serthlum","word.theihai","word.ser","word.kawlthei","word.sapthei"]},{"id":"vegetables","family":"food","label":"vegetables","words":["word.bawkbawn","word.fanghma","word.hmarcha","word.jf300.alu","word.jf300.zikhlum","word.mai","word.purun","word.jf300.sawhthing","word.iskut","word.jf1011.bal"]},{"id":"head","family":"body","label":"parts of the head","words":["word.beng","word.ha","word.hnar","word.mit","word.lei-2","word.sam","word.jf300.biang","word.jf300.chal","word.jf300.khabe","word.jf300.mitko"]},{"id":"limbs","family":"body","label":"parts of the arms and legs","words":["word.ke","word.kut","word.ban","word.jf300.kutzungtang","word.jf178.kutzungpui","word.jf300.kiu","word.jf300.koki","word.jf300.kephah","word.jf178.kezungtang"]},{"id":"family","family":"people","label":"family","words":["word.jf300.nu","word.jf300.pa","word.jf1011.pi","word.jf1011.pu","word.jf1011.nau","word.jf178.fapa","word.jf300.fanu","word.jf300.unaupa","word.farnu","word.nupui","word.pasal"]},{"id":"jobs","family":"people","label":"people's work","words":["word.daktawr","word.jf300.zirtirtu","word.sipai","word.mistiri","word.jf300.roreltu","word.jf300.puithiam"]},{"id":"sky","family":"nature","label":"the sky and weather","words":["word.chhum","word.ruah","word.ni","word.thla","word.jf300.arsi","word.jf300.van","word.thli","word.jf178.vur","word.jf300.rial","word.jf300.kawlphe","word.chhimbal"]},{"id":"land","family":"nature","label":"land and water","words":["word.jf300.lui","word.jf300.tlang","word.tuipui","word.dil","word.ngaw","word.lungpui","word.jf300.tuifinriat","word.jf178.ruam"]},{"id":"house","family":"home","label":"things in a house","words":["word.jf300.khum","word.jf300.kawngkhar","word.jf300.tukverh","word.jf300.thutthleng","word.jf178.bang","word.lukham","word.jf300.khawnvar","word.jf1011.chabi"]},{"id":"kitchen","family":"home","label":"kitchen things","words":["word.bel","word.no","word.thleng","word.fian","word.jf300.thirkut","word.jf300.chemte","word.jf300.chawhtawlh","word.jf300.ketli"]},{"id":"clothes","family":"home","label":"clothes","words":["word.kawr","word.jf1011.kamis","word.kekawr","word.pheikhawk","word.lukhum","word.mawza","word.jf300.kawrchung","word.jf178.vawthlep","word.jf300.kawnghren"]},{"id":"school","family":"school","label":"school things","words":["word.jf300.lehkhabu","word.jf300.pensil","word.lehkha","word.jf300.lehkhatui","word.jf300.hawrawp"]},{"id":"numbers","family":"school","label":"numbers","words":["word.jf300.pakhat","word.jf178.pahnih","word.jf1011.pathum","word.jf1011.pali","word.jf1011.panga","word.jf1011.paruk","word.jf178.pasarih","word.jf300.pariat","word.jf300.pakua","word.jf178.sawm"]},{"id":"days","family":"time","label":"days of the week","words":["word.jf1011.thawhtanni","word.jf1011.thawhlehni","word.jf1011.nilaini","word.jf1011.ningani","word.jf1011.zirtawpni","word.jf1011.inrinni","word.jf1011.pathianni"]},{"id":"daytime","family":"time","label":"times of day","words":["word.jf300.zing","word.jf300.chhun","word.jf300.tlai","word.jf300.zan","word.jf300.khawvar","word.jf300.thimhlim"]},{"id":"colours","family":"colours","label":"colours","words":["word.sen","word.dum","word.var","word.jf300.hring","word.jf300.dumpawl","word.jf178.uk","word.jf300.vutbuak","word.buang"]},{"id":"music","family":"music","label":"musical instruments","words":["word.khuang","word.phenglawng","word.tingtang","word.darbu","word.bengbung"]},{"id":"moving","family":"actions","label":"ways of moving","words":["word.jf178.tlan","word.zuang","word.thlawk","word.jf178.hleuh","word.jf300.kal","word.lawn","word.jf300.bawkvak","word.jf300.liluh"]},{"id":"senses","family":"actions","label":"seeing and hearing","words":["word.jf300.en","word.jf300.hmu","word.jf300.ngaithla","word.thlir","word.enthla"]},{"id":"eating","family":"actions","label":"eating and drinking","words":["word.jf300.ei","word.dawlh","word.jf178.lem","word.jf300.thial","word.jf1011.hip","word.jf178.tem"]},{"id":"tastes","family":"describing","label":"tastes","words":["word.jf178.thlum","word.jf1011.al","word.jf178.thak","word.jf300.kha","word.jf178.thur"]},{"id":"sizes","family":"describing","label":"sizes and shapes","words":["word.jf300.lian","word.jf178.te","word.sei","word.tawi","word.sang","word.jf300.hniam","word.jf178.cher","word.jf178.chhah"]},{"id":"feelings","family":"describing","label":"feelings","words":["word.jf300.hlim","word.lungngai","word.jf300.thinur","word.hlau","word.lungawi","word.jf1011.ngui"]},{"id":"questions","family":"questions","label":"question words","words":["word.jf1011.tu","word.jf1011.khawiah","word.jf1011.engtikah","word.jf1011.engvangin","word.jf178.engtiangin"]},{"id":"plants","family":"nature","label":"trees and plants","words":["word.jf178.thing","word.hnah","word.pangpar","word.jf300.mau","word.zung","word.jf300.thingtang","word.jf300.katchat"]},{"id":"tools","family":"home","label":"tools","words":["word.jf300.hrei","word.hreipui","word.jf300.tuboh","word.chem","word.favah","word.tuthlawh"]}],"overlap":[["plants","fruit"],["plants","vegetables"],["eating","tastes"],["eating","drinks"],["hot_cold","sky"],["tools","kitchen"],["farming","plants"],["farming","vegetables"],["senses","head"]],"sets":{"clothes":{"head":["word.lukhum"],"top":["word.kawr"],"outer":["word.jf300.kawrchung"],"legs":["word.kekawr"],"socks":["word.mawza"],"feet":["word.pheikhawk","word.jf178.vawthlep"]},"sizes":[["word.jf300.lian","word.jf178.te"],["word.sei","word.tawi"],["word.sang","word.jf300.hniam"],["word.jf178.chhah","word.pan"]],"sizeThings":{"big":["word.jf300.ui","word.jf178.sakei","word.in"],"long":["word.jf300.pensil"],"tall":["word.jf178.thing"],"thick":["word.jf300.lehkhabu"]},"days":["word.jf1011.thawhtanni","word.jf1011.thawhlehni","word.jf1011.nilaini","word.jf1011.ningani","word.jf1011.zirtawpni","word.jf1011.inrinni","word.jf1011.pathianni"],"times":["word.jf300.khawvar","word.jf300.zing","word.jf300.chhun","word.jf300.tlai","word.jf300.thimhlim","word.jf300.zan"],"nearby":{"yesterday":"word.nimin","today":"word.jf178.vawiin","tomorrow":"word.jf1011.naktuk"},"body":["word.beng","word.ha","word.hnar","word.mit","word.lei-2","word.ke","word.kut","word.ban","word.jf300.kutzungtang","word.jf178.kutzungpui"],"colours":{"word.sen":"#e53935","word.dum":"#222831","word.var":"#ffffff","word.jf300.hring":"#43a047","word.jf300.dumpawl":"#1e88e5","word.jf178.uk":"#7b5236","word.jf300.vutbuak":"#9aa3ad"},"family":{"word.jf1011.pi":"👵","word.jf1011.pu":"👴","word.jf300.nu":"👩","word.jf300.pa":"👨","word.farnu":"👧","word.jf1011.nau":"👶"},"weather":["word.chhum","word.ruah","word.ni","word.thli","word.jf178.vur","word.jf300.kawlphe","word.chhimbal"]}};
 const W = DATA.words;           // id -> [mizo, english, emoji]
@@ -990,6 +1090,16 @@ tuNew();
 // Rova runs up the road; a pair of pictures comes down. Be in the lane of
 // the picture the word names. Three hearts; it speeds up as you go.
 let ru = { on: false, lane: 0, gates: null, speed: 0, score: 0, hearts: 3, last: 0 };
+// Rova's legs run while the game runs (rova.js draws him).
+function ruDraw(phase) {
+  const c = $('ru-rova').firstElementChild, ctx = c.getContext('2d'), dpr = Math.min(devicePixelRatio || 1, 3);
+  if (!c.clientWidth) return;
+  if (c.width !== Math.round(c.clientWidth * dpr)) { c.width = Math.round(c.clientWidth * dpr); c.height = Math.round(c.clientHeight * dpr); }
+  ctx.setTransform(c.width / 120, 0, 0, c.height / 160, 0, 0);
+  ctx.clearRect(0, 0, 120, 160);
+  drawRova(ctx, phase, 'run');
+}
+document.addEventListener('showgame', e => { if (e.detail === 'run') ruDraw(.6); });
 function ruMove(lane) { ru.lane = lane; $('ru-rova').style.left = lane ? '75%' : '25%'; }
 function ruGate() {
   const [a, b] = pickThings('ru', 2);
@@ -1007,6 +1117,7 @@ function ruGate() {
 function ruTick(t) {
   if (!ru.on) return;
   const dt = Math.min(50, t - (ru.last || t)); ru.last = t;
+  ruDraw(t / (90 - Math.min(40, ru.speed)));
   const g = ru.gates;
   g.y += ru.speed * dt / 1000;
   g.els.forEach(el => el.style.top = g.y + '%');
