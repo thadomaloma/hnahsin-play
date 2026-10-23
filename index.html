@@ -174,9 +174,80 @@
   footer .dev { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 14px; }
   footer .dev b { color: var(--ink); }
   footer .ver a { color: var(--accent-text); }
+
+  /* ------------------------------------------------ more motion (home.js) */
+  /* How far down the page you are */
+  .progress { position: fixed; inset: 0 0 auto 0; height: 4px; z-index: 50; transform-origin: 0 50%; transform: scaleX(0); background: linear-gradient(90deg, #f06292, #ffc94a, #6dbe5e, #3c9fea); pointer-events: none; }
+  html:not(.js) .progress { display: none; }
+
+  /* A shine that sweeps across the gold buttons now and then */
+  .btn.gold::before { content: ""; position: absolute; inset: 0 auto 0 -60%; width: 40%; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .7), transparent); transform: skewX(-18deg); animation: shine 5s ease-in-out infinite; pointer-events: none; }
+  @keyframes shine { 0%, 70% { left: -60%; } 100% { left: 130%; } }
+
+  /* Word of the day: a card that turns over. It turns edge-on, changes side and turns back
+     (rather than using two faces, which Safari does not hide reliably). */
+  .wotd-row { display: grid; justify-items: center; gap: 14px; margin-top: 22px; }
+  .flip { position: relative; width: min(100%, 360px); aspect-ratio: 7 / 5; padding: 0; border: 0; background: none; cursor: pointer; perspective: 1100px; color: var(--on-light); font: inherit; -webkit-tap-highlight-color: transparent; }
+  .flip .face { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 4px; border-radius: 28px; box-shadow: 0 6px 0 rgba(13, 71, 161, .18), var(--shadow-2); background: radial-gradient(circle at 30% 20%, #fff 0 30%, #fff6dd 70%); border: 3px solid #fff; }
+  .flip.over .face { background: linear-gradient(135deg, #ffd66b, #ffc94a 50%, #f2a516); border-color: #fff3cf; }
+  .flip .face::after { content: ""; position: absolute; inset: 10px; border: 2px dashed rgba(194, 24, 91, .22); border-radius: 20px; pointer-events: none; }
+  .flip .e { font-style: normal; font-size: clamp(54px, 15vw, 72px); line-height: 1; animation: bob 2.6s ease-in-out infinite; }
+  .flip .m { font-family: var(--font-display); font-size: clamp(38px, 11vw, 52px); line-height: 1.05; color: var(--coral); }
+  .flip.over .m { font-size: clamp(34px, 10vw, 46px); color: #3d2600; }
+  .flip .sub { font-weight: 800; font-size: 18px; color: #6b4d12; }
+  .flip .hint { margin-top: 6px; font-size: 14px; font-weight: 700; color: #5d6a7e; }
+  .flip.over .hint { color: #6b4d12; }
+  @keyframes bob { 50% { transform: translateY(-6px) rotate(-4deg); } }
+  .confetti { position: absolute; width: 8px; height: 12px; border-radius: 2px; pointer-events: none; z-index: 3; }
+
+  /* Playground cover: the tiles turn over to show the game */
+  .cover.lab { perspective: 700px; }
+  .cover.lab span.name { background: #ffc94a; color: #3d2600; font-size: clamp(12px, 2.6vw, 14px); font-weight: 800; line-height: 1.1; text-align: center; padding: 4px; }
+
+  /* Touch and learn cover: a name tag that moves round the picture */
+  .cover.things .pin { position: absolute; z-index: 2; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #c2185b; border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .3); transition: left .7s var(--ease), top .7s var(--ease); }
+  .cover.things .pin::after { content: ""; position: absolute; inset: -9px; border-radius: 50%; border: 3px solid #c2185b; animation: ping 1.4s ease-out infinite; }
+  @keyframes ping { from { transform: scale(.4); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+  .cover.things .q.moving { transition: left .7s var(--ease), top .7s var(--ease); }
+  .cover.things .q b { color: var(--coral); }
+  .cover.things .q.pop { animation: pop .45s var(--ease); }
+
+  /* How you learn: the icons hop in, and wiggle when touched */
+  [data-reveal].in .ico { animation: icon-in .8s var(--ease) calc(var(--d, 0ms) + 250ms) both; }
+  @keyframes icon-in { from { transform: scale(0) rotate(-30deg); } 60% { transform: scale(1.18) rotate(8deg); } to { transform: none; } }
+  .why .card { transition: transform .3s var(--ease), box-shadow .3s var(--ease); }
+  .why .card:hover { transform: translateY(-4px); box-shadow: var(--shadow-2); }
+  .why .card:hover .ico, .why .card:active .ico { animation: wobble .6s var(--ease); }
+  @keyframes wobble { 25% { transform: rotate(-12deg) scale(1.1); } 60% { transform: rotate(8deg); } }
+
+  /* The app card: the icon floats in front of slowly turning rays */
+  .app { position: relative; overflow: hidden; isolation: isolate; }
+  .app::before { content: ""; position: absolute; z-index: -1; width: 520px; aspect-ratio: 1; left: -130px; top: 50%; margin-top: -260px; background: repeating-conic-gradient(rgba(255, 255, 255, .09) 0 10deg, transparent 10deg 20deg); border-radius: 50%; animation: spin 60s linear infinite; }
+  @media (max-width: 520px) { .app::before { left: 50%; margin-left: -260px; top: 0; } }
+  .app img { animation: float 4s ease-in-out infinite; }
+  @keyframes spin { to { transform: rotate(1turn); } }
+  @keyframes float { 50% { transform: translateY(-8px) rotate(2deg); } }
+
+  /* At night (dark mode) a few stars twinkle behind the page */
+  .stars { position: fixed; inset: 0; z-index: -1; pointer-events: none; display: none; }
+  .stars i { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff; opacity: .2; animation: twinkle var(--t, 3s) ease-in-out infinite; animation-delay: var(--d, 0s); }
+  @keyframes twinkle { 50% { opacity: .85; transform: scale(1.4); } }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .stars { display: block; } }
+  :root[data-theme="dark"] .stars { display: block; }
+
+  /* Back to the top: a cosmos that spins */
+  .top-btn { display: inline-grid; justify-items: center; gap: 2px; margin: 0 auto 18px; padding: 6px 12px; border: 0; background: none; color: var(--accent-text); font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; }
+  .top-btn svg { width: 44px; height: 44px; transition: transform .8s var(--ease); }
+  .top-btn:hover svg, .top-btn:focus-visible svg { transform: rotate(180deg) scale(1.1); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .btn.gold::before, .flip .e, .cover.things .pin::after, .app::before, .app img, .stars i { animation: none; }
+  }
 </style>
 </head>
 <body>
+<div class="progress" aria-hidden="true"></div>
+<div class="stars" aria-hidden="true"></div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
@@ -249,6 +320,17 @@
     <div class="row reverse"></div>
   </div>
 
+  <section aria-labelledby="wotd-title">
+    <p class="eyebrow">Word of the day</p>
+    <h2 id="wotd-title">Today's Mizo word</h2>
+    <div class="wotd-row">
+      <button class="flip" id="wotd" type="button" aria-live="polite">
+        <span class="face"><i class="e">🐕</i><b class="m">ui</b><span class="sub" hidden></span><span class="hint">Tap to see what it means</span></span>
+      </button>
+      <button class="btn light" id="wotd-next" type="button">Another word</button>
+    </div>
+  </section>
+
   <section aria-labelledby="games-title">
     <p class="eyebrow">Play now</p>
     <h2 id="games-title">Pick a game</h2>
@@ -280,7 +362,7 @@
       </a>
 
       <a class="card game wide" href="things.html">
-        <div class="cover things" aria-hidden="true"><span class="q">tukverh · window</span></div>
+        <div class="cover things" aria-hidden="true"><span class="pin" hidden></span><span class="q">tukverh · window</span></div>
         <div class="body">
           <div class="tags"><span class="pill">🆕 New</span><span class="pill">👆 Tap and turn</span><span class="pill">🏠 A Mizo house</span></div>
           <h3>Touch and learn</h3>
@@ -315,6 +397,7 @@
 </main>
 
 <footer class="wrap">
+  <button class="top-btn" id="to-top" type="button"><svg aria-hidden="true" style="--petal-fill:#f06292"><use href="#cosmos"/></svg>Back to the top</button>
   <p>Hnahsin · Mizo Thumal Infiamna</p>
   <p>Dictionary words from J.F. Laldailova's English–Lushai Dictionary, used with permission.</p>
   <p>We count which games are played, without cookies or anything that tells who you are.</p>
@@ -324,7 +407,7 @@
 
 <script src="stats.js?v=39ba31d1" async></script>
 <script src="rova.js?v=f71d0f8b" defer></script>
-<script src="home.js?v=a352c5a2" defer></script>
+<script src="home.js?v=d4fc66f8" defer></script>
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js'));</script>
 
 </body>
