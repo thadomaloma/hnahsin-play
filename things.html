@@ -303,15 +303,17 @@
   // ---------- render ----------
   // scene: { ground: [shapes drawn first, in order], groundDecals: [...], clip: [3D points of the ground top],
   //          items: [shapes sorted far to near] }
-  // o: { tint(colour) → colour, hl: part to highlight, ink: line weight, wobble: pen look strength }
+  // o: { tint(colour) → colour, hl: part to highlight, ink: line weight, wobble: pen look strength,
+  //      light: direction toward the sun (unit vector) }
   function render(sc, cam, o = {}) {
     WOB = o.wobble || 0;
+    const Lt = o.light || LIGHT;   // where the sun is: shading and shadows follow it
     const T = o.tint || (c => c), W = o.ink || 1, out = [];
     const P = cam.P, d3 = (pts, open) => d2(pts.map(P), open);
     const tag = part => part ? ` data-p="${part}"${part === o.hl ? ' class="hl"' : ''}` : '';
     const col = (c, glow) => glow ? c : T(c);
     const depthOf = p => p._d ?? (p._d = cam.depth(p.c && p.t === 'ball' ? p.c : centroid(vertsOf(p))) + (p.bias || 0));
-    const light2 = (() => { const s = P(LIGHT), l = Math.hypot(s[0], s[1]) || 1; return [s[0] / l, s[1] / l]; })();
+    const light2 = (() => { const s = P(Lt), l = Math.hypot(s[0], s[1]) || 1; return [s[0] / l, s[1] / l]; })();
 
     function decal(d, part) {
       const fill = d.fill ? col(d.fill, d.glow) : 'none';
@@ -327,7 +329,7 @@
           for (const f of p.faces) if (f.both || dot(f.n, cam.view) > 1e-4) vis.push([cam.depth(centroid(f.pts)), f]);
           vis.sort((a, b) => a[0] - b[0]);
           for (const [, f] of vis) {
-            const fill = f.fill ? col(f.fill, f.glow) : T(tone(f.pal, dot(f.n, LIGHT)));
+            const fill = f.fill ? col(f.fill, f.glow) : T(tone(f.pal, dot(f.n, Lt)));
             const part = f.part ?? p.part;   // a face takes its group's name when it has none
             out.push(`<path d="${d3(f.pts)}" fill="${fill}" stroke="${INK}" stroke-width="${f1(W * (p.w || 1))}" stroke-linejoin="round"${tag(part)}/>`);
             if (f.decals) for (const d of f.decals) decal(d, part);
@@ -354,7 +356,7 @@
           for (let i = 0; i < N; i++) {
             const a = (i + 0.5) / N * 2 * Math.PI, n = norm([Math.cos(a), Math.sin(a), slope]);
             if (dot(n, cam.view) <= 0) continue;
-            const fill = T(tone(p.pal, dot(n, LIGHT))), j = (i + 1) % N;
+            const fill = T(tone(p.pal, dot(n, Lt))), j = (i + 1) % N;
             s += `<path d="${d3([B[i], B[j], U[j], U[i]])}" fill="${fill}" stroke="${fill}" stroke-width=".6"/>`;
           }
           for (const z of p.bands || []) {
@@ -380,7 +382,7 @@
         }
         case 'poly': {
           let n = newell(p.pts); if (dot(n, cam.view) < 0) n = mul(n, -1);
-          const fill = p.fill ? col(p.fill, p.glow) : T(tone(p.pal, dot(n, LIGHT)));
+          const fill = p.fill ? col(p.fill, p.glow) : T(tone(p.pal, dot(n, Lt)));
           out.push(`<path d="${d3(p.pts)}" fill="${fill}" stroke="${p.ink === false ? fill : INK}" stroke-width="${f1(W * (p.w || 0.9))}" stroke-linejoin="round"${tag(p.part)}/>`);
           break;
         }
@@ -396,7 +398,7 @@
     function shadow(p) {
       if (p.shadow === false) return '';
       if (p.t === 'group') return p.kids.map(shadow).join('');
-      const pts = vertsOf(p).map(v => { const z = Math.max(0, v[2]); return P([v[0] - LIGHT[0] * z / LIGHT[2], v[1] - LIGHT[1] * z / LIGHT[2], 0]); });
+      const pts = vertsOf(p).map(v => { const z = Math.max(0, v[2]); return P([v[0] - Lt[0] * z / Lt[2], v[1] - Lt[1] * z / Lt[2], 0]); });
       const h = hull(pts);
       return h.length > 2 ? `<path d="${d2(h)}"/>` : '';
     }
@@ -448,7 +450,8 @@ const HOUSE = (() => {
   const rnd = (i, k) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
 
   function init() {
-    return { t: 0, door: 0, doorT: 0, win: 0, winT: 0, night: 0, nightT: 0, rain: 0, rainT: 0,
+    return { t: 0, door: 0, doorT: 0, win: 0, winT: 0, night: 0, tod: 1, todT: 1, rain: 0, rainT: 0, bow: 0,
+      wind: 0, windT: 0, cloudX: 250,
       fire: false, puffs: [], puffClock: 0, hen: 0.6, peck: 0, catWake: 0, roof: 'red',
       inside: 0, insideT: 0, eggs: [{ x: 40, y: 64 }], eggClock: 6, got: 0, pig: 0, pigHop: 0 };
   }
@@ -457,7 +460,13 @@ const HOUSE = (() => {
     s.t += dt;
     s.door = toward(s.door, s.doorT, dt * 1.4);
     s.win = toward(s.win, s.winT, dt * 1.4);
-    s.night = toward(s.night, s.nightT, dt * 0.8);
+    // The time of day moves on round the clock (zîng → chhun → tlai → zân → zîng).
+    s.tod = toward(s.tod, s.todT, dt * 0.5);
+    if (s.tod >= 4) { s.tod -= 4; s.todT -= 4; }
+    s.night = timeAt(s).night;
+    s.wind = toward(s.wind, s.windT, dt * 0.7);
+    s.cloudX += dt * (5 + s.wind * 22);
+    s.bow = Math.max(0, s.bow - dt);
     s.rain = toward(s.rain, s.rainT, dt * 0.8);
     s.catWake = Math.max(0, s.catWake - dt);
     // The hen walks her round in the yard and stops now and then to peck; at night she sleeps.
@@ -480,13 +489,40 @@ const HOUSE = (() => {
       const open = s.inside > 0.5;
       s.puffs.push({ x: (open ? -43 : -25) + (Math.random() - 0.5) * 4, y: (open ? -23 : 4 + Math.random() * 14) + (Math.random() - 0.5) * 4, z: open ? 32 : 80, age: 0 });
     }
-    for (const p of s.puffs) { p.age += dt; p.z += dt * 9; p.x -= dt * 3; p.y += dt * 4; }
+    for (const p of s.puffs) { p.age += dt; p.z += dt * (9 - s.wind * 3); p.x -= dt * (3 + s.wind * 8); p.y += dt * (4 + s.wind * 16); }
     s.puffs = s.puffs.filter(p => p.age < 4.2);
     return true;
   }
 
-  // Night and rain darken every colour except the lights.
-  const tint = s => c => mix(mix(c, '#7d8794', s.rain * 0.2), '#1e2850', s.night * 0.52);
+  // ---------- the time of day ----------
+  // Each time has its sky, how dark and how warm the light is, where the sun is on the page,
+  // and where it shines from (az: compass angle, h: how high), which turns the shadows.
+  const TIMES = [
+    { word: 'zîng', en: 'Morning', top: '#9cc6ec', low: '#fde0c4', night: 0, warm: 0.12, sun: [-112, -80], sunC: '#ffd36b', az: -75, h: 0.55 },
+    { word: 'chhun', en: 'Daytime', top: '#a9d8f5', low: '#e3f3fb', night: 0, warm: 0, sun: [-20, -122], sunC: '#ffc94a', az: -22, h: 1.55 },
+    { word: 'tlai', en: 'Evening', top: '#7290cf', low: '#ffb48a', night: 0.12, warm: 0.22, sun: [112, -80], sunC: '#ff8a4a', az: 35, h: 0.55 },
+    { word: 'zân', en: 'Night', top: '#0e1631', low: '#2b3866', night: 1, warm: 0, sun: [112, -40], sunC: '#ff8a4a', az: -22, h: 1.2 },
+  ];
+  const lerp = (a, b, f) => a + (b - a) * f;
+  function timeAt(s) {
+    const i = Math.floor(s.tod) % 4, f = s.tod - Math.floor(s.tod), a = TIMES[i], b = TIMES[(i + 1) % 4];
+    const sunA = i === 3 ? [-112, -40] : a.sun;   // the sun comes back up on the left
+    return {
+      top: mix(a.top, b.top, f), low: mix(a.low, b.low, f), night: lerp(a.night, b.night, f), warm: lerp(a.warm, b.warm, f),
+      sun: [lerp(sunA[0], b.sun[0], f), lerp(sunA[1], b.sun[1], f)], sunC: mix(a.sunC, b.sunC, f),
+      az: lerp(a.az, b.az, f), h: lerp(a.h, b.h, f),
+    };
+  }
+  function light(s) {
+    const T = timeAt(s), a = T.az * Math.PI / 180;
+    return Ink3D.norm([Math.cos(a), Math.sin(a), T.h]);
+  }
+
+  // Night, rain and the low sun of morning and evening tint every colour except the lights.
+  const tint = s => { const w = timeAt(s).warm; return c => mix(mix(mix(c, '#7d8794', s.rain * 0.2), '#ff9a5a', w), '#1e2850', s.night * 0.52); };
+  // The wind bends things toward this side.
+  const WIND = [-0.35, 0.94, 0];
+  const swayAt = (s, i) => (1.2 + s.wind * 4.5) * Math.sin(s.t * (1.3 + s.wind * 1.7) + i);
 
   // ---------- the house ----------
   function walls(s) {
@@ -619,28 +655,40 @@ const HOUSE = (() => {
     ], { part: 'khawnvâr', shadow: false }));
     kids.push(group([...legs(-12, -6, 0, 6, 26, 'ṭhutthlêng'), box(-12.3, -5.7, -0.3, 6.3, 26, 27.2, { pal: WOOD, part: 'ṭhutthlêng' }),
       box(-7, -5.7, -0.3, 6.3, 27.2, 34, { pal: WOOD, part: 'ṭhutthlêng' })], { part: 'ṭhutthlêng' }));
+    // At night the family is home: nu and pi warm their hands at the hearth.
+    if (s.night > 0.5) {
+      s_t = s.t;
+      kids.push(group(person([-33, -23, 22], Math.PI, { ...NU, pose: 'wash' }), { part: 'nu' }));
+      kids.push(group(person([-43, -11, 22], -Math.PI / 2, { ...PI, pose: 'wash' }), { part: 'pi' }));
+      kids.push(group(person([-30, 18, 22], -Math.PI * 0.6, { ...PA, pose: 'stand' }), { part: 'pa' }));
+      kids.push(group(person([-14, 16, 22], -Math.PI * 0.75, { ...NAUPANG, pose: 'stand' }), { part: 'naupang' }));
+    }
     return kids;
   }
 
   // ---------- the yard ----------
   function yard(s) {
     const items = [];
+    const leaf = (c, r, i) => { const w = swayAt(s, i) * 0.35 * (c[2] / 60); return ball([c[0] + WIND[0] * w, c[1] + WIND[1] * w, c[2]], r, { pal: LEAF }); };
     items.push(group([
       cyl([55, -65], 0, 36, 4, 2.8, { pal: BARK }),
-      ball([55, -65, 50], 16, { pal: LEAF }), ball([63, -58, 40], 11, { pal: LEAF }),
-      ball([46, -70, 41], 11, { pal: LEAF }), ball([57, -72, 62], 10, { pal: LEAF }),
+      leaf([55, -65, 50], 16, 0), leaf([63, -58, 40], 11, 1), leaf([46, -70, 41], 11, 2), leaf([57, -72, 62], 10, 3),
     ], { part: 'thing' }));
+    // Bamboo: each culm is drawn in short lengths, so it bends in the wind and its joints show.
     const culms = [[-62, 66, 70], [-57, 71, 62], [-67, 72, 76], [-60, 76, 58], [-69, 63, 66]];
-    const sway = Math.sin(s.t * 1.3) * 1.2;
-    items.push(group([
-      ...culms.map(([x, y, h]) => cyl([x, y], 0, h, 1.6, 1.4, { pal: BAMBOO, bands: [10, 20, 30, 40, 50, 60].filter(z => z < h) })),
-      ...culms.map(([x, y, h], i) => ball([x + 3 + sway, y + (i % 2 ? 3 : -3), h + 2], 6, { pal: BAMBOO_LEAF })),
-    ], { part: 'mau' }));
+    const bam = [];
+    culms.forEach(([x, y, h], i) => {
+      const at = z => { const k = (z / h) ** 2 * swayAt(s, i * 0.7) * 1.6; return [x + WIND[0] * k, y + WIND[1] * k, z]; };
+      for (let z = 0; z < h; z += 10) bam.push(line([at(z), at(Math.min(h, z + 10))], { col: BAMBOO.m, w: 2.6 }));
+      const top = at(h);
+      bam.push(ball([top[0] + 3, top[1] + (i % 2 ? 3 : -3), h + 2], 6, { pal: BAMBOO_LEAF }));
+    });
+    items.push(group(bam, { part: 'mau' }));
     const blooms = [['#f06292', 58, -30], ['#ffc94a', 63, -24], ['#e2483d', 54, -38], ['#f06292', 66, -36], ['#ffc94a', 61, -45]];
     items.push(group(blooms.flatMap(([c, x, y]) => [
-      line([[x, y, 0], [x, y, 6]], { col: '#4f8d3a', w: 0.7, ink: false }),
+      line([[x, y, 0], [x + WIND[0] * swayAt(s, x) * 0.3, y + WIND[1] * swayAt(s, x) * 0.3, 6]], { col: '#4f8d3a', w: 0.7, ink: false }),
       ball([x, y, 1.8], 2.4, { pal: LEAF }),
-      ball([x, y, 7], 2.2, { fill: c }),
+      ball([x + WIND[0] * swayAt(s, x) * 0.3, y + WIND[1] * swayAt(s, x) * 0.3, 7], 2.2, { fill: c }),
     ]), { part: 'pangpâr' }));
     // Fence along the front, with a gap for the path, and along the right-hand side.
     const fence = (a, b, n) => {
@@ -654,7 +702,7 @@ const HOUSE = (() => {
     };
     items.push(fence([84, -84, 0], [84, -6, 0], 6), fence([84, 28, 0], [84, 84, 0], 5), fence([-84, -84, 0], [78, -84, 0], 12));
     items.push(cyl([40, -9], 0, 11, 3.2, 5.4, { pal: CANE, bands: [3.6, 7.2], capFill: '#6b5126', part: 'êm', bias: -1 }));
-    items.push(hen(s), cat(s), coop(s), pig(s));
+    items.push(hen(s), cat(s), coop(s), pig(s), ...family(s));
     s.eggs.forEach((e, i) => items.push(ball([e.x, e.y, 2.2], 2.2, { fill: '#fbf3e4', w: 0.7, part: 'artui#' + i })));
     // Eggs you picked up sit in the basket.
     for (let i = 0; i < Math.min(s.got, 4); i++) { const a = i * 1.7; items.push(ball([40 + Math.cos(a) * 2, -9 + Math.sin(a) * 2, 11.6], 1.6, { fill: '#fbf3e4', w: 0.6, part: 'êm', bias: 1, shadow: false })); }
@@ -722,6 +770,94 @@ const HOUSE = (() => {
     return group(kids, { part: 'vawk' });
   }
 
+  // ---------- the family ----------
+  const SKIN = { l: '#efc29b', m: '#d9a47c', d: '#7a4f33' };
+  const HAIR = '#1d1b22', GREY_HAIR = '#cfcac2';
+  // A person standing at `at`, facing angle `dir` (radians). o: h (height), shirt, lower ('skirt' or 'shorts'),
+  // lowerPal, bands (skirt stripes), hair, bun, pose ('walk', 'run', 'sweep', 'wash'), phase.
+  function person(at, dir, o) {
+    const d = [Math.cos(dir), Math.sin(dir), 0], sd = [-d[1], d[0], 0], h = o.h, ph = o.phase || 0;
+    const P = (f, sv, z) => add(add(add(at, mul(d, f)), mul(sd, sv)), [0, 0, z]);
+    const kids = [], crouch = o.pose === 'wash' ? 0.32 * h : 0, lean = o.pose === 'sweep' ? 0.06 * h : o.pose === 'wash' ? 0.1 * h : 0;
+    const hip = 0.46 * h - crouch, run = o.pose === 'run' ? 1.6 : 1;
+    // Legs
+    for (const side of [-1, 1]) {
+      if (o.pose === 'wash') kids.push(line([P(0, side * 0.08 * h, hip), P(0.2 * h, side * 0.09 * h, 0.12 * h), P(-0.05 * h, side * 0.09 * h, 0.4)], { col: SKIN.m, w: 1.5 }));
+      else {
+        const sw = (o.pose === 'walk' || o.pose === 'run') ? Math.sin(ph + (side > 0 ? 0 : Math.PI)) * 0.16 * h * run : 0;
+        kids.push(line([P(0, side * 0.07 * h, hip), P(sw, side * 0.08 * h, 0.4)], { col: SKIN.m, w: 1.6 }));
+      }
+    }
+    // Lower body: a puan skirt with stripes, or shorts
+    const Z = at[2];   // the floor they stand on
+    if (o.lower === 'skirt') kids.push(cyl(P(lean * 0.3, 0, 0).slice(0, 2), Z + Math.max(0.3, 0.16 * h - crouch), Z + 0.52 * h - crouch, 0.2 * h, 0.14 * h, { pal: o.lowerPal, bands: o.bands ? o.bands.map(f => Z + f * h - crouch) : [], cap: false }));
+    else kids.push(cyl(P(0, 0, 0).slice(0, 2), Z + 0.36 * h - crouch, Z + 0.52 * h - crouch, 0.15 * h, 0.14 * h, { pal: o.lowerPal, cap: false }));
+    // Body and head
+    const body = P(lean, 0, 0);
+    kids.push(cyl(body.slice(0, 2), Z + 0.5 * h - crouch, Z + 0.79 * h - crouch, 0.14 * h, 0.115 * h, { pal: o.shirt }));
+    const head = P(lean * 1.4, 0, 0.9 * h - crouch), r = 0.13 * h;
+    kids.push(ball(add(head, add(mul(d, -0.22 * r), [0, 0, 0.18 * r])), r * 1.04, { fill: o.hair }));
+    kids.push(ball(add(head, mul(d, 0.12 * r)), r, { pal: SKIN }));
+    if (o.bun) kids.push(ball(add(head, add(mul(d, -0.95 * r), [0, 0, 0.35 * r])), 0.45 * r, { fill: o.hair }));
+    for (const e of [-1, 1]) kids.push(ball(add(head, add(add(mul(d, 0.95 * r), mul(sd, 0.38 * r * e)), [0, 0, 0.12 * r])), 0.09 * r + 0.15, { fill: '#231e16', ink: false }));
+    // Arms
+    for (const side of [-1, 1]) {
+      const sh = P(lean, side * 0.15 * h, 0.75 * h - crouch);
+      let hand;
+      if (o.pose === 'sweep') hand = P(lean + 0.2 * h, side * 0.04 * h, 0.5 * h + side * 0.06 * h);
+      else if (o.pose === 'wash') hand = P(0.36 * h, side * 0.07 * h, 0.3 * h - crouch * 0.4 + 0.05 * h * Math.sin(s_t * 7 + side));
+      else { const sw = (o.pose === 'walk' || o.pose === 'run') ? -Math.sin(ph + (side > 0 ? 0 : Math.PI)) * 0.14 * h * run : 0; hand = P(lean + sw, side * 0.19 * h, 0.45 * h - crouch); }
+      kids.push(line([sh, hand], { col: o.shirt.m, w: 1.5 }));
+      kids.push(ball(hand, 0.06 * h, { fill: SKIN.m, w: 0.5 }));
+    }
+    return kids;
+  }
+  let s_t = 0;   // the clock, for the people's hands
+  const NU = { h: 22, shirt: { l: '#f48fb1', m: '#e0457b', d: '#7a1f43' }, lower: 'skirt', lowerPal: PUAN, bands: [0.24, 0.32, 0.4], hair: HAIR, bun: true };
+  const PA = { h: 24, shirt: { l: '#7fb3e6', m: '#4f86c6', d: '#1f3a63' }, lower: 'shorts', lowerPal: { l: '#5a5f6b', m: '#41454f', d: '#1f2128' }, hair: HAIR };
+  const PI = { h: 21, shirt: { l: '#e9e4f5', m: '#c9c0e0', d: '#5c5478' }, lower: 'skirt', lowerPal: { l: '#5f8f6a', m: '#3f6f4c', d: '#1d3524' }, bands: [0.2, 0.28], hair: GREY_HAIR, bun: true };
+  const NAUPANG = { h: 15, shirt: { l: '#ffe08a', m: '#f2b431', d: '#6b4d12' }, lower: 'shorts', lowerPal: { l: '#79a8de', m: '#5786c4', d: '#1f3456' }, hair: HAIR };
+
+  function family(s) {
+    if (s.night > 0.5) return [];   // at night everyone is indoors
+    s_t = s.t;
+    const out = [];
+    // Nu sweeps the porch with a broom.
+    const ny = 31 + 7 * Math.sin(s.t * 0.3), nAt = [21, ny, 22], nd = Math.PI * 0.85;
+    const nk = person(nAt, nd, { ...NU, pose: 'sweep' });
+    const d = [Math.cos(nd), Math.sin(nd), 0], sd = [-d[1], d[0], 0], sw = Math.sin(s.t * 4) * 3;
+    const grip = add(nAt, add(mul(d, 4), [0, 0, 11.5])), foot = add(nAt, add(add(mul(d, 8.5), mul(sd, sw)), [0, 0, 0.6]));
+    const broom = [line([grip, foot], { col: '#b98a4e', w: 0.9 }),
+      poly([add(foot, add(mul(sd, -2.4), [0, 0, -0.5])), add(foot, add(mul(sd, 2.4), [0, 0, -0.5])), add(foot, [0, 0, 3])], { fill: '#d8b56a', w: 0.6 })];
+    out.push(group(nk, { part: 'nu' }), group(broom, { part: 'hmunphiah', shadow: false }));
+    // Pa walks the path to the gate and back.
+    const k = (1 - Math.cos(s.t * 0.35)) / 2, goingOut = Math.sin(s.t * 0.35) >= 0;
+    const pAt = [50 + 30 * k, 8 + 5 * k, 0];
+    out.push(group(person(pAt, goingOut ? 0.16 : Math.PI + 0.16, { ...PA, pose: 'walk', phase: s.t * 5 }), { part: 'pa' }));
+    // Pi washes clothes in a tub of water; the washing hangs on a line in the wind.
+    out.push(group(person([58, -12, 0], 0, { ...PI, pose: 'wash' }), { part: 'pi' }));
+    out.push(cyl([67, -12], 0, 5.5, 4.6, 5.8, { pal: IRON, capFill: mix('#8cc7ea', '#5f9fd0', 0.5 + 0.5 * Math.sin(s.t * 7)), part: 'tui' }));
+    const line1 = [-40, 82, 15], line2 = [8, 82, 15];
+    const wash = [box(-40.8, -39.2, 81.2, 82.8, 0, 16, { pal: POST }), box(7.2, 8.8, 81.2, 82.8, 0, 16, { pal: POST }),
+      line([line1, line2], { col: '#e8e2d4', w: 0.4, ink: false })];
+    [[-31, PUAN], [-17, { l: '#7cc48f', m: '#57a26f', d: '#24452f' }], [-3, { l: '#ffd36b', m: '#e2a92f', d: '#6b4d12' }]].forEach(([x, pal], i) => {
+      const a = (0.08 + s.wind * 0.75) * (0.8 + 0.2 * Math.sin(s.t * (2 + s.wind * 3) + i)), drop = 10;
+      const off = [WIND[0] * Math.sin(a) * drop, WIND[1] * Math.sin(a) * drop, -Math.cos(a) * drop];
+      const T0 = [x - 5, 82, 15], T1 = [x + 5, 82, 15];
+      const bands = [[0, 0.45, pal.m], [0.45, 0.6, '#231e16'], [0.6, 1, pal.l]];
+      for (const [u0, u1, c] of bands) {
+        const q = u => [add(T0, mul(off, u)), add(T1, mul(off, u))];
+        const [a0, a1] = q(u0), [b0, b1] = q(u1);
+        wash.push(poly([a0, a1, b1, b0], { fill: c, w: 0.5, part: 'puan' }));
+      }
+    });
+    out.push(group(wash, { shadow: true }));
+    // Naupang chases the pig.
+    const pg = -5 + 28 * Math.sin(s.pig), dir = Math.cos(s.pig) >= 0 ? 1 : -1;
+    out.push(group(person([pg - dir * 11, 66, 0], dir > 0 ? 0 : Math.PI, { ...NAUPANG, pose: 'run', phase: s.t * 9 }), { part: 'naupang' }));
+    return out;
+  }
+
   function cat(s) {
     const C = [19, -26, 22], d = Ink3D.norm([1, 0.7, 0]), sd = [-d[1], d[0], 0];
     const asleep = s.night > 0.5 && s.catWake <= 0;
@@ -754,12 +890,16 @@ const HOUSE = (() => {
     return `<g data-p="chhum">${c.map(([a, b, r]) => `<circle cx="${a}" cy="${b}" r="${r}" fill="none" stroke="#231e16" stroke-width="1.8"/>`).join('')}${c.map(([a, b, r]) => `<circle cx="${a}" cy="${b}" r="${r}" fill="${fill}"/>`).join('')}</g>`;
   }
   function sky(s) {
-    const top = mix(mix('#a9d8f5', '#9aa6b2', s.rain), '#0e1631', s.night), low = mix(mix('#e3f3fb', '#c9d0d6', s.rain), '#2b3866', s.night);
+    const T = timeAt(s), top = mix(T.top, mix('#9aa6b2', '#0e1631', s.night), s.rain * 0.85), low = mix(T.low, mix('#c9d0d6', '#2b3866', s.night), s.rain * 0.85);
     let o = `<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${top}"/><stop offset="1" stop-color="${low}"/></linearGradient></defs>`;
     o += `<rect x="-140" y="-150" width="280" height="240" fill="url(#sky)" data-p="vân"/>`;
     const sunA = (1 - s.night) * (1 - s.rain * 0.8);
-    if (sunA > 0.02) o += `<g data-p="ni" opacity="${sunA.toFixed(2)}"><circle cx="${SUN[0]}" cy="${SUN[1]}" r="20" fill="#ffe28a" opacity=".45"/><circle cx="${SUN[0]}" cy="${SUN[1]}" r="13" fill="#ffc94a" stroke="#231e16" stroke-width="1"/></g>`;
-    const nightA = s.night * (1 - s.rain * 0.85);
+    const [sx, sy] = T.sun;
+    if (sunA > 0.02) o += `<g data-p="ni" opacity="${sunA.toFixed(2)}"><circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="20" fill="#ffe28a" opacity=".45"/><circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="13" fill="${T.sunC}" stroke="#231e16" stroke-width="1"/></g>`;
+    // After rain, a rainbow while the sun is out.
+    const bowA = Math.min(1, s.bow / 3) * (1 - s.rain) * (1 - s.night);
+    if (bowA > 0.02) o += `<g data-p="chhimbâl" opacity="${bowA.toFixed(2)}" fill="none" stroke-width="4.4">${['#e2483d', '#f39a3a', '#ffd84a', '#5bbf5a', '#4f8fe0', '#7a5cc8'].map((c, i) => { const r = 128 - i * 4.2; return `<path d="M${30 - r} 30A${r} ${r} 0 0 1 ${30 + r} 30" stroke="${c}"/>`; }).join('')}</g>`;
+    const nightA = Math.max(0, (s.night - 0.3) / 0.7) * (1 - s.rain * 0.85);
     if (nightA > 0.02) {
       o += `<g data-p="arsi" opacity="${nightA.toFixed(2)}">${STARS.map(([x, y], i) => { const r = 1.6 + (i % 3) * 0.6, tw = 0.6 + 0.4 * Math.sin(s.t * 2 + i); return `<path d="M${x} ${y - r * 2}L${x + r * 0.6} ${y - r * 0.6}L${x + r * 2} ${y}L${x + r * 0.6} ${y + r * 0.6}L${x} ${y + r * 2}L${x - r * 0.6} ${y + r * 0.6}L${x - r * 2} ${y}L${x - r * 0.6} ${y - r * 0.6}Z" fill="#fff4c2" opacity="${tw.toFixed(2)}"/>`; }).join('')}<rect x="-130" y="-140" width="260" height="50" fill="transparent"/></g>`;
       o += `<g data-p="thla" opacity="${nightA.toFixed(2)}"><circle cx="${MOON[0]}" cy="${MOON[1]}" r="11" fill="#f6efcf" stroke="#231e16" stroke-width="1"/><circle cx="${MOON[0] + 5}" cy="${MOON[1] - 3}" r="9.5" fill="${top}"/></g>`;
@@ -769,13 +909,23 @@ const HOUSE = (() => {
     o += hill('L-140 -52Q-110 -84 -76 -66Q-44 -98 -6 -74Q30 -100 64 -72Q96 -92 140 -58', '#a8cfb4');
     o += hill('L-140 -30Q-104 -62 -64 -42Q-20 -66 22 -44Q66 -70 140 -34', '#86b996');
     // A small white cloud drifts by; rain brings grey ones.
-    const cx = ((s.t * 5 + 250) % 340) - 170;
+    const cx = (s.cloudX % 340) - 170;
     if (s.rain < 0.95) o += `<g opacity="${(1 - s.rain).toFixed(2)}">${cloud(cx, -104, 0.8, mix('#ffffff', '#55608a', s.night))}</g>`;
     return o;
   }
   function over(s) {
-    if (s.rain < 0.02) return '';
-    let o = `<g opacity="${s.rain.toFixed(2)}">`;
+    let o = '';
+    // Leaves blow across in a strong wind.
+    if (s.wind > 0.05) {
+      o += `<g opacity="${s.wind.toFixed(2)}" pointer-events="none">`;
+      for (let i = 0; i < 9; i++) {
+        const x = ((rnd(i, 3) * 300 + s.t * (60 + rnd(i, 4) * 50)) % 300) - 150, y = -60 + rnd(i, 5) * 120 + Math.sin(s.t * 3 + i) * 8, a = (s.t * 200 + i * 40) % 360;
+        o += `<path transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${a.toFixed(0)})" d="M-3 0Q0 -2.4 3 0Q0 2.4 -3 0Z" fill="${mix('#7cc46a', '#2f4a3a', s.night)}" stroke="#231e16" stroke-width=".5"/>`;
+      }
+      o += '</g>';
+    }
+    if (s.rain < 0.02) return o;
+    o += `<g opacity="${s.rain.toFixed(2)}">`;
     o += cloud(-70, -118, 1.2, mix('#c6ccd3', '#3d4766', s.night)) + cloud(15, -128, 1.05, mix('#b4bcc5', '#3d4766', s.night)) + cloud(88, -112, 1.15, mix('#c6ccd3', '#3d4766', s.night));
     o += '<g data-p="ruah" stroke="#5f7fb5" stroke-width="1.1" stroke-linecap="round">';
     for (let i = 0; i < 70; i++) {
@@ -786,40 +936,41 @@ const HOUSE = (() => {
   }
 
   // ---------- labels ----------
+  // Labels come in groups (House, Yard, Family, Sky) so a few show at a time; looking inside, the room.
+  const LABEL_GROUPS = ['House', 'Yard', 'Family', 'Sky'];
   function anchors(s, cam) {
     const inside = s.inside > 0.5, a = [];
-    if (!(inside && nearWall(s, cam, 'xp'))) a.push({ part: 'kawngkhar', p: [6, 8, 36], n: [1, 0, 0] }, { part: 'tukverh', p: [6, 31, 40], n: [1, 0, 0] });
-    if (!(inside && nearWall(s, cam, 'yp'))) a.push({ part: 'tukverh', p: [-34, 46, 40], n: [0, 1, 0] }, { part: 'bang', p: [-14, 45, 52], n: [0, 1, 0] });
+    const H = (part, p, n) => a.push({ part, p, n, g: 'House' }), Y = (part, p) => a.push({ part, p, g: 'Yard' });
+    const F = (part, p) => a.push({ part, p, g: 'Family' }), S = (part, sp, p) => a.push(sp ? { part, s: sp, g: 'Sky' } : { part, p, g: 'Sky' });
     if (inside) {
       a.push({ part: 'bang', p: [-53.5, 25, 50], n: [1, 0, 0] }, { part: 'bang', p: [-20, -33.5, 50], n: [0, 1, 0] },
         { part: 'choka', p: [-48, -18, 24.5] }, { part: 'bel', p: [-43, -23, 32.5] }, { part: 'khum', p: [-38, 40, 26] },
-        { part: 'puan', p: [-44, 32, 28.6] }, { part: 'dawhkân', p: [-26, 8, 30.5] }, { part: 'khawnvâr', p: [-21, 3, 35.4] }, { part: 'ṭhutthlêng', p: [-6.5, 3, 34] },
-        { part: 'chhuatphah', p: [-4, -23, 22.1] }, { part: 'chhuat', p: [24, -22, 22], n: [0, 0, 1] });
-      // Looking inside, only the room is named, so the labels stay readable.
+        { part: 'puan', p: [-44, 32, 28.6] }, { part: 'dawhkân', p: [-26, 8, 30.5] }, { part: 'khawnvâr', p: [-21, 3, 35.4] },
+        { part: 'ṭhutthlêng', p: [-6.5, 3, 34] }, { part: 'chhuatphah', p: [-4, -23, 22.1] }, { part: 'chhuat', p: [24, -22, 22], n: [0, 0, 1] });
       if (s.fire) a.push({ part: 'mei', p: [-43, -23, 28] });
+      if (s.night > 0.5) a.push({ part: 'nu', p: [-33, -23, 40] }, { part: 'pi', p: [-43, -11, 38] }, { part: 'pa', p: [-30, 18, 47] }, { part: 'naupang', p: [-14, 16, 38] });
       return a;
-    } else a.push({ part: 'chungkhuh', p: [-4, 20, 68], n: [0.55, 0, 0.83] }, { part: 'khawnvâr', p: [10, -6, 45] });
-    if (s.eggs.length) a.push({ part: 'artui', p: [s.eggs[0].x, s.eggs[0].y, 3.4] });
-    const pg = -5 + 28 * Math.sin(s.pig);
-    a.push(
-      { part: 'chhuat', p: [24, -22, 22], n: [0, 0, 1] },
-      { part: 'arbawm', p: [69, 68, 20] },
-      { part: 'vawk', p: [pg, 68, 11] },
-      { part: 'zawhte', p: [21, -24, 33] },
-      { part: 'arpui', p: add(henPos(s), [0, 0, 14]) },
-      { part: 'êm', p: [40, -9, 12] },
-      { part: 'kawng', p: [70, 12, 0] },
-      { part: 'pal', p: [84, -50, 13] },
-      { part: 'thing', p: [55, -65, 64] },
-      { part: 'mau', p: [-64, 70, 80] },
-      { part: 'pangpâr', p: [60, -36, 9] },
-      { part: 'tlang', s: [-104, -50] },
-    );
-    if (s.night < 0.5 && s.rain < 0.5) a.push({ part: 'ni', s: [SUN[0], SUN[1] + 13] });
-    if (s.night > 0.5 && s.rain < 0.5) a.push({ part: 'thla', s: [MOON[0], MOON[1] + 11] }, { part: 'arsi', s: STARS[1] });
-    if (s.rain > 0.5) a.push({ part: 'chhum', s: [15, -120] }, { part: 'ruah', s: [-40, -70] });
-    else a.push({ part: 'vân', s: [20, -124] });
-    if (s.puffs.length > 3) a.push({ part: 'meikhu', p: [-30, 14, 104] });
+    }
+    if (!nearWall(s, cam, 'xp')) { H('kawngkhar', [6, 8, 36], [1, 0, 0]); H('tukverh', [6, 31, 40], [1, 0, 0]); }
+    H('tukverh', [-34, 46, 40], [0, 1, 0]); H('bang', [-14, 45, 52], [0, 1, 0]);
+    H('chungkhuh', [-4, 20, 68], [0.55, 0, 0.83]); H('khawnvâr', [10, -6, 45]); H('chhuat', [24, -22, 22], [0, 0, 1]);
+    Y('zawhte', [21, -24, 33]); Y('arpui', add(henPos(s), [0, 0, 14])); Y('arbawm', [69, 68, 20]);
+    Y('vawk', [-5 + 28 * Math.sin(s.pig), 68, 11]); Y('êm', [40, -9, 12]); Y('kawng', [70, 12, 0]); Y('pal', [84, -50, 13]);
+    Y('thing', [55, -65, 64]); Y('mau', [-64, 70, 80]); Y('pangpâr', [60, -36, 9]);
+    if (s.eggs.length) Y('artui', [s.eggs[0].x, s.eggs[0].y, 4]);
+    if (s.night < 0.5) {
+      const k = (1 - Math.cos(s.t * 0.35)) / 2, pg = -5 + 28 * Math.sin(s.pig), dir = Math.cos(s.pig) >= 0 ? 1 : -1;
+      F('nu', [21, 31 + 7 * Math.sin(s.t * 0.3), 45]); F('hmunphiah', [28, 31 + 7 * Math.sin(s.t * 0.3), 24]);
+      F('pa', [50 + 30 * k, 8 + 5 * k, 25]); F('pi', [58, -12, 16]); F('tui', [67, -12, 6]);
+      F('puan', [-17, 82, 10]); F('naupang', [pg - dir * 11, 66, 16]);
+    }
+    const T = timeAt(s);
+    S('tlang', [-104, -50]);
+    if (s.night < 0.5 && s.rain < 0.5) S('ni', [T.sun[0], T.sun[1] + 13]);
+    if (s.night > 0.5 && s.rain < 0.5) { S('thla', [MOON[0], MOON[1] + 11]); S('arsi', STARS[1]); }
+    if (s.rain > 0.5) { S('chhum', [15, -120]); S('ruah', [-40, -70]); } else S('vân', [20, -124]);
+    if (s.bow > 2 && s.rain < 0.5 && s.night < 0.5) S('chhimbâl', [30, -96]);
+    if (s.puffs.length > 3) S('meikhu', null, [-30, 14, 104]);
     return a;
   }
 
@@ -830,22 +981,25 @@ const HOUSE = (() => {
     // At night a tap wakes the cat for a moment; the hen sleeps on.
     if (part === 'zawhte' && s.night > 0.5) { s.catWake = 3; return 'harh'; }
     if (part === 'arpui' && s.night > 0.5) return 'muhil';
-    return null;
+    // The family say what they are doing.
+    return s.night > 0.5 ? null : { nu: 'phiat', pi: 'su', pa: 'kal', naupang: 'tlân' }[part] || null;
   }
 
   return {
     id: 'house', name: 'In', sub: 'a Mizo house',
     view: { yaw: 55, pitch: 30, box: '-130 -140 260 222', centre: [0, -30] },
     words: ['in', 'kawngkhar', 'tukverh', 'bang', 'chhuat', 'chungkhuh', 'khawnvâr', 'zawhte', 'arpui', 'êm', 'kawng', 'pal', 'thing', 'mau', 'pangpâr', 'tlang', 'ni', 'thla', 'arsi', 'chhum', 'ruah', 'vân', 'meikhu', 'mei', 'hawng', 'khar', 'zân', 'zîng', 'harh', 'muhil',
-      'chhûngah', 'choka', 'bel', 'khum', 'puan', 'dawhkân', 'ṭhutthlêng', 'chhuatphah', 'arbawm', 'artui', 'vawk'],
-    init, step, tint, scene, sky, over, anchors, tap,
+      'chhûngah', 'choka', 'bel', 'khum', 'puan', 'dawhkân', 'ṭhutthlêng', 'chhuatphah', 'arbawm', 'artui', 'vawk',
+      'chhun', 'tlai', 'thli', 'chhimbâl', 'nu', 'pa', 'pi', 'naupang', 'phiat', 'hmunphiah', 'su', 'tui', 'kal', 'tlân'],
+    init, step, tint, light, scene, sky, over, anchors, tap, labelGroups: LABEL_GROUPS,
     swatches: { label: 'Roof', key: 'roof', list: Object.fromEntries(Object.entries(ROOFS).map(([k, v]) => [k, v.m])) },
     actions: [
       { label: s => s.insideT ? 'Roof back on' : 'Look inside', word: s => s.insideT ? null : 'chhûngah', run: s => { s.insideT = s.insideT ? 0 : 1; } },
       { label: s => s.doorT ? 'Close door' : 'Open door', word: s => s.doorT ? 'khar' : 'hawng', run: s => { s.doorT = s.doorT ? 0 : 1; } },
       { label: s => s.winT ? 'Close windows' : 'Open windows', word: s => s.winT ? 'khar' : 'hawng', run: s => { s.winT = s.winT ? 0 : 1; } },
-      { label: s => s.nightT ? 'Morning' : 'Night', word: s => s.nightT ? 'zîng' : 'zân', run: s => { s.nightT = s.nightT ? 0 : 1; } },
-      { label: s => s.rainT ? 'Stop rain' : 'Rain', word: s => s.rainT ? null : 'ruah', run: s => { s.rainT = s.rainT ? 0 : 1; } },
+      { label: s => TIMES[(Math.round(s.todT) + 1) % 4].en, word: s => TIMES[(Math.round(s.todT) + 1) % 4].word, run: s => { s.todT = Math.round(s.todT) + 1; } },
+      { label: s => s.rainT ? 'Stop rain' : 'Rain', word: s => s.rainT ? null : 'ruah', run: s => { if (s.rainT) s.bow = 14; s.rainT = s.rainT ? 0 : 1; } },
+      { label: s => s.windT ? 'Calm' : 'Wind', word: s => s.windT ? null : 'thli', run: s => { s.windT = s.windT ? 0 : 1; } },
       { label: s => s.fire ? 'Fire out' : 'Light fire', word: s => s.fire ? null : 'mei', run: s => { s.fire = !s.fire; } },
     ],
   };
@@ -853,7 +1007,7 @@ const HOUSE = (() => {
 </script>
 <script>
 (() => {
-  const WORDS = {"in": "house", "kawngkhar": "door", "tukverh": "window", "bang": "wall", "chhuat": "floor", "chungkhuh": "roof", "khawnvâr": "lamp", "zawhte": "cat", "arpui": "hen", "êm": "carrying basket", "kawng": "road", "pal": "fence", "thing": "tree", "mau": "bamboo", "pangpâr": "flower", "tlang": "hill", "ni": "sun", "thla": "moon", "arsi": "star", "chhum": "cloud", "ruah": "rain", "vân": "sky", "meikhu": "smoke", "mei": "fire", "hawng": "open", "khar": "close", "zân": "night", "zîng": "morning", "harh": "wake", "muhil": "sleep", "chhûngah": "inside", "choka": "kitchen", "bel": "pot", "khum": "bed", "puan": "cloth", "dawhkân": "table", "ṭhutthlêng": "chair", "chhuatphah": "mat", "arbawm": "chicken coop", "artui": "hen's egg", "vawk": "pig"};   // Mizo → English, from the Hnahsin content
+  const WORDS = {"in": "house", "kawngkhar": "door", "tukverh": "window", "bang": "wall", "chhuat": "floor", "chungkhuh": "roof", "khawnvâr": "lamp", "zawhte": "cat", "arpui": "hen", "êm": "carrying basket", "kawng": "road", "pal": "fence", "thing": "tree", "mau": "bamboo", "pangpâr": "flower", "tlang": "hill", "ni": "sun", "thla": "moon", "arsi": "star", "chhum": "cloud", "ruah": "rain", "vân": "sky", "meikhu": "smoke", "mei": "fire", "hawng": "open", "khar": "close", "zân": "night", "zîng": "morning", "harh": "wake", "muhil": "sleep", "chhûngah": "inside", "choka": "kitchen", "bel": "pot", "khum": "bed", "puan": "cloth", "dawhkân": "table", "ṭhutthlêng": "chair", "chhuatphah": "mat", "arbawm": "chicken coop", "artui": "hen's egg", "vawk": "pig", "chhun": "daytime", "tlai": "evening", "thli": "wind", "chhimbâl": "rainbow", "nu": "mother", "pa": "father", "pi": "grandmother", "naupang": "child", "phiat": "to sweep", "hmunphiah": "broom", "su": "to wash clothes", "tui": "water", "kal": "go", "tlân": "run"};   // Mizo → English, from the Hnahsin content
   const fig = HOUSE;
   const $ = id => document.getElementById(id);
   const svg = $('svg'), stage = $('stage'), wordEl = $('word');
@@ -864,7 +1018,7 @@ const HOUSE = (() => {
   $('fsub').textContent = `${WORDS[fig.name.toLowerCase()] ? '· ' : ''}${fig.sub}`;
   const st = fig.init();
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let yaw = fig.view.yaw, spin = false, labels = false, pen = true, hl = null, hlUntil = 0;
+  let yaw = fig.view.yaw, spin = false, labels = 0, pen = true, hl = null, hlUntil = 0;
   let stars = 0;
   try { stars = +localStorage.getItem('hn-things-stars') || 0; } catch (e) {}
   const showStars = () => { $('score').textContent = `⭐ ${stars}`; };
@@ -889,8 +1043,9 @@ const HOUSE = (() => {
     const k = VW / (svg.clientWidth || 360);            // svg units per screen pixel
     const fs = 14 * k, pad = 5 * k, lh = 18 * k;   // Mizo only: a tap on a label shows the English
     const tags = [], seen = new Set();
+    const only = fig.labelGroups ? fig.labelGroups[labels - 1] : null;
     for (const a of visibleAnchors(cam)) {
-      if (seen.has(a.part)) continue;
+      if (seen.has(a.part) || (only && a.g && a.g !== only)) continue;
       seen.add(a.part);
       const s = a.s || cam.P(a.p);
       const m = a.part, w = m.length * 8.6 * k + pad * 2, h = lh + pad;
@@ -918,7 +1073,7 @@ const HOUSE = (() => {
   }
   function draw() {
     const cam = Ink3D.camera(yaw, fig.view.pitch);
-    const body = Ink3D.render(fig.scene(st, cam), cam, { tint: fig.tint(st), hl, wobble: pen ? 0.45 : 0 });
+    const body = Ink3D.render(fig.scene(st, cam), cam, { tint: fig.tint(st), hl, wobble: pen ? 0.45 : 0, light: fig.light && fig.light(st) });
     svg.innerHTML = fig.sky(st) + body + fig.over(st) + (labels ? labelLayer(cam) : '');
   }
 
@@ -994,7 +1149,14 @@ const HOUSE = (() => {
   drawActs();
 
   const toggle = (id, on) => $(id).setAttribute('aria-pressed', on);
-  $('t-labels').onclick = () => { labels = !labels; toggle('t-labels', labels); };
+  // Labels step through the figure's groups (House, Yard, …), then off.
+  const showLabels = n => {
+    const groups = fig.labelGroups || ['all'];
+    labels = n % (groups.length + 1);
+    toggle('t-labels', labels > 0);
+    $('t-labels').textContent = labels && fig.labelGroups ? `Labels: ${groups[labels - 1]}` : 'Labels';
+  };
+  $('t-labels').onclick = () => showLabels(labels + 1);
   $('t-turn').onclick = () => { spin = !spin; toggle('t-turn', spin); };
   $('t-front').onclick = () => { spin = false; toggle('t-turn', false); yaw = fig.view.yaw; };
   $('t-pen').onclick = () => { pen = !pen; toggle('t-pen', pen); };
@@ -1020,7 +1182,7 @@ const HOUSE = (() => {
   }
   function startFind() {
     find = { word: null, found: 0 };
-    labels = false; toggle('t-labels', false);
+    showLabels(0);
     $('findbar').hidden = false; toggle('t-find', true);
     nextFind();
   }
