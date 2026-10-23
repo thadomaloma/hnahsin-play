@@ -28,6 +28,9 @@
   --muted: #4a5a70;
   --line: #d6e6f2;
   --on-brand: #ffffff;
+  --on-light: #15213a; /* text on surfaces that stay light in dark mode too */
+  --accent-text: var(--brand);
+  --accent-text-2: var(--coral);
 
   /* Type */
   --font: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -63,6 +66,8 @@
     --line: #243b62;
     --mist: #14284a;
     --sky-soft: #183258;
+    --accent-text: #7cc0ff;
+    --accent-text-2: #ff8fb8;
     --shadow-1: 0 1px 3px rgba(0, 0, 0, .3), 0 10px 24px rgba(0, 0, 0, .25);
     --shadow-2: 0 2px 6px rgba(0, 0, 0, .35), 0 16px 32px rgba(0, 0, 0, .35);
     --ring: 0 0 0 3px var(--bg), 0 0 0 6px var(--brand-bright);
@@ -78,6 +83,8 @@
   --line: #243b62;
   --mist: #14284a;
   --sky-soft: #183258;
+  --accent-text: #7cc0ff;
+  --accent-text-2: #ff8fb8;
   --shadow-1: 0 1px 3px rgba(0, 0, 0, .3), 0 10px 24px rgba(0, 0, 0, .25);
   --shadow-2: 0 2px 6px rgba(0, 0, 0, .35), 0 16px 32px rgba(0, 0, 0, .35);
   --ring: 0 0 0 3px var(--bg), 0 0 0 6px var(--brand-bright);

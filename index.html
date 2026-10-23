@@ -65,13 +65,13 @@
   .stats { position: relative; z-index: 2; margin-top: -44px; display: grid; grid-template-columns: repeat(4, 1fr); padding: 18px 8px; }
   .stat { text-align: center; padding: 4px 6px; }
   .stat + .stat { border-left: 1px solid var(--line); }
-  .stat b { display: block; font-family: var(--font-display); font-size: clamp(24px, 5vw, 36px); line-height: 1.1; color: var(--brand); }
+  .stat b { display: block; font-family: var(--font-display); font-size: clamp(24px, 5vw, 36px); line-height: 1.1; color: var(--accent-text); }
   .stat span { font-size: 14px; font-weight: 700; color: var(--muted); }
   @media (max-width: 520px) { .stats { grid-template-columns: repeat(2, 1fr); row-gap: 12px; } .stat:nth-child(3) { border-left: 0; } }
 
   /* ------------------------------------------------ sections */
   section { padding: clamp(48px, 8vw, 80px) 0 0; }
-  .eyebrow { margin: 0; color: var(--coral); font-weight: 800; font-size: 14px; letter-spacing: .1em; text-transform: uppercase; }
+  .eyebrow { margin: 0; color: var(--accent-text-2); font-weight: 800; font-size: 14px; letter-spacing: .1em; text-transform: uppercase; }
   h2 { margin: 6px 0 0; font-size: var(--text-xl); line-height: 1.2; letter-spacing: -.01em; }
   .section-lede { margin: 8px 0 0; color: var(--muted); max-width: 52ch; }
 
@@ -92,14 +92,14 @@
   .cover.journey { background: linear-gradient(180deg, #8fd3ff, #e8f7ff 70%); }
   .cover.journey::before { content: ""; position: absolute; inset: auto -10% 0 -10%; height: 46%; background: #7cc65a; border-radius: 50% 50% 0 0 / 40% 40% 0 0; }
   .cover.journey::after { content: ""; position: absolute; inset: auto 0 0 0; height: 20%; background: #5dae47; }
-  .door { position: absolute; z-index: 1; display: grid; place-items: center; width: 104px; height: 50px; border: 5px solid #8a5a33; border-radius: 8px; background: #fff6dd; color: var(--ink); font-weight: 800; font-size: 15px; box-shadow: 0 6px 12px rgba(0, 0, 0, .12); animation: float 3s ease-in-out infinite alternate; }
+  .door { position: absolute; z-index: 1; display: grid; place-items: center; width: 104px; height: 50px; border: 5px solid #8a5a33; border-radius: 8px; background: #fff6dd; color: var(--on-light); font-weight: 800; font-size: 15px; box-shadow: 0 6px 12px rgba(0, 0, 0, .12); animation: float 3s ease-in-out infinite alternate; }
   .door.d1 { right: 12%; top: 62px; }
   .door.d2 { right: 12%; top: 126px; animation-delay: -1s; }
   .door.hit { border-color: #4a9a3e; background: #e8f8df; animation: pop .45s var(--ease); }
   @keyframes pop { 40% { transform: scale(1.18); } }
   .spark { position: absolute; z-index: 2; width: 9px; height: 9px; border-radius: 50%; pointer-events: none; }
   .door.d3 { right: 12%; bottom: 12px; animation-delay: -2s; }
-  .q { position: absolute; z-index: 1; left: 16px; top: 16px; padding: 6px 12px; border-radius: 12px; background: rgba(255, 255, 255, .92); color: var(--ink); font-weight: 800; font-size: 14px; }
+  .q { position: absolute; z-index: 1; left: 16px; top: 16px; padding: 6px 12px; border-radius: 12px; background: rgba(255, 255, 255, .92); color: var(--on-light); font-weight: 800; font-size: 14px; }
   .cover .runner { position: absolute; z-index: 1; left: 20%; bottom: 12%; width: 62px; aspect-ratio: 3 / 4; }
   @keyframes float { to { transform: translateY(-5px); } }
 
@@ -154,7 +154,7 @@
   @keyframes marquee { to { transform: translateX(-50%); } }
   .word { display: inline-flex; align-items: baseline; gap: 8px; padding: 8px 16px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow-1); white-space: nowrap; }
   .word i { font-style: normal; font-size: 20px; align-self: center; }
-  .word b { color: var(--coral); font-family: var(--font-display); font-size: 19px; }
+  .word b { color: var(--accent-text-2); font-family: var(--font-display); font-size: 19px; }
   .word small { color: var(--muted); font-size: 14px; font-weight: 600; }
 
   .install { display: grid; justify-items: center; gap: 4px; width: min(100%, 340px); margin: 14px auto 0; color: var(--navy); }
