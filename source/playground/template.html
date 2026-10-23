@@ -310,6 +310,16 @@
   .modes button[aria-pressed="true"] { background: var(--brand); color: #fff; }
   .side .pics button.txt, .road .gate.txt { font-size: clamp(15px, 4.6vw, 20px); font-weight: 800; color: var(--ink); padding: 4px; overflow-wrap: anywhere; }
   .bubble.txt { width: 92px; height: 92px; font-size: 14px; font-weight: 800; color: var(--ink); padding: 4px; overflow-wrap: anywhere; }
+  img.photo { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; pointer-events: none; }
+  .side .pics button.pic, .road .gate.pic { padding: 0; overflow: hidden; }
+  .side .pics { grid-auto-rows: 1fr; }
+  .side .pics button.pic { position: relative; }
+  .side .pics button.pic img.photo { position: absolute; inset: 0; }
+  .road .gate.pic { height: 84px; }
+  .road .gate.pic { width: 84px; }
+  .bubble.pic { padding: 4px; overflow: hidden; }
+  .bubble.pic img.photo { border-radius: 50%; }
+  .hole .held.pic { display: block; width: 44px; height: 44px; padding: 0; overflow: hidden; }
   .hole .held.txt { font-size: 13px; font-weight: 800; color: var(--ink); }
   .hole .held { font-size: 30px; background: rgba(255,255,255,.92); border-radius: 12px; padding: 2px 4px; }
   .hole.up .rat { bottom: 8%; }
@@ -571,11 +581,17 @@ const W = DATA.words;           // id -> [mizo, english, emoji]
 const word = id => W[id][0];
 const gloss = id => W[id][1];
 const emoji = id => W[id][2];
-// Dictionary words from J.F. Laldailova's dictionary: [mizo, english, every Mizo sense].
+// Dictionary words from J.F. Laldailova's dictionary: [mizo, english, every Mizo sense, emoji or photo path].
 // They have no pictures, so the games that take them show the English word instead.
 const DICT = __DICT__;
 const fold = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ṭ/g, 't');
-const DICT_IDS = DICT.map((d, i) => { W['dict.' + i] = [d[0], d[1], '']; return 'dict.' + i; });
+const PHOTO = {}; // id -> photo, for words whose picture is a photo, not an emoji
+const DICT_IDS = DICT.map((d, i) => {
+  const pic = d[3] || '';
+  if (pic.endsWith('.jpg')) PHOTO['dict.' + i] = pic;
+  W['dict.' + i] = [d[0], d[1], pic.endsWith('.jpg') ? '' : pic];
+  return 'dict.' + i;
+});
 const SENSES = Object.fromEntries(DICT.map((d, i) => ['dict.' + i, d[2]]));
 // Two words that could both be right: the same, the same English, or one's Mizo is a sense of the other.
 const clash = (a, b) => a === b || (!!SENSES[a] && !!SENSES[b] &&
@@ -603,8 +619,10 @@ function otherThan(g, target) {
   for (;;) { const id = all[Math.floor(Math.random() * all.length)]; if (!clash(id, target)) return id; }
 }
 // What stands in for a picture: the emoji, or the English word.
-const face = id => emoji(id) || gloss(id);
-const faceClass = id => emoji(id) ? '' : 'txt';
+// What stands in for a picture: a photo, the emoji, or the English word (as HTML).
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const face = id => PHOTO[id] ? `<img class="photo" src="${PHOTO[id]}" alt="">` : esc(emoji(id) || gloss(id));
+const faceClass = id => PHOTO[id] ? 'pic' : emoji(id) ? '' : 'txt';
 const onModeChange = {};
 document.querySelectorAll('.modes').forEach(box => {
   const g = box.dataset.g;
@@ -1009,7 +1027,7 @@ function ruGate() {
   const road = $('ru-road');
   road.querySelectorAll('.gate').forEach(g => g.remove());
   const els = ids.map((id, lane) => {
-    const g = document.createElement('div'); g.className = 'gate ' + faceClass(id); g.textContent = face(id);
+    const g = document.createElement('div'); g.className = 'gate ' + faceClass(id); g.innerHTML = face(id);
     g.style.left = lane ? '75%' : '25%'; g.style.top = '18%'; road.appendChild(g); return g;
   });
   ru.gates = { ids, correct, target: ids[correct], y: 18, els };
@@ -1401,7 +1419,7 @@ function bpSpawn() {
   const sea = $('bp-sea');
   const id = Math.random() < .4 ? bp.target : otherThan('bp', bp.target);
   const b = document.createElement('button');
-  b.className = 'bubble ' + faceClass(id); b.textContent = face(id); b.dataset.id = id;
+  b.className = 'bubble ' + faceClass(id); b.innerHTML = face(id); b.dataset.id = id;
   const x = 8 + Math.random() * 84;
   b.style.left = x + '%';
   sea.appendChild(b);
@@ -1466,7 +1484,7 @@ function wmPop() {
     const h = pick(holes, 1)[0];
     const id = Math.random() < .45 ? wm.target : otherThan('wm', wm.target);
     h.dataset.id = id;
-    const held = h.querySelector('.held'); held.textContent = face(id); held.className = 'held ' + faceClass(id);
+    const held = h.querySelector('.held'); held.innerHTML = face(id); held.className = 'held ' + faceClass(id);
     h.classList.add('up');
     const stay = Math.max(700, 1500 - wm.score * 30);
     setTimeout(() => h.classList.remove('up', 'hit'), stay);

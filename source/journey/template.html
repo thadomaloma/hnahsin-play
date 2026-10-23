@@ -60,6 +60,8 @@
   .recap li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 2px; border-bottom: 1px solid #e6eef5; font-size: 15px; animation: cardIn .4s both; animation-delay: var(--d); }
   .recap li b { font-weight: 800; color: #2e7d32; }
   .recap li span { color: var(--muted); text-align: right; }
+  .recap li b { display: inline-flex; align-items: center; gap: 6px; }
+  .recap img.photo { width: 28px; height: 28px; border-radius: 7px; object-fit: cover; }
   .recap li.missed b { color: var(--coral); }
   #end-title { justify-content: center; }
   .big-stars { display: flex; justify-content: center; gap: 6px; font-size: 44px; }
@@ -169,6 +171,9 @@ function saying() {
   const target = [meaning, text];
   return { target, options: shuffle([target, ...shuffle(wrong.slice()).slice(0, 2).map(m => [m, text])]), saying: text };
 }
+// A word's picture: an emoji, or (dictionary words) a photo path.
+const emo = w => w[5] && !w[5].endsWith('.jpg') ? w[5] + ' ' : '';
+const pic = w => w[5] && w[5].endsWith('.jpg') ? `<img class="photo" src="${w[5]}" alt="">` : emo(w);
 const asks = w => w[4] === 'dict-verb' ? 'to ' + w[1] : w[1];
 
 // ---------------------------------------------------------------- the game
@@ -344,7 +349,7 @@ class Play extends Phaser.Scene {
       this.sparks.explode(gate.boss ? 60 : 30, gate.x, ys[lane]);
       this.tweens.add({ targets: door, scale: 1.25, alpha: 0, duration: 380 });
       this.cameras.main.flash(120, 255, 240, 200);
-      this.showBanner(gate.q.saying ? `“${t[1]}”\n${t[0]}` : `${t[5] ? t[5] + ' ' : ''}${t[0]} · ${asks(t)}`, '#ffffff');
+      this.showBanner(gate.q.saying ? `“${t[1]}”\n${t[0]}` : `${emo(t)}${t[0]} · ${asks(t)}`, '#ffffff');
       this.speed += 10;
     } else {
       this.hearts--;
@@ -456,7 +461,7 @@ function showEnd(level, won, right, met, coins) {
   document.getElementById('end-title').textContent = won ? `${LEVELS[level].name} done!` : 'Out of hearts';
   document.getElementById('end-stars').innerHTML = won ? [0, 1, 2].map(i => `<span style="--d:${250 + i * 220}ms">${i < got ? '⭐' : '☆'}</span>`).join('') : '<span>💔</span>';
   document.getElementById('end-note').textContent = `${right} of ${met.length} doors right · 🪙 ${coins}. The words you met:`;
-  document.getElementById('end-recap').innerHTML = met.map(({ w, right }, i) => `<li class="${right ? '' : 'missed'}" style="--d:${500 + i * 60}ms"><b>${w[5] ? w[5] + ' ' : ''}${w[0]}</b><span>${w[1]}</span></li>`).join('');
+  document.getElementById('end-recap').innerHTML = met.map(({ w, right }, i) => `<li class="${right ? '' : 'missed'}" style="--d:${500 + i * 60}ms"><b>${pic(w)}${w[0]}</b><span>${w[1]}</span></li>`).join('');
   const next = document.getElementById('end-next');
   next.textContent = won && level < LEVELS.length - 1 ? 'Next level' : 'Play again';
   next.onclick = () => start(won && level < LEVELS.length - 1 ? level + 1 : level);
