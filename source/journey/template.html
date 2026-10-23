@@ -1,0 +1,434 @@
+<title>Rova's Journey</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Plus+Jakarta+Sans:wght@600;700;800&family=Caveat:wght@700&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --ground: #0d2a4a;
+    --ink: #15213a;
+    --panel: #ffffff;
+    --muted: #5b6b80;
+    --brand: #1565c0;
+    --gold: #ffc94a;
+    --leaf: #4f9e3c;
+    --coral: #c2185b;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif; overflow: hidden; }
+  #game { position: fixed; inset: 0; display: grid; place-items: center; }
+  #game canvas { max-width: 100%; max-height: 100%; touch-action: none; }
+  .screen { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(9, 24, 44, .55); z-index: 5; }
+  /* The title screen sits on its own sunny hillside. */
+  #title-screen { background: radial-gradient(circle at 85% 8%, rgba(255, 255, 255, .9), rgba(255, 249, 220, .3) 12%, transparent 30%), linear-gradient(180deg, #3c9fea, #8fd0fa 55%, #cdeeff); overflow: hidden; }
+  #title-screen::before, #title-screen::after { content: ""; position: absolute; left: -20%; right: -20%; border-radius: 50% 50% 0 0 / 100% 100% 0 0; z-index: -1; }
+  #title-screen::before { bottom: -6%; height: 34%; background: #8fd27a; }
+  #title-screen::after { bottom: -14%; height: 30%; background: #6dbe5e; left: -40%; }
+  .card { position: relative; width: min(420px, 100%); max-height: calc(100% - 16px); overflow: auto; background: var(--panel); border-radius: 28px; padding: 18px 18px 20px; display: grid; gap: 14px; box-shadow: 0 30px 60px -24px rgba(13, 42, 74, .55); animation: cardIn .45s cubic-bezier(.2, .8, .2, 1); }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(18px) scale(.97); } }
+  .topbar { display: flex; align-items: center; justify-content: space-between; }
+  .home { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px 6px 8px; border-radius: 99px; background: #eaf3fc; color: var(--brand); font-weight: 800; font-size: 14px; text-decoration: none; }
+  .total { font-weight: 800; font-size: 14px; padding: 6px 12px; border-radius: 99px; background: #fff6dd; color: #8a5a00; }
+  .card h1 { margin: 0; font-family: "Baloo 2", "Plus Jakarta Sans", sans-serif; font-size: 38px; letter-spacing: -.01em; line-height: 1; display: flex; align-items: center; gap: 8px; }
+  .card h1 .runner { display: inline-block; transform: scaleX(-1); animation: hop 1s cubic-bezier(.3, .7, .4, 1) infinite; }
+  @keyframes hop { 50% { transform: scaleX(-1) translateY(-8px) rotate(-6deg); } }
+  .card h1 + small { display: block; margin-top: -10px; font-family: "Caveat", cursive; font-size: 26px; color: var(--brand); }
+  .card p { margin: 0; color: var(--muted); line-height: 1.5; }
+  .howto { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .howto li { display: grid; justify-items: center; gap: 4px; padding: 10px 6px; border-radius: 16px; background: #f1f8fe; text-align: center; font-size: 12.5px; font-weight: 700; color: var(--ink); line-height: 1.3; }
+  .howto li i { font-style: normal; font-size: 24px; }
+  .levels { display: grid; gap: 10px; }
+  .level { position: relative; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; border: 1px solid #d6e6f2; background: #fff; border-radius: 20px; padding: 8px 14px 8px 8px; font: inherit; color: var(--ink); cursor: pointer; text-align: left; box-shadow: 0 6px 16px -12px rgba(13, 71, 161, .5); transition: transform .2s cubic-bezier(.2, .8, .2, 1), box-shadow .2s; animation: cardIn .45s cubic-bezier(.2, .8, .2, 1) both; animation-delay: var(--d); }
+  .level:not([disabled]):hover { transform: translateY(-2px); box-shadow: 0 12px 22px -12px rgba(13, 71, 161, .55); }
+  .level:not([disabled]):active { transform: scale(.98); }
+  .level .e { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; background: linear-gradient(160deg, var(--s1), var(--s2)); font-size: 30px; box-shadow: inset 0 -10px 0 rgba(0, 0, 0, .06); }
+  .level b { display: block; font-size: 17px; }
+  .level span.sub { color: var(--muted); font-size: 13px; font-weight: 600; }
+  .level .stars { font-size: 15px; letter-spacing: 1px; white-space: nowrap; }
+  .level[disabled] { cursor: default; background: #f6f9fc; }
+  .level[disabled] .e { filter: grayscale(.8); opacity: .6; }
+  .level[disabled] b, .level[disabled] .stars { opacity: .5; }
+  .btn { position: relative; border: 0; border-radius: 99px; padding: 14px 18px; font: inherit; font-weight: 800; font-size: 17px; cursor: pointer; background: var(--brand); color: #fff; box-shadow: 0 4px 0 #0d47a1; transition: transform .12s, box-shadow .12s; }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #0d47a1; }
+  .btn.ghost { background: #eaf3fc; color: var(--brand); box-shadow: 0 4px 0 #c9ddf3; }
+  .btn.ghost:active { box-shadow: 0 1px 0 #c9ddf3; }
+  .row { display: flex; gap: 10px; }
+  .row .btn { flex: 1; }
+  .recap { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+  .recap li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 2px; border-bottom: 1px solid #e6eef5; font-size: 15px; animation: cardIn .4s both; animation-delay: var(--d); }
+  .recap li b { font-weight: 800; color: #2e7d32; }
+  .recap li span { color: var(--muted); text-align: right; }
+  .recap li.missed b { color: var(--coral); }
+  #end-title { justify-content: center; }
+  .big-stars { display: flex; justify-content: center; gap: 6px; font-size: 44px; }
+  .big-stars span { animation: starIn .55s cubic-bezier(.3, 1.6, .5, 1) both; animation-delay: var(--d); }
+  @keyframes starIn { from { opacity: 0; transform: scale(.2) rotate(-40deg); } }
+  #end-note { text-align: center; }
+  button:focus-visible, a:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { .card, .level, .recap li, .big-stars span, .card h1 .runner { animation: none; } }
+</style>
+
+<div id="game"></div>
+
+<div class="screen" id="title-screen">
+  <div class="card">
+    <div class="topbar"><a class="home" href="https://thadomaloma.github.io/hnahsin-play/">← Hnahsin</a><span class="total" id="total-stars">⭐ 0</span></div>
+    <h1>Rova's Journey <span class="runner" aria-hidden="true">🏃</span></h1>
+    <small>Rova chu in lam a pan…</small>
+    <p>Rova is home from Japan and runs across Mizoram. Jump into the door with the right Mizo word.</p>
+    <ul class="howto">
+      <li><i>👆</i>Tap or Space to jump, twice to go higher</li>
+      <li><i>🚪</i>Be at the door with the right word</li>
+      <li><i>❤️</i>Three hearts. Grab the coins!</li>
+    </ul>
+    <div class="levels" id="levels"></div>
+  </div>
+</div>
+
+<div class="screen" id="end-screen" hidden>
+  <div class="card">
+    <h1 id="end-title">Level done!</h1>
+    <div class="big-stars" id="end-stars"></div>
+    <p id="end-note"></p>
+    <ul class="recap" id="end-recap"></ul>
+    <div class="row"><button class="btn ghost" id="end-menu">Levels</button><button class="btn" id="end-next">Next level</button></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.90.0/phaser.min.js"></script>
+<script>
+// Every Hnahsin word: [mizo, meaning, example sentence, level 1-7, topic, emoji, full meaning]
+const WORDS = __WORDS__;
+// Common words from J.F. Laldailova's dictionary: [mizo, english, '', level 4-7, 'dict-' + part of speech, '', english, every Mizo sense]
+const DICT = __DICT__;
+// Mizo sayings (tawng upa): [saying, meaning, wrong meanings]
+const SAYINGS = __SAYINGS__;
+
+const LEVELS = [
+  { name: 'Tlang', title: 'The hills', emoji: '⛰️', band: [1, 2], sky: [0x8fd3ff, 0xe8f7ff], hills: [0x7cc65a, 0x5daE47], far: 0xa9d9a0, sun: 0xfff1a8, speed: 330 },
+  { name: 'Aizawl', title: 'The city on the ridge', emoji: '🏙️', band: [3, 4], sky: [0xffb37a, 0xffe2b8], hills: [0x6fae55, 0x4f8f3d], far: 0x9db7c9, sun: 0xff8a4a, city: true, speed: 370 },
+  { name: 'Bazar', title: 'The market at dusk', emoji: '🛒', band: [5, 7], sky: [0x3b4f8f, 0x9a86c9], hills: [0x4f7f45, 0x35612f], far: 0x6f6aa0, stars: true, speed: 410 },
+  { name: 'Champhai', title: 'The wide valley', emoji: '🌾', band: [4, 5], dict: true, sky: [0xbfe6ff, 0xfff3d6], hills: [0x9ccc5a, 0x6f9a3e], far: 0x8fb3a0, sun: 0xfff1a8, speed: 400 },
+  { name: 'Phawngpui', title: 'The blue mountain', emoji: '🏔️', band: [6, 7], dict: true, sky: [0x1d2b5a, 0x5b6fb0], hills: [0x3f6a4a, 0x2c4f36], far: 0x4a5f9a, farH: 340, stars: true, speed: 430 },
+];
+const GATES = 8;
+const store = { get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const fold = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ṭ/g, 't');
+const senses = g => new Set(g.toLowerCase().replace(/\(.*?\)/g, ' ').split(/[;,/]|\bor\b/).map(s => s.trim().replace(/^to /, '')).filter(Boolean));
+
+// The example with the word left out, only where it stands as a whole word.
+function blank(example, word) {
+  const re = new RegExp('(^|[^\\p{L}])(' + word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')(?=$|[^\\p{L}])', 'iu');
+  if (!re.test(example)) return null;
+  return example.replace(re, (m, a) => a + '____');
+}
+
+// A question: the word to find and two others of its topic that mean
+// something else and are spelt differently.
+function question(level, sentence) {
+  const L = LEVELS[level];
+  if (L.dict && sentence) return saying();
+  const [lo, hi] = L.band;
+  const words = L.dict ? DICT : WORDS;
+  const pool = words.filter(w => w[3] >= lo && w[3] <= hi && w[0].length <= 16);
+  for (let tries = 0; tries < 200; tries++) {
+    const target = pool[Math.floor(Math.random() * pool.length)];
+    const gap = sentence ? blank(target[2], target[0]) : null;
+    if (sentence && !gap) continue;
+    const mine = senses(target[6]);
+    const others = shuffle(words.filter(w => w !== target && w[4] === target[4] && w[0].length <= 16 &&
+      fold(w[0]) !== fold(target[0]) && ![...senses(w[6])].some(s => mine.has(s)) &&
+      !(gap && blank(target[2], w[0])) &&
+      // A dictionary word's other Mizo senses must not be a wrong door.
+      !(L.dict && (target[7].includes(fold(w[0])) || w[7].includes(fold(target[0]))))));
+    if (others.length < 2) continue;
+    return { target, options: shuffle([target, others[0], others[1]]), gap };
+  }
+}
+
+// A boss door for the dictionary levels: what a saying means.
+function saying() {
+  const [text, meaning, wrong] = SAYINGS[Math.floor(Math.random() * SAYINGS.length)];
+  const target = [meaning, text];
+  return { target, options: shuffle([target, ...shuffle(wrong.slice()).slice(0, 2).map(m => [m, text])]), saying: text };
+}
+const asks = w => w[4] === 'dict-verb' ? 'to ' + w[1] : w[1];
+
+// ---------------------------------------------------------------- the game
+class Play extends Phaser.Scene {
+  constructor() { super('play'); }
+  init(data) { this.level = data.level; }
+
+  preload() {
+    const g = this.make.graphics({ add: false });
+    g.fillStyle(0xffffff); g.fillCircle(8, 8, 8); g.generateTexture('spark', 16, 16); g.clear();
+    g.fillStyle(0xffc94a); g.fillCircle(22, 22, 22); g.fillStyle(0xffe08a); g.fillCircle(16, 16, 9);
+    g.lineStyle(4, 0xf2a516); g.strokeCircle(22, 22, 20); g.generateTexture('coin', 44, 44); g.clear();
+  }
+
+  create() {
+    const L = LEVELS[this.level];
+    const W = 720, H = 1280;
+    this.groundY = 1100;
+    this.length = GATES * 1500 + 1900;
+    this.cameras.main.setBounds(0, 0, this.length, H);
+    this.physics.world.setBounds(0, 0, this.length, H);
+
+    // Sky, far hills and near hills: three layers moving at their own pace.
+    const sky = this.add.graphics().setScrollFactor(0);
+    sky.fillGradientStyle(L.sky[0], L.sky[0], L.sky[1], L.sky[1], 1); sky.fillRect(0, 0, W, H);
+    if (L.stars) for (let i = 0; i < 40; i++) this.add.circle(Math.random() * W, Math.random() * 500, Math.random() * 2 + 1, 0xffffff, .8).setScrollFactor(0);
+    else this.add.circle(560, 210, 70, L.sun).setScrollFactor(0);
+    this.far = this.makeHills(L.far, 0.15, 760, L.farH || 140);
+    this.near = this.makeHills(L.hills[0], 0.4, 900, 110);
+    if (L.city) this.makeCity();
+
+    // The ground: grass on earth, the whole way.
+    const ground = this.add.rectangle(this.length / 2, this.groundY + 90, this.length, 180, L.hills[1]);
+    this.add.rectangle(this.length / 2, this.groundY + 6, this.length, 14, 0x8bd16a);
+    this.physics.add.existing(ground, true);
+
+    // Rova.
+    this.rova = this.add.text(180, this.groundY - 70, '🏃', { fontSize: '96px' }).setOrigin(.5).setScale(-1, 1);
+    this.physics.add.existing(this.rova);
+    this.rova.body.setSize(60, 110).setOffset(20, 8).setGravityY(2400).setCollideWorldBounds(true);
+    this.physics.add.collider(this.rova, ground, () => { if (this.air) this.land(); });
+    this.jumps = 0; this.air = false;
+
+    this.cameras.main.startFollow(this.rova, false, 1, 0, -200, 0);
+
+    // Effects.
+    this.sparks = this.add.particles(0, 0, 'spark', { speed: { min: 140, max: 420 }, lifespan: 600, scale: { start: .9, end: 0 }, gravityY: 600, tint: [0xffc94a, 0xffffff, 0x8fd3ff, 0x6dbe5e], emitting: false });
+    this.dust = this.add.particles(0, 0, 'spark', { speedX: { min: -160, max: -40 }, speedY: { min: -120, max: -20 }, lifespan: 380, scale: { start: .6, end: 0 }, tint: 0xd8c9a8, emitting: false });
+
+    // Gates and coins.
+    this.gates = [];
+    this.coins = this.physics.add.group({ allowGravity: false, immovable: true });
+    for (let i = 0; i < GATES + 1; i++) {
+      const x = 1300 + i * 1500;
+      const boss = i === GATES;
+      this.gates.push({ x, q: question(this.level, boss), boss, done: false, built: false });
+      if (!boss) this.coinArc(x + 520 + Math.random() * 200, [0, 1, 2][i % 3]);
+    }
+    this.finishX = this.gates[GATES].x + 700;
+    this.add.text(this.finishX, this.groundY - 160, '🏁', { fontSize: '120px' }).setOrigin(.5);
+    this.physics.add.overlap(this.rova, this.coins, (r, c) => this.coin(c));
+
+    // The heads-up display.
+    this.hearts = 3; this.coinsGot = 0; this.right = 0; this.met = [];
+    this.hud = this.add.text(24, 24, '', { fontFamily: 'Plus Jakarta Sans', fontSize: '34px', fontStyle: '800', color: '#ffffff', stroke: '#0d2a4a', strokeThickness: 8 }).setScrollFactor(0).setDepth(10);
+    this.ask = this.add.text(W / 2, 110, '', { fontFamily: 'Plus Jakarta Sans', fontSize: '40px', fontStyle: '800', color: '#15213a', backgroundColor: '#ffffffee', padding: { x: 22, y: 14 }, align: 'center', wordWrap: { width: 640 } }).setOrigin(.5, 0).setScrollFactor(0).setDepth(10).setVisible(false);
+    this.banner = this.add.text(W / 2, 330, '', { fontFamily: 'Plus Jakarta Sans', fontSize: '36px', fontStyle: '800', color: '#ffffff', stroke: '#0d2a4a', strokeThickness: 8, align: 'center', wordWrap: { width: 660 } }).setOrigin(.5).setScrollFactor(0).setDepth(10).setAlpha(0);
+    this.updateHud();
+
+    // Jump on tap, click, Space or Up.
+    this.input.on('pointerdown', () => this.jump());
+    this.input.keyboard.on('keydown-SPACE', () => this.jump());
+    this.input.keyboard.on('keydown-UP', () => this.jump());
+    this.speed = L.speed;
+    this.started = false;
+    this.time.delayedCall(500, () => (this.started = true));
+    this.showBanner(`${L.emoji} ${L.name}`, '#ffffff', 1400);
+  }
+
+  makeHills(colour, factor, baseY, height) {
+    const g = this.add.graphics().setScrollFactor(factor);
+    g.fillStyle(colour, 1);
+    const span = this.length * factor + 1600;
+    g.beginPath(); g.moveTo(0, 1280);
+    for (let x = 0; x <= span; x += 40) g.lineTo(x, baseY - height * (0.5 + 0.5 * Math.sin(x / 260) * Math.cos(x / 610)));
+    g.lineTo(span, 1280); g.closePath(); g.fillPath();
+    return g;
+  }
+
+  makeCity() {
+    const g = this.add.graphics().setScrollFactor(.25);
+    for (let x = 0; x < this.length * .25 + 1400; x += 70) {
+      const h = 80 + Math.random() * 180;
+      g.fillStyle(Phaser.Display.Color.GetColor(230 - Math.random() * 40, 220 - Math.random() * 40, 210), 1);
+      g.fillRect(x, 820 - h, 58, h + 200);
+      g.fillStyle(0xffe9a8, .9);
+      for (let y = 840 - h; y < 860; y += 34) g.fillRect(x + 12, y, 12, 14), g.fillRect(x + 34, y, 12, 14);
+    }
+  }
+
+  lanes() { return [this.groundY - 70, this.groundY - 420, this.groundY - 760]; }
+
+  coinArc(x, lane) {
+    const y = this.lanes()[lane];
+    for (let i = 0; i < 5; i++) {
+      const c = this.coins.create(x + i * 70, y - Math.sin(i / 4 * Math.PI) * 120, 'coin');
+      c.body.setCircle(22);
+      this.tweens.add({ targets: c, scaleX: { from: 1, to: .25 }, duration: 520, yoyo: true, repeat: -1, delay: i * 80 });
+    }
+  }
+
+  coin(c) {
+    this.sparks.explode(8, c.x, c.y);
+    c.destroy();
+    this.coinsGot++;
+    this.updateHud();
+  }
+
+  // Doors, built as they come near: low, middle and high, each with a word.
+  buildGate(gate) {
+    gate.built = true;
+    const ys = this.lanes();
+    gate.doors = gate.q.options.map((opt, lane) => {
+      const y = ys[lane];
+      const c = this.add.container(gate.x, y);
+      const frame = this.add.rectangle(0, 0, 230, 190, gate.boss ? 0x7a4bc2 : 0x8a5a33).setStrokeStyle(8, gate.boss ? 0xffc94a : 0x5a3a20);
+      const glow = this.add.rectangle(0, 0, 196, 160, 0xfff6dd);
+      const size = opt[0].length > 34 ? 19 : opt[0].length > 16 ? 23 : opt[0].length > 11 ? 26 : opt[0].length > 8 ? 32 : 40;
+      const label = this.add.text(0, 0, opt[0], { fontFamily: 'Plus Jakarta Sans', fontSize: size + 'px', fontStyle: '800', color: '#15213a', align: 'center', wordWrap: { width: 186 } }).setOrigin(.5);
+      c.add([frame, glow, label]);
+      if (lane > 0) c.add(this.add.rectangle(0, 112, 250, 18, 0x5a3a20));
+      c.setScale(0); this.tweens.add({ targets: c, scale: 1, duration: 380, ease: 'Back.Out', delay: lane * 80 });
+      return c;
+    });
+    const q = gate.q;
+    this.ask.setText(q.saying ? `Boss! What does\n“${q.saying}” mean?`
+      : gate.boss ? `Boss! Fill the gap:\n${q.gap}`
+      : `Which one means\n“${asks(q.target)}”?`).setVisible(true);
+    this.ask.setScale(.6); this.tweens.add({ targets: this.ask, scale: 1, duration: 300, ease: 'Back.Out' });
+  }
+
+  passGate(gate) {
+    gate.done = true;
+    const y = this.rova.y, ys = this.lanes();
+    const lane = y > (ys[0] + ys[1]) / 2 ? 0 : y > (ys[1] + ys[2]) / 2 ? 1 : 2;
+    const picked = gate.q.options[lane];
+    const right = picked === gate.q.target;
+    const t = gate.q.target;
+    this.met.push({ w: gate.q.saying ? [t[1], t[0]] : t, right });
+    const door = gate.doors[lane];
+    if (right) {
+      this.right++;
+      this.sparks.explode(gate.boss ? 60 : 30, gate.x, ys[lane]);
+      this.tweens.add({ targets: door, scale: 1.25, alpha: 0, duration: 380 });
+      this.cameras.main.flash(120, 255, 240, 200);
+      this.showBanner(gate.q.saying ? `“${t[1]}”\n${t[0]}` : `${t[5] ? t[5] + ' ' : ''}${t[0]} · ${asks(t)}`, '#ffffff');
+      this.speed += 10;
+    } else {
+      this.hearts--;
+      // Hit-stop, then a shake: the miss lands.
+      this.physics.world.pause();
+      this.time.delayedCall(90, () => { this.physics.world.resume(); this.cameras.main.shake(260, .012); });
+      this.tweens.add({ targets: door, angle: 12, duration: 70, yoyo: true, repeat: 3 });
+      this.tweens.add({ targets: this.rova, alpha: .3, duration: 90, yoyo: true, repeat: 4 });
+      this.showBanner(gate.q.saying ? `“${t[1]}”\n${t[0]}` : `It was ${t[0]}\n${asks(t)}`, '#ffd6e4', 2400);
+    }
+    gate.doors.forEach((d, i) => { if (i !== lane) this.tweens.add({ targets: d, alpha: 0, duration: 400, delay: 300 }); });
+    this.ask.setVisible(false);
+    this.updateHud();
+    if (this.hearts <= 0) this.time.delayedCall(700, () => this.finish(false));
+  }
+
+  showBanner(text, colour, ms = 1400) {
+    this.banner.setText(text).setColor(colour).setAlpha(1).setScale(.7);
+    this.tweens.killTweensOf(this.banner);
+    this.tweens.add({ targets: this.banner, scale: 1, duration: 260, ease: 'Back.Out' });
+    this.tweens.add({ targets: this.banner, alpha: 0, delay: ms, duration: 400 });
+  }
+
+  updateHud() {
+    const done = this.gates ? this.gates.filter(g => g.done).length : 0;
+    this.hud.setText(`${'❤️'.repeat(Math.max(this.hearts, 0))}${'🖤'.repeat(3 - Math.max(this.hearts, 0))}   🪙 ${this.coinsGot}   🚪 ${done}/${GATES + 1}`);
+  }
+
+  jump() {
+    if (!this.started || this.over) return;
+    const body = this.rova.body;
+    if (body.blocked.down || body.touching.down) this.jumps = 0;
+    if (this.jumps >= 2) return;
+    body.setVelocityY(this.jumps === 0 ? -1420 : -1180);
+    this.jumps++;
+    this.air = true;
+    this.tweens.add({ targets: this.rova, scaleY: { from: .8, to: 1 }, duration: 200 });
+    if (this.jumps === 2) this.sparks.explode(6, this.rova.x, this.rova.y + 40);
+  }
+
+  land() {
+    this.air = false; this.jumps = 0;
+    this.dust.explode(8, this.rova.x, this.groundY);
+    this.tweens.add({ targets: this.rova, scaleY: { from: .82, to: 1 }, scaleX: { from: -1.12, to: -1 }, duration: 160 });
+  }
+
+  update() {
+    if (this.over) return;
+    if (this.started) this.rova.body.setVelocityX(this.speed);
+    // A gentle run bob on the ground.
+    if (!this.air) this.rova.angle = Math.sin(this.time.now / 70) * 4;
+    for (const gate of this.gates) {
+      if (!gate.built && gate.x - this.rova.x < 900) this.buildGate(gate);
+      if (gate.built && !gate.done && this.rova.x >= gate.x) this.passGate(gate);
+    }
+    if (this.rova.x >= this.finishX) this.finish(true);
+  }
+
+  finish(won) {
+    if (this.over) return;
+    this.over = true;
+    this.rova.body.setVelocity(0, 0);
+    if (won) { this.sparks.explode(80, this.rova.x, this.rova.y - 100); this.cameras.main.flash(250, 255, 255, 255); }
+    this.time.delayedCall(won ? 900 : 300, () => showEnd(this.level, won, this.right, this.met, this.coinsGot));
+  }
+}
+
+// ---------------------------------------------------------------- menus
+const game = new Phaser.Game({
+  type: Phaser.AUTO,
+  parent: 'game',
+  width: 720, height: 1280,
+  backgroundColor: '#0d2a4a',
+  physics: { default: 'arcade', arcade: { debug: false } },
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  scene: [],
+});
+
+function stars(level) { return store.get('rj.stars', {})[level] || 0; }
+function renderLevels() {
+  const unlocked = store.get('rj.unlocked', 0);
+  const hex = n => '#' + n.toString(16).padStart(6, '0');
+  document.getElementById('levels').innerHTML = LEVELS.map((L, i) => `
+    <button class="level" data-level="${i}" ${i > unlocked ? 'disabled' : ''} style="--s1:${hex(L.sky[0])};--s2:${hex(L.hills[0])};--d:${i * 60}ms">
+      <span class="e">${i > unlocked ? '🔒' : L.emoji}</span>
+      <span><b>${i + 1}. ${L.name}</b><span class="sub">${i > unlocked ? `Finish ${LEVELS[i - 1].name} to open` : `${L.title} · ${L.dict ? 'dictionary words' : `word levels ${L.band[0]}–${L.band[1]}`}`}</span></span>
+      <span class="stars">${'⭐'.repeat(stars(i))}${'☆'.repeat(3 - stars(i))}</span>
+    </button>`).join('');
+  document.getElementById('total-stars').textContent = `⭐ ${LEVELS.reduce((n, L, i) => n + stars(i), 0)} / ${LEVELS.length * 3}`;
+}
+function start(level) {
+  document.getElementById('title-screen').hidden = true;
+  document.getElementById('end-screen').hidden = true;
+  if (game.scene.getScene('play')) game.scene.remove('play');
+  game.scene.add('play', Play, true, { level });
+}
+function showEnd(level, won, right, met, coins) {
+  const got = !won ? 0 : right >= GATES + 1 ? 3 : right >= GATES - 2 ? 2 : 1;
+  const all = store.get('rj.stars', {});
+  all[level] = Math.max(all[level] || 0, got); store.set('rj.stars', all);
+  if (won) store.set('rj.unlocked', Math.max(store.get('rj.unlocked', 0), Math.min(level + 1, LEVELS.length - 1)));
+  document.getElementById('end-title').textContent = won ? `${LEVELS[level].name} done!` : 'Out of hearts';
+  document.getElementById('end-stars').innerHTML = won ? [0, 1, 2].map(i => `<span style="--d:${250 + i * 220}ms">${i < got ? '⭐' : '☆'}</span>`).join('') : '<span>💔</span>';
+  document.getElementById('end-note').textContent = `${right} of ${met.length} doors right · 🪙 ${coins}. The words you met:`;
+  document.getElementById('end-recap').innerHTML = met.map(({ w, right }, i) => `<li class="${right ? '' : 'missed'}" style="--d:${500 + i * 60}ms"><b>${w[5] ? w[5] + ' ' : ''}${w[0]}</b><span>${w[1]}</span></li>`).join('');
+  const next = document.getElementById('end-next');
+  next.textContent = won && level < LEVELS.length - 1 ? 'Next level' : 'Play again';
+  next.onclick = () => start(won && level < LEVELS.length - 1 ? level + 1 : level);
+  document.getElementById('end-screen').hidden = false;
+}
+document.getElementById('levels').addEventListener('click', e => {
+  const b = e.target.closest('.level'); if (!b || b.disabled) return;
+  start(Number(b.dataset.level));
+});
+document.getElementById('end-menu').onclick = () => {
+  document.getElementById('end-screen').hidden = true;
+  if (game.scene.getScene('play')) game.scene.remove('play');
+  renderLevels();
+  document.getElementById('title-screen').hidden = false;
+};
+renderLevels();
+</script>
