@@ -24,7 +24,8 @@ for it in items:
     # One word per picture and per meaning, so a wrong answer is never also right.
     if key in seen_pic or sense in seen_sense: continue
     seen_pic.add(key); seen_sense.add(sense)
-    W[wid] = [b['word'], first(b['english_gloss']), '' if file else emoji]
+    # Keep the emoji too: games built around emoji (Bazar, Count…) still need one.
+    W[wid] = [b['word'], first(b['english_gloss']), emoji]
     if file:
         name = os.path.basename(file)
         shutil.copy(f'{app}/{file}', f'../../pics/{name}')

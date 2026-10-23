@@ -12,6 +12,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Hnahsin">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Hnahsin">
 <meta property="og:title" content="Hnahsin Games · Learn Mizo by playing">
@@ -45,7 +46,9 @@
   .tagline svg { width: 22px; height: 22px; flex: none; }
   @media (max-width: 340px) { .tagline { padding: 8px 14px; gap: 6px; } }
   .lede { margin: 18px auto 0; max-width: 34ch; color: var(--navy); font-size: var(--text-lg); font-weight: 700; }
-  .ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 26px; }
+  .ctas { display: grid; gap: 12px; width: min(100%, 340px); margin: 26px auto 0; }
+  .ctas .btn { width: 100%; min-height: 54px; font-size: 17px; }
+  @media (min-width: 760px) { .ctas { width: auto; grid-template-columns: repeat(3, auto); justify-content: center; } }
 
   .field { position: absolute; inset: auto 0 0 0; height: clamp(150px, 24vw, 230px); z-index: 0; pointer-events: none; }
   .field svg.hills { position: absolute; inset: auto 0 0 0; width: 100%; height: 100%; }
@@ -63,12 +66,12 @@
   .stat { text-align: center; padding: 4px 6px; }
   .stat + .stat { border-left: 1px solid var(--line); }
   .stat b { display: block; font-family: var(--font-display); font-size: clamp(24px, 5vw, 36px); line-height: 1.1; color: var(--brand); }
-  .stat span { font-size: 13px; font-weight: 700; color: var(--muted); }
+  .stat span { font-size: 14px; font-weight: 700; color: var(--muted); }
   @media (max-width: 520px) { .stats { grid-template-columns: repeat(2, 1fr); row-gap: 12px; } .stat:nth-child(3) { border-left: 0; } }
 
   /* ------------------------------------------------ sections */
   section { padding: clamp(48px, 8vw, 80px) 0 0; }
-  .eyebrow { margin: 0; color: var(--coral); font-weight: 800; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; }
+  .eyebrow { margin: 0; color: var(--coral); font-weight: 800; font-size: 14px; letter-spacing: .1em; text-transform: uppercase; }
   h2 { margin: 6px 0 0; font-size: var(--text-xl); line-height: 1.2; letter-spacing: -.01em; }
   .section-lede { margin: 8px 0 0; color: var(--muted); max-width: 52ch; }
 
@@ -152,12 +155,12 @@
   .word { display: inline-flex; align-items: baseline; gap: 8px; padding: 8px 16px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow-1); white-space: nowrap; }
   .word i { font-style: normal; font-size: 20px; align-self: center; }
   .word b { color: var(--coral); font-family: var(--font-display); font-size: 19px; }
-  .word small { color: var(--muted); font-size: 13px; font-weight: 600; }
+  .word small { color: var(--muted); font-size: 14px; font-weight: 600; }
 
-  .install { display: grid; justify-items: center; gap: 6px; margin-top: 18px; color: var(--navy); }
-  .install p { margin: 0; padding: 8px 14px; border-radius: 14px; background: rgba(255, 255, 255, .9); font-size: 14px; font-weight: 600; }
-  .install .note { font-size: 13px; font-weight: 700; }
-  footer { padding: 48px 0 36px; color: var(--muted); font-size: 13px; text-align: center; }
+  .install { display: grid; justify-items: center; gap: 4px; width: min(100%, 340px); margin: 14px auto 0; color: var(--navy); }
+  .install p { margin: 0; padding: 10px 14px; border-radius: 14px; background: rgba(255, 255, 255, .55); font-size: 15px; font-weight: 600; line-height: 1.4; }
+  .install .note { font-size: 14px; font-weight: 700; }
+  footer { padding: 48px 0 max(36px, env(safe-area-inset-bottom)); color: var(--muted); font-size: 14px; line-height: 1.5; text-align: center; }
   footer p { margin: 4px 0; }
   footer .dev { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 14px; }
   footer .dev b { color: var(--ink); }
