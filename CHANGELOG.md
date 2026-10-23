@@ -4,6 +4,13 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.5.1 (24 October 2026)
+
+- The Touch and learn card on the home page now shows the loom too. Its
+  picture changes between the house and pi at her loom, with In and Puan tah
+  labels on top and name tags on each picture. Tap the card to open the one
+  on show.
+
 ## 1.5.0 (24 October 2026)
 
 ### New in Touch and learn: Puan tah
