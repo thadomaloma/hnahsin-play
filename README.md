@@ -24,6 +24,8 @@ Learn Mizo words by playing. Free, on any phone, no sign-up.
 - **The Hnahsin app.** A preview of the app in your browser. The app is
   coming to Android and iPhone.
 
+A **word of the day** on the home page: tap the card to see what it means.
+
 ## Words
 
 - 1,254 Mizo words, 383 sentences and 203 sayings from the Hnahsin app
