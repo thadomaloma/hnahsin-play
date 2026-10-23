@@ -568,6 +568,29 @@
   <footer>Test games for Hnahsin, using 327 picture words, 383 sentences and 203 sayings from the live content, and 1,928 dictionary words.</footer>
 </div>
 
+<script>// Counts which pages and games are played, with GoatCounter: no cookies and
+// nothing that identifies a person. hnStat('play/bee') counts one event.
+// Change CODE if the GoatCounter site is named differently.
+(function () {
+  var CODE = 'hnahsin';
+  var queue = [];
+  window.hnStat = function (name, title) {
+    if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path: name, title: title || name, event: true });
+    else queue.push([name, title]);
+  };
+  // Count only on the real site, not while testing or in a preview.
+  if (location.hostname !== 'thadomaloma.github.io') { window.hnStat = function () {}; return; }
+  window.goatcounter = { no_onload: false };
+  var s = document.createElement('script');
+  s.async = true;
+  s.src = 'https://gc.zgo.at/count.js';
+  s.setAttribute('data-goatcounter', 'https://' + CODE + '.goatcounter.com/count');
+  s.onload = function () {
+    queue.forEach(function (q) { window.hnStat(q[0], q[1]); });
+    queue = [];
+  };
+  document.head.appendChild(s);
+})();</script>
 <script>// Rova and Mami, drawn from parts so their arms and legs can really run.
 // drawRova(ctx, phase, pose) and drawMami(ctx, phase, pose) paint them facing right
 // in a 120 × 160 box with their feet near the bottom. phase is the run cycle in
@@ -989,7 +1012,12 @@ const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ==
 function flash(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
 
 let stars = store.get('lab.stars', 0);
-function addStars(n) { stars += n; store.set('lab.stars', stars); $('score').textContent = '⭐ ' + stars; flash($('score'), 'pop'); }
+const wonAt = {};
+function countWin() {
+  const g = location.hash.slice(1); if (!g || Date.now() - (wonAt[g] || 0) < 60000) return;
+  wonAt[g] = Date.now(); hnStat(`playground/${g}/win`, `Playground: ${g} won`);
+}
+function addStars(n) { if (n > 0) countWin(); stars += n; store.set('lab.stars', stars); $('score').textContent = '⭐ ' + stars; flash($('score'), 'pop'); }
 $('score').textContent = '⭐ ' + stars;
 
 // Pictures or dictionary words, chosen in each game that offers both.
@@ -1073,7 +1101,7 @@ function route() {
     $('title').textContent = g ? `${g.icon} ${g.name}` : 'Playground';
     $('subtitle').textContent = g ? g.blurb : `${GAMES.length} Mizo word games`;
     document.title = g ? `${g.name} · Hnahsin Playground` : 'Hnahsin Playground';
-    if (!g) { renderLibrary(); fromLibrary = true; }
+    if (!g) { renderLibrary(); fromLibrary = true; } else hnStat(`playground/${g.id}`, `Playground: ${g.name}`);
     show(g ? g.id : null);
     scrollTo(0, 0);
   };

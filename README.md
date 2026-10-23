@@ -35,6 +35,12 @@ The games work like an app and play without internet after the first visit.
 - **iPhone:** open the link in Safari, tap **Share**, then **Add to Home Screen**.
 - **Android:** open the link in Chrome and tap **Install Hnahsin**.
 
+## Privacy
+
+The site counts which pages and games are opened and won, with
+[GoatCounter](https://www.goatcounter.com/). It uses no cookies and keeps
+nothing that tells who you are. Your stars and levels stay on your phone.
+
 ## For developers
 
 The pages are plain HTML, CSS and JavaScript, served by GitHub Pages.
