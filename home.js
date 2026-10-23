@@ -90,7 +90,20 @@
     addEventListener('appinstalled', () => { $('#install').hidden = true; });
   }
 
-  if (calm) { $('.rova').hidden = true; return; }
+  // A canvas that draws Rova at the screen's sharpness.
+  const rovaOn = canvas => {
+    const ctx = canvas.getContext('2d');
+    return (phase, pose) => {
+      const dpr = Math.min(devicePixelRatio || 1, 3), w = canvas.clientWidth, h = canvas.clientHeight;
+      if (!w) return;
+      if (canvas.width !== Math.round(w * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
+      ctx.setTransform(canvas.width / 120, 0, 0, canvas.height / 160, 0, 0);
+      ctx.clearRect(0, 0, 120, 160);
+      drawRova(ctx, phase, pose);
+    };
+  };
+  const drawCover = rovaOn($('.cover.journey .runner canvas'));
+  if (calm) { $('.rova').hidden = true; drawCover(.6, 'run'); return; }
 
   // ------------------------------------------------ cosmos petals on the wind
   const canvas = $('.petals'), ctx = canvas.getContext('2d');
@@ -160,6 +173,7 @@
     return best.y;
   };
   let rx = -60, hop = 0;
+  const drawHill = rovaOn($('canvas', rova));
   const run = t => {
     requestAnimationFrame(run);
     if (!heroOnScreen || document.hidden) return;
@@ -171,7 +185,8 @@
     hop = near ? Math.min(1, hop + .08) : Math.max(0, hop - .06);
     const ground = hillY(rx / fw * 1440) / 230 * fh;
     const lift = Math.sin(hop * Math.PI / 2) * 46;
-    rova.style.transform = `translate3d(${rx}px, ${ground - fh - lift}px, 0) rotate(${hop ? -10 * hop : 0}deg)`;
+    rova.style.transform = `translate3d(${rx}px, ${ground - fh - lift - rova.offsetHeight * .97}px, 0) rotate(${hop ? -6 * hop : 0}deg)`;
+    drawHill(t / 55, hop > .25 ? 'jump' : 'run');
   };
   requestAnimationFrame(run);
 
@@ -184,23 +199,27 @@
     { q: 'water', doors: ['mei', 'tui', 'chhum'], a: 1 },
   ];
   const doors = $$('.door', cover), q = $('.q', cover), runner = $('.runner', cover);
-  let round = 0;
+  let round = 0, coverPose = 'run';
+  const coverRun = t => { requestAnimationFrame(coverRun); if (!document.hidden) drawCover(t / 60, coverPose); };
+  requestAnimationFrame(coverRun);
   const play = () => {
     if (!document.hidden) {
       const r = ROUNDS[round++ % ROUNDS.length];
       q.textContent = `Which one means “${r.q}”?`;
       doors.forEach((d, i) => { d.textContent = r.doors[i]; d.classList.remove('hit'); });
       const door = doors[r.a], cr = cover.getBoundingClientRect(), dr = door.getBoundingClientRect(), rr = runner.getBoundingClientRect();
-      const dx = dr.left - rr.left - 24, dy = dr.top + dr.height / 2 - (rr.top + rr.height / 2);
+      const dx = dr.left - rr.right + 14, dy = dr.top + dr.height / 2 - (rr.top + rr.height / 2);
+      setTimeout(() => { coverPose = 'jump'; }, 500);
       runner.animate([
-        { transform: 'scaleX(-1) translate(0, 0)' },
-        { transform: `scaleX(-1) translate(${-dx * .5}px, ${Math.min(dy, 0) - 40}px) rotate(-10deg)`, offset: .55 },
-        { transform: `scaleX(-1) translate(${-dx}px, ${dy}px)` },
+        { transform: 'translate(0, 0)' },
+        { transform: `translate(${dx * .5}px, ${Math.min(dy, 0) - 40}px) rotate(-6deg)`, offset: .55 },
+        { transform: `translate(${dx}px, ${dy}px)` },
       ], { duration: 900, easing: 'cubic-bezier(.3,.7,.4,1)', fill: 'forwards', delay: 500 }).onfinish = () => {
+        coverPose = 'run';
         door.classList.add('hit');
         burst(cover, dr.left - cr.left + dr.width / 2, dr.top - cr.top + dr.height / 2);
         setTimeout(() => runner.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }).onfinish = () =>
-          runner.animate([{ transform: 'scaleX(-1)', opacity: 0 }, { transform: 'scaleX(-1)', opacity: 1 }], { duration: 300, fill: 'forwards' }), 900);
+          runner.animate([{ transform: 'none', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, fill: 'forwards' }), 900);
       };
     }
     setTimeout(play, 3400);
