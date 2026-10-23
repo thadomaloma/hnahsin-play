@@ -55,4 +55,11 @@ The pages are plain HTML, CSS and JavaScript, served by GitHub Pages.
   [Open an issue](https://github.com/thadomaloma/hnahsin-play/issues/new/choose).
 - Where the words, pictures and tools come from: [CREDITS.md](CREDITS.md).
 
+## Copyright
+
+© 2026 Maloma Thado. All rights reserved.
+
+You are welcome to play the games. Please do not copy the code, words,
+pictures or design into another site or app without asking first.
+
 Developed by Maloma Thado.
