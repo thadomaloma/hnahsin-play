@@ -82,4 +82,5 @@ flutter build web --release --base-href /hnahsin-play/app/ \
   -o <somewhere>
 ```
 
-then copy it into `app/` without the `*.symbols` files.
+then copy it into `app/` without the `*.symbols` files, run `python3 source/app_patch.py`
+(loading screen and offline caching), and bump `VERSION` in `sw.js`.
