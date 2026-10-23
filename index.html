@@ -109,6 +109,15 @@
   .game:hover .cover.lab span:nth-child(odd) { transform: rotate(-6deg) scale(1.06); }
   .game:hover .cover.lab span:nth-child(even) { transform: rotate(6deg) scale(1.06); }
 
+  /* Cover: Touch and learn, a still of the Mizo house */
+  .cover.things { background: #cfe8f6 url(pics/things-house.svg) center / cover no-repeat; }
+  .cover.things .q { left: auto; right: 16px; top: auto; bottom: 16px; }
+  @media (min-width: 760px) {
+    .game.wide { grid-column: 1 / -1; flex-direction: row; }
+    .game.wide .cover { flex: 1.15; height: auto; min-height: 280px; }
+    .game.wide .body { flex: 1; align-content: center; }
+  }
+
   /* How you learn */
   .why { display: grid; gap: 16px; margin-top: 26px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
   .why .card { padding: 22px; }
@@ -230,7 +239,7 @@
 <main class="wrap">
   <div class="card stats" role="list">
     <div class="stat" role="listitem"><b data-count="3182">3,182</b><span>Mizo words</span></div>
-    <div class="stat" role="listitem"><b data-count="30">30</b><span>games</span></div>
+    <div class="stat" role="listitem"><b data-count="31">31</b><span>games</span></div>
     <div class="stat" role="listitem"><b data-count="203">203</b><span>Mizo sayings</span></div>
     <div class="stat" role="listitem"><b>Free</b><span>no sign-up</span></div>
   </div>
@@ -266,6 +275,16 @@
           <div class="tags"><span class="pill">🎮 21 games</span><span class="pill">🖼️ Pictures</span><span class="pill">📖 Dictionary</span></div>
           <h3>Hnahsin Playground</h3>
           <p>Shop at the bazar, dress Rova, pop bubbles and whack the rat. Now with Mizo Spelling Bee, Waffle and Strands.</p>
+          <span class="btn play">Play</span>
+        </div>
+      </a>
+
+      <a class="card game wide" href="things.html">
+        <div class="cover things" aria-hidden="true"><span class="q">tukverh · window</span></div>
+        <div class="body">
+          <div class="tags"><span class="pill">🆕 New</span><span class="pill">👆 Tap and turn</span><span class="pill">🏠 A Mizo house</span></div>
+          <h3>Touch and learn</h3>
+          <p>A Mizo house on stilts you can play with. Open the door, make it night or rain, light the fire, and tap anything to learn its Mizo name.</p>
           <span class="btn play">Play</span>
         </div>
       </a>

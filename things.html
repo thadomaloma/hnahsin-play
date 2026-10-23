@@ -1,0 +1,902 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#f3efe6"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Hnahsin"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="icon" href="favicon.png" type="image/png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js'));</script></head><body>
+<title>Touch and Learn · Hnahsin</title>
+<meta name="description" content="Tap the parts of a Mizo house and learn their Mizo names.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --ground: #f3efe6;
+    --panel: #fffdf8;
+    --ink: #231e16;
+    --muted: #5d5547;
+    --line: #ddd5c4;
+    --brand: #1565c0;
+    --gold: #ffc94a;
+    --gold-deep: #e39b00;
+    --leaf: #3f8a32;
+    --coral: #c2185b;
+  }
+  /* Always the bright look: the figure is drawn on paper. */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background-color: var(--ground);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .4  0 0 0 0 .36  0 0 0 0 .3  0 0 0 .1 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
+    color: var(--ink);
+    font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    padding-inline: 16px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  [hidden] { display: none !important; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:focus-visible, a:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .app { max-width: 620px; margin: 0 auto; padding-block: 0 40px; display: grid; gap: 14px; }
+
+  header.top { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; margin-inline: -16px; padding: max(10px, env(safe-area-inset-top)) 16px 10px; background: color-mix(in srgb, var(--ground) 85%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+  .nav-link { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--panel); border: 1.5px solid var(--ink); color: var(--ink); font-size: 22px; font-weight: 800; text-decoration: none; }
+  .brand { flex: 1; min-width: 0; display: grid; gap: 1px; }
+  .brand b { font-family: "Baloo 2", "Plus Jakarta Sans", sans-serif; font-size: 24px; line-height: 1.1; }
+  .brand span { color: var(--muted); font-size: 14px; font-weight: 600; }
+  .score { flex: none; font-weight: 800; background: var(--panel); border: 1.5px solid var(--ink); border-radius: 99px; padding: 6px 12px; font-variant-numeric: tabular-nums; }
+
+  .card { background: var(--panel); border: 1.5px solid var(--ink); border-radius: 22px; overflow: hidden; box-shadow: 0 3px 0 var(--ink); }
+  .fig-title { display: flex; align-items: baseline; gap: 8px; padding: 12px 16px 0; }
+  .fig-title b { font-family: "Baloo 2", sans-serif; font-size: 26px; line-height: 1; }
+  .fig-title span { color: var(--muted); font-weight: 600; font-size: 15px; }
+  .stage { position: relative; touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: grab; }
+  .stage.dragging { cursor: grabbing; }
+  .stage svg { display: block; width: 100%; height: auto; aspect-ratio: 260 / 222; }
+  .stage svg [data-p] { cursor: pointer; }
+  .stage svg .hl { stroke: var(--gold-deep) !important; stroke-width: 2.6px !important; }
+  .stage svg g.hl > * { stroke: var(--gold-deep) !important; stroke-width: 2.2px !important; }
+  .hint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); background: rgba(35, 30, 22, .78); color: #fff; font-size: 14px; font-weight: 700; padding: 6px 12px; border-radius: 99px; pointer-events: none; transition: opacity .5s; white-space: nowrap; }
+  .hint.gone { opacity: 0; }
+
+  .word { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; min-height: 64px; padding: 12px 16px 14px; border-top: 1.5px solid var(--ink); background: #fff8e1; }
+  .word b { font-family: "Baloo 2", sans-serif; font-size: 30px; line-height: 1.1; color: var(--brand); }
+  .word span { font-size: 16px; font-weight: 600; color: var(--muted); }
+  .word .also { font-size: 15px; font-weight: 700; color: var(--leaf); }
+  .word.idle b { color: var(--ink); font-size: 20px; }
+  .word.pop b { animation: pop .35s cubic-bezier(.2, .8, .2, 1.4); }
+  .word.good { background: #e3f4dd; }
+  .word.bad { animation: shake .35s; }
+  @keyframes pop { from { transform: scale(.7); opacity: .3; } }
+  @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  #acts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #acts .act { justify-content: space-between; min-width: 0; text-align: left; line-height: 1.2; }
+  .act .chip { flex: none; }
+  @media (max-width: 360px) { #acts { grid-template-columns: minmax(0, 1fr); } }
+  @media (min-width: 560px) { #acts { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .act, .tool { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 14px; background: var(--panel); border: 1.5px solid var(--ink); border-radius: 99px; font-weight: 700; font-size: 15px; box-shadow: 0 2px 0 var(--ink); transition: transform .1s, box-shadow .1s; }
+  .act:active, .tool:active { transform: translateY(2px); box-shadow: 0 0 0 var(--ink); }
+  .act .chip { font-size: 14px; font-weight: 800; color: var(--brand); background: #e5f0fc; border-radius: 99px; padding: 2px 9px; }
+  .tool[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .group-label { font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 4px 2px -4px; }
+  .swatch { width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--ink); box-shadow: 0 2px 0 var(--ink); }
+  .swatch[aria-pressed="true"] { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+  .find { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 12px 14px; background: var(--ink); color: #fff; border-radius: 18px; }
+  .find b { font-family: "Baloo 2", sans-serif; font-size: 26px; line-height: 1; color: var(--gold); }
+  .find .hintw { font-size: 15px; color: #e8e2d4; }
+  .find button { margin-left: auto; min-height: 40px; padding: 6px 14px; border-radius: 99px; border: 1.5px solid #fff; background: transparent; color: #fff; font-weight: 700; }
+  .note { font-size: 14px; color: var(--muted); margin: 0; }
+  @media (prefers-reduced-motion: reduce) { .word.pop b, .word.bad { animation: none; } }
+</style>
+
+<div class="app">
+  <header class="top">
+    <a class="nav-link" href="./" aria-label="Back to Hnahsin Games">‹</a>
+    <div class="brand"><b>Touch and learn</b><span>Tap a thing to learn its Mizo name</span></div>
+    <div class="score" id="score" aria-label="Stars">⭐ 0</div>
+  </header>
+
+  <main class="card">
+    <div class="fig-title"><b id="fname"></b><span id="fsub"></span></div>
+    <div class="stage" id="stage">
+      <svg id="svg" role="img"></svg>
+      <div class="hint" id="hint">Tap anything · drag to turn</div>
+    </div>
+    <div class="word idle" id="word" aria-live="polite"><b>Tap anything</b><span>to see its Mizo name</span></div>
+  </main>
+
+  <section class="find" id="findbar" hidden aria-live="polite">
+    <span>Find the</span><b id="findw"></b><span class="hintw" id="findhint"></span>
+    <button id="skip" type="button">Skip</button>
+  </section>
+
+  <p class="group-label">Do something</p>
+  <section class="row" id="acts"></section>
+
+  <p class="group-label">Look</p>
+  <section class="row">
+    <button class="tool" id="t-labels" type="button" aria-pressed="false">Labels</button>
+    <button class="tool" id="t-find" type="button" aria-pressed="false">Find it</button>
+    <button class="tool" id="t-turn" type="button" aria-pressed="false">Turn</button>
+    <button class="tool" id="t-front" type="button">Front view</button>
+    <button class="tool" id="t-pen" type="button" aria-pressed="true">Pen look</button>
+  </section>
+  <p class="group-label" id="swlabel"></p>
+  <section class="row" id="swatches"></section>
+</div>
+
+<script>
+// Counts which pages and games are played, with GoatCounter: no cookies and
+// nothing that identifies a person. hnStat('play/bee') counts one event.
+// Change CODE if the GoatCounter site is named differently.
+(function () {
+  var CODE = 'hnahsin';
+  var queue = [];
+  window.hnStat = function (name, title) {
+    if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path: name, title: title || name, event: true });
+    else queue.push([name, title]);
+  };
+  // Count only on the real site, not while testing or in a preview.
+  if (location.hostname !== 'thadomaloma.github.io') { window.hnStat = function () {}; return; }
+  window.goatcounter = { no_onload: false };
+  var s = document.createElement('script');
+  s.async = true;
+  s.src = 'https://gc.zgo.at/count.js';
+  s.setAttribute('data-goatcounter', 'https://' + CODE + '.goatcounter.com/count');
+  s.onload = function () {
+    queue.forEach(function (q) { window.hnStat(q[0], q[1]); });
+    queue = [];
+  };
+  document.head.appendChild(s);
+})();
+</script>
+<script>
+// Ink3D: Hnahsin's small engine for hand-inked 3D things you can play with.
+// A thing is built from solids (boxes, prisms), cylinders, balls, lines and flat
+// pieces in world units: x toward the viewer's right, y toward the viewer's left,
+// z up. A camera turns it, and render() writes it as SVG with ink outlines,
+// three-tone shading, cast shadows on the ground and the parts' Mizo names
+// (data-p) so a tap can tell which part was touched.
+(function (global) {
+  const INK = '#231e16';
+  const D2R = Math.PI / 180;
+
+  // ---------- vectors ----------
+  const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const mul = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const norm = v => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
+  const centroid = pts => { const s = [0, 0, 0]; for (const p of pts) { s[0] += p[0]; s[1] += p[1]; s[2] += p[2]; } return mul(s, 1 / pts.length); };
+  const lerp3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+  function newell(pts) {
+    const n = [0, 0, 0];
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      n[0] += (a[1] - b[1]) * (a[2] + b[2]); n[1] += (a[2] - b[2]) * (a[0] + b[0]); n[2] += (a[0] - b[0]) * (a[1] + b[1]);
+    }
+    return norm(n);
+  }
+
+  // The light comes from above, in front and to the right; it stays put while the thing turns.
+  const LIGHT = norm([0.6, -0.25, 1]);
+
+  // ---------- colours ----------
+  const hexRgb = c => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
+  const mixMemo = new Map();
+  function mix(a, b, t) {
+    if (t <= 0.005) return a;
+    if (t >= 0.995) return b;
+    const key = a + b + Math.round(t * 50);
+    let c = mixMemo.get(key);
+    if (!c) {
+      const A = hexRgb(a), B = hexRgb(b), k = Math.round(t * 50) / 50;
+      c = '#' + A.map((v, i) => Math.round(v + (B[i] - v) * k).toString(16).padStart(2, '0')).join('');
+      if (mixMemo.size > 4000) mixMemo.clear();
+      mixMemo.set(key, c);
+    }
+    return c;
+  }
+  // A palette is three inks: l (lit), m (middle), d (in shade).
+  const tone = (pal, b) => b > 0.62 ? pal.l : b > 0.2 ? pal.m : pal.d;
+
+  // ---------- camera (orthographic: yaw turns around the up axis, pitch looks down) ----------
+  function camera(yaw, pitch) {
+    const t = yaw * D2R, p = pitch * D2R, ct = Math.cos(t), st = Math.sin(t), cp = Math.cos(p), sp = Math.sin(p);
+    return {
+      yaw, pitch,
+      view: [st * cp, ct * cp, sp],                                  // toward the viewer
+      P: q => [q[0] * ct - q[1] * st, -q[2] * cp + (q[0] * st + q[1] * ct) * sp],
+      depth: q => (q[0] * st + q[1] * ct) * cp + q[2] * sp,          // larger is nearer
+    };
+  }
+
+  // ---------- shapes ----------
+  // A closed solid: faces with outward normals (found from the solid's centre).
+  function solid(faces, o = {}) {
+    const c = o.center || centroid(faces.flatMap(f => f.pts));
+    for (const f of faces) {
+      let n = newell(f.pts);
+      if (dot(n, sub(centroid(f.pts), c)) < 0) n = mul(n, -1);
+      f.n = n;
+      if (f.part === undefined) f.part = o.part;
+      if (!f.pal && !f.fill) f.pal = o.pal;
+    }
+    return { ...o, t: 'solid', faces };
+  }
+  // Eight corners: 0–3 round the bottom, 4–7 the same round the top.
+  const HEX = { zn: [0, 3, 2, 1], zp: [4, 5, 6, 7], yn: [0, 1, 5, 4], xp: [1, 2, 6, 5], yp: [2, 3, 7, 6], xn: [3, 0, 4, 7] };
+  function hexa(c8, o = {}) {
+    const faces = [];
+    for (const k in HEX) {
+      if (o.skip && o.skip.includes(k)) continue;
+      faces.push({ key: k, pts: HEX[k].map(i => c8[i]), pal: o.pals && o.pals[k], decals: o.decals && o.decals[k] });
+    }
+    return solid(faces, { ...o, center: centroid(c8) });
+  }
+  const box = (x0, x1, y0, y1, z0, z1, o) => hexa([
+    [x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0],
+    [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]], o);
+  // A board hinged on one edge: h = hinge foot, w = width direction (unit), out = the side it swings to,
+  // angle = how far it is open (degrees). o.decal(map) gives marks for its outer face, where
+  // map(u, v) is the point u along the board and v up from its foot.
+  function panel(h, w, out, width, height, thick, angle, o = {}) {
+    const a = angle * D2R, dw = add(mul(w, Math.cos(a)), mul(out, Math.sin(a))), dn = add(mul(out, Math.cos(a)), mul(w, -Math.sin(a)));
+    const up = [0, 0, height];
+    const b0 = h, b1 = add(h, mul(dw, width)), b2 = add(b1, mul(dn, thick)), b3 = add(h, mul(dn, thick));
+    const map = (u, v) => add(add(add(h, mul(dw, u)), [0, 0, v]), mul(dn, thick + 0.05));
+    const decals = o.decal ? { yp: o.decal(map) } : undefined;
+    return hexa([b0, b1, b2, b3, add(b0, up), add(b1, up), add(b2, up), add(b3, up)], { ...o, decals });
+  }
+  const ball = (c, r, o = {}) => ({ ...o, t: 'ball', c, r });
+  const cyl = (c, z0, z1, r0, r1, o = {}) => ({ ...o, t: 'cyl', c, z0, z1, r0, r1: r1 ?? r0 });
+  const line = (pts, o = {}) => ({ shadow: false, ...o, t: 'line', pts });
+  const poly = (pts, o = {}) => ({ ...o, t: 'poly', pts });
+  const group = (kids, o = {}) => ({ ...o, t: 'group', kids });
+
+  function vertsOf(p) {
+    if (p._v) return p._v;
+    let v;
+    switch (p.t) {
+      case 'solid': v = p.faces.flatMap(f => f.pts); break;
+      case 'ball': { v = []; const r = p.r; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, c = Math.cos(a) * r, s = Math.sin(a) * r; v.push(add(p.c, [c, s, 0]), add(p.c, [c, 0, s]), add(p.c, [0, c, s])); } break; }
+      case 'cyl': { v = []; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; v.push([p.c[0] + Math.cos(a) * p.r0, p.c[1] + Math.sin(a) * p.r0, p.z0], [p.c[0] + Math.cos(a) * p.r1, p.c[1] + Math.sin(a) * p.r1, p.z1]); } break; }
+      case 'group': v = p.kids.flatMap(vertsOf); break;
+      default: v = p.pts;
+    }
+    return (p._v = v);
+  }
+
+  // Convex hull of 2D points (monotone chain).
+  function hull(pts) {
+    const s = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    if (s.length < 3) return s;
+    const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lo = [], up = [];
+    for (const p of s) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+    for (let i = s.length - 1; i >= 0; i--) { const p = s[i]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+    return lo.slice(0, -1).concat(up.slice(0, -1));
+  }
+
+  const f1 = n => (Math.round(n * 10) / 10).toString();
+  // The pen look: lines are cut into short steps and nudged by a smooth noise of their place on
+  // the page, so edges wobble like hand inking. Shared edges get the same nudge, so faces still meet.
+  // (Done here rather than with an SVG filter, which is slow on phones.)
+  let WOB = 0;
+  const nz = (x, y) => [Math.sin(x * 0.23 + y * 0.11) + 0.8 * Math.sin(x * 0.071 - y * 0.17 + 1.3), Math.sin(y * 0.21 - x * 0.09 + 2.1) + 0.8 * Math.sin(y * 0.083 + x * 0.15 + 0.7)];
+  function wobble(pts, open) {
+    const out = [], n = pts.length, segs = open ? n - 1 : n;
+    for (let i = 0; i < segs; i++) {
+      const a = pts[i], b = pts[(i + 1) % n], k = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 7));
+      for (let j = 0; j < k; j++) out.push([a[0] + (b[0] - a[0]) * j / k, a[1] + (b[1] - a[1]) * j / k]);
+    }
+    if (open) out.push(pts[n - 1]);
+    return out.map(p => { const v = nz(p[0], p[1]); return [p[0] + v[0] * WOB, p[1] + v[1] * WOB]; });
+  }
+  const d2 = (pts, open) => 'M' + (WOB ? wobble(pts, open) : pts).map(s => f1(s[0]) + ' ' + f1(s[1])).join('L') + (open ? '' : 'Z');
+  // A circle, or with the pen look a wobbly ring.
+  function circ(x, y, r, attrs) {
+    if (!WOB) return `<circle cx="${f1(x)}" cy="${f1(y)}" r="${f1(r)}"${attrs}/>`;
+    const n = Math.max(14, Math.min(32, Math.round(r * 2.6)));
+    return `<path d="${d2(Array.from({ length: n }, (_, i) => [x + r * Math.cos(i / n * 2 * Math.PI), y + r * Math.sin(i / n * 2 * Math.PI)]))}"${attrs}/>`;
+  }
+
+  // ---------- render ----------
+  // scene: { ground: [shapes drawn first, in order], groundDecals: [...], clip: [3D points of the ground top],
+  //          items: [shapes sorted far to near] }
+  // o: { tint(colour) → colour, hl: part to highlight, ink: line weight, wobble: pen look strength }
+  function render(sc, cam, o = {}) {
+    WOB = o.wobble || 0;
+    const T = o.tint || (c => c), W = o.ink || 1, out = [];
+    const P = cam.P, d3 = (pts, open) => d2(pts.map(P), open);
+    const tag = part => part ? ` data-p="${part}"${part === o.hl ? ' class="hl"' : ''}` : '';
+    const col = (c, glow) => glow ? c : T(c);
+    const depthOf = p => p._d ?? (p._d = cam.depth(p.c && p.t === 'ball' ? p.c : centroid(vertsOf(p))) + (p.bias || 0));
+    const light2 = (() => { const s = P(LIGHT), l = Math.hypot(s[0], s[1]) || 1; return [s[0] / l, s[1] / l]; })();
+
+    function decal(d, part) {
+      const fill = d.fill ? col(d.fill, d.glow) : 'none';
+      const stroke = d.stroke ? col(d.stroke, d.glow) : d.fill ? INK : 'none';
+      const sw = d.w ?? (d.fill ? W : 0.6 * W);
+      out.push(`<path d="${d3(d.pts, d.open)}" fill="${fill}" stroke="${stroke}" stroke-width="${f1(sw)}"${d.opacity != null ? ` opacity="${d.opacity.toFixed(2)}"` : ''}${tag(d.part ?? part)}/>`);
+    }
+
+    function draw(p) {
+      switch (p.t) {
+        case 'solid': {
+          const vis = [];
+          for (const f of p.faces) if (f.both || dot(f.n, cam.view) > 1e-4) vis.push([cam.depth(centroid(f.pts)), f]);
+          vis.sort((a, b) => a[0] - b[0]);
+          for (const [, f] of vis) {
+            const fill = f.fill ? col(f.fill, f.glow) : T(tone(f.pal, dot(f.n, LIGHT)));
+            out.push(`<path d="${d3(f.pts)}" fill="${fill}" stroke="${INK}" stroke-width="${f1(W * (p.w || 1))}" stroke-linejoin="round"${tag(f.part)}/>`);
+            if (f.decals) for (const d of f.decals) decal(d, f.part);
+          }
+          break;
+        }
+        case 'ball': {
+          const [x, y] = P(p.c), r = p.r, op = p.opacity != null ? ` opacity="${p.opacity.toFixed(2)}"` : '';
+          if (p.fill) {
+            const ink = p.ink === false ? '' : ` stroke="${INK}" stroke-width="${f1(W * (p.w || 0.8))}"`;
+            out.push(circ(x, y, r, ` fill="${col(p.fill, p.glow)}"${ink}${op}${tag(p.part)}`));
+            break;
+          }
+          const hx = x + light2[0] * r * 0.3, hy = y + light2[1] * r * 0.3;
+          out.push(`<g${op}${tag(p.part)}>` + circ(x, y, r, ` fill="${T(p.pal.m)}"`) + circ(hx, hy, r * 0.62, ` fill="${T(p.pal.l)}"`) +
+            circ(x, y, r, ` fill="none" stroke="${INK}" stroke-width="${f1(W * (p.w || 1))}"`) + '</g>');
+          break;
+        }
+        case 'cyl': {
+          const N = 18, [cx, cy] = p.c, slope = (p.r0 - p.r1) / (p.z1 - p.z0);
+          const ring = (z, r) => Array.from({ length: N }, (_, i) => { const a = i / N * 2 * Math.PI; return [cx + r * Math.cos(a), cy + r * Math.sin(a), z]; });
+          const B = ring(p.z0, p.r0), U = ring(p.z1, p.r1);
+          let s = `<g${tag(p.part)}>`;
+          for (let i = 0; i < N; i++) {
+            const a = (i + 0.5) / N * 2 * Math.PI, n = norm([Math.cos(a), Math.sin(a), slope]);
+            if (dot(n, cam.view) <= 0) continue;
+            const fill = T(tone(p.pal, dot(n, LIGHT))), j = (i + 1) % N;
+            s += `<path d="${d3([B[i], B[j], U[j], U[i]])}" fill="${fill}" stroke="${fill}" stroke-width=".6"/>`;
+          }
+          for (const z of p.bands || []) {
+            const r = p.r0 + (p.r1 - p.r0) * (z - p.z0) / (p.z1 - p.z0), R = ring(z, r);
+            for (let i = 0; i < N; i++) {
+              const a = (i + 0.5) / N * 2 * Math.PI;
+              if (dot([Math.cos(a), Math.sin(a), 0], cam.view) <= 0.05) continue;
+              s += `<path d="${d3([R[i], R[(i + 1) % N]], true)}" stroke="${INK}" stroke-width="${f1(0.6 * W)}" fill="none"/>`;
+            }
+          }
+          s += `<path d="${d2(hull(B.concat(U).map(P)))}" fill="none" stroke="${INK}" stroke-width="${f1(W)}" stroke-linejoin="round"/>`;
+          if (p.cap !== false) s += `<path d="${d3(U)}" fill="${T(p.capFill || p.pal.l)}" stroke="${INK}" stroke-width="${f1(W)}"/>`;
+          out.push(s + '</g>');
+          break;
+        }
+        case 'line': {
+          const d = d3(p.pts, true), w = p.w || 1;
+          const op = p.opacity != null ? ` opacity="${p.opacity.toFixed(2)}"` : '';
+          out.push(`<g fill="none" stroke-linecap="round" stroke-linejoin="round"${op}${tag(p.part)}>` +
+            (p.ink === false ? '' : `<path d="${d}" stroke="${INK}" stroke-width="${f1(w + 1.3 * W)}"/>`) +
+            `<path d="${d}" stroke="${col(p.col, p.glow)}" stroke-width="${f1(w)}"/></g>`);
+          break;
+        }
+        case 'poly': {
+          let n = newell(p.pts); if (dot(n, cam.view) < 0) n = mul(n, -1);
+          const fill = p.fill ? col(p.fill, p.glow) : T(tone(p.pal, dot(n, LIGHT)));
+          out.push(`<path d="${d3(p.pts)}" fill="${fill}" stroke="${p.ink === false ? fill : INK}" stroke-width="${f1(W * (p.w || 0.9))}" stroke-linejoin="round"${tag(p.part)}/>`);
+          break;
+        }
+        case 'group': {
+          const kids = p.kids.slice().sort((a, b) => depthOf(a) - depthOf(b));
+          for (const k of kids) { if (k.part === undefined && p.part) k.part = p.part; draw(k); }
+          break;
+        }
+      }
+    }
+
+    // Shadows fall along the light onto the ground (z = 0).
+    function shadow(p) {
+      if (p.shadow === false) return '';
+      if (p.t === 'group') return p.kids.map(shadow).join('');
+      const pts = vertsOf(p).map(v => { const z = Math.max(0, v[2]); return P([v[0] - LIGHT[0] * z / LIGHT[2], v[1] - LIGHT[1] * z / LIGHT[2], 0]); });
+      const h = hull(pts);
+      return h.length > 2 ? `<path d="${d2(h)}"/>` : '';
+    }
+
+    for (const g of sc.ground || []) draw(g);
+    for (const g of sc.groundDecals || []) draw(g);
+    if (sc.clip) out.push(`<defs><clipPath id="gclip"><path d="${d3(sc.clip)}"/></clipPath></defs>`);
+    out.push(`<g${sc.clip ? ' clip-path="url(#gclip)"' : ''} fill="${o.shadowColour || '#41538f'}" opacity="${(o.shadowOpacity ?? 0.24).toFixed(2)}" pointer-events="none">${(sc.items || []).map(shadow).join('')}</g>`);
+    const items = (sc.items || []).slice().sort((a, b) => depthOf(a) - depthOf(b));
+    for (const p of items) draw(p);
+    WOB = 0;
+    return out.join('');
+  }
+
+  global.Ink3D = { INK, LIGHT, add, sub, mul, dot, norm, lerp3, centroid, mix, tone, camera, solid, hexa, box, panel, ball, cyl, line, poly, group, hull, render };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+// In: a Mizo house on stilts with its yard, drawn with Ink3D. Every part you can tap is
+// named by a Mizo word from the Hnahsin content (build.py checks each one is there).
+const HOUSE = (() => {
+  const { box, panel, ball, cyl, line, poly, group, solid, add, mul, mix, dot } = Ink3D;
+
+  const WALL = { l: '#f1d9a0', m: '#d9b978', d: '#86683a' }, WALL_LINE = '#b08a4f';
+  const WOOD = { l: '#c98d55', m: '#a46c3c', d: '#55361d' }, PLANK = '#6e4626';
+  const POST = { l: '#9a6a40', m: '#7a5230', d: '#3e2918' };
+  const GRASS = { l: '#a9d67c', m: '#8cc063', d: '#4b6b33' };
+  const EARTH = { l: '#c99a6b', m: '#a8774b', d: '#5a3d26' };
+  const LEAF = { l: '#86c86e', m: '#5fa451', d: '#2f5a28' };
+  const BAMBOO_LEAF = { l: '#a5d483', m: '#79b360', d: '#36602c' };
+  const BAMBOO = { l: '#cbd97c', m: '#a3b55a', d: '#4f5a26' };
+  const BARK = { l: '#9b7350', m: '#7a5636', d: '#3b2817' };
+  const HEN = { l: '#e39a57', m: '#c0733a', d: '#5c3417' };
+  const CAT = { l: '#d8d2c9', m: '#aaa197', d: '#4d4640' };
+  const CANE = { l: '#e8c584', m: '#c9a05a', d: '#6b5126' };
+  const ROOFS = {
+    red:   { l: '#e46a4e', m: '#c4503a', d: '#5a2419' },
+    green: { l: '#7cc48f', m: '#57a26f', d: '#24452f' },
+    blue:  { l: '#79a8de', m: '#5786c4', d: '#1f3456' },
+    grey:  { l: '#cdd2d6', m: '#a3abb1', d: '#4c5358' },
+  };
+  const INSIDE = '#3a2c22', GLOW = '#ffcf6e', FIRE = '#ff9a3c';
+
+  const toward = (v, t, step) => v < t ? Math.min(t, v + step) : Math.max(t, v - step);
+  const rnd = (i, k) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
+
+  function init() {
+    return { t: 0, door: 0, doorT: 0, win: 0, winT: 0, night: 0, nightT: 0, rain: 0, rainT: 0,
+      fire: false, puffs: [], puffClock: 0, hen: 0.6, peck: 0, catWake: 0, roof: 'red' };
+  }
+
+  function step(s, dt) {
+    s.t += dt;
+    s.door = toward(s.door, s.doorT, dt * 1.4);
+    s.win = toward(s.win, s.winT, dt * 1.4);
+    s.night = toward(s.night, s.nightT, dt * 0.8);
+    s.rain = toward(s.rain, s.rainT, dt * 0.8);
+    s.catWake = Math.max(0, s.catWake - dt);
+    // The hen walks her round in the yard and stops now and then to peck; at night she sleeps.
+    const cycle = s.t % 3.2, pecking = cycle > 2.4;
+    s.peck = pecking ? Math.sin((cycle - 2.4) / 0.8 * Math.PI * 2) ** 2 : 0;
+    if (s.night < 0.5 && !pecking) s.hen += dt * 0.45;
+    // Smoke rises through the roof while the fire burns, and drifts with the wind.
+    if (s.fire && (s.puffClock -= dt) <= 0) {
+      s.puffClock = 0.45;
+      s.puffs.push({ x: -25 + (Math.random() - 0.5) * 6, y: 4 + Math.random() * 14, z: 80, age: 0 });
+    }
+    for (const p of s.puffs) { p.age += dt; p.z += dt * 9; p.x -= dt * 3; p.y += dt * 4; }
+    s.puffs = s.puffs.filter(p => p.age < 4.2);
+    return true;
+  }
+
+  // Night and rain darken every colour except the lights.
+  const tint = s => c => mix(mix(c, '#7d8794', s.rain * 0.2), '#1e2850', s.night * 0.52);
+
+  // ---------- the house ----------
+  function walls(s) {
+    const hz = [];
+    for (let z = 26; z < 58; z += 4) hz.push(z);
+    const inside = mix(mix(INSIDE, GLOW, s.night * 0.85), FIRE, s.fire ? 0.25 + 0.08 * Math.sin(s.t * 9) : 0);
+    const hole = (pts, part) => ({ pts, fill: inside, glow: true, part });
+    const shut = (pts, part) => ({ pts, fill: s.win > 0.5 ? inside : WOOD.d, glow: s.win > 0.5, part });
+    return {
+      xp: [...hz.map(z => ({ pts: [[5.05, -35, z], [5.05, 45, z]], stroke: WALL_LINE, open: true })),
+        hole([[5.06, 0, 22], [5.06, 16, 22], [5.06, 16, 48], [5.06, 0, 48]], 'kawngkhar'),
+        hole([[5.06, 24, 32], [5.06, 38, 32], [5.06, 38, 44], [5.06, 24, 44]], 'tukverh')],
+      yp: [...hz.map(z => ({ pts: [[-55, 45.05, z], [5, 45.05, z]], stroke: WALL_LINE, open: true })),
+        hole([[-42, 45.06, 32], [-26, 45.06, 32], [-26, 45.06, 44], [-42, 45.06, 44]], 'tukverh')],
+      xn: [...hz.map(z => ({ pts: [[-55.05, -35, z], [-55.05, 45, z]], stroke: WALL_LINE, open: true })),
+        shut([[-55.06, 2, 32], [-55.06, 16, 32], [-55.06, 16, 44], [-55.06, 2, 44]], 'tukverh')],
+      yn: [...hz.map(z => ({ pts: [[-55, -35.05, z], [5, -35.05, z]], stroke: WALL_LINE, open: true })),
+        shut([[-40, -35.06, 32], [-26, -35.06, 32], [-26, -35.06, 44], [-40, -35.06, 44]], 'tukverh')],
+    };
+  }
+
+  const planks = (n, w, h) => map => Array.from({ length: n - 1 }, (_, i) => ({ pts: [map(w * (i + 1) / n, 1), map(w * (i + 1) / n, h - 1)], stroke: PLANK, open: true }));
+
+  function roof(s) {
+    const R = ROOFS[s.roof];
+    // The gable ends: a wall-coloured prism under the roof, drawn before the roof sheets.
+    const A = [5, -35, 58], B = [-55, -35, 58], C = [-25, -35, 78], A2 = [5, 45, 58], B2 = [-55, 45, 58], C2 = [-25, 45, 78];
+    const gl = (y, e) => [62, 66, 70, 74].map(z => { const h = 30 * (78 - z) / 20; return { pts: [[-25 - h, y + e, z], [-25 + h, y + e, z]], stroke: WALL_LINE, open: true }; });
+    const gable = solid([
+      { pts: [A, B, C], decals: gl(-35, -0.05) }, { pts: [A2, C2, B2], decals: gl(45, 0.05) },
+      { pts: [A, A2, B2, B] }, { pts: [A, C, C2, A2] }, { pts: [B, B2, C2, C] },
+    ], { pal: WALL, part: 'bang', bias: -1000 });
+    const sheet = ex => {
+      const z0 = 52.7, z1 = 78, y0 = -43, y1 = 53, th = 3;
+      const ribs = [];
+      for (let y = y0 + 4; y < y1; y += 4) ribs.push({ pts: [[ex, y, z0 + th + 0.05], [-25, y, z1 + th + 0.05]], stroke: R.d, opacity: 0.45, open: true });
+      return Ink3D.hexa([[ex, y0, z0], [-25, y0, z1], [-25, y1, z1], [ex, y1, z0],
+        [ex, y0, z0 + th], [-25, y0, z1 + th], [-25, y1, z1 + th], [ex, y1, z0 + th]], { pal: R, part: 'chungkhuh', decals: { zp: ribs } });
+    };
+    return group([gable, sheet(13), sheet(-63)], { part: 'chungkhuh' });
+  }
+
+  function house(s) {
+    const items = [];
+    for (const x of [-55, -12, 27]) for (const y of [-35, 5, 45]) items.push(box(x - 1.7, x + 1.7, y - 1.7, y + 1.7, 0, 18, { pal: POST, skip: ['zp'] }));
+    const deck = [];
+    for (let x = 9; x < 30; x += 5) deck.push({ pts: [[x, -38, 22.05], [x, 48, 22.05]], stroke: PLANK, open: true });
+    items.push(box(-58, 30, -38, 48, 18, 22, { pal: WOOD, part: 'chhuat', decals: { zp: deck } }));
+    items.push(box(-55, 5, -35, 45, 22, 58, { pal: WALL, part: 'bang', decals: walls(s) }));
+    items.push(panel([5, 0, 22], [0, 1, 0], [1, 0, 0], 16, 26, 1.4, 100 * s.door, { pal: WOOD, part: 'kawngkhar', decal: planks(3, 16, 26) }));
+    items.push(panel([5, 38, 32], [0, -1, 0], [1, 0, 0], 14, 12, 1.2, 105 * s.win, { pal: WOOD, part: 'tukverh', decal: planks(3, 14, 12) }));
+    items.push(panel([-26, 45, 32], [-1, 0, 0], [0, 1, 0], 16, 12, 1.2, 105 * s.win, { pal: WOOD, part: 'tukverh', decal: planks(3, 16, 12) }));
+    items.push(roof(s));
+    // A ladder down from the porch.
+    const lad = [];
+    for (const y of [1, 13]) lad.push(line([[31, y, 22], [47, y, 0]], { col: WOOD.m, w: 1.6 }));
+    for (let i = 1; i < 5; i++) { const t = i / 5; lad.push(line([[31 + 16 * t, 1, 22 - 22 * t], [31 + 16 * t, 13, 22 - 22 * t]], { col: WOOD.l, w: 1.2 })); }
+    items.push(group(lad));
+    // The lamp under the eaves glows at night.
+    const lampOn = mix('#efe6cf', '#ffd04d', s.night);
+    items.push(group([
+      line([[10, -6, 54.5], [10, -6, 48.6]], { col: '#4b4038', w: 0.6, ink: false }),
+      ball([10, -6, 46.5], 2.4, { fill: lampOn, glow: true }),
+      ball([10, -6, 46.5], 9, { fill: '#ffd36b', glow: true, ink: false, opacity: 0.32 * s.night, bias: 0.1 }),
+    ], { part: 'khawnvâr', shadow: false }));
+    return items;
+  }
+
+  // ---------- the yard ----------
+  function yard(s) {
+    const items = [];
+    items.push(group([
+      cyl([55, -65], 0, 36, 4, 2.8, { pal: BARK }),
+      ball([55, -65, 50], 16, { pal: LEAF }), ball([63, -58, 40], 11, { pal: LEAF }),
+      ball([46, -70, 41], 11, { pal: LEAF }), ball([57, -72, 62], 10, { pal: LEAF }),
+    ], { part: 'thing' }));
+    const culms = [[-62, 66, 70], [-57, 71, 62], [-67, 72, 76], [-60, 76, 58], [-69, 63, 66]];
+    const sway = Math.sin(s.t * 1.3) * 1.2;
+    items.push(group([
+      ...culms.map(([x, y, h]) => cyl([x, y], 0, h, 1.6, 1.4, { pal: BAMBOO, bands: [10, 20, 30, 40, 50, 60].filter(z => z < h) })),
+      ...culms.map(([x, y, h], i) => ball([x + 3 + sway, y + (i % 2 ? 3 : -3), h + 2], 6, { pal: BAMBOO_LEAF })),
+    ], { part: 'mau' }));
+    const blooms = [['#f06292', 58, -30], ['#ffc94a', 63, -24], ['#e2483d', 54, -38], ['#f06292', 66, -36], ['#ffc94a', 61, -45]];
+    items.push(group(blooms.flatMap(([c, x, y]) => [
+      line([[x, y, 0], [x, y, 6]], { col: '#4f8d3a', w: 0.7, ink: false }),
+      ball([x, y, 1.8], 2.4, { pal: LEAF }),
+      ball([x, y, 7], 2.2, { fill: c }),
+    ]), { part: 'pangpâr' }));
+    // Fence along the front, with a gap for the path, and along the right-hand side.
+    const fence = (a, b, n) => {
+      const kids = [];
+      for (let i = 0; i <= n; i++) { const p = Ink3D.lerp3(a, b, i / n); kids.push(box(p[0] - 1.1, p[0] + 1.1, p[1] - 1.1, p[1] + 1.1, 0, 13, { pal: POST })); }
+      for (let i = 0; i < n; i++) for (const z of [5, 10]) {
+        const p = Ink3D.lerp3(a, b, i / n), q = Ink3D.lerp3(a, b, (i + 1) / n);
+        kids.push(line([[p[0], p[1], z], [q[0], q[1], z]], { col: WOOD.l, w: 1.1 }));
+      }
+      return group(kids, { part: 'pal' });
+    };
+    items.push(fence([84, -84, 0], [84, -6, 0], 6), fence([84, 28, 0], [84, 84, 0], 5), fence([-84, -84, 0], [78, -84, 0], 12));
+    items.push(cyl([40, -9], 0, 11, 3.2, 5.4, { pal: CANE, bands: [3.6, 7.2], capFill: '#6b5126', part: 'êm' }));
+    items.push(hen(s), cat(s));
+    for (const p of s.puffs) {
+      const k = p.age / 4.2;
+      items.push(ball([p.x, p.y, p.z], 2.5 + k * 7, { fill: '#dcd8d0', opacity: 0.7 * (1 - k), w: 0.5, part: 'meikhu', shadow: false }));
+    }
+    return items;
+  }
+
+  function henPos(s) { const a = s.hen; return [46 + 12 * Math.cos(a), 56 + 12 * Math.sin(a), 0]; }
+  function hen(s) {
+    const a = s.hen + Math.PI / 2, d = [Math.cos(a), Math.sin(a), 0], sd = [-d[1], d[0], 0], p = henPos(s);
+    const sleep = s.night > 0.5, k = sleep ? 0 : s.peck;
+    const at = (f, sv, z) => add(add(add(p, mul(d, f)), mul(sd, sv)), [0, 0, z]);
+    const head = at(4 + 1.5 * k, 0, (sleep ? 9 : 11.5) - 6 * k);
+    return group([
+      line([at(0, 1.3, 4), at(0.4, 1.3, 0)], { col: '#f2b431', w: 0.8 }),
+      line([at(0, -1.3, 4), at(0.4, -1.3, 0)], { col: '#f2b431', w: 0.8 }),
+      poly([at(-3, 0, 8), at(-7.5, 0, 13.5), at(-2.5, 0, 11.5)], { fill: HEN.d }),
+      ball(at(0, 0, 7), 4.6, { pal: HEN }),
+      ball(head, 2.6, { pal: HEN }),
+      ball(add(head, [0, 0, 2.3]), 1.1, { fill: '#d8342c', w: 0.5 }),
+      poly([add(head, add(mul(d, 2.2), mul(sd, 0.8))), add(head, add(mul(d, 2.2), mul(sd, -0.8))), add(head, add(mul(d, 4.3), [0, 0, -0.4]))], { fill: '#f2b431', w: 0.6 }),
+    ], { part: 'arpui' });
+  }
+
+  function cat(s) {
+    const C = [19, -26, 22], d = Ink3D.norm([1, 0.7, 0]), sd = [-d[1], d[0], 0];
+    const asleep = s.night > 0.5 && s.catWake <= 0;
+    const at = (f, sv, z) => add(add(add(C, mul(d, f)), mul(sd, sv)), [0, 0, z]);
+    const head = at(asleep ? 3.6 : 3.2, 0, asleep ? 5.2 : 9.6);
+    const sw = Math.sin(s.t * (asleep ? 0.8 : 2.2)) * (asleep ? 0.6 : 2);
+    const ear = side => poly([add(head, add(mul(sd, 0.6 * side), [0, 0, 2.2])), add(head, add(mul(sd, 2.7 * side), [0, 0, 1.4])), add(head, add(mul(sd, 2 * side), [0, 0, 4.8]))], { pal: CAT });
+    const eyes = asleep
+      ? [-1, 1].map(e => line([add(head, add(add(mul(d, 2.9), mul(sd, 1.2 * e - 0.5)), [0, 0, 0.5])), add(head, add(add(mul(d, 2.9), mul(sd, 1.2 * e + 0.5)), [0, 0, 0.5]))], { col: '#231e16', w: 0.4, ink: false }))
+      : [-1, 1].map(e => ball(add(head, add(add(mul(d, 2.7), mul(sd, 1.2 * e)), [0, 0, 0.6])), 0.6, { fill: '#2f6b3a', ink: false }));
+    return group([
+      line([at(-3.5, 0, 1.5), at(-6, 2 + sw * 0.3, 2.5), at(-5.5, 4.5 + sw, asleep ? 2 : 7)], { col: CAT.m, w: 1.6 }),
+      ball(at(0, 0, 4.4), 4.6, { pal: CAT }),
+      ball(head, 3.2, { pal: CAT }),
+      ear(1), ear(-1), ...eyes,
+    ], { part: 'zawhte' });
+  }
+
+  function scene(s) {
+    const slab = box(-90, 90, -90, 90, -12, 0, { pal: EARTH, pals: { zp: GRASS }, shadow: false });
+    const path = poly([[46, 0, 0.05], [84, 2, 0.05], [84, 24, 0.05], [44, 15, 0.05]], { fill: '#dcc596', part: 'kawng', w: 0.7 });
+    return { ground: [slab], groundDecals: [path], clip: [[-90, -90, 0], [90, -90, 0], [90, 90, 0], [-90, 90, 0]], items: [...house(s), ...yard(s)] };
+  }
+
+  // ---------- the sky (behind) and the weather (in front) ----------
+  const STARS = [[-60, -130], [-20, -118], [30, -132], [62, -108], [-112, -96], [116, -92], [2, -104], [-86, -126], [88, -132], [44, -96], [-40, -100], [122, -118]];
+  const SUN = [-102, -114], MOON = [102, -114];
+  function cloud(x, y, k, fill) {
+    const c = [[0, 0, 11], [12, 3, 9], [-12, 4, 8], [5, -7, 9]].map(([dx, dy, r]) => [x + dx * k, y + dy * k, r * k]);
+    return `<g data-p="chhum">${c.map(([a, b, r]) => `<circle cx="${a}" cy="${b}" r="${r}" fill="none" stroke="#231e16" stroke-width="1.8"/>`).join('')}${c.map(([a, b, r]) => `<circle cx="${a}" cy="${b}" r="${r}" fill="${fill}"/>`).join('')}</g>`;
+  }
+  function sky(s) {
+    const top = mix(mix('#a9d8f5', '#9aa6b2', s.rain), '#0e1631', s.night), low = mix(mix('#e3f3fb', '#c9d0d6', s.rain), '#2b3866', s.night);
+    let o = `<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${top}"/><stop offset="1" stop-color="${low}"/></linearGradient></defs>`;
+    o += `<rect x="-140" y="-150" width="280" height="240" fill="url(#sky)" data-p="vân"/>`;
+    const sunA = (1 - s.night) * (1 - s.rain * 0.8);
+    if (sunA > 0.02) o += `<g data-p="ni" opacity="${sunA.toFixed(2)}"><circle cx="${SUN[0]}" cy="${SUN[1]}" r="20" fill="#ffe28a" opacity=".45"/><circle cx="${SUN[0]}" cy="${SUN[1]}" r="13" fill="#ffc94a" stroke="#231e16" stroke-width="1"/></g>`;
+    const nightA = s.night * (1 - s.rain * 0.85);
+    if (nightA > 0.02) {
+      o += `<g data-p="arsi" opacity="${nightA.toFixed(2)}">${STARS.map(([x, y], i) => { const r = 1.6 + (i % 3) * 0.6, tw = 0.6 + 0.4 * Math.sin(s.t * 2 + i); return `<path d="M${x} ${y - r * 2}L${x + r * 0.6} ${y - r * 0.6}L${x + r * 2} ${y}L${x + r * 0.6} ${y + r * 0.6}L${x} ${y + r * 2}L${x - r * 0.6} ${y + r * 0.6}L${x - r * 2} ${y}L${x - r * 0.6} ${y - r * 0.6}Z" fill="#fff4c2" opacity="${tw.toFixed(2)}"/>`; }).join('')}<rect x="-130" y="-140" width="260" height="50" fill="transparent"/></g>`;
+      o += `<g data-p="thla" opacity="${nightA.toFixed(2)}"><circle cx="${MOON[0]}" cy="${MOON[1]}" r="11" fill="#f6efcf" stroke="#231e16" stroke-width="1"/><circle cx="${MOON[0] + 5}" cy="${MOON[1] - 3}" r="9.5" fill="${top}"/></g>`;
+    }
+    // Hills far behind.
+    const hill = (pts, fill) => `<path data-p="tlang" d="M-140 90${pts}L140 90Z" fill="${mix(mix(fill, '#8d9aa6', s.rain * 0.5), '#1c2a52', s.night * 0.7)}" stroke="#231e16" stroke-width=".8" stroke-opacity=".35"/>`;
+    o += hill('L-140 -52Q-110 -84 -76 -66Q-44 -98 -6 -74Q30 -100 64 -72Q96 -92 140 -58', '#a8cfb4');
+    o += hill('L-140 -30Q-104 -62 -64 -42Q-20 -66 22 -44Q66 -70 140 -34', '#86b996');
+    // A small white cloud drifts by; rain brings grey ones.
+    const cx = ((s.t * 5 + 250) % 340) - 170;
+    if (s.rain < 0.95) o += `<g opacity="${(1 - s.rain).toFixed(2)}">${cloud(cx, -104, 0.8, mix('#ffffff', '#55608a', s.night))}</g>`;
+    return o;
+  }
+  function over(s) {
+    if (s.rain < 0.02) return '';
+    let o = `<g opacity="${s.rain.toFixed(2)}">`;
+    o += cloud(-70, -118, 1.2, mix('#c6ccd3', '#3d4766', s.night)) + cloud(15, -128, 1.05, mix('#b4bcc5', '#3d4766', s.night)) + cloud(88, -112, 1.15, mix('#c6ccd3', '#3d4766', s.night));
+    o += '<g data-p="ruah" stroke="#5f7fb5" stroke-width="1.1" stroke-linecap="round">';
+    for (let i = 0; i < 70; i++) {
+      const x = -135 + rnd(i, 1) * 280, y = -120 + ((rnd(i, 2) * 200 + s.t * 210) % 200);
+      o += `<path d="M${x.toFixed(1)} ${y.toFixed(1)}l-2.5 9"/>`;
+    }
+    return o + '</g></g>';
+  }
+
+  // ---------- labels ----------
+  function anchors(s) {
+    const a = [
+      { part: 'kawngkhar', p: [6, 8, 36], n: [1, 0, 0] },
+      { part: 'tukverh', p: [6, 31, 40], n: [1, 0, 0] },
+      { part: 'bang', p: [-14, 45, 52], n: [0, 1, 0] },
+      { part: 'chhuat', p: [24, -22, 22], n: [0, 0, 1] },
+      { part: 'chungkhuh', p: [-4, 20, 68], n: [0.55, 0, 0.83] },
+      { part: 'khawnvâr', p: [10, -6, 45] },
+      { part: 'zawhte', p: [21, -24, 33] },
+      { part: 'arpui', p: add(henPos(s), [0, 0, 14]) },
+      { part: 'êm', p: [40, -9, 12] },
+      { part: 'kawng', p: [70, 12, 0] },
+      { part: 'pal', p: [84, -50, 13] },
+      { part: 'thing', p: [55, -65, 64] },
+      { part: 'mau', p: [-64, 70, 80] },
+      { part: 'pangpâr', p: [60, -36, 9] },
+      { part: 'tlang', s: [-104, -50] },
+    ];
+    if (s.night < 0.5 && s.rain < 0.5) a.push({ part: 'ni', s: [SUN[0], SUN[1] + 13] });
+    if (s.night > 0.5 && s.rain < 0.5) a.push({ part: 'thla', s: [MOON[0], MOON[1] + 11] }, { part: 'arsi', s: STARS[1] });
+    if (s.rain > 0.5) a.push({ part: 'chhum', s: [15, -120] }, { part: 'ruah', s: [-40, -70] });
+    else a.push({ part: 'vân', s: [20, -124] });
+    if (s.puffs.length > 3) a.push({ part: 'meikhu', p: [-30, 14, 104] });
+    return a;
+  }
+
+  function tap(s, part) {
+    // At night a tap wakes the cat for a moment; the hen sleeps on.
+    if (part === 'zawhte' && s.night > 0.5) { s.catWake = 3; return 'harh'; }
+    if (part === 'arpui' && s.night > 0.5) return 'muhil';
+    return null;
+  }
+
+  return {
+    id: 'house', name: 'In', sub: 'a Mizo house',
+    view: { yaw: 55, pitch: 30, box: '-130 -140 260 222', centre: [0, -30] },
+    words: ['in', 'kawngkhar', 'tukverh', 'bang', 'chhuat', 'chungkhuh', 'khawnvâr', 'zawhte', 'arpui', 'êm', 'kawng', 'pal', 'thing', 'mau', 'pangpâr', 'tlang', 'ni', 'thla', 'arsi', 'chhum', 'ruah', 'vân', 'meikhu', 'mei', 'hawng', 'khar', 'zân', 'zîng', 'harh', 'muhil'],
+    init, step, tint, scene, sky, over, anchors, tap,
+    swatches: { label: 'Roof', key: 'roof', list: Object.fromEntries(Object.entries(ROOFS).map(([k, v]) => [k, v.m])) },
+    actions: [
+      { label: s => s.doorT ? 'Close door' : 'Open door', word: s => s.doorT ? 'khar' : 'hawng', run: s => { s.doorT = s.doorT ? 0 : 1; } },
+      { label: s => s.winT ? 'Close windows' : 'Open windows', word: s => s.winT ? 'khar' : 'hawng', run: s => { s.winT = s.winT ? 0 : 1; } },
+      { label: s => s.nightT ? 'Morning' : 'Night', word: s => s.nightT ? 'zîng' : 'zân', run: s => { s.nightT = s.nightT ? 0 : 1; } },
+      { label: s => s.rainT ? 'Stop rain' : 'Rain', word: s => s.rainT ? null : 'ruah', run: s => { s.rainT = s.rainT ? 0 : 1; } },
+      { label: s => s.fire ? 'Fire out' : 'Light fire', word: s => s.fire ? null : 'mei', run: s => { s.fire = !s.fire; } },
+    ],
+  };
+})();
+</script>
+<script>
+(() => {
+  const WORDS = {"in": "house", "kawngkhar": "door", "tukverh": "window", "bang": "wall", "chhuat": "floor", "chungkhuh": "roof", "khawnvâr": "lamp", "zawhte": "cat", "arpui": "hen", "êm": "carrying basket", "kawng": "road", "pal": "fence", "thing": "tree", "mau": "bamboo", "pangpâr": "flower", "tlang": "hill", "ni": "sun", "thla": "moon", "arsi": "star", "chhum": "cloud", "ruah": "rain", "vân": "sky", "meikhu": "smoke", "mei": "fire", "hawng": "open", "khar": "close", "zân": "night", "zîng": "morning", "harh": "wake", "muhil": "sleep"};   // Mizo → English, from the Hnahsin content
+  const fig = HOUSE;
+  const $ = id => document.getElementById(id);
+  const svg = $('svg'), stage = $('stage'), wordEl = $('word');
+  const [VX, VY, VW, VH] = fig.view.box.split(' ').map(Number);
+  svg.setAttribute('viewBox', fig.view.box);
+  svg.setAttribute('aria-label', `${fig.name}: ${fig.sub}. Tap a part to see its Mizo name.`);
+  $('fname').textContent = fig.name;
+  $('fsub').textContent = `${WORDS[fig.name.toLowerCase()] ? '· ' : ''}${fig.sub}`;
+  const st = fig.init();
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let yaw = fig.view.yaw, spin = false, labels = false, pen = true, hl = null, hlUntil = 0;
+  let stars = 0;
+  try { stars = +localStorage.getItem('hn-things-stars') || 0; } catch (e) {}
+  const showStars = () => { $('score').textContent = `⭐ ${stars}`; };
+  showStars();
+  hnStat(`things/${fig.id}`, `Touch and learn: ${fig.sub}`);
+
+  // ---------- the caption under the figure ----------
+  function say(m, also, cls) {
+    const en = WORDS[m] || '';
+    const extra = also && WORDS[also] ? `<span class="also">${also} · ${WORDS[also]}</span>` : '';
+    wordEl.className = 'word';
+    wordEl.innerHTML = `<b>${m}</b><span>${en}</span>${extra}`;
+    void wordEl.offsetWidth;
+    wordEl.classList.add('pop');
+    if (cls) wordEl.classList.add(cls);
+  }
+
+  // ---------- drawing ----------
+  function labelLayer(cam) {
+    const k = VW / (svg.clientWidth || 360);            // svg units per screen pixel
+    const fs = 14 * k, pad = 5 * k, lh = 18 * k;   // Mizo only: a tap on a label shows the English
+    const tags = [];
+    for (const a of fig.anchors(st)) {
+      if (a.n && Ink3D.dot(a.n, cam.view) < 0.08) continue;
+      const s = a.s || cam.P(a.p);
+      const m = a.part, w = m.length * 8.6 * k + pad * 2, h = lh + pad;
+      const dx = s[0] - fig.view.centre[0], dy = s[1] - fig.view.centre[1], l = Math.hypot(dx, dy) || 1;
+      tags.push({ m, s, w, h, x: s[0] + dx / l * 30 * k - w / 2, y: s[1] + dy / l * 30 * k - h / 2 });
+    }
+    // Push overlapping tags apart, and keep them inside the picture.
+    for (let it = 0; it < 40; it++) {
+      for (let i = 0; i < tags.length; i++) for (let j = i + 1; j < tags.length; j++) {
+        const a = tags[i], b = tags[j];
+        const ox = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x), oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+        if (ox > 0 && oy > 0) {
+          if (oy < ox) { const m = (oy / 2 + 0.5) * (a.y < b.y ? -1 : 1); a.y += m; b.y -= m; }
+          else { const m = (ox / 2 + 0.5) * (a.x < b.x ? -1 : 1); a.x += m; b.x -= m; }
+        }
+      }
+      for (const t of tags) { t.x = Math.max(VX + 2, Math.min(VX + VW - t.w - 2, t.x)); t.y = Math.max(VY + 2, Math.min(VY + VH - t.h - 2, t.y)); }
+    }
+    return '<g class="labels">' + tags.map(t => {
+      const cx = Math.max(t.x, Math.min(t.x + t.w, t.s[0])), cy = Math.max(t.y, Math.min(t.y + t.h, t.s[1]));
+      return `<g data-p="${t.m}"><path d="M${t.s[0]} ${t.s[1]}L${cx} ${cy}" stroke="#231e16" stroke-width="${k * 1.3}"/><circle cx="${t.s[0]}" cy="${t.s[1]}" r="${k * 2.6}" fill="#231e16"/>` +
+        `<rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="${7 * k}" fill="#fffdf8" stroke="#231e16" stroke-width="${k * 1.3}"/>` +
+        `<text x="${t.x + t.w / 2}" y="${t.y + pad / 2 + lh * 0.78}" text-anchor="middle" font-size="${fs}" font-weight="800" fill="#1565c0" font-family="Plus Jakarta Sans, system-ui, sans-serif">${t.m}</text></g>`;
+    }).join('') + '</g>';
+  }
+  function draw() {
+    const cam = Ink3D.camera(yaw, fig.view.pitch);
+    const body = Ink3D.render(fig.scene(st, cam), cam, { tint: fig.tint(st), hl, wobble: pen ? 0.45 : 0 });
+    svg.innerHTML = fig.sky(st) + body + fig.over(st) + (labels ? labelLayer(cam) : '');
+  }
+
+  // ---------- the loop: about 30 frames a second, faster while you drag ----------
+  let last = performance.now(), lastDraw = 0, drag = null;
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (spin && !drag) yaw = (yaw + dt * 18) % 360;
+    fig.step(st, reduce ? dt * 0.4 : dt);
+    if (hl && now > hlUntil) hl = null;
+    if (drag || now - lastDraw > 32) { draw(); lastDraw = now; }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // ---------- tap a part, or drag to turn ----------
+  function partAt(x, y) {
+    for (const [dx, dy] of [[0, 0], [8, 0], [-8, 0], [0, 8], [0, -8], [12, 12], [-12, 12], [12, -12], [-12, -12]]) {
+      const el = document.elementFromPoint(x + dx, y + dy);
+      const p = el && el.closest && el.closest('[data-p]');
+      if (p && stage.contains(p)) return p.dataset.p;
+    }
+    return null;
+  }
+  stage.addEventListener('pointerdown', e => {
+    drag = { x: e.clientX, y: e.clientY, yaw, moved: false, id: e.pointerId };
+  });
+  stage.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x;
+    if (!drag.moved && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(e.clientY - drag.y)) {
+      drag.moved = true; stage.classList.add('dragging');
+      try { stage.setPointerCapture(e.pointerId); } catch (err) {}
+      $('hint').classList.add('gone');
+    }
+    if (drag.moved) yaw = drag.yaw - dx * 0.6;
+  });
+  const end = e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag; drag = null; stage.classList.remove('dragging');
+    if (e.type === 'pointerup' && !d.moved) {
+      const part = partAt(e.clientX, e.clientY);
+      if (part) touched(part);
+    }
+  };
+  stage.addEventListener('pointerup', end);
+  stage.addEventListener('pointercancel', end);
+
+  function touched(part) {
+    hl = part; hlUntil = performance.now() + 900;
+    $('hint').classList.add('gone');
+    const also = fig.tap ? fig.tap(st, part) : null;
+    if (find) return checkFind(part, also);
+    say(part, also);
+  }
+
+  // ---------- buttons ----------
+  function drawActs() {
+    $('acts').innerHTML = fig.actions.map((a, i) => {
+      const w = a.word(st);
+      return `<button class="act" type="button" data-i="${i}">${a.label(st)}${w ? `<span class="chip">${w}</span>` : ''}</button>`;
+    }).join('');
+  }
+  $('acts').addEventListener('click', e => {
+    const b = e.target.closest('.act'); if (!b) return;
+    const a = fig.actions[+b.dataset.i], w = a.word(st);
+    a.run(st);
+    if (w && !find) say(w);
+    drawActs();
+  });
+  drawActs();
+
+  const toggle = (id, on) => $(id).setAttribute('aria-pressed', on);
+  $('t-labels').onclick = () => { labels = !labels; toggle('t-labels', labels); };
+  $('t-turn').onclick = () => { spin = !spin; toggle('t-turn', spin); };
+  $('t-front').onclick = () => { spin = false; toggle('t-turn', false); yaw = fig.view.yaw; };
+  $('t-pen').onclick = () => { pen = !pen; toggle('t-pen', pen); };
+
+  const sw = fig.swatches;
+  $('swlabel').textContent = sw.label;
+  $('swatches').innerHTML = Object.entries(sw.list).map(([k, c]) => `<button class="swatch" type="button" data-k="${k}" style="background:${c}" aria-label="${k}" aria-pressed="${st[sw.key] === k}"></button>`).join('');
+  $('swatches').addEventListener('click', e => {
+    const b = e.target.closest('.swatch'); if (!b) return;
+    st[sw.key] = b.dataset.k;
+    document.querySelectorAll('.swatch').forEach(x => x.setAttribute('aria-pressed', x === b));
+  });
+
+  // ---------- Find it: tap the part that is named ----------
+  let find = null;
+  const ROUND = 8;
+  function nextFind() {
+    const pool = [...new Set(fig.anchors(st).map(a => a.part))].filter(p => p !== (find && find.word));
+    find.word = pool[Math.floor(Math.random() * pool.length)];
+    find.miss = 0;
+    $('findw').textContent = find.word;
+    $('findhint').textContent = '';
+  }
+  function startFind() {
+    find = { word: null, found: 0 };
+    labels = false; toggle('t-labels', false);
+    $('findbar').hidden = false; toggle('t-find', true);
+    nextFind();
+  }
+  function stopFind() { find = null; $('findbar').hidden = true; toggle('t-find', false); }
+  function checkFind(part, also) {
+    if (part === find.word) {
+      say(part, also, 'good');
+      stars++; find.found++; showStars();
+      try { localStorage.setItem('hn-things-stars', stars); } catch (e) {}
+      if (find.found >= ROUND) {
+        hnStat(`things/${fig.id}/win`, `Touch and learn: ${fig.sub} won`);
+        $('findw').textContent = 'Well done!';
+        $('findhint').textContent = `You found ${ROUND} things.`;
+        find.word = null;
+        setTimeout(() => { if (find && !find.word) { find.found = 0; nextFind(); } }, 2200);
+      } else setTimeout(() => { if (find) nextFind(); }, 650);
+    } else {
+      say(part, also, 'bad');
+      if (++find.miss >= 1 && find.word) $('findhint').textContent = `(${WORDS[find.word]})`;
+    }
+  }
+  $('t-find').onclick = () => find ? stopFind() : startFind();
+  $('skip').onclick = () => { if (find) nextFind(); };
+})();
+</script>
+
+</body></html>
