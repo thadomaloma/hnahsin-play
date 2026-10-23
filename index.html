@@ -110,7 +110,16 @@
   .game:hover .cover.lab span:nth-child(even) { transform: rotate(6deg) scale(1.06); }
 
   /* Cover: Touch and learn, a still of the Mizo house */
-  .cover.things { background: #cfe8f6 url(pics/things-house.svg) center / cover no-repeat; }
+  .cover.things { background: #cfe8f6; }
+  /* The card shows the house, then the loom, and back: each picture fades in over the other. */
+  .cover.things .scene { position: absolute; inset: 0; background: center / cover no-repeat; transition: opacity .9s ease, transform 6s ease-out; }
+  .cover.things .scene.house { background-image: url(pics/things-house.svg); }
+  .cover.things .scene.loom { background-image: url(pics/things-loom.svg); background-color: #f3efe6; opacity: 0; }
+  .cover.things.on-loom .scene.loom { opacity: 1; transform: scale(1.04); }
+  .cover.things:not(.on-loom) .scene.house { transform: scale(1.04); }
+  .cover.things .which { position: absolute; z-index: 3; left: 12px; top: 12px; display: flex; gap: 6px; }
+  .cover.things .which span { padding: 5px 11px; border-radius: 99px; background: rgba(255, 255, 255, .85); color: var(--on-light); font-weight: 800; font-size: 14px; transition: background .4s, color .4s; }
+  .cover.things .which span.on { background: #231e16; color: #fff; }
   .cover.things .q { left: auto; right: 16px; top: auto; bottom: 16px; }
   @media (min-width: 760px) {
     .game.wide { grid-column: 1 / -1; flex-direction: row; }
@@ -362,7 +371,7 @@
       </a>
 
       <a class="card game wide" href="things.html">
-        <div class="cover things" aria-hidden="true"><span class="pin" hidden></span><span class="q">tukverh · window</span></div>
+        <div class="cover things" aria-hidden="true"><span class="scene house"></span><span class="scene loom"></span><span class="which"><span class="on">🏠 In</span><span>🧶 Puan tah</span></span><span class="pin" hidden></span><span class="q">tukverh · window</span></div>
         <div class="body">
           <div class="tags"><span class="pill">🆕 New</span><span class="pill">👆 Tap and turn</span><span class="pill">🏠 A Mizo house</span><span class="pill">🧶 A loom</span></div>
           <h3>Touch and learn</h3>
@@ -407,7 +416,7 @@
 
 <script src="stats.js?v=39ba31d1" async></script>
 <script src="rova.js?v=f71d0f8b" defer></script>
-<script src="home.js?v=d4fc66f8" defer></script>
+<script src="home.js?v=4c7037c8" defer></script>
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js'));</script>
 
 </body>
