@@ -18,8 +18,8 @@ Learn Mizo words by playing. Free, on any phone, no sign-up.
     times, Rova says, Colour it, Rova's family, Weather report, Food stall
   - sentences and sayings: Sentence builder, Saying match
 - **Touch and learn.** A Mizo house you can tap, turn and play with. Tap a
-  part to see its Mizo name, open the door, make it night or rain, light the
-  fire, or play Find it.
+  part to see its Mizo name, look inside, open the door, make it night or
+  rain, light the fire, pick up the hen's eggs, or play Find it.
 - **The Hnahsin app.** A preview of the app in your browser. The app is
   coming to Android and iPhone.
 
