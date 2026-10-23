@@ -153,9 +153,10 @@ __HOUSE__
   hnStat(`things/${fig.id}`, `Touch and learn: ${fig.sub}`);
 
   // ---------- the caption under the figure ----------
+  // also: one word or a list of words to show after it (a verb, or what a friend says).
   function say(m, also, cls) {
-    const en = WORDS[m] || '';
-    const extra = also && WORDS[also] ? `<span class="also">${also} · ${WORDS[also]}</span>` : '';
+    const en = WORDS[m] || (fig.names && fig.names[m]) || '';
+    const extra = [].concat(also || []).filter(w => WORDS[w]).map(w => `<span class="also">${w} · ${WORDS[w]}</span>`).join('');
     wordEl.className = 'word';
     wordEl.innerHTML = `<b>${m}</b><span>${en}</span>${extra}`;
     void wordEl.offsetWidth;
@@ -301,7 +302,7 @@ __HOUSE__
   let find = null;
   const ROUND = 8;
   function nextFind() {
-    const pool = [...new Set(visibleAnchors(Ink3D.camera(yaw, fig.view.pitch)).map(a => a.part))].filter(p => p !== (find && find.word));
+    const pool = [...new Set(visibleAnchors(Ink3D.camera(yaw, fig.view.pitch)).map(a => a.part))].filter(p => WORDS[p] && p !== (find && find.word));   // names are not asked for
     find.word = pool[Math.floor(Math.random() * pool.length)];
     find.miss = 0;
     $('findw').textContent = find.word;
