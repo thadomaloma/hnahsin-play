@@ -6,7 +6,8 @@ the files here. Edit the templates, run the build, then commit both.
 ```
 source/
   journey/      Rova's Journey (Phaser 3.90)
-  playground/   Hnahsin Playground (20 games)
+  playground/   Hnahsin Playground (21 games)
+  things/       Touch and learn (things.html)
 ```
 
 The home page (`index.html`, `theme.css`, `home.js`, `rova.js`), `sw.js` and
@@ -20,6 +21,7 @@ so phones and browsers fetch the new file instead of a saved old one.
 ```sh
 cd source/journey && python3 build.py      # writes ../../journey.html
 cd source/playground && python3 build.py   # writes ../../playground.html
+cd source/things && python3 build.py       # writes ../../things.html
 ```
 
 Each build also writes `preview.html` (the same page without the document
@@ -74,6 +76,20 @@ python3 gen_puzzles.py "../../../Hnahsin Game/assets/mizo_words.txt"   # path to
 ```
 
 It counts AW, CH and NG as one letter each and folds accents. Needs `wordfreq`.
+
+## Touch and learn
+
+Things you can tap, turn and play with, drawn in 3D by our own small engine.
+
+| File | What it is |
+|---|---|
+| `ink3d.js` | The engine: shapes (boxes, cylinders, balls, lines), the turning camera, shading, shadows and the pen look. It writes SVG |
+| `house.js` | The Mizo house and its yard: parts, buttons, sky, weather and labels |
+| `template.html` | The page; `__INK3D__`, `__HOUSE__`, `__WORDS__` and `__STATS__` are filled in by the build |
+| `snapshot.js` | Writes `pics/things-house.svg`, the picture on the home page card (`node snapshot.js`) |
+
+Every Mizo word in a figure's `words` list must be in `../journey/words.json` (the Hnahsin content);
+the build stops and names any that are not.
 
 ## The Flutter app under `app/`
 

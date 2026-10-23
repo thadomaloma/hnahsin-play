@@ -1,0 +1,324 @@
+<title>Touch and Learn · Hnahsin</title>
+<meta name="description" content="Tap the parts of a Mizo house and learn their Mizo names.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --ground: #f3efe6;
+    --panel: #fffdf8;
+    --ink: #231e16;
+    --muted: #5d5547;
+    --line: #ddd5c4;
+    --brand: #1565c0;
+    --gold: #ffc94a;
+    --gold-deep: #e39b00;
+    --leaf: #3f8a32;
+    --coral: #c2185b;
+  }
+  /* Always the bright look: the figure is drawn on paper. */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background-color: var(--ground);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .4  0 0 0 0 .36  0 0 0 0 .3  0 0 0 .1 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
+    color: var(--ink);
+    font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    padding-inline: 16px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  [hidden] { display: none !important; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:focus-visible, a:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .app { max-width: 620px; margin: 0 auto; padding-block: 0 40px; display: grid; gap: 14px; }
+
+  header.top { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; margin-inline: -16px; padding: max(10px, env(safe-area-inset-top)) 16px 10px; background: color-mix(in srgb, var(--ground) 85%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+  .nav-link { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--panel); border: 1.5px solid var(--ink); color: var(--ink); font-size: 22px; font-weight: 800; text-decoration: none; }
+  .brand { flex: 1; min-width: 0; display: grid; gap: 1px; }
+  .brand b { font-family: "Baloo 2", "Plus Jakarta Sans", sans-serif; font-size: 24px; line-height: 1.1; }
+  .brand span { color: var(--muted); font-size: 14px; font-weight: 600; }
+  .score { flex: none; font-weight: 800; background: var(--panel); border: 1.5px solid var(--ink); border-radius: 99px; padding: 6px 12px; font-variant-numeric: tabular-nums; }
+
+  .card { background: var(--panel); border: 1.5px solid var(--ink); border-radius: 22px; overflow: hidden; box-shadow: 0 3px 0 var(--ink); }
+  .fig-title { display: flex; align-items: baseline; gap: 8px; padding: 12px 16px 0; }
+  .fig-title b { font-family: "Baloo 2", sans-serif; font-size: 26px; line-height: 1; }
+  .fig-title span { color: var(--muted); font-weight: 600; font-size: 15px; }
+  .stage { position: relative; touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: grab; }
+  .stage.dragging { cursor: grabbing; }
+  .stage svg { display: block; width: 100%; height: auto; aspect-ratio: 260 / 222; }
+  .stage svg [data-p] { cursor: pointer; }
+  .stage svg .hl { stroke: var(--gold-deep) !important; stroke-width: 2.6px !important; }
+  .stage svg g.hl > * { stroke: var(--gold-deep) !important; stroke-width: 2.2px !important; }
+  .hint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); background: rgba(35, 30, 22, .78); color: #fff; font-size: 14px; font-weight: 700; padding: 6px 12px; border-radius: 99px; pointer-events: none; transition: opacity .5s; white-space: nowrap; }
+  .hint.gone { opacity: 0; }
+
+  .word { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; min-height: 64px; padding: 12px 16px 14px; border-top: 1.5px solid var(--ink); background: #fff8e1; }
+  .word b { font-family: "Baloo 2", sans-serif; font-size: 30px; line-height: 1.1; color: var(--brand); }
+  .word span { font-size: 16px; font-weight: 600; color: var(--muted); }
+  .word .also { font-size: 15px; font-weight: 700; color: var(--leaf); }
+  .word.idle b { color: var(--ink); font-size: 20px; }
+  .word.pop b { animation: pop .35s cubic-bezier(.2, .8, .2, 1.4); }
+  .word.good { background: #e3f4dd; }
+  .word.bad { animation: shake .35s; }
+  @keyframes pop { from { transform: scale(.7); opacity: .3; } }
+  @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  #acts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #acts .act { justify-content: space-between; min-width: 0; text-align: left; line-height: 1.2; }
+  .act .chip { flex: none; }
+  @media (max-width: 360px) { #acts { grid-template-columns: minmax(0, 1fr); } }
+  @media (min-width: 560px) { #acts { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .act, .tool { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 14px; background: var(--panel); border: 1.5px solid var(--ink); border-radius: 99px; font-weight: 700; font-size: 15px; box-shadow: 0 2px 0 var(--ink); transition: transform .1s, box-shadow .1s; }
+  .act:active, .tool:active { transform: translateY(2px); box-shadow: 0 0 0 var(--ink); }
+  .act .chip { font-size: 14px; font-weight: 800; color: var(--brand); background: #e5f0fc; border-radius: 99px; padding: 2px 9px; }
+  .tool[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .group-label { font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 4px 2px -4px; }
+  .swatch { width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--ink); box-shadow: 0 2px 0 var(--ink); }
+  .swatch[aria-pressed="true"] { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+  .find { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 12px 14px; background: var(--ink); color: #fff; border-radius: 18px; }
+  .find b { font-family: "Baloo 2", sans-serif; font-size: 26px; line-height: 1; color: var(--gold); }
+  .find .hintw { font-size: 15px; color: #e8e2d4; }
+  .find button { margin-left: auto; min-height: 40px; padding: 6px 14px; border-radius: 99px; border: 1.5px solid #fff; background: transparent; color: #fff; font-weight: 700; }
+  .note { font-size: 14px; color: var(--muted); margin: 0; }
+  @media (prefers-reduced-motion: reduce) { .word.pop b, .word.bad { animation: none; } }
+</style>
+
+<div class="app">
+  <header class="top">
+    <a class="nav-link" href="./" aria-label="Back to Hnahsin Games">‹</a>
+    <div class="brand"><b>Touch and learn</b><span>Tap a thing to learn its Mizo name</span></div>
+    <div class="score" id="score" aria-label="Stars">⭐ 0</div>
+  </header>
+
+  <main class="card">
+    <div class="fig-title"><b id="fname"></b><span id="fsub"></span></div>
+    <div class="stage" id="stage">
+      <svg id="svg" role="img"></svg>
+      <div class="hint" id="hint">Tap anything · drag to turn</div>
+    </div>
+    <div class="word idle" id="word" aria-live="polite"><b>Tap anything</b><span>to see its Mizo name</span></div>
+  </main>
+
+  <section class="find" id="findbar" hidden aria-live="polite">
+    <span>Find the</span><b id="findw"></b><span class="hintw" id="findhint"></span>
+    <button id="skip" type="button">Skip</button>
+  </section>
+
+  <p class="group-label">Do something</p>
+  <section class="row" id="acts"></section>
+
+  <p class="group-label">Look</p>
+  <section class="row">
+    <button class="tool" id="t-labels" type="button" aria-pressed="false">Labels</button>
+    <button class="tool" id="t-find" type="button" aria-pressed="false">Find it</button>
+    <button class="tool" id="t-turn" type="button" aria-pressed="false">Turn</button>
+    <button class="tool" id="t-front" type="button">Front view</button>
+    <button class="tool" id="t-pen" type="button" aria-pressed="true">Pen look</button>
+  </section>
+  <p class="group-label" id="swlabel"></p>
+  <section class="row" id="swatches"></section>
+</div>
+
+<script>
+__STATS__
+</script>
+<script>
+__INK3D__
+</script>
+<script>
+__HOUSE__
+</script>
+<script>
+(() => {
+  const WORDS = __WORDS__;   // Mizo → English, from the Hnahsin content
+  const fig = HOUSE;
+  const $ = id => document.getElementById(id);
+  const svg = $('svg'), stage = $('stage'), wordEl = $('word');
+  const [VX, VY, VW, VH] = fig.view.box.split(' ').map(Number);
+  svg.setAttribute('viewBox', fig.view.box);
+  svg.setAttribute('aria-label', `${fig.name}: ${fig.sub}. Tap a part to see its Mizo name.`);
+  $('fname').textContent = fig.name;
+  $('fsub').textContent = `${WORDS[fig.name.toLowerCase()] ? '· ' : ''}${fig.sub}`;
+  const st = fig.init();
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let yaw = fig.view.yaw, spin = false, labels = false, pen = true, hl = null, hlUntil = 0;
+  let stars = 0;
+  try { stars = +localStorage.getItem('hn-things-stars') || 0; } catch (e) {}
+  const showStars = () => { $('score').textContent = `⭐ ${stars}`; };
+  showStars();
+  hnStat(`things/${fig.id}`, `Touch and learn: ${fig.sub}`);
+
+  // ---------- the caption under the figure ----------
+  function say(m, also, cls) {
+    const en = WORDS[m] || '';
+    const extra = also && WORDS[also] ? `<span class="also">${also} · ${WORDS[also]}</span>` : '';
+    wordEl.className = 'word';
+    wordEl.innerHTML = `<b>${m}</b><span>${en}</span>${extra}`;
+    void wordEl.offsetWidth;
+    wordEl.classList.add('pop');
+    if (cls) wordEl.classList.add(cls);
+  }
+
+  // ---------- drawing ----------
+  function labelLayer(cam) {
+    const k = VW / (svg.clientWidth || 360);            // svg units per screen pixel
+    const fs = 14 * k, pad = 5 * k, lh = 18 * k;   // Mizo only: a tap on a label shows the English
+    const tags = [];
+    for (const a of fig.anchors(st)) {
+      if (a.n && Ink3D.dot(a.n, cam.view) < 0.08) continue;
+      const s = a.s || cam.P(a.p);
+      const m = a.part, w = m.length * 8.6 * k + pad * 2, h = lh + pad;
+      const dx = s[0] - fig.view.centre[0], dy = s[1] - fig.view.centre[1], l = Math.hypot(dx, dy) || 1;
+      tags.push({ m, s, w, h, x: s[0] + dx / l * 30 * k - w / 2, y: s[1] + dy / l * 30 * k - h / 2 });
+    }
+    // Push overlapping tags apart, and keep them inside the picture.
+    for (let it = 0; it < 40; it++) {
+      for (let i = 0; i < tags.length; i++) for (let j = i + 1; j < tags.length; j++) {
+        const a = tags[i], b = tags[j];
+        const ox = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x), oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+        if (ox > 0 && oy > 0) {
+          if (oy < ox) { const m = (oy / 2 + 0.5) * (a.y < b.y ? -1 : 1); a.y += m; b.y -= m; }
+          else { const m = (ox / 2 + 0.5) * (a.x < b.x ? -1 : 1); a.x += m; b.x -= m; }
+        }
+      }
+      for (const t of tags) { t.x = Math.max(VX + 2, Math.min(VX + VW - t.w - 2, t.x)); t.y = Math.max(VY + 2, Math.min(VY + VH - t.h - 2, t.y)); }
+    }
+    return '<g class="labels">' + tags.map(t => {
+      const cx = Math.max(t.x, Math.min(t.x + t.w, t.s[0])), cy = Math.max(t.y, Math.min(t.y + t.h, t.s[1]));
+      return `<g data-p="${t.m}"><path d="M${t.s[0]} ${t.s[1]}L${cx} ${cy}" stroke="#231e16" stroke-width="${k * 1.3}"/><circle cx="${t.s[0]}" cy="${t.s[1]}" r="${k * 2.6}" fill="#231e16"/>` +
+        `<rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="${7 * k}" fill="#fffdf8" stroke="#231e16" stroke-width="${k * 1.3}"/>` +
+        `<text x="${t.x + t.w / 2}" y="${t.y + pad / 2 + lh * 0.78}" text-anchor="middle" font-size="${fs}" font-weight="800" fill="#1565c0" font-family="Plus Jakarta Sans, system-ui, sans-serif">${t.m}</text></g>`;
+    }).join('') + '</g>';
+  }
+  function draw() {
+    const cam = Ink3D.camera(yaw, fig.view.pitch);
+    const body = Ink3D.render(fig.scene(st, cam), cam, { tint: fig.tint(st), hl, wobble: pen ? 0.45 : 0 });
+    svg.innerHTML = fig.sky(st) + body + fig.over(st) + (labels ? labelLayer(cam) : '');
+  }
+
+  // ---------- the loop: about 30 frames a second, faster while you drag ----------
+  let last = performance.now(), lastDraw = 0, drag = null;
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (spin && !drag) yaw = (yaw + dt * 18) % 360;
+    fig.step(st, reduce ? dt * 0.4 : dt);
+    if (hl && now > hlUntil) hl = null;
+    if (drag || now - lastDraw > 32) { draw(); lastDraw = now; }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // ---------- tap a part, or drag to turn ----------
+  function partAt(x, y) {
+    for (const [dx, dy] of [[0, 0], [8, 0], [-8, 0], [0, 8], [0, -8], [12, 12], [-12, 12], [12, -12], [-12, -12]]) {
+      const el = document.elementFromPoint(x + dx, y + dy);
+      const p = el && el.closest && el.closest('[data-p]');
+      if (p && stage.contains(p)) return p.dataset.p;
+    }
+    return null;
+  }
+  stage.addEventListener('pointerdown', e => {
+    drag = { x: e.clientX, y: e.clientY, yaw, moved: false, id: e.pointerId };
+  });
+  stage.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x;
+    if (!drag.moved && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(e.clientY - drag.y)) {
+      drag.moved = true; stage.classList.add('dragging');
+      try { stage.setPointerCapture(e.pointerId); } catch (err) {}
+      $('hint').classList.add('gone');
+    }
+    if (drag.moved) yaw = drag.yaw - dx * 0.6;
+  });
+  const end = e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag; drag = null; stage.classList.remove('dragging');
+    if (e.type === 'pointerup' && !d.moved) {
+      const part = partAt(e.clientX, e.clientY);
+      if (part) touched(part);
+    }
+  };
+  stage.addEventListener('pointerup', end);
+  stage.addEventListener('pointercancel', end);
+
+  function touched(part) {
+    hl = part; hlUntil = performance.now() + 900;
+    $('hint').classList.add('gone');
+    const also = fig.tap ? fig.tap(st, part) : null;
+    if (find) return checkFind(part, also);
+    say(part, also);
+  }
+
+  // ---------- buttons ----------
+  function drawActs() {
+    $('acts').innerHTML = fig.actions.map((a, i) => {
+      const w = a.word(st);
+      return `<button class="act" type="button" data-i="${i}">${a.label(st)}${w ? `<span class="chip">${w}</span>` : ''}</button>`;
+    }).join('');
+  }
+  $('acts').addEventListener('click', e => {
+    const b = e.target.closest('.act'); if (!b) return;
+    const a = fig.actions[+b.dataset.i], w = a.word(st);
+    a.run(st);
+    if (w && !find) say(w);
+    drawActs();
+  });
+  drawActs();
+
+  const toggle = (id, on) => $(id).setAttribute('aria-pressed', on);
+  $('t-labels').onclick = () => { labels = !labels; toggle('t-labels', labels); };
+  $('t-turn').onclick = () => { spin = !spin; toggle('t-turn', spin); };
+  $('t-front').onclick = () => { spin = false; toggle('t-turn', false); yaw = fig.view.yaw; };
+  $('t-pen').onclick = () => { pen = !pen; toggle('t-pen', pen); };
+
+  const sw = fig.swatches;
+  $('swlabel').textContent = sw.label;
+  $('swatches').innerHTML = Object.entries(sw.list).map(([k, c]) => `<button class="swatch" type="button" data-k="${k}" style="background:${c}" aria-label="${k}" aria-pressed="${st[sw.key] === k}"></button>`).join('');
+  $('swatches').addEventListener('click', e => {
+    const b = e.target.closest('.swatch'); if (!b) return;
+    st[sw.key] = b.dataset.k;
+    document.querySelectorAll('.swatch').forEach(x => x.setAttribute('aria-pressed', x === b));
+  });
+
+  // ---------- Find it: tap the part that is named ----------
+  let find = null;
+  const ROUND = 8;
+  function nextFind() {
+    const pool = [...new Set(fig.anchors(st).map(a => a.part))].filter(p => p !== (find && find.word));
+    find.word = pool[Math.floor(Math.random() * pool.length)];
+    find.miss = 0;
+    $('findw').textContent = find.word;
+    $('findhint').textContent = '';
+  }
+  function startFind() {
+    find = { word: null, found: 0 };
+    labels = false; toggle('t-labels', false);
+    $('findbar').hidden = false; toggle('t-find', true);
+    nextFind();
+  }
+  function stopFind() { find = null; $('findbar').hidden = true; toggle('t-find', false); }
+  function checkFind(part, also) {
+    if (part === find.word) {
+      say(part, also, 'good');
+      stars++; find.found++; showStars();
+      try { localStorage.setItem('hn-things-stars', stars); } catch (e) {}
+      if (find.found >= ROUND) {
+        hnStat(`things/${fig.id}/win`, `Touch and learn: ${fig.sub} won`);
+        $('findw').textContent = 'Well done!';
+        $('findhint').textContent = `You found ${ROUND} things.`;
+        find.word = null;
+        setTimeout(() => { if (find && !find.word) { find.found = 0; nextFind(); } }, 2200);
+      } else setTimeout(() => { if (find) nextFind(); }, 650);
+    } else {
+      say(part, also, 'bad');
+      if (++find.miss >= 1 && find.word) $('findhint').textContent = `(${WORDS[find.word]})`;
+    }
+  }
+  $('t-find').onclick = () => find ? stopFind() : startFind();
+  $('skip').onclick = () => { if (find) nextFind(); };
+})();
+</script>
