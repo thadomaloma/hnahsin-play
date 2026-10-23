@@ -91,7 +91,7 @@
   }
 
   // A canvas that draws Rova at the screen's sharpness.
-  const rovaOn = canvas => {
+  const rovaOn = (canvas, draw = drawRova) => {
     const ctx = canvas.getContext('2d');
     return (phase, pose) => {
       const dpr = Math.min(devicePixelRatio || 1, 3), w = canvas.clientWidth, h = canvas.clientHeight;
@@ -99,11 +99,11 @@
       if (canvas.width !== Math.round(w * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
       ctx.setTransform(canvas.width / 120, 0, 0, canvas.height / 160, 0, 0);
       ctx.clearRect(0, 0, 120, 160);
-      drawRova(ctx, phase, pose);
+      draw(ctx, phase, pose);
     };
   };
   const drawCover = rovaOn($('.cover.journey .runner canvas'));
-  if (calm) { $('.rova').hidden = true; drawCover(.6, 'run'); return; }
+  if (calm) { $$('.kid').forEach(k => { k.hidden = true; }); drawCover(.6, 'run'); return; }
 
   // ------------------------------------------------ cosmos petals on the wind
   const canvas = $('.petals'), ctx = canvas.getContext('2d');
@@ -163,8 +163,11 @@
   };
   requestAnimationFrame(parallax);
 
-  // ------------------------------------------------ Rova runs along the hill and hops the flowers
-  const field = $('.field'), hill = $('#hill-front'), rova = $('.rova');
+  // ------------------------------------------------ Rova and Mami play tag on the hill
+  // One runs, the other chases a little faster in bursts. When the chaser
+  // catches up, or the runner reaches the edge, both turn round: the one who
+  // was caught now does the chasing. They hop over the flowers on the way.
+  const field = $('.field'), hill = $('#hill-front');
   const len = hill.getTotalLength();
   const samples = Array.from({ length: 121 }, (_, i) => hill.getPointAtLength(len * i / 120)).filter(p => p.y < 229);
   const hillY = x => { // the hill's height at x, in the SVG's 1440 × 230 box
@@ -172,21 +175,40 @@
     for (const p of samples) if (Math.abs(p.x - x) < Math.abs(best.x - x)) best = p;
     return best.y;
   };
-  let rx = -60, hop = 0;
-  const drawHill = rovaOn($('canvas', rova));
+  const kids = [
+    { el: $('.kid.rova'), draw: rovaOn($('.kid.rova canvas'), drawRova), x: 160, hop: 0, cheer: 0 },
+    { el: $('.kid.mami'), draw: rovaOn($('.kid.mami canvas'), drawMami), x: 40, hop: 0, cheer: 0 },
+  ];
+  let dir = 1, chaser = 1, lastT = 0, tagged = 0;
   const run = t => {
     requestAnimationFrame(run);
-    if (!heroOnScreen || document.hidden) return;
-    const fw = field.clientWidth, fh = field.clientHeight;
-    rx += fw / 900 * 1.6 + .9;
-    if (rx > fw + 60) rx = -60;
+    if (!heroOnScreen || document.hidden) { lastT = t; return; }
+    const dt = Math.min(50, t - (lastT || t)) / 16.7; lastT = t;
+    const fw = field.clientWidth, fh = field.clientHeight, unit = fw / 900 * 1.4 + .8;
     const flowers = $$('.flower', field).map(f => f.offsetLeft + f.offsetWidth / 2);
-    const near = flowers.some(fx => Math.abs(fx - rx - 20) < 34);
-    hop = near ? Math.min(1, hop + .08) : Math.max(0, hop - .06);
-    const ground = hillY(rx / fw * 1440) / 230 * fh;
-    const lift = Math.sin(hop * Math.PI / 2) * 46;
-    rova.style.transform = `translate3d(${rx}px, ${ground - fh - lift - rova.offsetHeight * .97}px, 0) rotate(${hop ? -6 * hop : 0}deg)`;
-    drawHill(t / 55, hop > .25 ? 'jump' : 'run');
+    const runner = 1 - chaser;
+    if (t > tagged) {
+      kids[runner].x += dir * unit * 1.05 * dt;
+      kids[chaser].x += dir * unit * (0.95 + 0.5 * Math.max(0, Math.sin(t / 700))) * dt; // bursts of speed
+    }
+    const gap = (kids[runner].x - kids[chaser].x) * dir;
+    const kw = kids[runner].el.offsetWidth;
+    // The field reaches 28px past each side of the screen (for the parallax); turn while in view.
+    const atEdge = dir > 0 ? kids[runner].x > fw - kw - 36 : kids[runner].x < 36;
+    if (t > tagged && (gap < 26 || atEdge)) {
+      // Tag! Both stop for a moment and hop, then turn and swap roles.
+      if (gap < 26) kids.forEach(k => { k.cheer = 1; });
+      dir = -dir; chaser = runner; tagged = t + 450;
+    }
+    for (const k of kids) {
+      const near = flowers.some(fx => Math.abs(fx - k.x - 20) < 34);
+      k.hop = near || k.cheer > 0 ? Math.min(1, k.hop + .08 * dt) : Math.max(0, k.hop - .06 * dt);
+      k.cheer = Math.max(0, k.cheer - .04 * dt);
+      const ground = hillY(Math.max(0, Math.min(fw, k.x)) / fw * 1440) / 230 * fh;
+      const lift = Math.sin(k.hop * Math.PI / 2) * 40;
+      k.el.style.transform = `translate3d(${k.x}px, ${ground - fh - lift - k.el.offsetHeight * .97}px, 0) scaleX(${dir}) rotate(${k.hop ? -6 * k.hop : 0}deg)`;
+      k.draw(t / 55 + (k === kids[1] ? 1.3 : 0), k.hop > .25 ? 'jump' : 'run');
+    }
   };
   requestAnimationFrame(run);
 
