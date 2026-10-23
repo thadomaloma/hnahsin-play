@@ -8,6 +8,10 @@
 <meta name="theme-color" content="#3c9fea">
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Hnahsin">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Hnahsin">
 <meta property="og:title" content="Hnahsin Games · Learn Mizo by playing">
@@ -152,6 +156,9 @@
   .word b { color: var(--coral); font-family: var(--font-display); font-size: 19px; }
   .word small { color: var(--muted); font-size: 13px; font-weight: 600; }
 
+  .install { display: grid; justify-items: center; gap: 6px; margin-top: 18px; color: var(--navy); }
+  .install p { margin: 0; padding: 8px 14px; border-radius: 14px; background: rgba(255, 255, 255, .9); font-size: 14px; font-weight: 600; }
+  .install .note { font-size: 13px; font-weight: 700; }
   footer { padding: 48px 0 36px; color: var(--muted); font-size: 13px; text-align: center; }
   footer p { margin: 4px 0; }
 </style>
@@ -192,6 +199,11 @@
       <a class="btn gold" href="journey.html">🏃 Play Rova's Journey</a>
       <a class="btn light" href="playground.html">🎮 Open the Playground</a>
       <a class="btn light" href="app/">📱 Try the app</a>
+    </div>
+    <div class="install" id="install" hidden>
+      <button class="btn" id="install-btn" type="button">📲 Install Hnahsin</button>
+      <p id="install-ios" hidden>On iPhone: tap <b>Share</b> <span aria-hidden="true">⬆️</span>, then <b>Add to Home Screen</b>.</p>
+      <span class="note">Plays without internet once installed</span>
     </div>
   </div>
 
@@ -284,6 +296,7 @@
 </footer>
 
 <script src="home.js" defer></script>
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js'));</script>
 
 </body>
 </html>

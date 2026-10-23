@@ -1,0 +1,22 @@
+{
+  "name": "Hnahsin Games",
+  "short_name": "Hnahsin",
+  "description": "Learn Mizo words by playing: Rova's Journey and 20 word games.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#3c9fea",
+  "theme_color": "#3c9fea",
+  "lang": "en",
+  "categories": ["education", "games"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "shortcuts": [
+    { "name": "Rova's Journey", "url": "journey.html", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] },
+    { "name": "Playground", "url": "playground.html", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] }
+  ]
+}

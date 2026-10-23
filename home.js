@@ -72,6 +72,24 @@
     tiles.forEach((t, i) => setTimeout(() => boing(t), i * 80));
   }, 7000);
 
+  // ------------------------------------------------ install on the phone
+  // Android and desktop Chrome offer a prompt; iPhone needs Share → Add to Home Screen.
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !/crios|fxios/i.test(navigator.userAgent);
+  let prompt = null;
+  if (!standalone) {
+    addEventListener('beforeinstallprompt', e => { e.preventDefault(); prompt = e; $('#install').hidden = false; $('#install-btn').hidden = false; });
+    if (ios) { $('#install').hidden = false; $('#install-btn').hidden = true; $('#install-ios').hidden = false; }
+    $('#install-btn').addEventListener('click', async () => {
+      if (!prompt) return;
+      prompt.prompt();
+      const { outcome } = await prompt.userChoice;
+      prompt = null;
+      if (outcome === 'accepted') $('#install').hidden = true;
+    });
+    addEventListener('appinstalled', () => { $('#install').hidden = true; });
+  }
+
   if (calm) { $('.rova').hidden = true; return; }
 
   // ------------------------------------------------ cosmos petals on the wind
