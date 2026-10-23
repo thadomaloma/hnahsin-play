@@ -164,12 +164,15 @@ __HOUSE__
   }
 
   // ---------- drawing ----------
+  // The parts that can be named right now, facing you.
+  const visibleAnchors = cam => fig.anchors(st, cam).filter(a => !a.n || Ink3D.dot(a.n, cam.view) >= 0.08);
   function labelLayer(cam) {
     const k = VW / (svg.clientWidth || 360);            // svg units per screen pixel
     const fs = 14 * k, pad = 5 * k, lh = 18 * k;   // Mizo only: a tap on a label shows the English
-    const tags = [];
-    for (const a of fig.anchors(st)) {
-      if (a.n && Ink3D.dot(a.n, cam.view) < 0.08) continue;
+    const tags = [], seen = new Set();
+    for (const a of visibleAnchors(cam)) {
+      if (seen.has(a.part)) continue;
+      seen.add(a.part);
       const s = a.s || cam.P(a.p);
       const m = a.part, w = m.length * 8.6 * k + pad * 2, h = lh + pad;
       const dx = s[0] - fig.view.centre[0], dy = s[1] - fig.view.centre[1], l = Math.hypot(dx, dy) || 1;
@@ -245,10 +248,12 @@ __HOUSE__
   stage.addEventListener('pointerup', end);
   stage.addEventListener('pointercancel', end);
 
-  function touched(part) {
-    hl = part; hlUntil = performance.now() + 900;
+  // id is the tapped part's name, with #n when there are several of a kind (the eggs).
+  function touched(id) {
+    const part = id.split('#')[0];
+    hl = id; hlUntil = performance.now() + 900;
     $('hint').classList.add('gone');
-    const also = fig.tap ? fig.tap(st, part) : null;
+    const also = fig.tap ? fig.tap(st, part, id) : null;
     if (find) return checkFind(part, also);
     say(part, also);
   }
@@ -288,7 +293,7 @@ __HOUSE__
   let find = null;
   const ROUND = 8;
   function nextFind() {
-    const pool = [...new Set(fig.anchors(st).map(a => a.part))].filter(p => p !== (find && find.word));
+    const pool = [...new Set(visibleAnchors(Ink3D.camera(yaw, fig.view.pitch)).map(a => a.part))].filter(p => p !== (find && find.word));
     find.word = pool[Math.floor(Math.random() * pool.length)];
     find.miss = 0;
     $('findw').textContent = find.word;

@@ -176,8 +176,9 @@
           vis.sort((a, b) => a[0] - b[0]);
           for (const [, f] of vis) {
             const fill = f.fill ? col(f.fill, f.glow) : T(tone(f.pal, dot(f.n, LIGHT)));
-            out.push(`<path d="${d3(f.pts)}" fill="${fill}" stroke="${INK}" stroke-width="${f1(W * (p.w || 1))}" stroke-linejoin="round"${tag(f.part)}/>`);
-            if (f.decals) for (const d of f.decals) decal(d, f.part);
+            const part = f.part ?? p.part;   // a face takes its group's name when it has none
+            out.push(`<path d="${d3(f.pts)}" fill="${fill}" stroke="${INK}" stroke-width="${f1(W * (p.w || 1))}" stroke-linejoin="round"${tag(part)}/>`);
+            if (f.decals) for (const d of f.decals) decal(d, part);
           }
           break;
         }
