@@ -4,6 +4,22 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.5.0 (24 October 2026)
+
+### New in Touch and learn: Puan tah
+
+- A Mizo backstrap loom in a room. Pi sits on a mat with the loom's belt
+  (kâwnghrên) round her back and weaves a puan row by row: the warp opens,
+  the shuttle (khawhthei) carries the yarn across, and the beating stick
+  (vuakfung) packs it in.
+- Pick the yarn from six Mizo colour words: sen, dum, vâr, hring, dumpâwl
+  and sendang. Tap a ball of yarn in the basket or a colour button.
+- Add a pattern (ziarâng), keep weaving, and finish (zo) the puan to fold
+  it onto the wooden chest (thingrem).
+- Tabs at the top switch between the house and the loom.
+- 79 words in Touch and learn now. Khawhthei comes from J.F. Laldailova's
+  dictionary; the rest are from the Hnahsin app.
+
 ## 1.4.0 (23 October 2026)
 
 ### A livelier home page
