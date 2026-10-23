@@ -4,6 +4,24 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.2.0 (23 October 2026)
+
+### Touch and learn: more to find
+
+- **Look inside.** The roof lifts off and the near walls come down, so you
+  can see the room: the kitchen hearth with its pot, a bed with a Mizo puan,
+  a table with a lamp, a chair and a mat. At night the lamp lights the room,
+  and the fire on the hearth sends up smoke.
+- **The yard.** A hens' coop, a pig that trots by the house, and eggs the hen
+  lays. Tap an egg to put it in the basket.
+- Looking inside, the labels and Find it name only the things in the room.
+- 41 words now, all from the Hnahsin app.
+
+### Fixes
+
+- Parts drawn as plain boxes inside a group (like the coop's walls) now show
+  their name when tapped.
+
 ## 1.1.0 (23 October 2026)
 
 ### New: Touch and learn
