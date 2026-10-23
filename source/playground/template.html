@@ -235,18 +235,19 @@
   .hearts { font-size: 20px; letter-spacing: 2px; }
 
   /* Dress Rova */
-  .rova { position: relative; height: 300px; background: var(--panel-2); border-radius: 22px; overflow: hidden; }
-  .rova .body { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 250px; line-height: 1; opacity: .9; }
-  .rova .worn { position: absolute; transform: translate(-50%, -50%); border: 0; background: none; padding: 0; cursor: pointer; font-size: 56px; line-height: 1; }
-  .rova .worn.head { font-size: 60px; }
-  .rova .worn.outer { font-size: 74px; }
-  .rova .worn.socks, .rova .worn.feet { font-size: 40px; }
+  /* Rova drawn on a canvas (figures.js), sharp at any size */
+  .figure { position: relative; height: 380px; border-radius: 22px; overflow: hidden; cursor: pointer;
+    background: radial-gradient(ellipse at 50% 96%, #cfe9b8 0 22%, transparent 23%), linear-gradient(180deg, #eaf6ff, #f7fbff); }
+  .figure canvas { display: block; width: 100%; height: 100%; }
+  .figure.wrong { animation: shake .4s; }
   .wardrobe { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 
   /* Big and small */
   .op-board { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .op-board .opt { height: 170px; border: 1px solid var(--line); border-radius: 20px; background: var(--panel-2); cursor: pointer; display: grid; place-items: center; overflow: hidden; }
   .op-board .opt span { display: inline-block; font-size: 52px; line-height: 1; }
+  .op-board .opt canvas { display: block; width: 100%; height: 100%; }
+  .op-board .opt img { display: block; max-width: 92%; object-fit: fill; filter: drop-shadow(0 4px 4px rgba(0,0,0,.12)); }
   .ask-line { font-size: 22px; font-weight: 700; text-align: center; }
   .ask-line b { font-weight: 800; color: var(--brand); }
 
@@ -264,10 +265,11 @@
   .swatch { width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--line); cursor: pointer; }
 
   /* Rova's family */
-  .tree { position: relative; height: 300px; border-radius: 22px; background: var(--panel-2); }
+  .tree { position: relative; height: 360px; border-radius: 22px; background: var(--panel-2); }
   .tree::before { content: ""; position: absolute; left: 22%; right: 22%; top: 30%; bottom: 36%; border: 2px dashed var(--line); border-radius: 12px; }
   .person { position: absolute; transform: translate(-50%, -50%); display: grid; justify-items: center; border: 0; background: var(--panel); border-radius: 18px; padding: 6px 10px; cursor: pointer; box-shadow: 0 2px 0 var(--line); color: var(--ink); font: inherit; }
-  .person span { font-size: 40px; line-height: 1.1; }
+  .person canvas { display: block; width: 74px; height: 74px; }
+  .person { padding: 4px 6px !important; }
   .person small { font-weight: 800; }
   .person.me { cursor: default; background: var(--leaf-soft); }
   .person.asked { outline: 3px dashed var(--gold-deep); outline-offset: 2px; }
@@ -416,8 +418,8 @@
     <div class="row"><span class="pill" id="dr-level">Level 1</span><button class="btn ghost" id="dr-new">New list</button></div>
     <h2>Dress Rova in what the list says</h2>
     <div class="targets" id="dr-want"></div>
-    <div class="rova" id="dr-rova"></div>
-    <p class="note">Tap a piece to put it on. Tap it on Rova to take it off.</p>
+    <div class="figure" id="dr-rova" role="img" aria-label="Rova"><canvas></canvas></div>
+    <p class="note">Tap a piece to put it on Rova. Tap it on Rova to take it off.</p>
     <div class="wardrobe" id="dr-wardrobe"></div>
     <div class="feedback" id="dr-feedback" aria-live="polite"></div>
     <button class="btn" id="dr-done">Rova is dressed</button>
@@ -442,7 +444,7 @@
     <div class="row"><span class="hearts" id="rs-hearts">❤️❤️❤️</span><span class="score" id="rs-score">0</span></div>
     <div class="ask-line" id="rs-ask">Tap the part of the body Rova names. Careful: only when he says “Rova says”!</div>
     <div class="timer"><i id="rs-time" style="width:100%"></i></div>
-    <div class="choices" id="rs-board"></div>
+    <div class="figure" id="rs-board" role="img" aria-label="Rova: tap the part named"><canvas></canvas></div>
     <div class="feedback" id="rs-feedback" aria-live="polite"></div>
     <button class="btn" id="rs-start">Start</button>
   </section>
@@ -572,6 +574,7 @@
 </div>
 
 <script>__ROVA__</script>
+<script>__FIGURES__</script>
 <script>
 const DATA = __DATA__;
 const W = DATA.words;           // id -> [mizo, english, emoji]
@@ -1109,7 +1112,26 @@ coNew();
 // takes it off. From level 3 the wardrobe shows pictures only.
 const SLOTS = DATA.sets.clothes;               // slot -> [word ids]
 const SLOT_OF = Object.fromEntries(Object.entries(SLOTS).flatMap(([slot, ids]) => ids.map(id => [id, slot])));
-const SLOT_POS = { head: [50, 9], top: [50, 41], outer: [50, 41], legs: [50, 68], socks: [50, 86], feet: [50, 92] };
+// What each slot looks like on Rova (figures.js draws it); sandals by their emoji.
+const LOOK_OF = (slot, id) => ({ head: 'cap', top: 'shirt', outer: 'coat', legs: 'trousers', socks: 'socks' })[slot] || (emoji(id) === '🩴' ? 'sandals' : 'shoes');
+let drBox = null;
+function drDraw() {
+  const wear = Object.entries(dr.worn).map(([slot, id]) => LOOK_OF(slot, id));
+  drBox = paintCanvas($('dr-rova').firstElementChild, 300, 520, ctx => drawFront(ctx, { wear }));
+}
+// Which piece Rova is wearing at a tap (in figures.js's 300 × 520 box), top layer first.
+function drSlotAt(x, y) {
+  const has = s => dr.worn[s];
+  if (y < 112 && has('head')) return 'head';
+  if (y > 464 && has('feet')) return 'feet';
+  if (y > 440 && has('socks')) return 'socks';
+  if (y > 214 && y < 392 && x > 40 && x < 260 && has('outer')) return 'outer';
+  if (y > 214 && y < 345 && x > 40 && x < 260 && has('top')) return 'top';
+  if (y > 315 && y < 480 && has('legs')) return 'legs';
+  return null;
+}
+addEventListener('resize', () => { if (!$('dress').hidden) drDraw(); });
+document.addEventListener('showgame', e => { if (e.detail === 'dress') drDraw(); });
 let dr = { level: store.get('lab.dr', 1), want: [], worn: {} };
 function drNew() {
   const count = Math.min(1 + dr.level, 4);
@@ -1122,8 +1144,7 @@ function drNew() {
 function drRender() {
   $('dr-level').textContent = 'Level ' + dr.level;
   $('dr-want').innerHTML = dr.want.map(id => `<span class="target ${Object.values(dr.worn).includes(id) ? 'found' : ''}">${word(id)}</span>`).join('');
-  $('dr-rova').innerHTML = '<span class="body">🧍</span>' + Object.entries(dr.worn).map(([slot, id]) =>
-    `<button class="worn ${slot}" data-slot="${slot}" style="left:${SLOT_POS[slot][0]}%;top:${SLOT_POS[slot][1]}%" aria-label="Take off ${word(id)}">${emoji(id)}</button>`).join('');
+  drDraw();
   const names = dr.level < 3;
   $('dr-wardrobe').innerHTML = Object.keys(SLOT_OF).map(id => `<button class="item" data-id="${id}" aria-label="${word(id)}"><span class="e">${emoji(id)}</span>${names ? `<span class="w">${word(id)}</span>` : ''}</button>`).join('');
 }
@@ -1133,11 +1154,15 @@ $('dr-wardrobe').addEventListener('click', e => {
   dr.worn[SLOT_OF[id]] = id;
   $('dr-feedback').className = 'feedback'; $('dr-feedback').textContent = `${word(id)} · ${gloss(id)}`;
   drRender();
-  flash(document.querySelector(`#dr-rova [data-slot="${SLOT_OF[id]}"]`), 'pop');
+  flash($('dr-rova'), 'pop');
 });
 $('dr-rova').addEventListener('click', e => {
-  const b = e.target.closest('.worn'); if (!b) return;
-  delete dr.worn[b.dataset.slot]; drRender();
+  if (!drBox) return;
+  const r = $('dr-rova').getBoundingClientRect();
+  const slot = drSlotAt((e.clientX - r.left - drBox.ox) / drBox.scale, (e.clientY - r.top - drBox.oy) / drBox.scale);
+  if (!slot) return;
+  $('dr-feedback').className = 'feedback'; $('dr-feedback').textContent = `Took off ${word(dr.worn[slot])}`;
+  delete dr.worn[slot]; drRender();
 });
 $('dr-done').addEventListener('click', () => {
   const worn = Object.values(dr.worn);
@@ -1167,6 +1192,12 @@ drNew();
 const PAIRS = DATA.sets.sizes;                  // [[lian, tê], [sei, tawi], [sâng, hniam], [chhah, pan]]
 const THINGS = DATA.sets.sizeThings;            // what each pair is shown on
 const PAIR_THINGS = [THINGS.big, THINGS.long, THINGS.tall, THINGS.thick];
+// Vector pictures (Fluent Emoji) so the big one stays sharp; others fall back to emoji.
+const SVG_OF = { '🐕': '1f415', '🐅': '1f405', '🏠': '1f3e0', '✏️': '270f', '🌳': '1f333', '📖': '1f4d6' };
+const sizePic = (thing, sx, sy) => SVG_OF[emoji(thing)]
+  ? `<img src="pics/svg/${SVG_OF[emoji(thing)]}.svg" alt="" style="width:${Math.round(64 * sx)}px;height:${Math.round(64 * sy)}px">`
+  : `<span style="transform:scale(${sx},${sy})">${emoji(thing)}</span>`;
+const DRAWN_OF = { '✏️': 'pencil', '🌳': 'tree', '📖': 'book' };
 // How each side of a pair is drawn: [scaleX, scaleY].
 const LOOKS = [[[1.6, 1.6], [.7, .7]], [[2.2, 1], [.9, 1]], [[1, 2], [1, .9]], [[1, 1.9], [1, .55]]];
 let op = { right: 0, total: 0, target: null, done: false };
@@ -1180,8 +1211,11 @@ function opNew() {
   const order = shuffle([0, 1]);
   $('op-board').innerHTML = order.map(s => {
     const [sx, sy] = LOOKS[p][s];
-    return `<button class="opt" data-side="${s}" aria-label="${s === 0 ? 'First' : 'Second'} picture"><span style="transform:scale(${sx},${sy})">${emoji(thing)}</span></button>`;
+    // Long/short, tall/low and thick/thin are drawn (stretching an emoji doesn't show them).
+    const drawn = p > 0 && DRAWN_OF[emoji(thing)];
+    return `<button class="opt" data-side="${s}" aria-label="${s === 0 ? 'First' : 'Second'} picture">${drawn ? `<canvas data-what="${drawn}" data-k="${s === 0 ? 1 : 0}"></canvas>` : sizePic(thing, sx, sy)}</button>`;
   }).join('');
+  $('op-board').querySelectorAll('canvas').forEach(c => paintCanvas(c, 200, 200, ctx => drawSizeThing(ctx, c.dataset.what, +c.dataset.k)));
   $('op-feedback').textContent = ''; $('op-feedback').className = 'feedback';
 }
 $('op-board').addEventListener('click', e => {
@@ -1269,16 +1303,30 @@ $('dr-new').addEventListener('click', drNew);
 // Tap the body part Rova names before the time runs out. From level 2,
 // when the words don't start "Rova says", don't tap: just wait.
 const BODY = DATA.sets.body;
+// Each body word's place on the drawn Rova, by its English meaning.
+const PART_OF = Object.fromEntries(BODY.map(id => [id, gloss(id).toLowerCase()]));
+const ID_OF = Object.fromEntries(BODY.map(id => [PART_OF[id], id]));
+let rsBox = null, rsGlow = null;
+function rsDraw() {
+  rsBox = paintCanvas($('rs-board').firstElementChild, 300, 520, ctx => drawFront(ctx, rsGlow || {}));
+}
+// Ring a part for a moment; a later ring replaces an earlier one.
+let rsGlowTimer = 0;
+function rsShow(part, colour, ms) {
+  clearTimeout(rsGlowTimer); rsGlow = { glow: part, glowColour: colour }; rsDraw();
+  rsGlowTimer = setTimeout(() => { rsGlow = null; rsDraw(); }, ms);
+}
+addEventListener('resize', () => { if (!$('says').hidden) rsDraw(); });
+document.addEventListener('showgame', e => { if (e.detail === 'says') rsDraw(); });
 let rs = { on: false, target: null, says: true, ends: 0, timer: 0, score: 0, hearts: 3, tapped: false };
 function rsRound() {
-  const six = pick(BODY, 6);
-  rs.target = six[0];
+  rs.target = pick(BODY.filter(id => FRONT_PARTS[PART_OF[id]] && id !== rs.target), 1)[0];
   rs.says = rs.score < 4 || Math.random() < .75;
   rs.tapped = false;
   const ms = Math.max(1600, 3200 - rs.score * 90);
   rs.ends = Date.now() + ms;
   $('rs-ask').innerHTML = rs.says ? `Rova says: tap <b>${word(rs.target)}</b>!` : `Tap <b>${word(rs.target)}</b>!`;
-  $('rs-board').innerHTML = shuffle([...six]).map(id => `<button class="choice big" data-id="${id}" aria-label="${gloss(id)}">${emoji(id)}</button>`).join('');
+  rsDraw();
   clearInterval(rs.timer);
   rs.timer = setInterval(() => {
     const left = rs.ends - Date.now();
@@ -1300,7 +1348,9 @@ function rsResult(id) {
   } else {
     rs.hearts--;
     fb.className = 'feedback bad';
-    fb.textContent = !rs.says ? `Rova didn't say “Rova says”!` : `${word(rs.target)} is ${emoji(rs.target)} (${gloss(rs.target)})`;
+    fb.textContent = !rs.says ? `Rova didn't say “Rova says”!` : `${word(rs.target)} is here: ${gloss(rs.target)}`;
+    // The tapped part rings red first, then the right one green.
+    if (rs.says) setTimeout(() => rsShow(PART_OF[rs.target], '#43a047', 1100), 450);
     flash($('rs-board'), 'shake');
   }
   $('rs-score').textContent = rs.score;
@@ -1316,8 +1366,14 @@ function rsResult(id) {
   setTimeout(() => rs.on && rsRound(), ok ? 700 : 1600);
 }
 $('rs-board').addEventListener('click', e => {
-  const b = e.target.closest('.choice'); if (!b || !rs.on || rs.tapped) return;
-  rs.tapped = true; flash(b, 'pop'); rsResult(b.dataset.id);
+  if (!rs.on || rs.tapped || !rsBox) return;
+  const r = $('rs-board').getBoundingClientRect();
+  const part = frontPartAt((e.clientX - r.left - rsBox.ox) / rsBox.scale, (e.clientY - r.top - rsBox.oy) / rsBox.scale);
+  if (!part || !ID_OF[part]) return;                 // a tap on no part doesn't count
+  rs.tapped = true;
+  const right = rs.says && ID_OF[part] === rs.target;
+  rsShow(part, right ? '#43a047' : '#e53935', 600);
+  rsResult(ID_OF[part]);
 });
 $('rs-start').addEventListener('click', () => {
   rs = { ...rs, on: true, score: 0, hearts: 3 };
@@ -1370,6 +1426,7 @@ ciNew();
 // Rova's family on a little tree. Tap the person the word names; later,
 // say which word a person is.
 const FAMILY = DATA.sets.family;                // word id -> picture
+const FACE_OF = { 'word.jf1011.pi': 'pi', 'word.jf1011.pu': 'pu', 'word.jf300.nu': 'nu', 'word.jf300.pa': 'pa', 'word.farnu': 'farnu', 'word.jf1011.nau': 'nau' };
 const SEATS = { 'word.jf1011.pi': [30, 14], 'word.jf1011.pu': [70, 14], 'word.jf300.nu': [30, 45], 'word.jf300.pa': [70, 45], 'word.farnu': [20, 80], 'word.jf1011.nau': [80, 80] };
 let fa = { target: null, mode: 0, right: 0, total: 0, done: false };
 function faNew() {
@@ -1377,8 +1434,9 @@ function faNew() {
   fa.mode = fa.right >= 4 && Math.random() < .5 ? 1 : 0;
   fa.target = pick(Object.keys(FAMILY), 1)[0];
   const tree = $('fa-tree');
-  tree.innerHTML = `<div class="person me" style="left:50%;top:80%"><span>🧑</span><small>Rova</small></div>` +
-    Object.entries(SEATS).map(([id, [x, y]]) => `<button class="person ${fa.mode && id === fa.target ? 'asked' : ''}" data-id="${id}" style="left:${x}%;top:${y}%"><span>${FAMILY[id]}</span></button>`).join('');
+  tree.innerHTML = `<div class="person me" style="left:50%;top:80%"><canvas data-face="rova"></canvas><small>Rova</small></div>` +
+    Object.entries(SEATS).map(([id, [x, y]]) => `<button class="person ${fa.mode && id === fa.target ? 'asked' : ''}" data-id="${id}" style="left:${x}%;top:${y}%" aria-label="${fa.mode && id === fa.target ? 'This one' : 'Family member'}"><canvas data-face="${FACE_OF[id]}"></canvas></button>`).join('');
+  faDraw();
   $('fa-feedback').textContent = ''; $('fa-feedback').className = 'feedback';
   if (fa.mode === 0) {
     $('fa-ask').innerHTML = `Who is Rova's <b>${word(fa.target)}</b>?`;
@@ -1389,13 +1447,18 @@ function faNew() {
     $('fa-choices').innerHTML = options.map(id => `<button class="choice" data-id="${id}">${word(id)}</button>`).join('');
   }
 }
+function faDraw() {
+  $('fa-tree').querySelectorAll('canvas[data-face]').forEach(c => paintCanvas(c, 160, 160, ctx => drawPortrait(ctx, c.dataset.face)));
+}
+addEventListener('resize', () => { if (!$('family').hidden) faDraw(); });
+document.addEventListener('showgame', e => { if (e.detail === 'family') faDraw(); });
 function faAnswer(id, el) {
   if (fa.done) return;
   fa.done = true; fa.total++;
   const right = id === fa.target;
   const fb = $('fa-feedback');
   fb.className = 'feedback ' + (right ? 'good' : 'bad');
-  fb.textContent = `${FAMILY[fa.target]} ${word(fa.target)} · Rova's ${gloss(fa.target).toLowerCase()}`;
+  fb.textContent = `${word(fa.target)} · Rova's ${gloss(fa.target).toLowerCase()}`;
   if (right) { fa.right++; addStars(2); flash(el, 'hop'); } else flash(el, 'shake');
   $('fa-score').textContent = `${fa.right} of ${fa.total}`;
   setTimeout(faNew, right ? 1300 : 2400);
