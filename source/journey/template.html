@@ -113,6 +113,19 @@ const LEVELS = [
   { name: 'Phawngpui', title: 'The blue mountain', emoji: '🏔️', band: [6, 7], dict: true, sky: [0x1d2b5a, 0x5b6fb0], hills: [0x3f6a4a, 0x2c4f36], far: 0x4a5f9a, farH: 340, stars: true, speed: 430 },
 ];
 const GATES = 8;
+// Draw at the phone's real pixels, not 720 × 1280 stretched: the canvas is made
+// RES times bigger and the camera zooms by RES, so the game keeps its 720 × 1280 world.
+// Tall phones get more sky above and ground below, so the game fills the screen.
+const GH = Math.round(Math.min(1700, Math.max(1280, 720 * innerHeight / innerWidth)));
+const RES = (() => {
+  const css = Math.min(innerWidth, innerHeight * 720 / GH);
+  return Math.min(3, Math.max(1, Math.round(css * (devicePixelRatio || 1) / 720 * 4) / 4));
+})();
+// Text is drawn into its own image; give it the same sharpness.
+const addText = Phaser.GameObjects.GameObjectFactory.prototype.text;
+Phaser.GameObjects.GameObjectFactory.prototype.text = function (x, y, text, style) {
+  return addText.call(this, x, y, text, Object.assign({ resolution: RES }, style));
+};
 const store = { get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const fold = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ṭ/g, 't');
@@ -170,15 +183,17 @@ class Play extends Phaser.Scene {
 
   create() {
     const L = LEVELS[this.level];
-    const W = 720, H = 1280;
+    const W = 720, H = 1280, extra = GH - H;
     this.groundY = 1100;
-    this.length = GATES * 1500 + 1900;
-    this.cameras.main.setBounds(0, 0, this.length, H);
+    // The flag stands 700 past the last door; the road goes on a little after it.
+    this.length = 1300 + GATES * 1500 + 700 + 800;
+    this.cameras.main.setOrigin(0, 0).setZoom(RES);
+    this.cameras.main.scrollY = -extra; // the world's 1280 sits at the screen's bottom
     this.physics.world.setBounds(0, 0, this.length, H);
 
     // Sky, far hills and near hills: three layers moving at their own pace.
     const sky = this.add.graphics().setScrollFactor(0);
-    sky.fillGradientStyle(L.sky[0], L.sky[0], L.sky[1], L.sky[1], 1); sky.fillRect(0, 0, W, H);
+    sky.fillGradientStyle(L.sky[0], L.sky[0], L.sky[1], L.sky[1], 1); sky.fillRect(0, 0, W, GH);
     if (L.stars) for (let i = 0; i < 40; i++) this.add.circle(Math.random() * W, Math.random() * 500, Math.random() * 2 + 1, 0xffffff, .8).setScrollFactor(0);
     else this.add.circle(560, 210, 70, L.sun).setScrollFactor(0);
     this.far = this.makeHills(L.far, 0.15, 760, L.farH || 140);
@@ -186,7 +201,7 @@ class Play extends Phaser.Scene {
     if (L.city) this.makeCity();
 
     // The ground: grass on earth, the whole way.
-    const ground = this.add.rectangle(this.length / 2, this.groundY + 90, this.length, 180, L.hills[1]);
+    const ground = this.add.rectangle(this.length / 2, this.groundY + (180 + extra) / 2, this.length, 180 + extra, L.hills[1]);
     this.add.rectangle(this.length / 2, this.groundY + 6, this.length, 14, 0x8bd16a);
     this.physics.add.existing(ground, true);
 
@@ -197,7 +212,7 @@ class Play extends Phaser.Scene {
     this.physics.add.collider(this.rova, ground, () => { if (this.air) this.land(); });
     this.jumps = 0; this.air = false;
 
-    this.cameras.main.startFollow(this.rova, false, 1, 0, -200, 0);
+    this.follow();
 
     // Effects.
     this.sparks = this.add.particles(0, 0, 'spark', { speed: { min: 140, max: 420 }, lifespan: 600, scale: { start: .9, end: 0 }, gravityY: 600, tint: [0xffc94a, 0xffffff, 0x8fd3ff, 0x6dbe5e], emitting: false });
@@ -283,6 +298,7 @@ class Play extends Phaser.Scene {
       const glow = this.add.rectangle(0, 0, 196, 160, 0xfff6dd);
       const size = opt[0].length > 34 ? 19 : opt[0].length > 16 ? 23 : opt[0].length > 11 ? 26 : opt[0].length > 8 ? 32 : 40;
       const label = this.add.text(0, 0, opt[0], { fontFamily: 'Plus Jakarta Sans', fontSize: size + 'px', fontStyle: '800', color: '#15213a', align: 'center', wordWrap: { width: 186 } }).setOrigin(.5);
+      if (label.width > 184) label.setScale(184 / label.width); // long words shrink to fit the door
       c.add([frame, glow, label]);
       if (lane > 0) c.add(this.add.rectangle(0, 112, 250, 18, 0x5a3a20));
       c.setScale(0); this.tweens.add({ targets: c, scale: 1, duration: 380, ease: 'Back.Out', delay: lane * 80 });
@@ -356,7 +372,13 @@ class Play extends Phaser.Scene {
     this.tweens.add({ targets: this.rova, scaleY: { from: .82, to: 1 }, scaleX: { from: -1.12, to: -1 }, duration: 160 });
   }
 
+  // Keep Rova 160 from the left edge, inside the road.
+  follow() {
+    this.cameras.main.scrollX = Phaser.Math.Clamp(this.rova.x - 160, 0, this.length - 720);
+  }
+
   update() {
+    this.follow();
     if (this.over) return;
     if (this.started) this.rova.body.setVelocityX(this.speed);
     // A gentle run bob on the ground.
@@ -381,7 +403,7 @@ class Play extends Phaser.Scene {
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
-  width: 720, height: 1280,
+  width: Math.round(720 * RES), height: Math.round(GH * RES),
   backgroundColor: '#0d2a4a',
   physics: { default: 'arcade', arcade: { debug: false } },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },

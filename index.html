@@ -41,8 +41,9 @@
   h1 { margin: 0; }
   .tile { opacity: 0; transform: translateY(-40px) rotate(var(--r)); animation: drop .6s var(--ease) forwards; animation-delay: calc(var(--i) * 70ms + 150ms); }
   @keyframes drop { 60% { opacity: 1; transform: translateY(6px) rotate(var(--r)); } to { opacity: 1; transform: translateY(0) rotate(var(--r)); } }
-  .tagline { display: inline-flex; align-items: center; gap: 10px; margin: 26px 0 0; padding: 8px 20px; border-radius: 999px; background: rgba(255, 255, 255, .92); color: var(--navy); font-family: var(--font-display); font-weight: 800; font-size: clamp(18px, 3.4vw, 26px); letter-spacing: .02em; box-shadow: 0 8px 20px rgba(13, 71, 161, .15); }
-  .tagline svg { width: 22px; height: 22px; }
+  .tagline { display: inline-flex; align-items: center; gap: 10px; margin: 26px 0 0; padding: 8px 20px; border-radius: 999px; background: rgba(255, 255, 255, .92); color: var(--navy); font-family: var(--font-display); font-weight: 800; font-size: clamp(16px, 3.4vw, 26px); letter-spacing: .02em; white-space: nowrap; box-shadow: 0 8px 20px rgba(13, 71, 161, .15); }
+  .tagline svg { width: 22px; height: 22px; flex: none; }
+  @media (max-width: 340px) { .tagline { padding: 8px 14px; gap: 6px; } }
   .lede { margin: 18px auto 0; max-width: 34ch; color: var(--navy); font-size: var(--text-lg); font-weight: 700; }
   .ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 26px; }
 
@@ -115,7 +116,7 @@
 
   /* The app */
   .app { display: grid; grid-template-columns: auto 1fr; gap: 22px; align-items: center; margin-top: 26px; padding: clamp(20px, 4vw, 32px); background: linear-gradient(135deg, var(--navy), var(--brand) 60%, var(--brand-bright)); color: #fff; border: 0; }
-  .app img { width: clamp(72px, 14vw, 112px); border-radius: 24px; box-shadow: 0 10px 24px rgba(0, 0, 0, .25); }
+  .app img { width: clamp(84px, 14vw, 112px); height: auto; aspect-ratio: 1; border-radius: 24px; box-shadow: 0 10px 24px rgba(0, 0, 0, .25); }
   .app h2 { color: #fff; }
   .app p { margin: 6px 0 0; color: rgba(255, 255, 255, .85); }
   .app-cta { margin-top: 16px; }
