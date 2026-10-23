@@ -4,6 +4,25 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.4.0 (23 October 2026)
+
+### A livelier home page
+
+- **Word of the day.** A card with a Mizo word and its picture. Tap it to
+  turn it over and see the meaning. "Another word" shows the next one.
+- **Playground card.** The tiles turn over to show the names of the games.
+- **Touch and learn card.** A name tag moves round the picture of the house
+  and points at real parts: roof, cat, pig, tree and more.
+- A shine on the gold buttons, a coloured bar at the top that shows how far
+  down the page you are, icons that hop in, slowly turning rays behind the
+  app card, twinkling stars in dark mode, and a cosmos flower that takes you
+  back to the top.
+- Nothing moves when your phone is set to reduce motion.
+
+### Fixes
+
+- Cards now turn over correctly in Safari on iPhone.
+
 ## 1.3.0 (23 October 2026)
 
 ### Touch and learn: time, weather and people
