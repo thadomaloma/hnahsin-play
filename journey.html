@@ -327,8 +327,14 @@ class Play extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, this.length, H);
 
     // Sky, far hills and near hills: three layers moving at their own pace.
-    const sky = this.add.graphics().setScrollFactor(0);
-    sky.fillGradientStyle(L.sky[0], L.sky[0], L.sky[1], L.sky[1], 1); sky.fillRect(0, 0, W, GH);
+    // Sky, hills and city are painted once into pictures; redrawing them every
+    // frame halved the frame rate on phones.
+    const hex = n => '#' + n.toString(16).padStart(6, '0');
+    this.paint('sky' + this.level, 4, GH, (ctx, w, h) => {
+      const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, hex(L.sky[0])); g.addColorStop(1, hex(L.sky[1]));
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    });
+    this.add.image(0, 0, 'sky' + this.level).setOrigin(0).setDisplaySize(W, GH).setScrollFactor(0);
     if (L.stars) for (let i = 0; i < 40; i++) this.add.circle(Math.random() * W, Math.random() * 500, Math.random() * 2 + 1, 0xffffff, .8).setScrollFactor(0);
     else this.add.circle(W - 160, 210, 70, L.sun).setScrollFactor(0);
     this.far = this.makeHills(L.far, 0.15, 760, L.farH || 140);
@@ -400,25 +406,47 @@ class Play extends Phaser.Scene {
     tex.refresh();
   }
 
+  // A picture drawn once with the canvas, at the screen's sharpness (w × h in game pixels).
+  paint(key, w, h, draw) {
+    if (this.textures.exists(key)) return;
+    const tex = this.textures.createCanvas(key, Math.ceil(w * RES), Math.ceil(h * RES)), ctx = tex.getContext();
+    ctx.scale(RES, RES); draw(ctx, w, h); tex.refresh();
+  }
+
+  // A strip that repeats every TILE pixels, slid along at its own pace.
+  strip(key, top, factor) {
+    const t = this.add.tileSprite(0, top, this.length * factor + GW + 400, 1280 - top, key).setOrigin(0).setScrollFactor(factor);
+    t.setTileScale(1 / RES);
+    return t;
+  }
+
   makeHills(colour, factor, baseY, height) {
-    const g = this.add.graphics().setScrollFactor(factor);
-    g.fillStyle(colour, 1);
-    const span = this.length * factor + 1600;
-    g.beginPath(); g.moveTo(0, 1280);
-    for (let x = 0; x <= span; x += 40) g.lineTo(x, baseY - height * (0.5 + 0.5 * Math.sin(x / 260) * Math.cos(x / 610)));
-    g.lineTo(span, 1280); g.closePath(); g.fillPath();
-    return g;
+    const TILE = 2048, top = Math.floor(baseY - height - 4), key = `hills-${colour}-${baseY}-${height}`;
+    // Waves that repeat exactly every TILE pixels, so the strip has no seam.
+    this.paint(key, TILE, 1280 - top, ctx => {
+      ctx.fillStyle = '#' + colour.toString(16).padStart(6, '0');
+      ctx.beginPath(); ctx.moveTo(0, 1280 - top);
+      for (let x = 0; x <= TILE; x += 16) {
+        const y = baseY - height * (0.5 + 0.5 * Math.sin(x / TILE * Math.PI * 8) * Math.cos(x / TILE * Math.PI * 2));
+        ctx.lineTo(x, y - top);
+      }
+      ctx.lineTo(TILE, 1280 - top); ctx.closePath(); ctx.fill();
+    });
+    return this.strip(key, top, factor);
   }
 
   makeCity() {
-    const g = this.add.graphics().setScrollFactor(.25);
-    for (let x = 0; x < this.length * .25 + 1400; x += 70) {
-      const h = 80 + Math.random() * 180;
-      g.fillStyle(Phaser.Display.Color.GetColor(230 - Math.random() * 40, 220 - Math.random() * 40, 210), 1);
-      g.fillRect(x, 820 - h, 58, h + 200);
-      g.fillStyle(0xffe9a8, .9);
-      for (let y = 840 - h; y < 860; y += 34) g.fillRect(x + 12, y, 12, 14), g.fillRect(x + 34, y, 12, 14);
-    }
+    const TILE = 1400, top = 560;
+    this.paint('city', TILE, 1280 - top, ctx => {
+      for (let x = 0; x < TILE; x += 70) {
+        const h = 80 + Math.random() * 180;
+        ctx.fillStyle = `rgb(${230 - Math.random() * 40},${220 - Math.random() * 40},210)`;
+        ctx.fillRect(x, 820 - h - top, 58, h + 200);
+        ctx.fillStyle = 'rgba(255,233,168,.9)';
+        for (let y = 840 - h; y < 860; y += 34) { ctx.fillRect(x + 12, y - top, 12, 14); ctx.fillRect(x + 34, y - top, 12, 14); }
+      }
+    });
+    this.strip('city', top, .25);
   }
 
   lanes() { return [this.groundY - 70, this.groundY - 420, this.groundY - 760]; }

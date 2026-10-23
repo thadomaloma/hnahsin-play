@@ -1,8 +1,8 @@
 // Hnahsin Games offline: the pages, their scripts and fonts are kept on the
 // phone, so the games open without internet. Pages are fetched fresh when
 // online (so updates show), and fall back to the kept copy when offline.
-// The Flutter app under app/ is left alone; it is too big to keep here.
-const VERSION = 'hnahsin-6';
+// The Flutter app under app/ is kept as it is fetched (it is too big to fetch all up front).
+const VERSION = 'hnahsin-7';
 const CORE = [
   './', 'index.html', 'theme.css', 'home.js', 'rova.js', 'journey.html', 'playground.html',
   'favicon.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'manifest.webmanifest',
@@ -29,7 +29,15 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   const mine = url.origin === location.origin;
-  if (mine && url.pathname.includes('/app/')) return;
+  // The app (Flutter): its files are big, so once fetched they are kept and served
+  // from the phone at once, refreshed in the background. Bump VERSION when app/ changes.
+  if (mine && url.pathname.includes('/app/')) {
+    e.respondWith(caches.match(req, { ignoreSearch: true }).then(hit => {
+      const fresh = fetch(req).then(res => keep(req, res)).catch(() => hit);
+      return hit || fresh;
+    }));
+    return;
+  }
 
   if (req.mode === 'navigate') {
     e.respondWith(fetch(req).then(res => keep(req, res))
