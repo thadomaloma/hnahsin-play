@@ -164,6 +164,10 @@
   .list li { font-family: "Caveat", cursive; font-size: 28px; font-weight: 700; display: flex; justify-content: space-between; gap: 10px; }
   .list li.done { color: var(--leaf); text-decoration: line-through; text-decoration-thickness: 2px; }
   .stalls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  #bz-stalls, #fs-kitchen { position: relative; padding: 34px 10px 12px; border-radius: 18px; background: #f6e3c4; border: 3px solid #b98a55; }
+  #bz-stalls::before, #fs-kitchen::before { content: ''; position: absolute; left: -3px; right: -3px; top: -3px; height: 26px; border-radius: 18px 18px 0 0;
+    background: repeating-linear-gradient(90deg, #e53935 0 28px, #fff 28px 56px); box-shadow: 0 4px 0 rgba(0,0,0,.08); -webkit-mask: radial-gradient(14px at 14px 100%, #0000 98%, #000) 0 0 / 28px 100%; mask: radial-gradient(14px at 14px 100%, #0000 98%, #000) 0 0 / 28px 100%; }
+  #bz-stalls .item, #fs-kitchen .item { background: #fffaf0; border-color: #e7d2b0; }
   .item { border: 1px solid var(--line); background: var(--panel-2); border-radius: 16px; padding: 8px 4px; display: grid; justify-items: center; gap: 2px; cursor: pointer; font: inherit; color: var(--ink); position: relative; }
   .item .e { font-size: 34px; line-height: 1.1; }
   .item .w { font-weight: 800; font-size: 14.5px; max-width: 100%; overflow-wrap: break-word; text-align: center; line-height: 1.2; }
@@ -178,7 +182,8 @@
   .target { border: 2px dashed var(--line); border-radius: 99px; padding: 6px 14px; font-weight: 800; font-size: 17px; }
   .target small { display: block; font-size: 12.5px; color: var(--muted); font-weight: 600; }
   .target.found { border-style: solid; border-color: var(--leaf); background: var(--leaf-soft); color: var(--leaf); }
-  .scene { position: relative; width: 100%; aspect-ratio: 4 / 5; border-radius: 20px; overflow: hidden; background: linear-gradient(var(--sky-top), var(--sky-bottom) 48%, var(--hill) 48.2%, var(--hill-deep)); touch-action: manipulation; }
+  .scene { position: relative; width: 100%; aspect-ratio: 4 / 5; border-radius: 20px; overflow: hidden; background: #9fd08a url(pics/scene/village.svg) center / cover no-repeat; touch-action: manipulation; }
+  .scene .thing:not(.pic) { filter: drop-shadow(0 2px 0 rgba(255,255,255,.9)) drop-shadow(0 3px 3px rgba(0,0,0,.25)); }
   .scene .thing { position: absolute; transform: translate(-50%, -50%); border: 0; background: none; padding: 0; font-size: clamp(30px, 9vw, 42px); line-height: 1; cursor: pointer; filter: drop-shadow(0 2px 2px rgba(0,0,0,.18)); }
   .scene .thing.found { filter: drop-shadow(0 0 6px var(--gold)); }
   .scene .thing.hint { animation: hop .45s 3; }
@@ -226,10 +231,13 @@
   .ball.lift { transform: translateY(-8px); border-color: var(--gold-deep); box-shadow: 0 6px 12px -6px rgba(0,0,0,.35); }
 
   /* Runner: Rova runs at the picture the word names */
-  .road { position: relative; height: min(70vh, 520px); border-radius: 22px; overflow: hidden; background: linear-gradient(var(--sky-top), var(--sky-bottom) 18%, var(--hill) 18.2%, var(--hill-deep)); touch-action: manipulation; user-select: none; }
-  .road::before { content: ""; position: absolute; left: 50%; top: 18%; bottom: 0; border-left: 3px dashed rgba(255,255,255,.55); }
+  .road { position: relative; height: min(70vh, 520px); border-radius: 22px; overflow: hidden; background: #79c063 url(pics/scene/road.svg) 0 0 / 100% 400px repeat-y; touch-action: manipulation; user-select: none; }
+  .road.running { animation: roll .9s linear infinite; }
+  @keyframes roll { to { background-position: 0 400px; } }
+  .road::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 74px; background: linear-gradient(#a9dcff, rgba(169,220,255,.85) 70%, transparent); pointer-events: none; }
+  .road .ask { z-index: 1; }
   .road .ask { position: absolute; left: 0; right: 0; top: 8px; text-align: center; font-weight: 800; font-size: 26px; color: #15213a; text-shadow: 0 1px 0 rgba(255,255,255,.7); }
-  .road .gate { position: absolute; width: 38%; transform: translateX(-50%); display: grid; place-items: center; height: 84px; border-radius: 18px; background: rgba(255,255,255,.88); font-size: 48px; box-shadow: 0 6px 0 rgba(0,0,0,.12); }
+  .road .gate { position: absolute; width: 38%; transform: translateX(-50%); display: grid; place-items: center; height: 84px; border-radius: 18px; background: #fff; border: 4px solid #8a5a33; font-size: 48px; box-shadow: 0 6px 0 rgba(0,0,0,.12); }
   .road .runner { position: absolute; bottom: 14px; transform: translateX(-50%); width: 60px; aspect-ratio: 3 / 4; transition: left .15s ease-out; }
   .road .runner canvas { display: block; width: 100%; height: 100%; }
   .hearts { font-size: 20px; letter-spacing: 2px; }
@@ -257,10 +265,11 @@
 
   /* Colour it */
   .pic { width: 100%; max-width: 100%; height: auto; display: block; border-radius: 20px; background: var(--panel-2); }
-  .pic [data-part] { stroke: var(--ink); stroke-width: 2; transition: fill .3s; }
+  .pic [data-part] { stroke: #15213a; stroke-width: 3; stroke-linejoin: round; transition: fill .35s; }
   .pic .glow { stroke: var(--gold-deep); stroke-width: 5; stroke-dasharray: 8 6; animation: march 1s linear infinite; }
   @keyframes march { to { stroke-dashoffset: -28; } }
   @media (prefers-reduced-motion: reduce) { .pic .glow { animation: none; } }
+  #ci-pic { width: 100%; height: auto; border-radius: 20px; background: #fff; }
   .swatches { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
   .swatch { width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--line); cursor: pointer; }
 
@@ -281,7 +290,8 @@
 
   /* Whack the rat */
   .holes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-  .hole { position: relative; aspect-ratio: 1; border: 0; border-radius: 50%; background: radial-gradient(ellipse at 50% 70%, #3b2a1d 0 45%, var(--hill-deep) 46%); overflow: hidden; cursor: pointer; }
+  .hole { position: relative; aspect-ratio: 1; border: 0; border-radius: 50%; background: url(pics/scene/hole.svg) center / 100% 100%; overflow: hidden; cursor: pointer; padding: 0; }
+  .hole::after { content: ''; position: absolute; inset: 0; background: url(pics/scene/lip.svg) center / 100% 100%; pointer-events: none; z-index: 2; }
   .hole .rat { position: absolute; left: 50%; bottom: -80%; transform: translateX(-50%); display: grid; justify-items: center; font-size: 42px; line-height: 1; transition: bottom .15s ease-out; }
   .modes { display: flex; gap: 6px; }
   .modes button { flex: 1; border: 0; border-radius: 12px; padding: 8px 6px; background: var(--panel-2); color: var(--muted); font: inherit; font-size: 15px; font-weight: 700; white-space: nowrap; cursor: pointer; }
@@ -299,8 +309,8 @@
   .bubble.pic img.photo { border-radius: 50%; }
   .hole .held.pic { display: block; width: 44px; height: 44px; padding: 0; overflow: hidden; }
   .hole .held.txt { font-size: 14px; font-weight: 800; color: var(--ink); }
-  .hole .held { font-size: 30px; background: rgba(255,255,255,.92); border-radius: 12px; padding: 2px 4px; }
-  .hole.up .rat { bottom: 8%; }
+  .hole .held { font-size: 26px; background: rgba(255,255,255,.92); border-radius: 12px; padding: 2px 4px; }
+  .hole.up .rat { bottom: 16%; }
   .hole.hit .rat { filter: grayscale(1) brightness(1.4); }
 
   /* Weather report */
@@ -312,7 +322,9 @@
   .days { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
   .day { border: 1px solid var(--line); background: var(--panel-2); border-radius: 16px; padding: 8px 4px; display: grid; justify-items: center; gap: 2px; font: inherit; color: var(--ink); cursor: pointer; }
   .day .dname { font-weight: 800; font-size: 14px; }
-  .day .dicon { font-size: 30px; line-height: 1.1; min-height: 34px; }
+  .day .dicon { font-size: 34px; line-height: 1.1; min-height: 40px; display: grid; place-items: center; }
+  .day .dicon.empty { width: 40px; height: 40px; border: 2px dashed #9fb6cc; border-radius: 50%; font-size: 18px; color: #9fb6cc; }
+  .day.set { background: var(--wx, var(--panel-2)); border-color: transparent; }
 
   /* Food stall */
   .counter { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; background: var(--paper); border: 1px solid var(--paper-line); border-radius: 18px; padding: 12px; }
@@ -325,7 +337,7 @@
   .choice:disabled { opacity: .5; cursor: default; }
   .choice.right { background: var(--leaf-soft); border-color: var(--leaf); color: var(--leaf); opacity: 1; }
   .choice.wrong { background: var(--coral-soft); border-color: var(--coral); color: var(--coral); opacity: 1; }
-  .count-board { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; background: var(--panel-2); border-radius: 18px; padding: 16px; min-height: 120px; align-content: center; font-size: clamp(30px, 9vw, 42px); line-height: 1; }
+  .count-board { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; background: #bfe6ff url(pics/scene/meadow.svg) center bottom / cover no-repeat; border-radius: 18px; padding: 24px 16px 30px; min-height: 210px; filter: none; align-content: flex-end; font-size: clamp(30px, 9vw, 42px); line-height: 1; }
 
 
 </style>
@@ -452,16 +464,25 @@
   <section class="stage" id="colour" hidden>
     <div class="ask-line" id="ci-ask"></div>
     <svg class="pic" id="ci-pic" viewBox="0 0 320 260" role="img" aria-label="A house to colour">
-      <rect data-part="sky" x="0" y="0" width="320" height="170" fill="var(--panel)"/>
-      <path data-part="smoke" d="M226 34 q10 -12 22 -4 q12 -10 22 2 q10 2 6 14 q-10 10 -24 4 q-14 8 -26 -4 q-8 -6 0 -12z" fill="var(--panel)"/>
-      <rect data-part="grass" x="0" y="170" width="320" height="90" fill="var(--panel)"/>
-      <rect data-part="trunk" x="262" y="130" width="16" height="60" fill="var(--panel)"/>
-      <circle data-part="leaves" cx="270" cy="112" r="34" fill="var(--panel)"/>
-      <rect data-part="wall" x="60" y="110" width="150" height="90" fill="var(--panel)"/>
-      <path data-part="roof" d="M48 112 L135 52 L222 112 Z" fill="var(--panel)"/>
-      <rect data-part="door" x="120" y="146" width="32" height="54" fill="var(--panel)"/>
-      <rect data-part="window" x="76" y="128" width="30" height="26" fill="var(--panel)"/>
-      <rect data-part="window" x="166" y="128" width="30" height="26" fill="var(--panel)"/>
+      <rect data-part="sky" x="0" y="0" width="320" height="260" fill="var(--panel)"/>
+      <circle cx="40" cy="38" r="18" fill="#ffd54f" stroke="#15213a" stroke-width="3"/>
+      <path data-part="smoke" d="M212 30 q8 -14 22 -8 q10 -12 24 -2 q14 -2 12 12 q8 10 -4 16 q-8 12 -22 6 q-12 8 -24 -2 q-14 0 -12 -12 q-6 -8 4 -10z" fill="var(--panel)"/>
+      <path data-part="grass" d="M0 196 Q80 174 160 190 T320 184 V260 H0 Z" fill="var(--panel)"/>
+      <rect x="180" y="60" width="20" height="40" fill="#b0b8c4" stroke="#15213a" stroke-width="3"/>
+      <path data-part="trunk" d="M262 214 L266 142 L258 128 M266 160 L280 146 M274 214 L270 142" fill="var(--panel)"/>
+      <path data-part="trunk" d="M260 214 L263 140 L273 140 L276 214 Z" fill="var(--panel)"/>
+      <path data-part="leaves" d="M238 120 q-14 -26 10 -36 q6 -24 30 -16 q20 -12 32 8 q22 6 12 30 q10 22 -12 28 q-6 18 -28 12 q-18 12 -32 -2 q-24 0 -12 -24z" fill="var(--panel)"/>
+      <rect data-part="wall" x="58" y="110" width="154" height="94" fill="var(--panel)"/>
+      <path data-part="roof" d="M42 114 L135 48 L228 114 Z" fill="var(--panel)"/>
+      <rect data-part="door" x="118" y="146" width="34" height="58" rx="3" fill="var(--panel)"/>
+      <rect data-part="window" x="72" y="128" width="32" height="28" fill="var(--panel)"/>
+      <rect data-part="window" x="166" y="128" width="32" height="28" fill="var(--panel)"/>
+      <g fill="none" stroke="#15213a" stroke-width="2.5" stroke-linecap="round" pointer-events="none">
+        <path d="M88 128 V156 M72 142 H104 M182 128 V156 M166 142 H198"/>
+        <path d="M70 98 L200 98 M92 82 L178 82 M114 66 L156 66" opacity=".35"/>
+      </g>
+      <circle cx="145" cy="176" r="3" fill="#15213a"/>
+      <rect x="52" y="200" width="166" height="8" rx="3" fill="#9e9e9e" stroke="#15213a" stroke-width="2.5"/>
     </svg>
     <div class="swatches" id="ci-swatches"></div>
     <div class="feedback" id="ci-feedback" aria-live="polite"></div>
@@ -1051,7 +1072,7 @@ function ruTick(t) {
     $('ru-score').textContent = ru.score;
     $('ru-hearts').textContent = '❤️'.repeat(Math.max(ru.hearts, 0)) + '🤍'.repeat(3 - Math.max(ru.hearts, 0));
     if (ru.hearts <= 0) {
-      ru.on = false;
+      ru.on = false; $('ru-road').classList.remove('running');
       const best = Math.max(store.get('lab.ru', 0), ru.score); store.set('lab.ru', best);
       addStars(ru.score);
       $('ru-ask').textContent = `Run over · ${ru.score} · best ${best}`;
@@ -1064,6 +1085,7 @@ function ruTick(t) {
 }
 $('ru-start').addEventListener('click', () => {
   ru = { on: true, lane: 0, gates: null, speed: 14, score: 0, hearts: 3, last: 0 };
+  $('ru-road').classList.add('running');
   ruMove(0);
   $('ru-score').textContent = 0; $('ru-hearts').textContent = '❤️❤️❤️';
   $('ru-feedback').textContent = '';
@@ -1236,6 +1258,9 @@ opNew();
 // Put the days of the week or the times of day in order, or say which day
 // tomorrow and yesterday are.
 const DAYS = DATA.sets.days, TIMES = DATA.sets.times, NEAR = DATA.sets.nearby;
+// dawn, morning, daytime, evening, dusk, night: each time shows its own sky.
+const TIME_SKY = ['background:linear-gradient(#ffc3a0,#ffe8d6);', 'background:linear-gradient(#bfe6ff,#fff3c4);', 'background:linear-gradient(#64b5f6,#bbdefb);',
+  'background:linear-gradient(#ff9a5a,#ffd59e);', 'background:linear-gradient(#7e57c2,#f48fb1);color:#fff;', 'background:linear-gradient(#0d1b3d,#2c3e70);color:#fff;'];
 let dt = { kind: 0, order: [], tapped: [], right: 0, total: 0, answer: null, done: false };
 function dtNew() {
   dt.kind = (dt.kind + 1) % 3;
@@ -1247,7 +1272,7 @@ function dtNew() {
     const count = dt.kind === 0 ? Math.min(4 + Math.floor(dt.right / 3), 7) : list.length;
     dt.order = dt.kind === 0 ? list.slice(start, start + count) : list;
     $('dt-ask').textContent = dt.kind === 0 ? 'Tap the days in order, from the first' : 'Tap the times of day in order, from the earliest';
-    $('dt-board').innerHTML = shuffle([...dt.order]).map(id => `<button class="choice" data-id="${id}">${emoji(id) ? emoji(id) + ' ' : ''}${word(id)}</button>`).join('');
+    $('dt-board').innerHTML = shuffle([...dt.order]).map(id => `<button class="choice ${dt.kind === 1 ? 'sky' : ''}" data-id="${id}" style="${dt.kind === 1 ? TIME_SKY[TIMES.indexOf(id)] : ''}">${emoji(id) ? emoji(id) + ' ' : ''}${word(id)}</button>`).join('');
     $('dt-line').innerHTML = '';
   } else {
     const today = Math.floor(Math.random() * 7);
@@ -1589,6 +1614,9 @@ onModeChange.wm = () => { if (wm.on) wmTarget(); };
 $('wm-holes').innerHTML = Array.from({ length: 9 }, () => `<button class="hole" aria-label="Hole"><span class="rat"><span class="held"></span>🐁</span></button>`).join('');
 
 // ---------------------------------------------------------------- Weather report
+// Each day's card takes the sky of the weather put on it.
+const WX_SKY = { '☁️': 'linear-gradient(#cfd8e3, #eef2f6)', '🌧️': 'linear-gradient(#8fa3b8, #c9d6e2)', '☀️': 'linear-gradient(#ffe082, #fff6d6)',
+  '🌬️': 'linear-gradient(#b8e0f2, #eaf7fd)', '☃️': 'linear-gradient(#e3f2fd, #ffffff)', '🌨️': 'linear-gradient(#e3f2fd, #ffffff)', '⚡': 'linear-gradient(#5c6b8a, #9aa8c4)', '🌈': 'linear-gradient(#a7dcff, #fff1f6)' };
 // Read the week's forecast in Mizo and put each day's weather on the
 // board: pick a weather picture, then tap its day.
 const WEATHER = DATA.sets.weather;
@@ -1606,7 +1634,7 @@ function wrNew() {
 function wrRender() {
   $('wr-level').textContent = 'Level ' + wr.level;
   $('wr-icons').innerHTML = WEATHER.map(id => `<button class="item ${wr.picked === id ? 'chosen' : ''}" data-id="${id}" aria-label="Weather picture"><span class="e">${emoji(id)}</span></button>`).join('');
-  $('wr-board').innerHTML = wr.days.map(d => `<button class="day" data-day="${d}"><span class="dname">${word(d)}</span><span class="dicon">${wr.set[d] ? emoji(wr.set[d]) : '·'}</span></button>`).join('');
+  $('wr-board').innerHTML = wr.days.map(d => `<button class="day ${wr.set[d] ? 'set' : ''}" data-day="${d}" style="--wx:${wr.set[d] ? WX_SKY[emoji(wr.set[d])] || 'var(--panel-2)' : ''}"><span class="dname">${word(d)}</span><span class="dicon ${wr.set[d] ? '' : 'empty'}">${wr.set[d] ? emoji(wr.set[d]) : '?'}</span></button>`).join('');
 }
 $('wr-icons').addEventListener('click', e => {
   const b = e.target.closest('.item'); if (!b) return;
