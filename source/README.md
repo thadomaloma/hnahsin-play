@@ -52,6 +52,17 @@ second English word of the same meaning (needs `nltk` and its WordNet:
 `data.json`), `__DICT__` (from `../journey/dict_words.json`) and
 `__PUZZLES__` (`puzzles.json`) are filled in by the build.
 
+`gen_data.py` adds the content's Picture Match words (with the app's photos, copied to
+`../../pics`), all sentences and the tawng upa to `data.json`. Run it after new content
+is published, with the live pack saved as `source/pack.json`:
+
+```sh
+cd source/playground
+python3 gen_data.py ../pack.json "../../../Hnahsin Game"   # path to the app repo
+```
+
+Rova's Journey reads the sentences from `source/journey/sentences.json`.
+
 `puzzles.json` (Spelling Bee, Waffle, Strands) is made by:
 
 ```sh

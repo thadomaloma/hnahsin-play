@@ -181,6 +181,23 @@
   .theme small { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--brand); }
   .theme b { font-size: 18px; }
 
+
+  /* Sentence builder and Saying match */
+  .english { margin: -6px 0 0; font-size: 18px; font-weight: 700; color: var(--brand); }
+  .answer { min-height: 58px; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; padding: 10px; border-radius: 16px; border: 2px dashed var(--line); background: var(--panel-2); }
+  .answer.good { border-color: var(--leaf); border-style: solid; background: var(--leaf-soft); }
+  .tiles { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; min-height: 44px; }
+  .tile-w { border: 0; border-radius: 12px; padding: 9px 13px; font: inherit; font-size: 17px; font-weight: 800; color: var(--ink); background: #fff; box-shadow: 0 3px 0 var(--line), 0 0 0 1px var(--line); cursor: pointer; animation: pop .25s ease-out; }
+  .answer .tile-w { background: #fff; }
+  .tile-w.hint { box-shadow: 0 3px 0 var(--gold-deep), 0 0 0 2px var(--gold); }
+  .sayings { display: grid; gap: 8px; }
+  .sayings button, .meanings button { border: 0; border-radius: 14px; padding: 11px 14px; font: inherit; text-align: left; cursor: pointer; transition: background .2s, transform .15s; }
+  .sayings button { background: var(--coral-soft); color: var(--coral); font-weight: 800; font-size: 16px; }
+  .sayings button[aria-pressed="true"] { background: var(--coral); color: #fff; transform: scale(1.02); }
+  .meanings { display: grid; gap: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
+  .meanings button { background: var(--panel-2); color: var(--ink); font-weight: 600; font-size: 14.5px; line-height: 1.35; }
+  .sayings button.done, .meanings button.done { background: var(--leaf-soft); color: var(--leaf); cursor: default; }
+
   /* Bazar */
   .list { background: var(--paper); border: 1px solid var(--paper-line); border-radius: 6px 18px 18px 6px; padding: 12px 16px 14px 26px; position: relative; box-shadow: 0 6px 0 -3px var(--paper-line); }
   .list::before { content: ""; position: absolute; left: 12px; top: 10px; bottom: 10px; border-left: 2px dashed var(--paper-line); }
@@ -224,6 +241,7 @@
   .missed { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
   .missed li { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); padding: 6px 0; }
   .missed li span:last-child { color: var(--muted); }
+  .scene .thing.pic { width: clamp(44px, 13vw, 58px); aspect-ratio: 1; border-radius: 12px; overflow: hidden; box-shadow: 0 0 0 2px #fff; }
   footer { color: var(--muted); font-size: 12.5px; text-align: center; }
 
   /* Showdown: two players face to face over one phone */
@@ -356,7 +374,7 @@
   <header class="top">
     <a class="nav-link" id="home" href="https://thadomaloma.github.io/hnahsin-play/" aria-label="Hnahsin Games home">←</a>
     <a class="nav-link" id="back" href="#" aria-label="Back to all games" hidden>←</a>
-    <div class="brand"><b id="title">Playground</b><span id="subtitle">20 word games with our Mizo words</span></div>
+    <div class="brand"><b id="title">Playground</b><span id="subtitle">22 word games with our Mizo words</span></div>
     <div class="score" id="score" aria-live="polite">⭐ 0</div>
   </header>
   <main class="library" id="library"></main>
@@ -571,7 +589,28 @@
     <p class="note">Drag across touching letters, or tap them one by one and tap the last again. Words can bend in any direction.</p>
   </section>
 
-  <footer>Test games for Hnahsin, using 271 picture words from the live content and 1,928 dictionary words.</footer>
+
+  <section class="stage" id="sentences" hidden>
+    <div class="row"><span class="pill" id="sn-level">Level 1</span><span class="note" id="sn-count">0 built</span></div>
+    <h2>Build the Mizo sentence that means:</h2>
+    <p class="english" id="sn-english"></p>
+    <div class="answer" id="sn-answer" aria-live="polite"></div>
+    <div class="tiles" id="sn-tiles"></div>
+    <div class="feedback" id="sn-feedback" aria-live="polite"></div>
+    <div class="row"><button class="btn ghost" id="sn-skip">Skip</button><button class="btn ghost" id="sn-hint">💡 First word</button><button class="btn" id="sn-check">Check</button></div>
+    <p class="note">Tap the words in order. Tap a word in your sentence to take it back.</p>
+  </section>
+
+  <section class="stage" id="sayings" hidden>
+    <div class="row"><span class="pill" id="sy-round">Round 1</span><span class="note" id="sy-left">4 to match</span></div>
+    <h2>Pick a saying, then its meaning</h2>
+    <div class="sayings" id="sy-sayings"></div>
+    <div class="meanings" id="sy-meanings"></div>
+    <div class="feedback" id="sy-feedback" aria-live="polite"></div>
+    <p class="note">Mizo tawng upa: old sayings people still use. Four in each round.</p>
+  </section>
+
+  <footer>Test games for Hnahsin, using 327 picture words, 383 sentences and 203 sayings from the live content, and 1,928 dictionary words.</footer>
 </div>
 
 <script>__ROVA__</script>
@@ -585,7 +624,7 @@ const emoji = id => W[id][2];
 // They have no pictures, so the games that take them show the English word instead.
 const DICT = __DICT__;
 const fold = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ṭ/g, 't');
-const PHOTO = {}; // id -> photo, for words whose picture is a photo, not an emoji
+const PHOTO = { ...DATA.photo }; // id -> photo, for words whose picture is a photo, not an emoji
 const DICT_IDS = DICT.map((d, i) => {
   const pic = d[3] || '';
   if (pic.endsWith('.jpg')) PHOTO['dict.' + i] = pic;
@@ -608,7 +647,7 @@ $('score').textContent = '⭐ ' + stars;
 
 // Pictures or dictionary words, chosen in each game that offers both.
 const mode = {};
-const things = g => mode[g] === 'dict' ? DICT_IDS : DATA.spy;
+const things = g => mode[g] === 'dict' ? DICT_IDS : DATA.pics;
 function pickThings(g, n) {
   const out = [];
   for (const id of shuffle([...things(g)])) { if (!out.some(o => clash(o, id))) out.push(id); if (out.length === n) break; }
@@ -641,8 +680,11 @@ const KINDS = [
   { id: 'puzzles', icon: '🧩', name: 'Word puzzles', c: ['#7569e8', '#3c9fea'] },
   { id: 'quick', icon: '⚡', name: 'Quick play', c: ['#ff8a65', '#ffc94a'] },
   { id: 'pictures', icon: '🖼️', name: 'Everyday Mizo', c: ['#6dbe5e', '#b5e3a1'] },
+  { id: 'talk', icon: '💬', name: 'Sentences and sayings', c: ['#c2185b', '#f48fb1'] },
 ];
 const GAMES = [
+  ['sentences', 'talk', '🧱', 'Sentence builder', 'Put the Mizo words in order', 'NEW'],
+  ['sayings', 'talk', '🗣️', 'Saying match', 'Match each saying to its meaning', 'NEW'],
   ['bee', 'puzzles', '🐝', 'Spelling bee', 'Make words from seven letters', 'NEW'],
   ['waffle', 'puzzles', '🧇', 'Waffle', 'Swap letters into six words', 'NEW'],
   ['strands', 'puzzles', '🧵', 'Strands', 'Find the theme words', 'NEW'],
@@ -754,7 +796,7 @@ bzNew();
 let sp = { level: store.get('lab.sp', 1), targets: [], found: new Set(), things: [] };
 function spNew() {
   const count = Math.min(10 + sp.level * 2, 22);
-  sp.things = pick(DATA.spy, count);
+  sp.things = pick(DATA.pics, count);
   sp.targets = pick(sp.things, 3);
   sp.found = new Set();
   const scene = $('sp-scene');
@@ -767,7 +809,7 @@ function spNew() {
     const x = (c + .5 + (Math.random() - .5) * .5) / cols * 100;
     const y = 8 + (r + .5 + (Math.random() - .5) * .4) / rows * 86;
     const b = document.createElement('button');
-    b.className = 'thing'; b.dataset.id = id; b.textContent = emoji(id);
+    b.className = 'thing ' + faceClass(id); b.dataset.id = id; b.innerHTML = face(id);
     b.style.left = x + '%'; b.style.top = y + '%';
     b.setAttribute('aria-label', 'Picture ' + (i + 1));
     scene.appendChild(b);
@@ -1860,4 +1902,99 @@ $('st-new').addEventListener('click', () => { st.i = (st.i + 1) % PUZ.strands.le
 addEventListener('resize', () => { if (!$('strands').hidden) stRender(); });
 document.addEventListener('showgame', e => { if (e.detail === 'strands') stRender(); });
 stLoad();
+
+// ---------------------------------------------------------------- Sentence builder
+// The content's 383 sentences: the English shows, the Mizo words come shuffled.
+const SENT = DATA.sentences; // [mizo, english, level 1-4]
+let sn = { level: store.get('lab.sn', 1), done: store.get('lab.sn.done', 0), s: null, tiles: [], answer: [], used: new Set() };
+const snBare = t => t.replace(/[.,!?;:“”"]+$/g, '').replace(/^[“"]+/, '');
+const snFold = t => snBare(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+function snNew() {
+  const pool = SENT.filter(x => x[2] === sn.level && !sn.used.has(x[0]));
+  if (!pool.length) sn.used.clear();
+  sn.s = pick(pool.length ? pool : SENT.filter(x => x[2] === sn.level), 1)[0];
+  sn.used.add(sn.s[0]);
+  // Lower-case the first word so it isn't a giveaway; names keep their capitals.
+  sn.tiles = shuffle(sn.s[0].split(/\s+/).map((w, i) => ({ k: i, t: i === 0 && !/^[A-Z][a-z]*[A-Z]/.test(w) ? snBare(w).replace(/^./, c => c.toLowerCase()) : snBare(w) })));
+  sn.answer = [];
+  $('sn-feedback').textContent = ''; $('sn-feedback').className = 'feedback';
+  $('sn-answer').classList.remove('good');
+  snRender();
+}
+function snRender() {
+  $('sn-level').textContent = 'Level ' + sn.level;
+  $('sn-count').textContent = sn.done + ' built';
+  $('sn-english').textContent = '“' + sn.s[1] + '”';
+  const inAnswer = new Set(sn.answer);
+  $('sn-answer').innerHTML = sn.answer.map(k => `<button class="tile-w" data-k="${k}">${esc(sn.tiles.find(t => t.k === k).t)}</button>`).join('');
+  $('sn-tiles').innerHTML = sn.tiles.filter(t => !inAnswer.has(t.k)).map(t => `<button class="tile-w" data-k="${t.k}">${esc(t.t)}</button>`).join('');
+}
+$('sn-tiles').addEventListener('click', e => { const b = e.target.closest('.tile-w'); if (!b) return; sn.answer.push(Number(b.dataset.k)); snRender(); });
+$('sn-answer').addEventListener('click', e => { const b = e.target.closest('.tile-w'); if (!b || $('sn-answer').classList.contains('good')) return; sn.answer = sn.answer.filter(k => k !== Number(b.dataset.k)); snRender(); });
+$('sn-hint').addEventListener('click', () => {
+  const firstKey = 0;
+  if (!sn.answer.includes(firstKey)) { sn.answer = [firstKey, ...sn.answer.filter(k => k !== firstKey)]; snRender(); }
+  document.querySelector('#sn-answer .tile-w')?.classList.add('hint');
+});
+$('sn-skip').addEventListener('click', () => {
+  const fb = $('sn-feedback'); fb.className = 'feedback'; fb.textContent = 'It was: ' + sn.s[0];
+  setTimeout(snNew, 1800);
+});
+$('sn-check').addEventListener('click', () => {
+  const words = sn.s[0].split(/\s+/), fb = $('sn-feedback');
+  if (sn.answer.length < words.length) { fb.className = 'feedback bad'; fb.textContent = 'Use every word'; flash($('sn-answer'), 'shake'); return; }
+  // Right when every place holds the same word, so two identical words can swap.
+  const right = sn.answer.every((k, i) => snFold(words[k]) === snFold(words[i]));
+  if (!right) { fb.className = 'feedback bad'; fb.textContent = 'Not quite. Try another order.'; flash($('sn-answer'), 'shake'); return; }
+  $('sn-answer').classList.add('good');
+  fb.className = 'feedback good'; fb.textContent = '✓ ' + sn.s[0] + '  +' + (2 + sn.level);
+  addStars(2 + sn.level);
+  sn.done++; store.set('lab.sn.done', sn.done);
+  if (sn.done % 3 === 0 && sn.level < 4) { sn.level++; store.set('lab.sn', sn.level); }
+  setTimeout(snNew, 1600);
+});
+snNew();
+
+// ---------------------------------------------------------------- Saying match
+// Four tawng upa and their meanings: pick a saying, then the meaning it goes with.
+const SAY = DATA.sayings; // [saying, meaning, wrong meanings]
+let sy = { round: 1, four: [], picked: null, matched: new Set(), misses: 0 };
+function syNew() {
+  const four = [], meanings = new Set();
+  for (const x of shuffle([...SAY])) { if (!meanings.has(x[1])) { four.push(x); meanings.add(x[1]); } if (four.length === 4) break; }
+  sy.four = four; sy.order = shuffle([0, 1, 2, 3]); sy.picked = null; sy.matched = new Set(); sy.misses = 0;
+  $('sy-feedback').textContent = ''; $('sy-feedback').className = 'feedback';
+  syRender();
+}
+function syRender() {
+  $('sy-round').textContent = 'Round ' + sy.round;
+  $('sy-left').textContent = (4 - sy.matched.size) + ' to match';
+  $('sy-sayings').innerHTML = sy.four.map((x, i) => `<button data-i="${i}" class="${sy.matched.has(i) ? 'done' : ''}" aria-pressed="${sy.picked === i}">“${esc(x[0])}”</button>`).join('');
+  $('sy-meanings').innerHTML = sy.order.map(i => `<button data-i="${i}" class="${sy.matched.has(i) ? 'done' : ''}">${esc(sy.four[i][1])}</button>`).join('');
+}
+$('sy-sayings').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || b.classList.contains('done')) return;
+  sy.picked = Number(b.dataset.i); syRender();
+});
+$('sy-meanings').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || b.classList.contains('done')) return;
+  const fb = $('sy-feedback');
+  if (sy.picked === null) { fb.className = 'feedback'; fb.textContent = 'Pick a saying first'; return; }
+  const i = Number(b.dataset.i);
+  if (i === sy.picked) {
+    sy.matched.add(i); sy.picked = null;
+    fb.className = 'feedback good'; fb.textContent = '✓ “' + sy.four[i][0] + '”';
+    syRender();
+    if (sy.matched.size === 4) {
+      const won = Math.max(2, 8 - 2 * sy.misses);
+      fb.textContent = `All four! ${sy.misses ? sy.misses + ' wrong · ' : ''}+${won} stars`;
+      addStars(won); sy.round++;
+      setTimeout(syNew, 1800);
+    }
+  } else {
+    sy.misses++; fb.className = 'feedback bad'; fb.textContent = 'Not that one';
+    flash(b, 'shake');
+  }
+});
+syNew();
 </script>

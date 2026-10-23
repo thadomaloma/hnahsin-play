@@ -108,6 +108,8 @@ const WORDS = __WORDS__;
 const DICT = __DICT__;
 // Mizo sayings (tawng upa): [saying, meaning, wrong meanings]
 const SAYINGS = __SAYINGS__;
+// The content's sentences: [mizo, english]
+const SENTENCES = __SENTENCES__;
 
 const LEVELS = [
   { name: 'Tlang', title: 'The hills', emoji: '⛰️', band: [1, 2], sky: [0x8fd3ff, 0xe8f7ff], hills: [0x7cc65a, 0x5daE47], far: 0xa9d9a0, sun: 0xfff1a8, speed: 330 },
@@ -147,6 +149,7 @@ function blank(example, word) {
 function question(level, sentence) {
   const L = LEVELS[level];
   if (L.dict && sentence) return saying();
+  if (sentence && Math.random() < .6) { const q = fromSentence(level); if (q) return q; }
   const [lo, hi] = L.band;
   const words = L.dict ? DICT : WORDS;
   const pool = words.filter(w => w[3] >= lo && w[3] <= hi && w[0].length <= 16);
@@ -163,6 +166,28 @@ function question(level, sentence) {
     if (others.length < 2) continue;
     return { target, options: shuffle([target, others[0], others[1]]), gap };
   }
+}
+
+// A boss door from the content's sentences: one of its words, from this level, left out.
+function fromSentence(level) {
+  const [lo, hi] = LEVELS[level].band;
+  const byWord = new Map(WORDS.filter(w => w[3] >= lo && w[3] <= hi && !w[0].includes(' ')).map(w => [fold(w[0]), w]));
+  for (const [mizo, english] of shuffle(SENTENCES.slice())) {
+    // Only a word whose English meaning is in the sentence's English: “in” is house, but also drink.
+    const eng = ' ' + english.toLowerCase().replace(/[^a-z' ]+/g, ' ') + ' ';
+    const means = w => [...senses(w[6])].some(s => s.length > 2 && eng.includes(' ' + s.replace(/[^a-z' ]+/g, ' ').trim() + ' '));
+    const hits = mizo.split(/\s+/).map(t => byWord.get(fold(t.replace(/[^\p{L}]/gu, '')))).filter(w => w && means(w));
+    if (!hits.length) continue;
+    const target = hits[Math.floor(Math.random() * hits.length)];
+    const gap = blank(mizo, target[0]);
+    if (!gap) continue;
+    const mine = senses(target[6]);
+    const others = shuffle(WORDS.filter(w => w !== target && w[4] === target[4] && w[0].length <= 16 && !w[0].includes(' ') &&
+      fold(w[0]) !== fold(target[0]) && ![...senses(w[6])].some(s => mine.has(s)) && !blank(mizo, w[0])));
+    if (others.length < 2) continue;
+    return { target, options: shuffle([target, others[0], others[1]]), gap, english };
+  }
+  return null;
 }
 
 // A boss door for the dictionary levels: what a saying means.
@@ -330,7 +355,7 @@ class Play extends Phaser.Scene {
     });
     const q = gate.q;
     this.ask.setText(q.saying ? `Boss! What does\n“${q.saying}” mean?`
-      : gate.boss ? `Boss! Fill the gap:\n${q.gap}`
+      : gate.boss ? `Boss! Fill the gap:\n${q.gap}${q.english ? `\n(${q.english})` : ''}`
       : `Which one means\n“${asks(q.target)}”?`).setVisible(true);
     this.ask.setScale(.6); this.tweens.add({ targets: this.ask, scale: 1, duration: 300, ease: 'Back.Out' });
   }
