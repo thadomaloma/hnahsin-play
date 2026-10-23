@@ -4,7 +4,7 @@ and lists the same URLs in sw.js. Run from the repo root before each commit:
     python3 source/stamp.py"""
 import hashlib, re
 
-FILES = ['theme.css', 'home.js', 'rova.js']
+FILES = ['theme.css', 'home.js', 'rova.js', 'stats.js']
 stamp = {f: hashlib.sha256(open(f, 'rb').read()).hexdigest()[:8] for f in FILES}
 
 page = open('index.html', encoding='utf-8').read()

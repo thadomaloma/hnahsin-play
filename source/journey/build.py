@@ -1,6 +1,6 @@
 # Builds ../../journey.html for the web site, and preview.html (no page skeleton) for a Claude preview.
 t = open('template.html', encoding='utf-8').read()
-for key, f in [('__WORDS__', 'words.json'), ('__DICT__', 'dict_words.json'), ('__SAYINGS__', 'sayings.json'), ('__SENTENCES__', 'sentences.json'), ('__ROVA__', '../../rova.js')]:
+for key, f in [('__WORDS__', 'words.json'), ('__DICT__', 'dict_words.json'), ('__SAYINGS__', 'sayings.json'), ('__SENTENCES__', 'sentences.json'), ('__ROVA__', '../../rova.js'), ('__STATS__', '../../stats.js')]:
     assert t.count(key) == 1, key
     t = t.replace(key, open(f, encoding='utf-8').read().strip())
 open('preview.html', 'w', encoding='utf-8').write(t)

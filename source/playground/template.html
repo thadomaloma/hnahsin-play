@@ -567,6 +567,7 @@
   <footer>Test games for Hnahsin, using 327 picture words, 383 sentences and 203 sayings from the live content, and 1,928 dictionary words.</footer>
 </div>
 
+<script>__STATS__</script>
 <script>__ROVA__</script>
 <script>__FIGURES__</script>
 <script>
@@ -597,7 +598,12 @@ const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ==
 function flash(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
 
 let stars = store.get('lab.stars', 0);
-function addStars(n) { stars += n; store.set('lab.stars', stars); $('score').textContent = '⭐ ' + stars; flash($('score'), 'pop'); }
+const wonAt = {};
+function countWin() {
+  const g = location.hash.slice(1); if (!g || Date.now() - (wonAt[g] || 0) < 60000) return;
+  wonAt[g] = Date.now(); hnStat(`playground/${g}/win`, `Playground: ${g} won`);
+}
+function addStars(n) { if (n > 0) countWin(); stars += n; store.set('lab.stars', stars); $('score').textContent = '⭐ ' + stars; flash($('score'), 'pop'); }
 $('score').textContent = '⭐ ' + stars;
 
 // Pictures or dictionary words, chosen in each game that offers both.
@@ -681,7 +687,7 @@ function route() {
     $('title').textContent = g ? `${g.icon} ${g.name}` : 'Playground';
     $('subtitle').textContent = g ? g.blurb : `${GAMES.length} Mizo word games`;
     document.title = g ? `${g.name} · Hnahsin Playground` : 'Hnahsin Playground';
-    if (!g) { renderLibrary(); fromLibrary = true; }
+    if (!g) { renderLibrary(); fromLibrary = true; } else hnStat(`playground/${g.id}`, `Playground: ${g.name}`);
     show(g ? g.id : null);
     scrollTo(0, 0);
   };
