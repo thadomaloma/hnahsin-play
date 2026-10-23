@@ -208,19 +208,6 @@
   .scene .thing.pic { width: clamp(44px, 13vw, 58px); aspect-ratio: 1; border-radius: 12px; overflow: hidden; box-shadow: 0 0 0 2px #fff; }
   footer { color: var(--muted); font-size: 13px; line-height: 1.5; text-align: center; padding-bottom: env(safe-area-inset-bottom); }
 
-  /* Showdown: two players face to face over one phone */
-  .duel { height: min(78vh, 620px); display: grid; grid-template-rows: 1fr auto 1fr; gap: 6px; }
-  .side { border-radius: 20px; padding: 10px; display: grid; grid-template-rows: auto 1fr; gap: 8px; }
-  .side.p1 { background: color-mix(in srgb, var(--brand) 14%, var(--panel)); }
-  .side.p2 { background: color-mix(in srgb, var(--coral) 14%, var(--panel)); transform: rotate(180deg); }
-  .side .say { display: flex; justify-content: space-between; align-items: center; font-weight: 800; }
-  .side .say .word { font-size: 26px; }
-  .side .pts { font-variant-numeric: tabular-nums; font-size: 20px; }
-  .side .pics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .side .pics button { border: 0; border-radius: 16px; background: var(--panel); font-size: clamp(34px, 11vw, 52px); cursor: pointer; }
-  .side.locked .pics button { opacity: .35; }
-  .side .pics button.right { background: var(--leaf-soft); }
-  .duel .mid { text-align: center; font-weight: 800; color: var(--muted); }
 
   /* Ball sort: tubes of word balls */
   .tubes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
@@ -297,13 +284,10 @@
   .modes { display: flex; gap: 6px; }
   .modes button { flex: 1; border: 0; border-radius: 12px; padding: 8px 6px; background: var(--panel-2); color: var(--muted); font: inherit; font-size: 15px; font-weight: 700; white-space: nowrap; cursor: pointer; }
   .modes button[aria-pressed="true"] { background: var(--brand); color: #fff; }
-  .side .pics button.txt, .road .gate.txt { font-size: clamp(15px, 4.6vw, 20px); font-weight: 800; color: var(--ink); padding: 4px; overflow-wrap: anywhere; }
+  .road .gate.txt { font-size: clamp(15px, 4.6vw, 20px); font-weight: 800; color: var(--ink); padding: 4px; overflow-wrap: anywhere; }
   .bubble.txt { width: 92px; height: 92px; font-size: 14px; font-weight: 800; color: var(--ink); padding: 4px; overflow-wrap: anywhere; }
   img.photo { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; pointer-events: none; }
-  .side .pics button.pic, .road .gate.pic { padding: 0; overflow: hidden; }
-  .side .pics { grid-auto-rows: 1fr; }
-  .side .pics button.pic { position: relative; }
-  .side .pics button.pic img.photo { position: absolute; inset: 0; }
+  .road .gate.pic { padding: 0; overflow: hidden; }
   .road .gate.pic { height: 84px; }
   .road .gate.pic { width: 84px; }
   .bubble.pic { padding: 4px; overflow: hidden; }
@@ -347,7 +331,7 @@
   <header class="top">
     <a class="nav-link" id="home" href="https://thadomaloma.github.io/hnahsin-play/" aria-label="Hnahsin Games home">←</a>
     <a class="nav-link" id="back" href="#" aria-label="Back to all games" hidden>←</a>
-    <div class="brand"><b id="title">Playground</b><span id="subtitle">22 Mizo word games</span></div>
+    <div class="brand"><b id="title">Playground</b><span id="subtitle">21 Mizo word games</span></div>
     <div class="score" id="score" aria-live="polite">⭐ 0</div>
   </header>
   <main class="library" id="library"></main>
@@ -384,17 +368,6 @@
     <div id="so-result" hidden>
       <h2 id="so-result-title"></h2>
       <ul class="missed" id="so-missed"></ul>
-    </div>
-  </section>
-
-  <section class="stage" id="duel" hidden>
-    <div class="row"><span class="pill">Two players · one phone</span><button class="btn" id="du-start">Start</button></div>
-    <div class="modes" data-g="du" role="group" aria-label="Words to play with"><button data-mode="pics">🖼️&nbsp; Pictures</button><button data-mode="dict">📖&nbsp; Dictionary</button></div>
-    <p class="note">Put the phone flat between you. When the word shows, tap its picture (or its meaning) first. A wrong tap freezes you for a moment. First to 7 wins.</p>
-    <div class="duel">
-      <div class="side p2" id="du-p2"><div class="say"><span class="word">…</span><span class="pts">0</span></div><div class="pics"></div></div>
-      <div class="mid" id="du-mid" aria-live="polite">Tap Start</div>
-      <div class="side p1" id="du-p1"><div class="say"><span class="word">…</span><span class="pts">0</span></div><div class="pics"></div></div>
     </div>
   </section>
 
@@ -1067,7 +1040,6 @@ const GAMES = [
   ['run', 'quick', '🏃', 'Rova run', 'Run into the right picture'],
   ['bubble', 'quick', '🫧', 'Bubble pop', 'Pop what the word names'],
   ['whack', 'quick', '🐁', 'Whack the rat', 'Whack the right rats'],
-  ['duel', 'quick', '👥', 'Showdown', 'Two players, one phone'],
   ['bazar', 'pictures', '🛒', 'Bazar', "Buy what's on Pi's list"],
   ['spy', 'pictures', '🔍', 'I Spy', 'Find things in the village'],
   ['count', 'pictures', '🔢', 'Count', 'How many? Say it in Mizo'],
@@ -1311,56 +1283,6 @@ document.addEventListener('keydown', e => {
   card.addEventListener('pointerup', e => { if (x0 === null) return; const dx = e.clientX - x0; x0 = null; card.style.transform = ''; if (Math.abs(dx) > 60) soAnswer(dx < 0 ? 'left' : 'right'); });
   card.addEventListener('pointercancel', () => { x0 = null; card.style.transform = ''; });
 })();
-
-// ---------------------------------------------------------------- Showdown
-// Two players, one phone: the word shows on both halves, and whoever taps
-// its picture first scores. A wrong tap freezes that player for a second.
-let du = { on: false, word: null, pts: [0, 0], locked: [false, false], round: 0 };
-function duRound() {
-  const four = pickThings('du', 4);
-  du.word = four[0]; du.locked = [false, false];
-  du.round++;
-  [['du-p1', 0], ['du-p2', 1]].forEach(([el, p]) => {
-    const side = $(el);
-    side.classList.remove('locked');
-    side.querySelector('.word').textContent = word(du.word);
-    side.querySelector('.pics').innerHTML = shuffle([...four]).map(id => `<button class="${faceClass(id)}" data-id="${id}" data-p="${p}" aria-label="Picture">${face(id)}</button>`).join('');
-  });
-  $('du-mid').textContent = 'Round ' + du.round;
-}
-function duTap(e) {
-  const b = e.target.closest('button[data-id]'); if (!b || !du.on) return;
-  const p = Number(b.dataset.p);
-  if (du.locked[p]) return;
-  if (b.dataset.id === du.word) {
-    du.pts[p]++;
-    b.classList.add('right'); flash(b, 'pop');
-    $('du-p1').querySelector('.pts').textContent = du.pts[0];
-    $('du-p2').querySelector('.pts').textContent = du.pts[1];
-    $('du-mid').textContent = `${word(du.word)} · ${gloss(du.word)}`;
-    du.on = false;
-    if (du.pts[p] >= 7) {
-      $('du-mid').textContent = (p === 0 ? 'Blue' : 'Pink') + ' player wins! 🏆';
-      $('du-start').textContent = 'Play again'; $('du-start').hidden = false;
-      return;
-    }
-    setTimeout(() => { du.on = true; duRound(); }, 1100);
-  } else {
-    du.locked[p] = true;
-    const side = $(p === 0 ? 'du-p1' : 'du-p2');
-    side.classList.add('locked'); flash(b, 'shake');
-    setTimeout(() => { du.locked[p] = false; side.classList.remove('locked'); }, 1000);
-  }
-}
-$('du-p1').addEventListener('click', duTap);
-$('du-p2').addEventListener('click', duTap);
-$('du-start').addEventListener('click', () => {
-  du.pts = [0, 0]; du.round = 0; du.on = true;
-  $('du-p1').querySelector('.pts').textContent = 0;
-  $('du-p2').querySelector('.pts').textContent = 0;
-  $('du-start').hidden = true;
-  duRound();
-});
 
 // ---------------------------------------------------------------- Word tubes
 // Ball sort with words: four words from each of a few groups, mixed over

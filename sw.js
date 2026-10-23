@@ -2,7 +2,7 @@
 // phone, so the games open without internet. Pages are fetched fresh when
 // online (so updates show), and fall back to the kept copy when offline.
 // The Flutter app under app/ is kept as it is fetched (it is too big to fetch all up front).
-const VERSION = 'hnahsin-11';
+const VERSION = 'hnahsin-12';
 const CORE = [
   './', 'index.html', 'theme.css?v=d03db89c', 'home.js?v=a352c5a2', 'rova.js?v=f71d0f8b', 'journey.html', 'playground.html',
   'favicon.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'manifest.webmanifest',
