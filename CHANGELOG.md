@@ -4,6 +4,18 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.6.2 (24 October 2026)
+
+### Playground games fit on a phone screen
+
+- Each game now fits on one phone screen, so you can play without
+  scrolling. On an iPhone 15 all 21 games fit.
+- The instructions fold into a "How to play" button. It glows the first
+  time you open a game.
+- The game board (the road, the picture, the grid) gets smaller when the
+  screen is short, but words stay big enough to read.
+- The footer is hidden while you play, and Bazar's stalls sit four to a row.
+
 ## 1.6.1 (24 October 2026)
 
 - The top of the home page now has two buttons: Play Rova's Journey and
