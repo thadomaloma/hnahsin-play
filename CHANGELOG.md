@@ -4,6 +4,18 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.6.0 (24 October 2026)
+
+### New: the Hnahsin app's games in the Playground
+
+- A "From the Hnahsin app" section in the Playground with the app's eight
+  games: Picture Match, Spelling, Word Search, Word Chain, Tawng Upa,
+  Crossword, Odd One Out and Sentence Builder.
+- Each one opens in the app, just as it is there: the same levels and the
+  Practice, Classic and Speed modes. Going back brings you to the Playground.
+- The first one takes a little while to open; after that they open quickly.
+- The Playground has 29 games now, and the site 39.
+
 ## 1.5.1 (24 October 2026)
 
 - The Touch and learn card on the home page now shows the loom too. Its
