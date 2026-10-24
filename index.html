@@ -48,7 +48,7 @@
   .lede { margin: 18px auto 0; max-width: 34ch; color: var(--navy); font-size: var(--text-lg); font-weight: 700; }
   .ctas { display: grid; gap: 12px; width: min(100%, 340px); margin: 26px auto 0; }
   .ctas .btn { width: 100%; min-height: 54px; font-size: 17px; }
-  @media (min-width: 760px) { .ctas { width: auto; grid-template-columns: repeat(3, auto); justify-content: center; } }
+  @media (min-width: 760px) { .ctas { width: auto; grid-template-columns: repeat(2, auto); justify-content: center; } }
 
   .field { position: absolute; inset: auto 0 0 0; height: clamp(150px, 24vw, 230px); z-index: 0; pointer-events: none; }
   .field svg.hills { position: absolute; inset: auto 0 0 0; width: 100%; height: 100%; }
@@ -291,7 +291,6 @@
     <div class="ctas">
       <a class="btn gold" href="journey.html">🏃 Play Rova's Journey</a>
       <a class="btn light" href="playground.html">🎮 Open the Playground</a>
-      <a class="btn light" href="app/">📱 Try the app</a>
     </div>
     <div class="install" id="install" hidden>
       <button class="btn" id="install-btn" type="button">📲 Install Hnahsin</button>
