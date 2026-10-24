@@ -171,7 +171,8 @@
   .item { border: 1px solid var(--line); background: var(--panel-2); border-radius: 16px; padding: 8px 4px; display: grid; justify-items: center; gap: 2px; cursor: pointer; font: inherit; color: var(--ink); position: relative; }
   .item .e { font-size: 34px; line-height: 1.1; }
   .item .w { font-weight: 800; font-size: 14.5px; max-width: 100%; overflow-wrap: break-word; text-align: center; line-height: 1.2; }
-  @media (max-width: 420px) { .stalls, .wardrobe { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 420px) { .wardrobe { grid-template-columns: repeat(3, minmax(0, 1fr)); } #fs-kitchen { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 420px) { #bz-stalls { gap: 6px; padding: 30px 8px 10px; } #bz-stalls .item { padding-inline: 2px; } }
   .item, .weather-icons > *, .wardrobe > * { min-width: 0; }
   .item .n { position: absolute; top: -6px; right: -6px; min-width: 24px; height: 24px; border-radius: 12px; background: var(--gold); color: #3a2a00; font-weight: 800; font-size: 13px; display: grid; place-items: center; padding-inline: 4px; }
   .basket { display: flex; flex-wrap: wrap; gap: 6px; min-height: 36px; align-items: center; background: var(--panel-2); border-radius: 14px; padding: 8px 10px; }
@@ -326,6 +327,28 @@
 
   #app { scroll-margin-top: 84px; }
   .cat-note { margin: -4px 0 10px; color: var(--muted); font-size: 14px; font-weight: 600; }
+
+  /* ------------------------------------------------ fitting a game on one phone screen */
+  /* While a game is open: no footer, tighter spacing, and the help folded away. */
+  body.playing footer { display: none; }
+  body.playing .app { gap: 10px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+  @media (max-height: 900px) {
+    body.playing .stage { padding: 12px; gap: 8px; }
+    body.playing header.top { padding-block: max(6px, env(safe-area-inset-top)) 6px; }
+    body.playing .app { padding-top: 6px; }
+    body.playing .stage h2 { font-size: 17px; }
+    body.playing .basket { min-height: 32px; padding: 4px 10px; }
+    body.playing .stage .note { line-height: 1.35; }
+  }
+  details.how { margin: 0; }
+  details.how summary { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 4px 12px; border-radius: 99px; background: var(--panel-2); border: 1px solid var(--line); color: var(--brand); font-size: 14px; font-weight: 800; cursor: pointer; list-style: none; }
+  details.how summary::-webkit-details-marker { display: none; }
+  details.how summary::before { content: "?"; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--brand); color: #fff; font-size: 13px; }
+  details.how[open] summary { margin-bottom: 8px; }
+  details.how.new:not([open]) summary { animation: glow 1.6s ease-in-out 3; }
+  @keyframes glow { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--gold) 55%, transparent); } }
+  /* The board a game is played on, shrunk by script when the screen is short (see fitGame). */
+  body { margin-block: 0; }
 </style>
 
 <div class="app">
@@ -536,13 +559,13 @@
   <section class="stage" id="strands" hidden>
     <div class="row"><span class="pill" id="st-num">Strand 1</span><button class="btn ghost" id="st-new">New strand</button></div>
     <div class="theme"><small>Today's theme</small><b id="st-theme"></b></div>
-    <p class="note" id="st-count">0 of 0 theme words found. The words fill the whole board.</p>
+    <p class="note" id="st-count">0 of 0 theme words found</p>
     <div class="strands" id="st-grid"></div>
     <div class="bigword" id="st-word" aria-live="polite"></div>
     <div class="feedback" id="st-feedback" aria-live="polite"></div>
     <div class="row" style="justify-content:center"><button class="btn ghost" id="st-hint">💡 Hint</button></div>
     <div class="found" id="st-found"></div>
-    <p class="note">Drag across touching letters, or tap them one by one and tap the last again. Words can bend in any direction.</p>
+    <p class="note">Drag across touching letters, or tap them one by one and tap the last again. Words can bend in any direction, and together they fill the whole board.</p>
   </section>
 
 
@@ -702,6 +725,71 @@ document.addEventListener('click', e => {
   const a = e.target.closest('[data-app]');
   if (a) hnStat(`playground/app/${a.dataset.app}`, `Playground: app game ${a.dataset.app}`);
 });
+// ------------------------------------------------ fit the game on one phone screen
+// The instructions under a game fold into a "How to play" button.
+document.querySelectorAll('.stage > p.note:not([id])').forEach(p => {
+  const d = document.createElement('details');
+  d.className = 'how';
+  d.innerHTML = '<summary>How to play</summary>';
+  p.replaceWith(d); d.appendChild(p);
+  d.addEventListener('toggle', () => requestAnimationFrame(fitGame));
+});
+// The board of each game (the big picture or grid) shrinks until the game fits the screen,
+// but never below 60% of its size (40% for the pictures, 75% for boards with words). Boards with a height of their own (the road, the sea,
+// the drawn figures) get a lower height and are redrawn; the rest are zoomed, so their
+// taps and drags still line up.
+const BOARDS = '.hive, .waffle, .strands, .tubes, .road, .sea, .holes, .scene, .count-board, .figure, #ci-pic, .tree, .card, .stalls, .op-board, .list, .wardrobe, .sayings, .meanings';
+const TALL = '.road, .sea, .figure, .tree';
+// Grids of square cells drawn by script: made narrower (they keep square), not zoomed.
+const NARROW = '.strands, .waffle';
+// Boards with words on them stop at 75%, so the words stay readable.
+const WORDY = '.list, .stalls, .wardrobe, .sayings, .meanings, .tubes';
+const floorOf = b => b.matches(TALL) ? 0.4 : b.matches(WORDY) ? 0.75 : 0.6;
+let fitting = false;
+function fitGame() {
+  if (fitting) return;
+  const stage = [...document.querySelectorAll('.stage')].find(s => !s.hidden);
+  if (!stage) return;
+  const boards = [...stage.querySelectorAll(BOARDS)].filter(b => b.closest('.stage') === stage && !b.parentElement.closest(BOARDS));
+  boards.forEach(b => { b.style.zoom = ''; b.style.height = ''; b.style.width = ''; b.style.maxWidth = ''; b.style.marginInline = ''; });
+  const base = new Map(boards.map(b => [b, b.offsetHeight]));
+  // A board that fills the width is laid out at that width before it is zoomed,
+  // or zooming would only make it fill the width again at the same height.
+  const inner = el => { const cs = getComputedStyle(el); return el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); };
+  const fluid = new Map(boards.map(b => [b, b.offsetWidth >= inner(b.parentElement) - 2 ? b.offsetWidth : 0]));
+  const big = boards.filter(b => base.get(b) > 60);
+  let resized = false;
+  // A few passes: each shrink can change how the rest wraps.
+  for (let pass = 0; pass < 4; pass++) {
+    const over = document.documentElement.scrollHeight - innerHeight;
+    if (over <= 0) break;
+    const now = b => b.matches(TALL) || b.matches(NARROW) ? b.offsetHeight : base.get(b) * (+b.style.zoom || 1);
+    const room = big.map(b => [b, now(b) - base.get(b) * floorOf(b)]).filter(([, r]) => r > 1);
+    const roomAll = room.reduce((t, [, r]) => t + r, 0);
+    if (!roomAll) break;
+    for (const [b, r] of room) {
+      const take = Math.min(r, over * r / roomAll + 1), h = now(b) - take;
+      if (b.matches(TALL)) { b.style.height = Math.round(h) + 'px'; resized = true; }
+      else if (b.matches(NARROW)) { b.style.maxWidth = Math.round(b.offsetWidth * h / now(b)) + 'px'; resized = true; }
+      else {
+        b.style.zoom = (h / base.get(b)).toFixed(3);
+        if (fluid.get(b)) { b.style.width = fluid.get(b) + 'px'; b.style.marginInline = 'auto'; }
+      }
+    }
+  }
+  // Drawn figures repaint at their new size.
+  if (resized) { fitting = true; dispatchEvent(new Event('resize')); fitting = false; }
+}
+addEventListener('resize', () => requestAnimationFrame(fitGame));
+document.addEventListener('showgame', e => {
+  document.body.classList.toggle('playing', !!e.detail);
+  if (!e.detail) return;
+  // The help stays folded; the first time, its button glows to say it is there.
+  const how = $(e.detail).querySelector('details.how');
+  if (how) { how.open = false; how.classList.toggle('new', !store.get('lab.how.' + e.detail, false)); store.set('lab.how.' + e.detail, true); }
+  requestAnimationFrame(() => requestAnimationFrame(fitGame));
+});
+
 function show(game) {
   GAMES.forEach(g => $(g.id).hidden = g.id !== game);
   if (game) store.set('lab.tab', game);
@@ -1856,7 +1944,7 @@ function stRender() {
   const seg = (cells, colour) => cells.slice(1).map((c, k) => { const [x1, y1] = stCentre(cells[k]), [x2, y2] = stCentre(c); return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${colour}"/>`; }).join('');
   $('st-grid').querySelector('svg').innerHTML = st.found.map(w => seg(p.words.find(x => x.w === w).cells, '#3c9fea')).join('') + seg(st.path, '#c9ddf3');
   $('st-word').textContent = st.path.map(i => p.grid.flat()[i]).join('');
-  $('st-count').textContent = `${st.found.length} of ${p.words.length} theme words found. The words fill the whole board.`;
+  $('st-count').textContent = `${st.found.length} of ${p.words.length} theme words found`;
   $('st-found').innerHTML = st.found.map(w => { const x = p.words.find(y => y.w === w); return `<span>${x.e ? x.e + ' ' : ''}${w}<small>${x.m}</small></span>`; }).join('');
 }
 function stAdd(i) {
