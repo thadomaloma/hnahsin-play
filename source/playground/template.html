@@ -324,13 +324,15 @@
   .count-board { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; background: #bfe6ff url(pics/scene/meadow.svg) center bottom / cover no-repeat; border-radius: 18px; padding: 24px 16px 30px; min-height: 210px; filter: none; align-content: flex-end; font-size: clamp(30px, 9vw, 42px); line-height: 1; }
 
 
+  #app { scroll-margin-top: 84px; }
+  .cat-note { margin: -4px 0 10px; color: var(--muted); font-size: 14px; font-weight: 600; }
 </style>
 
 <div class="app">
   <header class="top">
     <a class="nav-link" id="home" href="https://thadomaloma.github.io/hnahsin-play/" aria-label="Hnahsin Games home">←</a>
     <a class="nav-link" id="back" href="#" aria-label="Back to all games" hidden>←</a>
-    <div class="brand"><b id="title">Playground</b><span id="subtitle">21 Mizo word games</span></div>
+    <div class="brand"><b id="title">Playground</b><span id="subtitle">29 Mizo word games</span></div>
     <div class="score" id="score" aria-live="polite">⭐ 0</div>
   </header>
   <main class="library" id="library"></main>
@@ -667,14 +669,39 @@ const GAMES = [
   ['stall', 'pictures', '🍲', 'Food stall', 'Serve what guests ask for'],
 ].map(([id, kind, icon, name, blurb, tag]) => ({ id, kind, icon, name, blurb, tag }));
 
+// The Hnahsin app's own games, opened in the app (app/?game=…): the same games, with the app's
+// levels and modes. Leaving the game comes back here (#app).
+const APP_GAMES = [
+  ['picture_match', '🖼️', 'Picture Match', 'Match pictures and words'],
+  ['spelling', '🔤', 'Spelling', 'Fill in the missing letter'],
+  ['word_search', '🔍', 'Word Search', 'Find words in the grid'],
+  ['word_chain', '🔗', 'Word Chain', 'Link words together'],
+  ['tawng_upa', '🗣️', 'Tawng Upa', 'What old Mizo sayings mean'],
+  ['crossword', '✏️', 'Crossword', 'Write words from clues'],
+  ['odd_one_out', '🐷', 'Odd One Out', 'Find the word that doesn\u2019t belong'],
+  ['sentence_builder', '🧱', 'Sentence Builder', 'Put the word tiles in order'],
+];
+function appSection(n) {
+  return `<section class="cat" id="app" aria-labelledby="cat-app"><h2 id="cat-app"><span>📱</span>From the Hnahsin app</h2>
+    <p class="cat-note">The app's own games, just as they are in the app. The first one takes a little while to open.</p><div class="cards">${
+    APP_GAMES.map(([id, icon, name, blurb]) => `<a class="gcard" href="app/?game=${id}" data-app="${id}" style="--c1:#0d47a1;--c2:#3c9fea;--d:${n++ * 35}ms"><span class="tag">APP</span><span class="cover"><i>${icon}</i></span><b>${name}</b><small>${blurb}</small></a>`).join('')
+  }</div></section>`;
+}
+
 function renderLibrary() {
   const last = GAMES.find(g => g.id === store.get('lab.tab', ''));
   let n = 0;
   $('library').innerHTML = (last ? `<a class="continue" href="#${last.id}"><i>${last.icon}</i><span><small>Continue</small><b>${last.name}</b></span><em>Play ▸</em></a>` : '') +
     KINDS.map(k => `<section class="cat" aria-labelledby="cat-${k.id}"><h2 id="cat-${k.id}"><span>${k.icon}</span>${k.name}</h2><div class="cards">${
       GAMES.filter(g => g.kind === k.id).map(g => `<a class="gcard" href="#${g.id}" style="--c1:${k.c[0]};--c2:${k.c[1]};--d:${n++ * 35}ms">${g.tag ? `<span class="tag">${g.tag}</span>` : ''}<span class="cover"><i>${g.icon}</i></span><b>${g.name}</b><small>${g.blurb}</small></a>`).join('')
-    }</div></section>`).join('');
+    }</div></section>`).join('') + appSection(n);
+  // Back from an app game (#app): show this section.
+  if (location.hash === '#app') requestAnimationFrame(() => $('app').scrollIntoView({ block: 'start' }));
 }
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-app]');
+  if (a) hnStat(`playground/app/${a.dataset.app}`, `Playground: app game ${a.dataset.app}`);
+});
 function show(game) {
   GAMES.forEach(g => $(g.id).hidden = g.id !== game);
   if (game) store.set('lab.tab', game);
@@ -685,7 +712,7 @@ function route() {
   const swap = () => {
     $('library').hidden = !!g; $('back').hidden = !g; $('home').hidden = !!g;
     $('title').textContent = g ? `${g.icon} ${g.name}` : 'Playground';
-    $('subtitle').textContent = g ? g.blurb : `${GAMES.length} Mizo word games`;
+    $('subtitle').textContent = g ? g.blurb : `${GAMES.length + APP_GAMES.length} Mizo word games`;
     document.title = g ? `${g.name} · Hnahsin Playground` : 'Hnahsin Playground';
     if (!g) { renderLibrary(); fromLibrary = true; } else hnStat(`playground/${g.id}`, `Playground: ${g.name}`);
     show(g ? g.id : null);

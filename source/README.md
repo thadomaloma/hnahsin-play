@@ -106,3 +106,8 @@ flutter build web --release --base-href /hnahsin-play/app/ \
 
 then copy it into `app/` without the `*.symbols` files, run `python3 source/app_patch.py`
 (loading screen and offline caching), and bump `VERSION` in `sw.js`.
+
+The Playground's "From the Hnahsin app" cards open `app/?game=<id>` (for example
+`app/?game=spelling`): the app opens that game's start page at once, and goes back to
+`playground.html#app` when the player leaves the game. This lives in the app's
+`lib/src/web_link/`.
