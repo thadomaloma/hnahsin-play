@@ -4,6 +4,11 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.6.1 (24 October 2026)
+
+- The top of the home page now has two buttons: Play Rova's Journey and
+  Open the Playground. The app card further down still has Try the app.
+
 ## 1.6.0 (24 October 2026)
 
 ### New: the Hnahsin app's games in the Playground
