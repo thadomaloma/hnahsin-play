@@ -1596,7 +1596,7 @@ function bzNew() {
   bz.list = pick(FOOD, items).map(id => ({ id, n: 1 + Math.floor(Math.random() * most) }));
   const decoys = pick(FOOD.filter(id => !bz.list.some(l => l.id === id)), Math.max(0, 8 - items));
   bz.stalls = shuffle([...bz.list.map(l => l.id), ...decoys]);
-  bz.basket = {};
+  bz.basket = {}; bz.paid = false;
   $('bz-feedback').textContent = '';
   $('bz-feedback').className = 'feedback';
   bzRender();
@@ -1610,7 +1610,7 @@ function bzRender() {
   $('bz-basket').innerHTML = inBasket.length ? inBasket.map(([id, n]) => `<span class="chip" data-id="${id}">${emoji(id)} ${word(id)} × ${n}</span>`).join('') : '<span class="note">Empty</span>';
 }
 $('bz-stalls').addEventListener('click', e => {
-  const b = e.target.closest('.item'); if (!b) return;
+  const b = e.target.closest('.item'); if (!b || bz.paid) return;
   bz.basket[b.dataset.id] = (bz.basket[b.dataset.id] || 0) + 1;
   bzRender();
   flash(document.querySelector(`#bz-stalls [data-id="${b.dataset.id}"]`), 'pop');
@@ -1621,12 +1621,14 @@ $('bz-basket').addEventListener('click', e => {
 });
 $('bz-new').addEventListener('click', bzNew);
 $('bz-pay').addEventListener('click', () => {
+  if (bz.paid) return;   // already paid; the next list is on its way
   const wrong = [];
   for (const l of bz.list) { const have = bz.basket[l.id] || 0; if (have !== l.n) wrong.push(`${word(l.id)} (${gloss(l.id)}): you have ${have}, Pi wants ${l.n} — ${word(NUM[l.n - 1])}`); }
   for (const [id, n] of Object.entries(bz.basket)) if (n > 0 && !bz.list.some(l => l.id === id)) wrong.push(`${word(id)} (${gloss(id)}) isn't on the list`);
   const fb = $('bz-feedback');
   if (wrong.length) { fb.className = 'feedback bad'; fb.textContent = wrong[0]; flash($('bz-basket'), 'shake'); return; }
   fb.className = 'feedback good';
+  bz.paid = true;
   fb.textContent = 'Pi is happy! Ka lâwm e! +' + (5 * bz.level) + ' stars';
   addStars(5 * bz.level);
   bz.level = Math.min(bz.level + 1, 6); store.set('lab.bz', bz.level);
@@ -1971,7 +1973,7 @@ function drNew() {
   const count = Math.min(1 + dr.level, 4);
   const slots = pick(Object.keys(SLOTS), count);
   dr.want = slots.map(slot => pick(SLOTS[slot], 1)[0]);
-  dr.worn = {};
+  dr.worn = {}; dr.ready = false;
   $('dr-feedback').textContent = ''; $('dr-feedback').className = 'feedback';
   drRender();
 }
@@ -1983,7 +1985,7 @@ function drRender() {
   $('dr-wardrobe').innerHTML = Object.keys(SLOT_OF).map(id => `<button class="item" data-id="${id}" aria-label="${word(id)}"><span class="e">${emoji(id)}</span>${names ? `<span class="w">${word(id)}</span>` : ''}</button>`).join('');
 }
 $('dr-wardrobe').addEventListener('click', e => {
-  const b = e.target.closest('.item'); if (!b) return;
+  const b = e.target.closest('.item'); if (!b || dr.ready) return;
   const id = b.dataset.id;
   dr.worn[SLOT_OF[id]] = id;
   $('dr-feedback').className = 'feedback'; $('dr-feedback').textContent = `${word(id)} · ${gloss(id)}`;
@@ -1999,6 +2001,7 @@ $('dr-rova').addEventListener('click', e => {
   delete dr.worn[slot]; drRender();
 });
 $('dr-done').addEventListener('click', () => {
+  if (dr.ready) return;
   const worn = Object.values(dr.worn);
   const missing = dr.want.filter(id => !worn.includes(id));
   const extra = worn.filter(id => !dr.want.includes(id));
@@ -2012,6 +2015,7 @@ $('dr-done').addEventListener('click', () => {
     return;
   }
   fb.className = 'feedback good';
+  dr.ready = true;
   fb.textContent = `Rova is ready! +${2 * dr.want.length} stars`;
   addStars(2 * dr.want.length);
   flash($('dr-rova'), 'hop');
@@ -2387,8 +2391,8 @@ function wmPop() {
     h.dataset.id = id;
     const held = h.querySelector('.held'); held.innerHTML = face(id); held.className = 'held ' + faceClass(id);
     h.classList.add('up');
-    const stay = Math.max(700, 1500 - wm.score * 30);
-    setTimeout(() => h.classList.remove('up', 'hit'), stay);
+    const stay = Math.max(700, 1500 - wm.score * 30), pop = h.pop = (h.pop || 0) + 1;
+    setTimeout(() => { if (h.pop === pop) h.classList.remove('up', 'hit'); }, stay);   // only this pop's rat goes down
   }
   wm.timer = setTimeout(wmPop, Math.max(380, 800 - wm.score * 15));
 }
@@ -2403,7 +2407,8 @@ $('wm-holes').addEventListener('click', e => {
     wm.score--; fb.className = 'feedback bad'; fb.textContent = `That was ${word(h.dataset.id)} (${gloss(h.dataset.id)})`;
   }
   $('wm-score').textContent = wm.score;
-  setTimeout(() => h.classList.remove('up', 'hit'), 250);
+  const pop = h.pop;
+  setTimeout(() => { if (h.pop === pop) h.classList.remove('up', 'hit'); }, 250);
 });
 $('wm-start').addEventListener('click', () => {
   wm = { on: true, target: null, score: 0, ends: Date.now() + 40000, timer: 0, hits: 0 };
@@ -2440,7 +2445,7 @@ function wrNew() {
   const start = Math.floor(Math.random() * (8 - count));
   wr.days = DAYS.slice(start, start + count);
   wr.want = Object.fromEntries(wr.days.map(d => [d, pick(WEATHER, 1)[0]]));
-  wr.set = {}; wr.picked = null;
+  wr.set = {}; wr.picked = null; wr.done = false;
   $('wr-forecast').innerHTML = wr.days.map(d => `<li><b>${word(d)}</b>: ${word(wr.want[d])}</li>`).join('');
   $('wr-feedback').textContent = ''; $('wr-feedback').className = 'feedback';
   wrRender();
@@ -2463,6 +2468,7 @@ $('wr-board').addEventListener('click', e => {
   flash(document.querySelector(`#wr-board [data-day="${b.dataset.day}"]`), 'pop');
 });
 $('wr-check').addEventListener('click', () => {
+  if (wr.done) return;
   const fb = $('wr-feedback');
   const wrong = wr.days.find(d => wr.set[d] !== wr.want[d]);
   if (wrong) {
@@ -2474,6 +2480,7 @@ $('wr-check').addEventListener('click', () => {
     return;
   }
   fb.className = 'feedback good';
+  wr.done = true;
   fb.textContent = `Great forecast! +${wr.days.length} stars`;
   addStars(wr.days.length);
   wr.level = Math.min(wr.level + 1, 5); store.set('lab.wr', wr.level);
@@ -2490,7 +2497,7 @@ let fs = { on: false, order: [], plate: [], served: 0, hearts: 3, patience: 1, t
 function fsGuest() {
   const n = fs.served < 3 ? 1 : fs.served < 8 ? 2 : 3;
   fs.order = pick(STALL, n);
-  fs.plate = [];
+  fs.plate = []; fs.busy = false;
   fs.guest = pick(GUESTS, 1)[0];
   fs.patience = 1;
   fsRender();
@@ -2513,6 +2520,7 @@ function fsRender() {
   $('fs-hearts').textContent = '❤️'.repeat(Math.max(fs.hearts, 0)) + '🤍'.repeat(3 - Math.max(fs.hearts, 0));
 }
 function fsMiss(text) {
+  fs.busy = true;
   fs.hearts--;
   $('fs-feedback').className = 'feedback bad'; $('fs-feedback').textContent = text;
   flash($('fs-counter'), 'shake');
@@ -2526,7 +2534,7 @@ function fsMiss(text) {
   setTimeout(() => fs.on && fsGuest(), 1600);
 }
 $('fs-kitchen').addEventListener('click', e => {
-  const b = e.target.closest('.item'); if (!b || !fs.on || fs.plate.length >= 3) return;
+  const b = e.target.closest('.item'); if (!b || !fs.on || fs.busy || fs.plate.length >= 3) return;
   fs.plate.push(b.dataset.id); fsRender();
 });
 $('fs-plate').addEventListener('click', e => {
@@ -2534,7 +2542,8 @@ $('fs-plate').addEventListener('click', e => {
   fs.plate.splice(Number(c.dataset.i), 1); fsRender();
 });
 $('fs-serve').addEventListener('click', () => {
-  if (!fs.on || !fs.plate.length) return;
+  if (!fs.on || !fs.plate.length || fs.busy) return;
+  fs.busy = true;   // until the next guest comes
   clearInterval(fs.timer);
   const same = fs.plate.length === fs.order.length && fs.order.every(id => fs.plate.includes(id));
   if (same) {
@@ -2779,7 +2788,7 @@ function snNew() {
   sn.used.add(sn.s[0]);
   // Lower-case the first word so it isn't a giveaway; names keep their capitals.
   sn.tiles = shuffle(sn.s[0].split(/\s+/).map((w, i) => ({ k: i, t: i === 0 && !/^[A-Z][a-z]*[A-Z]/.test(w) ? snBare(w).replace(/^./, c => c.toLowerCase()) : snBare(w) })));
-  sn.answer = [];
+  sn.answer = []; sn.wait = false;
   $('sn-feedback').textContent = ''; $('sn-feedback').className = 'feedback';
   $('sn-answer').classList.remove('good');
   snRender();
@@ -2792,7 +2801,7 @@ function snRender() {
   $('sn-answer').innerHTML = sn.answer.map(k => `<button class="tile-w" data-k="${k}">${esc(sn.tiles.find(t => t.k === k).t)}</button>`).join('');
   $('sn-tiles').innerHTML = sn.tiles.filter(t => !inAnswer.has(t.k)).map(t => `<button class="tile-w" data-k="${t.k}">${esc(t.t)}</button>`).join('');
 }
-$('sn-tiles').addEventListener('click', e => { const b = e.target.closest('.tile-w'); if (!b) return; sn.answer.push(Number(b.dataset.k)); snRender(); });
+$('sn-tiles').addEventListener('click', e => { const b = e.target.closest('.tile-w'); if (!b || sn.wait) return; sn.answer.push(Number(b.dataset.k)); snRender(); });
 $('sn-answer').addEventListener('click', e => { const b = e.target.closest('.tile-w'); if (!b || $('sn-answer').classList.contains('good')) return; sn.answer = sn.answer.filter(k => k !== Number(b.dataset.k)); snRender(); });
 $('sn-hint').addEventListener('click', () => {
   const firstKey = 0;
@@ -2800,16 +2809,19 @@ $('sn-hint').addEventListener('click', () => {
   document.querySelector('#sn-answer .tile-w')?.classList.add('hint');
 });
 $('sn-skip').addEventListener('click', () => {
+  if (sn.wait) return;
+  sn.wait = true;
   const fb = $('sn-feedback'); fb.className = 'feedback'; fb.textContent = 'It was: ' + sn.s[0];
   setTimeout(snNew, 1800);
 });
 $('sn-check').addEventListener('click', () => {
+  if (sn.wait) return;   // already right (or skipped); the next sentence is coming
   const words = sn.s[0].split(/\s+/), fb = $('sn-feedback');
   if (sn.answer.length < words.length) { fb.className = 'feedback bad'; fb.textContent = 'Use every word'; flash($('sn-answer'), 'shake'); return; }
   // Right when every place holds the same word, so two identical words can swap.
   const right = sn.answer.every((k, i) => snFold(words[k]) === snFold(words[i]));
   if (!right) { fb.className = 'feedback bad'; fb.textContent = 'Not quite. Try another order.'; flash($('sn-answer'), 'shake'); return; }
-  $('sn-answer').classList.add('good');
+  $('sn-answer').classList.add('good'); sn.wait = true;
   fb.className = 'feedback good'; fb.textContent = '✓ ' + sn.s[0] + '  +' + (2 + sn.level);
   addStars(2 + sn.level);
   sn.done++; store.set('lab.sn.done', sn.done);
@@ -2989,7 +3001,7 @@ function dgRender() {
 }
 function dgAttack() {
   const w = dgWord(), fb = $('dg-feedback');
-  if (!LEX.has(w) || dg.over) return;
+  if (!LEX.has(w) || dg.over || dg.foe.hp <= 0) return;   // a beaten monster is on its way out
   if (dg.foe.trick === 'short' && dg.word.length < 4) { fb.className = 'feedback bad'; fb.textContent = `${dg.foe.m}'s hide stops short words: make one of 4 letters or more`; flash($('dg-foe'), 'shake'); return; }
   const { dmg, crit } = dgScore(dg.word);
   dg.foe.hp -= dmg; dg.coins += Math.ceil(dmg / 4);
@@ -3072,7 +3084,7 @@ function dgLose() {
   $('dg-again').hidden = false;
 }
 $('dg-grid').addEventListener('click', e => {
-  const b = e.target.closest('.lt'); if (!b || dg.over) return;
+  const b = e.target.closest('.lt'); if (!b || dg.over || dg.foe.hp <= 0) return;
   const i = +b.dataset.i, at = dg.word.indexOf(i);
   // Tapping a chosen tile takes it and the ones after it back.
   if (at >= 0) dg.word.splice(at); else dg.word.push(i);
@@ -3170,6 +3182,7 @@ function lfAdd(k) {
   lf.path.push(k);
 }
 function lfSubmit() {
+  if (lf.busy) { lf.path = []; lfRender(); return; }   // the last word's tiles are still falling
   const w = lfWord(), fb = $('lf-feedback');
   if (lf.path.length < 3 || !LEX.has(w)) {
     if (lf.path.length >= 2) { fb.className = 'feedback bad'; fb.textContent = lf.path.length < 3 ? 'Words need 3 letters or more' : `“${w}” is not in the word list`; flash($('lf-grid'), 'shake'); }
@@ -3191,8 +3204,9 @@ function lfSubmit() {
   fb.innerHTML = `${meaningLine(w)} · +${pts}${clear.size > n ? ' 💥' : ''}`;
   // Pop the tiles, then let the rest fall.
   clear.forEach(k => { const el = document.querySelector(`#lf-grid [data-k="${k}"]`); if (el) el.classList.add('pop-out'); });
-  lf.path = [];
+  lf.path = []; lf.busy = true;
   setTimeout(() => {
+    lf.busy = false;
     for (let c = 0; c < LF_W; c++) lf.cols[c] = lf.cols[c].filter((x, r) => !clear.has(c + ',' + r));
     if (--lf.until <= 0) { lf.until = 3; lf.level = 1 + Math.floor(lf.words / 9); lfPush(); }
     // An empty well gives a bonus and a fresh start.
@@ -3380,6 +3394,7 @@ function cvCheck() {
   }
 }
 function cvFloorDone() {
+  cv.over = true;   // nothing more to tap on this floor while the next one comes
   cvRender();
   const won = 3 + (cv.solved.size === cv.words.length ? 2 : 0);
   addStars(won);
