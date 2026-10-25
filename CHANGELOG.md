@@ -4,6 +4,15 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.9.1 (25 October 2026)
+
+- The pieces of the Playground games are drawn with more care: tiles and
+  buttons have a soft shine, Bubble pop has real-looking soap bubbles and sun
+  rays, Rova run's gates are wooden signs, Word tubes are glass, the Spelling
+  bee hive is honeycomb, and Sort it's card is ruled paper.
+- Food stall shows four dishes to a row and fits on the screen once it opens.
+  Any game that grows after it starts now fits again by itself.
+
 ## 1.9.0 (25 October 2026)
 
 ### A new look for the Playground
