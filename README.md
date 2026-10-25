@@ -25,7 +25,8 @@ Learn Mizo words by playing. Free, on any phone, no sign-up.
   part to see its Mizo name, look inside, change the time of day, make it
   rain or blow, meet the family, have Rova and Mami visit, pick up the hen's
   eggs, or play Find it. Also Puan tah: pi weaves a Mizo puan on her loom,
-  and you pick the colours.
+  and you pick the colours. And Bazar dâwr: Rova shops at a market stall
+  from a list in Mizo numbers.
 - **The Hnahsin app.** A preview of the app in your browser. The app is
   coming to Android and iPhone.
 

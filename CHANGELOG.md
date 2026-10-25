@@ -4,6 +4,22 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.10.0 (26 October 2026)
+
+### New in Touch and learn: Bazar dâwr
+
+- A Mizo market stall: a bamboo stall with a striped awning, the shopkeeper
+  (dâwrkai) behind a counter of fruit (thei) and vegetables (thlai), bananas
+  hanging on a rope, eggs in a basket, fish on a banana leaf, a balance and
+  a tray of money, and Rova come to shop with his basket.
+- Go shopping: Rova gets a list in Mizo numbers, like "serthlum · pathum".
+  Tap things to send them into his basket, then pay (pawisa). The
+  shopkeeper says "lawmthu".
+- Weigh things on the balance to see if they are heavy (rit) or light (zâng).
+  Open or close the stall, make it evening, and pick the awning colour.
+- The Touch and learn card on the home page now shows the stall too.
+- 106 words in Touch and learn, all from the Hnahsin app.
+
 ## 1.9.2 (25 October 2026)
 
 ### Lighter and quicker
