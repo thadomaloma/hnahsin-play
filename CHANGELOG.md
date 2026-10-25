@@ -4,6 +4,20 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.9.0 (25 October 2026)
+
+### A new look for the Playground
+
+- Every kind of game has its own scene behind it: a meadow, a desk of
+  floating letter tiles, a sunny sky, the village, a dusk sky with lanterns,
+  and a torch-lit dungeon.
+- A right answer bursts into confetti, a wrong one gives a little puff, and
+  the stars you win fly up to your score.
+- The game cards in the library have illustrated covers.
+- It stays light and quick: the scenes are drawn once and only a few things
+  move, nothing moves when your phone is set to reduce motion, and every
+  game still fits on one phone screen.
+
 ## 1.8.3 (25 October 2026)
 
 - **Easier to put on an iPhone.** "Add Hnahsin to your Home Screen" opens a
