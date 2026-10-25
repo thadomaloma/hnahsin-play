@@ -4,6 +4,18 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.9.2 (25 October 2026)
+
+### Lighter and quicker
+
+- Fixed a bug in the Playground that kept about ten games busy all the time
+  (Rova run, Bubble pop, Dress Rova, Strands and others), making them slower
+  and using more battery.
+- Leaving a timed game in the middle of a round now stops it, instead of it
+  going on in the background.
+- Rova's Journey rests behind its menus, the home page only animates what is
+  on the screen, and the scenes behind the games redraw less often.
+
 ## 1.9.1 (25 October 2026)
 
 - The pieces of the Playground games are drawn with more care: tiles and
