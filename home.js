@@ -265,17 +265,19 @@
   $('#to-top').addEventListener('click', () => scrollTo({ top: 0, behavior: calm ? 'auto' : 'smooth' }));
 
   // ------------------------------------------------ Touch and learn card: name tags on the pictures
-  // The card shows the house, then pi at her loom, and back. The .json files say where each part is
+  // The card shows the house, pi at her loom and the market stall in turn. The .json files say where each part is
   // in the pictures (written by source/things/snapshot.js). A tap opens the one on show.
   const thingsCover = $('.cover.things'), thingsCard = thingsCover.closest('a'), pin = $('.pin', thingsCover), tag = $('.q', thingsCover);
   const which = $$('.which span', thingsCover);
-  Promise.all(['house', 'loom'].map(n => fetch(`pics/things-${n}.json`).then(r => r.json()))).then(scenes => {
+  const SCENES = ['house', 'loom', 'bazar'];
+  Promise.all(SCENES.map(n => fetch(`pics/things-${n}.json`).then(r => r.json()))).then(scenes => {
     let si = 0, ti = 0;
     const PER = 4;   // name tags shown on each picture before it changes
     const show = () => {
       thingsCover.classList.toggle('on-loom', si === 1);
+      thingsCover.classList.toggle('on-bazar', si === 2);
       which.forEach((w, i) => w.classList.toggle('on', i === si));
-      thingsCard.href = si ? 'things.html#loom' : 'things.html';
+      thingsCard.href = si ? `things.html#${SCENES[si]}` : 'things.html';
     };
     const place = () => {
       const { box, tags } = scenes[si], w = thingsCover.clientWidth, h = thingsCover.clientHeight;
@@ -298,7 +300,7 @@
     let n = 0;
     setInterval(() => {
       if (document.hidden || thingsCover.getBoundingClientRect().bottom < 0) return;
-      if (++n % PER === 0) { si = 1 - si; ti = 0; show(); } else ti++;
+      if (++n % PER === 0) { si = (si + 1) % scenes.length; ti = 0; show(); } else ti++;
       place();
     }, calm ? 5000 : 2600);
   }).catch(() => {});
