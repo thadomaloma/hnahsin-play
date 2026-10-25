@@ -172,7 +172,7 @@
   .item { border: 1px solid var(--line); background: var(--panel-2); border-radius: 16px; padding: 8px 4px; display: grid; justify-items: center; gap: 2px; cursor: pointer; font: inherit; color: var(--ink); position: relative; }
   .item .e { font-size: 34px; line-height: 1.1; }
   .item .w { font-weight: 800; font-size: 14.5px; max-width: 100%; overflow-wrap: break-word; text-align: center; line-height: 1.2; }
-  @media (max-width: 420px) { .wardrobe { grid-template-columns: repeat(3, minmax(0, 1fr)); } #fs-kitchen { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 420px) { .wardrobe { grid-template-columns: repeat(3, minmax(0, 1fr)); } #fs-kitchen { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 30px 8px 10px; } #fs-kitchen .item { padding-inline: 2px; } }
   @media (max-width: 420px) { #bz-stalls { gap: 6px; padding: 30px 8px 10px; } #bz-stalls .item { padding-inline: 2px; } }
   .item, .weather-icons > *, .wardrobe > * { min-width: 0; }
   .item .n { position: absolute; top: -6px; right: -6px; min-width: 24px; height: 24px; border-radius: 12px; background: var(--gold); color: #3a2a00; font-weight: 800; font-size: 13px; display: grid; place-items: center; padding-inline: 4px; }
@@ -432,6 +432,20 @@
   html { background: var(--ground); }
   .gcard .cover { background-position: center; }
   .stage { box-shadow: 0 2px 6px rgba(13, 71, 161, .06), 0 18px 40px -20px rgba(13, 71, 161, .45); }
+
+  /* ------------------------------------------------ game pieces dressed with the canvas sprites (decor.js) */
+  .lt, .tile-w, .waffle .cell button, .choice, .item, .bin, .cv-cell, .sayings button, .meanings button, .charm, .hex { background-image: var(--spr-gloss); background-size: 100% 100%; background-repeat: no-repeat; }
+  .bubble { border: 0; background: var(--spr-bubble) center / 100% 100% no-repeat; box-shadow: none; }
+  .road .gate { border: 10px solid transparent; border-image: var(--spr-wood) 24 fill / 10px / 0 stretch; background: none; box-shadow: 0 6px 0 rgba(0,0,0,.12); }
+  .road .gate.pic { border-width: 8px; }
+  .tube { background: var(--spr-glass) center / 100% 100% no-repeat, linear-gradient(#f4f9fe, #e6f0fa); border-color: #b9d3ea; box-shadow: inset 0 -6px 10px rgba(60,120,180,.12); }
+  .tube.done { background: var(--spr-glass) center / 100% 100% no-repeat, var(--leaf-soft); }
+  .hex { background: var(--spr-hex) center / 100% 100% no-repeat; }
+  .hex.centre { background: var(--spr-hexgold) center / 100% 100% no-repeat; }
+  .card { background: var(--spr-card) center / cover no-repeat; box-shadow: 0 2px 0 var(--line), 0 12px 24px -16px rgba(13,71,161,.4); }
+  .sea { background-image: var(--spr-sea), linear-gradient(var(--sky-bottom), var(--sky-top)); background-size: 100% 100%; }
+  .op-board .opt { background: radial-gradient(circle at 50% 40%, #fff, var(--panel-2) 70%); }
+  .tree { background: radial-gradient(circle at 50% 30%, #fffaf0, #f3e6cf 80%); }
 </style>
 
 <div class="app">
@@ -1471,13 +1485,13 @@ document.querySelectorAll('.stage > p.note:not([id])').forEach(p => {
 // but never below 60% of its size (40% for the pictures, 75% for boards with words). Boards with a height of their own (the road, the sea,
 // the drawn figures) get a lower height and are redrawn; the rest are zoomed, so their
 // taps and drags still line up.
-const BOARDS = '.cvgrid, .ltgrid, .dg-arena, .hive, .waffle, .strands, .tubes, .road, .sea, .holes, .scene, .count-board, .figure, #ci-pic, .tree, .card, .stalls, .op-board, .list, .wardrobe, .sayings, .meanings';
+const BOARDS = '.counter, .cvgrid, .ltgrid, .dg-arena, .hive, .waffle, .strands, .tubes, .road, .sea, .holes, .scene, .count-board, .figure, #ci-pic, .tree, .card, .stalls, .op-board, .list, .wardrobe, .sayings, .meanings';
 const TALL = '.road, .sea, .figure, .tree';
 // Grids of square cells drawn by script: made narrower (they keep square), not zoomed.
 const NARROW = '.strands, .waffle, .ltgrid, .cvgrid';
 // Boards with words on them stop at 75%, so the words stay readable.
 const WORDY = '.list, .stalls, .wardrobe, .sayings, .meanings, .tubes';
-const floorOf = b => b.matches(TALL) ? 0.4 : b.matches(WORDY) ? 0.75 : 0.6;
+const floorOf = b => b.matches(TALL) ? 0.4 : b.id === 'fs-kitchen' ? 0.62 : b.matches(WORDY) ? 0.75 : 0.6;   // the stall's 18 dishes may shrink a bit more
 let fitting = false;
 function fitGame() {
   if (fitting) return;
@@ -1515,6 +1529,14 @@ function fitGame() {
   if (resized) { fitting = true; dispatchEvent(new Event('resize')); fitting = false; }
 }
 addEventListener('resize', () => requestAnimationFrame(fitGame));
+// A game that grows once it starts (more tiles, a basket) is fitted again: watched quietly,
+// at most once a frame, and only while it does not fit.
+let refitQueued = false;
+new MutationObserver(() => {
+  if (refitQueued || fitting) return;
+  refitQueued = true;
+  requestAnimationFrame(() => { refitQueued = false; if (document.documentElement.scrollHeight > innerHeight + 2) fitGame(); });
+}).observe(document.querySelector('.app'), { childList: true, subtree: true });
 document.addEventListener('showgame', e => {
   document.body.classList.toggle('playing', !!e.detail);
   if (!e.detail) return;
@@ -3644,6 +3666,75 @@ cvNew(1);
       cover.dataset.art = '1';
     });
   }
+  // ---------------------------------------------------------------- sprites for the games' pieces
+  // Drawn once on canvases and handed to CSS as images (--spr-…): a gloss for tiles and buttons,
+  // soap bubbles, a wooden sign frame, glass tubes, honeycomb cells, a paper card. The games keep
+  // their own buttons and rules; only how the pieces look changes, and it costs nothing per frame.
+  const sprite = (w, h, draw) => { const cv = document.createElement('canvas'); cv.width = w * 2; cv.height = h * 2; const c = cv.getContext('2d'); c.scale(2, 2); draw(c, w, h); return `url(${cv.toDataURL('image/png')})`; };
+  const root = document.documentElement.style;
+  root.setProperty('--spr-gloss', sprite(64, 64, (c, w, h) => {
+    let g = c.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, 'rgba(255,255,255,.75)'); g.addColorStop(.42, 'rgba(255,255,255,.12)'); g.addColorStop(.5, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(0,0,0,.07)');
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+    c.fillStyle = 'rgba(255,255,255,.55)'; c.fillRect(6, 2, w - 12, 1.5);
+  }));
+  root.setProperty('--spr-bubble', sprite(128, 128, (c, w) => {
+    const r = w / 2 - 3, cx = w / 2;
+    const fill = c.createRadialGradient(cx - 18, cx - 22, 6, cx, cx, r);
+    fill.addColorStop(0, 'rgba(255,255,255,.55)'); fill.addColorStop(.55, 'rgba(210,235,255,.18)'); fill.addColorStop(.9, 'rgba(180,140,255,.28)'); fill.addColorStop(1, 'rgba(120,200,255,.55)');
+    c.fillStyle = fill; c.beginPath(); c.arc(cx, cx, r, 0, Math.PI * 2); c.fill();
+    // A rainbow rim, like a real soap bubble
+    const rim = c.createLinearGradient(0, 0, w, w);
+    ['#ff9ec7', '#ffe08a', '#a6f0c6', '#8fd0fa', '#c5b5ff'].forEach((col, i) => rim.addColorStop(i / 4, col));
+    c.strokeStyle = rim; c.lineWidth = 3.5; c.globalAlpha = .9; c.beginPath(); c.arc(cx, cx, r - 1, 0, Math.PI * 2); c.stroke();
+    c.globalAlpha = 1;
+    c.fillStyle = 'rgba(255,255,255,.9)'; c.beginPath(); c.ellipse(cx - 24, cx - 28, 14, 8, -.7, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(cx - 6, cx - 38, 3.5, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.ellipse(cx + 26, cx + 26, 10, 5, -.7, 0, Math.PI * 2); c.fill();
+  }));
+  root.setProperty('--spr-wood', sprite(96, 96, (c, w, h) => {
+    const b = 24;
+    const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#b77a46'); g.addColorStop(1, '#8a5a33');
+    c.fillStyle = g; c.beginPath(); c.roundRect(0, 0, w, h, 18); c.fill();
+    c.strokeStyle = 'rgba(70,40,15,.35)'; c.lineWidth = 1.2;   // grain
+    for (let y = 5; y < h; y += 6) { c.beginPath(); c.moveTo(4, y); c.bezierCurveTo(w * .3, y + 2, w * .6, y - 2, w - 4, y + 1); c.stroke(); }
+    c.fillStyle = '#fffaf0'; c.beginPath(); c.roundRect(10, 10, w - 20, h - 20, 10); c.fill();
+    c.strokeStyle = 'rgba(70,40,15,.45)'; c.lineWidth = 2; c.stroke();
+    c.fillStyle = '#d9b24a';   // nails
+    for (const [x, y] of [[5, 5], [w - 5, 5], [5, h - 5], [w - 5, h - 5]]) { c.beginPath(); c.arc(x, y, 2.4, 0, Math.PI * 2); c.fill(); }
+  }));
+  root.setProperty('--spr-glass', sprite(60, 200, (c, w, h) => {
+    const g = c.createLinearGradient(0, 0, w, 0);
+    g.addColorStop(0, 'rgba(255,255,255,.2)'); g.addColorStop(.12, 'rgba(255,255,255,.85)'); g.addColorStop(.22, 'rgba(255,255,255,.25)');
+    g.addColorStop(.75, 'rgba(160,200,235,.12)'); g.addColorStop(.92, 'rgba(120,160,210,.35)'); g.addColorStop(1, 'rgba(255,255,255,.3)');
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+    c.fillStyle = 'rgba(255,255,255,.7)'; c.fillRect(0, 0, w, 3);
+  }));
+  const hex = (light, mid, dark) => sprite(82, 71, (c, w, h) => {
+    const path = () => { c.beginPath(); c.moveTo(w * .25, 0); c.lineTo(w * .75, 0); c.lineTo(w, h / 2); c.lineTo(w * .75, h); c.lineTo(w * .25, h); c.lineTo(0, h / 2); c.closePath(); };
+    const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, light); g.addColorStop(.55, mid); g.addColorStop(1, dark);
+    path(); c.fillStyle = g; c.fill();
+    c.save(); path(); c.clip();
+    c.fillStyle = 'rgba(255,255,255,.45)'; c.beginPath(); c.ellipse(w / 2, h * .18, w * .36, h * .16, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 3; path(); c.stroke();
+    c.restore();
+  });
+  root.setProperty('--spr-hex', hex('#ffffff', '#e8eef6', '#c9d5e4'));
+  root.setProperty('--spr-hexgold', hex('#ffe9a8', '#ffc94a', '#e39b00'));
+  root.setProperty('--spr-card', sprite(200, 150, (c, w, h) => {
+    c.fillStyle = '#fffdf6'; c.fillRect(0, 0, w, h);
+    c.strokeStyle = 'rgba(60,159,234,.12)'; c.lineWidth = 1;
+    for (let y = 22; y < h; y += 16) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); }
+    c.strokeStyle = 'rgba(240,98,146,.25)'; c.beginPath(); c.moveTo(22, 0); c.lineTo(22, h); c.stroke();
+  }));
+  root.setProperty('--spr-sea', sprite(160, 240, (c, w, h) => {
+    // Sun rays and soft clouds for Bubble pop's sky
+    c.fillStyle = 'rgba(255,255,255,.18)';
+    for (let i = 0; i < 6; i++) { c.beginPath(); c.moveTo(w * .8, -10); c.lineTo(w * (i * .18 - .1), h); c.lineTo(w * (i * .18 - .02), h); c.fill(); }
+    c.fillStyle = 'rgba(255,255,255,.6)';
+    for (const [x, y, r] of [[30, 40, 14], [46, 34, 12], [60, 42, 10], [110, 110, 12], [124, 104, 10], [136, 112, 8]]) { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); }
+  }));
+
   const plainRender = renderLibrary;
   renderLibrary = () => { plainRender(); dressCovers(); };
   dressCovers();
