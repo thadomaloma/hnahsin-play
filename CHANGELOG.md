@@ -4,6 +4,13 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.10.3 (26 October 2026)
+
+- Going back from a game to the Playground is now instant. Before, the game
+  cards were built again and came in one by one, which felt like the page
+  was reloading.
+- You come back to the same place in the list, not the top.
+
 ## 1.10.2 (26 October 2026)
 
 ### Playground fixes and stickers
