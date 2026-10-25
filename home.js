@@ -196,13 +196,13 @@
   // A canvas that draws Rova at the screen's sharpness.
   const rovaOn = (canvas, draw = drawRova) => {
     const ctx = canvas.getContext('2d');
-    return (phase, pose) => {
+    return (phase, pose, extra) => {
       const dpr = Math.min(devicePixelRatio || 1, 3), w = canvas.clientWidth, h = canvas.clientHeight;
       if (!w) return;
       if (canvas.width !== Math.round(w * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
       ctx.setTransform(canvas.width / 120, 0, 0, canvas.height / 160, 0, 0);
       ctx.clearRect(0, 0, 120, 160);
-      draw(ctx, phase, pose, { live: true });
+      draw(ctx, phase, pose, { live: true, ...extra });
     };
   };
   const drawCover = rovaOn($('.cover.journey .runner canvas'));
@@ -266,11 +266,11 @@
   };
   requestAnimationFrame(parallax);
 
-  // ------------------------------------------------ Rova and Mami play tag on the hill
-  // One runs, the other chases a little faster in bursts. When the chaser
-  // catches up, or the runner reaches the edge, both turn round: the one who
-  // was caught now does the chasing. They hop over the flowers on the way.
-  const field = $('.field'), hill = $('#hill-front');
+  // ------------------------------------------------ Rova and Mami on the hill
+  // They run in from either side, meet in the middle and bow to each other, Japanese style,
+  // saying "Chibai!". Then they play: a game picked at random each time (tag, a race, hopping
+  // about, or wandering off to look at the flowers), and every so often they meet to bow again.
+  const field = $('.field'), hill = $('#hill-front'), hello = $('.hello');
   const len = hill.getTotalLength();
   const samples = Array.from({ length: 121 }, (_, i) => hill.getPointAtLength(len * i / 120)).filter(p => p.y < 229);
   const hillY = x => { // the hill's height at x, in the SVG's 1440 × 230 box
@@ -278,39 +278,103 @@
     for (const p of samples) if (Math.abs(p.x - x) < Math.abs(best.x - x)) best = p;
     return best.y;
   };
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  // Mami starts off the left edge, Rova off the right.
   const kids = [
-    { el: $('.kid.rova'), draw: rovaOn($('.kid.rova canvas'), drawRova), x: 160, hop: 0, cheer: 0 },
-    { el: $('.kid.mami'), draw: rovaOn($('.kid.mami canvas'), drawMami), x: 40, hop: 0, cheer: 0 },
+    { name: 'mami', el: $('.kid.mami'), draw: rovaOn($('.kid.mami canvas'), drawMami), x: -120, dir: 1, v: 0, hop: 0, cheer: 0, phase: 1.3, target: null, wait: 0 },
+    { name: 'rova', el: $('.kid.rova'), draw: rovaOn($('.kid.rova canvas'), drawRova), x: 2000, dir: -1, v: 0, hop: 0, cheer: 0, phase: 0, target: null, wait: 0 },
   ];
-  let dir = 1, chaser = 1, lastT = 0, tagged = 0;
+  let started = false, scene = 'enter', sceneT = 0, game = null, lastGame = '', games = 0, lastT = 0, bow = 0;
+  const GAMES = ['tag', 'race', 'hops', 'wander'];
+  function newGame(t) {
+    const pick = GAMES.filter(g => g !== lastGame);
+    game = { kind: pick[Math.floor(Math.random() * pick.length)], until: t + rnd(6000, 10000), chaser: Math.round(Math.random()), dir: Math.random() < .5 ? 1 : -1, tagged: 0 };
+    lastGame = game.kind; games++;
+    kids.forEach(k => { k.target = null; k.wait = 0; });
+  }
   const run = t => {
     requestAnimationFrame(run);
     if (!heroOnScreen || document.hidden) { lastT = t; return; }
     const dt = Math.min(50, t - (lastT || t)) / 16.7; lastT = t;
     const fw = field.clientWidth, fh = field.clientHeight, unit = fw / 900 * 1.4 + .8;
+    const kw = kids[0].el.offsetWidth, mid = fw / 2;
+    const lo = 36, hi = fw - kw - 36;   // the field reaches 28px past each side of the screen; stay in view
+    if (!started) { started = true; kids[0].x = -kw - 30; kids[1].x = fw + 30; sceneT = t; }
     const flowers = $$('.flower', field).map(f => f.offsetLeft + f.offsetWidth / 2);
-    const runner = 1 - chaser;
-    if (t > tagged) {
-      kids[runner].x += dir * unit * 1.05 * dt;
-      kids[chaser].x += dir * unit * (0.95 + 0.5 * Math.max(0, Math.sin(t / 700))) * dt; // bursts of speed
+    const runTo = (k, x, speed) => {
+      const d = x - k.x;
+      if (Math.abs(d) < speed * unit * dt + 1) { k.x = x; k.v = 0; return true; }
+      k.dir = Math.sign(d); k.v = speed; k.x += k.dir * unit * speed * dt; return false;
+    };
+
+    if (scene === 'enter') {
+      // Each runs to a spot a little apart from the middle, facing the other.
+      const a = runTo(kids[0], mid - kw * .95, 1.5), b = runTo(kids[1], mid - kw * .05, 1.5);
+      if (a && b) { kids[0].dir = 1; kids[1].dir = -1; scene = 'bow'; sceneT = t; }
+    } else if (scene === 'bow') {
+      // Stand, bow down slowly, hold, and come up: about two seconds.
+      const e = (t - sceneT) / 1000;
+      bow = e < .35 ? 0 : e < 1 ? (e - .35) / .65 : e < 1.6 ? 1 : e < 2.2 ? 1 - (e - 1.6) / .6 : 0;
+      hello.classList.toggle('on', e > .3 && e < 2.2);
+      // Over their heads, where the hill is in the middle.
+      const g0 = hillY(mid / fw * 1440) / 230 * fh;
+      hello.style.left = (mid - kw * .45 + kw / 2) + 'px';
+      hello.style.top = (g0 - kids[0].el.offsetHeight * 1.05 - 40) + 'px';
+      if (e > 2.6) { scene = 'play'; newGame(t); kids.forEach(k => { k.cheer = 1; }); }
+    } else {
+      const g = game;
+      if (g.kind === 'tag') {
+        // One runs, the other chases a little faster in bursts; a tag (or the edge) turns them round
+        // and the one caught does the chasing.
+        const runner = kids[1 - g.chaser], chaser = kids[g.chaser];
+        if (t > g.tagged) {
+          runner.dir = chaser.dir = g.dir;
+          runner.x += g.dir * unit * 1.05 * dt; runner.v = 1;
+          chaser.x += g.dir * unit * (0.95 + 0.5 * Math.max(0, Math.sin(t / 700))) * dt; chaser.v = 1;
+        } else kids.forEach(k => { k.v = 0; });
+        const gap = (runner.x - chaser.x) * g.dir;
+        const atEdge = g.dir > 0 ? runner.x > hi : runner.x < lo;
+        if (t > g.tagged && (gap < 26 || atEdge)) {
+          if (gap < 26) kids.forEach(k => { k.cheer = 1; });
+          g.dir = -g.dir; g.chaser = 1 - g.chaser; g.tagged = t + 450;
+        }
+      } else if (g.kind === 'race') {
+        // Side by side to the edge and back, each with bursts of speed.
+        kids.forEach((k, i) => {
+          k.dir = g.dir; k.v = 1.2 + .5 * Math.max(0, Math.sin(t / (500 + i * 170) + i * 2));
+          k.x += g.dir * unit * k.v * dt;
+        });
+        if (kids.some(k => (g.dir > 0 ? k.x > hi : k.x < lo))) { g.dir = -g.dir; kids.forEach(k => { k.cheer = 1; }); }
+      } else if (g.kind === 'hops') {
+        // They stand facing each other and hop, now one, now the other, now both.
+        const a = kids[0].x < kids[1].x ? kids[0] : kids[1], b = a === kids[0] ? kids[1] : kids[0];
+        a.dir = 1; b.dir = -1; kids.forEach(k => { k.v = 0; });
+        if (Math.random() < .02 * dt) kids[Math.floor(Math.random() * 2)].cheer = 1;
+        if (Math.random() < .006 * dt) kids.forEach(k => { k.cheer = 1; });
+      } else {
+        // Each wanders to a spot of their own, stops to look about, and goes on.
+        kids.forEach(k => {
+          if (k.wait > t) { k.v = 0; return; }
+          if (k.target === null) k.target = rnd(lo, hi);
+          if (runTo(k, k.target, rnd(.9, 1.3))) { k.target = null; k.wait = t + rnd(500, 1800); if (Math.random() < .4) k.cheer = 1; }
+        });
+      }
+      if (t > g.until) {
+        // Every third game they meet in the middle and bow again; otherwise a new game.
+        if (games % 3 === 0) { scene = 'enter'; } else newGame(t);
+      }
     }
-    const gap = (kids[runner].x - kids[chaser].x) * dir;
-    const kw = kids[runner].el.offsetWidth;
-    // The field reaches 28px past each side of the screen (for the parallax); turn while in view.
-    const atEdge = dir > 0 ? kids[runner].x > fw - kw - 36 : kids[runner].x < 36;
-    if (t > tagged && (gap < 26 || atEdge)) {
-      // Tag! Both stop for a moment and hop, then turn and swap roles.
-      if (gap < 26) kids.forEach(k => { k.cheer = 1; });
-      dir = -dir; chaser = runner; tagged = t + 450;
-    }
+
     for (const k of kids) {
-      const near = flowers.some(fx => Math.abs(fx - k.x - 20) < 34);
+      const near = k.v > 0 && flowers.some(fx => Math.abs(fx - k.x - 20) < 34);
       k.hop = near || k.cheer > 0 ? Math.min(1, k.hop + .08 * dt) : Math.max(0, k.hop - .06 * dt);
       k.cheer = Math.max(0, k.cheer - .04 * dt);
-      const ground = hillY(Math.max(0, Math.min(fw, k.x)) / fw * 1440) / 230 * fh;
+      if (k.v > 0) k.phase += .3 * k.v * dt;
+      const ground = hillY(Math.max(0, Math.min(fw, k.x + kw / 2)) / fw * 1440) / 230 * fh;
       const lift = Math.sin(k.hop * Math.PI / 2) * 40;
-      k.el.style.transform = `translate3d(${k.x}px, ${ground - fh - lift - k.el.offsetHeight * .97}px, 0) scaleX(${dir}) rotate(${k.hop ? -6 * k.hop : 0}deg)`;
-      k.draw(t / 55 + (k === kids[1] ? 1.3 : 0), k.hop > .25 ? 'jump' : 'run');
+      k.el.style.transform = `translate3d(${k.x}px, ${ground - fh - lift - k.el.offsetHeight * .97}px, 0) scaleX(${k.dir}) rotate(${k.hop ? -6 * k.hop : 0}deg)`;
+      const pose = k.hop > .25 ? 'jump' : scene === 'bow' ? 'bow' : k.v > 0 ? 'run' : 'stand';
+      k.draw(k.phase, pose, { bow });
     }
   };
   requestAnimationFrame(run);

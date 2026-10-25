@@ -4,7 +4,7 @@
 // The Flutter app under app/ is kept as it is fetched (it is too big to fetch all up front).
 const VERSION = 'hnahsin-24';
 const CORE = [
-  './', 'index.html', 'theme.css?v=d03db89c', 'home.js?v=a903c637', 'rova.js?v=b4d9dde4', 'stats.js?v=39ba31d1', 'journey.html', 'playground.html', 'things.html', 'pics/things-house.svg', 'pics/things-house.json', 'pics/things-loom.svg', 'pics/things-loom.json',
+  './', 'index.html', 'theme.css?v=d03db89c', 'home.js?v=2c7029fa', 'rova.js?v=8d1ed0b3', 'stats.js?v=39ba31d1', 'journey.html', 'playground.html', 'things.html', 'pics/things-house.svg', 'pics/things-house.json', 'pics/things-loom.svg', 'pics/things-loom.json',
   'favicon.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'manifest.webmanifest',
   'https://cdnjs.cloudflare.com/ajax/libs/phaser/3.90.0/phaser.min.js',
 ];

@@ -1,7 +1,8 @@
 // Rova and Mami, drawn from parts so their arms and legs can really run.
 // drawRova(ctx, phase, pose, opts) and drawMami(ctx, phase, pose, opts) paint them facing right
 // in a 120 × 160 box with their feet near the bottom. phase is the run cycle in radians; pose is
-// 'run' or 'jump'; opts.live lets them blink (leave it off when drawing frames to keep).
+// 'run', 'jump', 'stand' or 'bow' (opts.bow, 0–1, is how deep: a Japanese-style bow from the
+// hips, hands at the sides); opts.live lets them blink (leave it off when drawing frames to keep).
 // Used by the home page, Rova's Journey and the Playground, so they look the same everywhere.
 // Every part has a dark ink edge and a lighter side toward the light, like a cartoon.
 (function (global) {
@@ -54,6 +55,7 @@
   function leg(ctx, C, hip, phase, near, pose) {
     let thigh, knee;
     if (pose === 'jump') { thigh = near ? 62 : 22; knee = near ? -78 : -92; }
+    else if (pose === 'stand' || pose === 'bow') { thigh = near ? 3 : -3; knee = 0; }
     else {
       thigh = 36 * Math.sin(phase);
       // The knee folds while the leg swings forward, and straightens as it pushes back.
@@ -73,9 +75,12 @@
     shoe(ctx, C, foot[0], foot[1] + 1, thigh + knee, near);
   }
 
-  function arm(ctx, C, sh, phase, near, pose) {
+  function arm(ctx, C, sh, phase, near, pose, lean = 0) {
     let upper, fore;
-    if (pose === 'jump') { upper = near ? 105 : -65; fore = near ? 150 : -25; }   // reach forward, the other arm back
+    // Standing, the arms hang down; bowing, they lie along the body (hands on the thighs).
+    if (pose === 'stand') { upper = near ? 6 : -4; fore = upper + 6; }
+    else if (pose === 'bow') { upper = lean * .55 + (near ? 4 : -2); fore = upper + 4; }
+    else if (pose === 'jump') { upper = near ? 105 : -65; fore = near ? 150 : -25; }   // reach forward, the other arm back
     else { upper = -44 * Math.sin(phase); fore = upper + 82 + 12 * Math.sin(phase); }
     const elbow = at(sh[0], sh[1], upper, 19), hand = at(elbow[0], elbow[1], fore, 16);
     const skin = near ? C.skin : C.skinFar;
@@ -88,15 +93,18 @@
   }
 
   function drawKid(ctx, C, phase = 0, pose = 'run', opts = {}) {
-    const run = pose === 'run';
+    const run = pose === 'run', bowing = pose === 'bow';
     const bob = run ? -Math.abs(Math.sin(phase)) * 5 : 0;
     ctx.save();
     ctx.translate(0, bob);
-    const lean = run ? 10 : 3;
+    // How far the body leans forward from the hips: a little to run, up to 60° in a deep bow.
+    const lean = run ? 10 : bowing ? 3 + 57 * Math.max(0, Math.min(1, opts.bow ?? 1)) : pose === 'stand' ? 1 : 3;
     const hip = [57, 95], sh = at(hip[0], hip[1], 180 + lean, 32);
     const neck = at(sh[0], sh[1], 180 + lean, 6);
-    const hx = sh[0] + 7, hy = sh[1] - 23;
-    const headTilt = run ? Math.sin(phase * 2) * 1.5 : -4;
+    // The head sits on the neck and turns down with the body in a bow.
+    const hc = at(neck[0], neck[1], 180 + lean * 1.1, 17);
+    const hx = bowing ? hc[0] + 4 : sh[0] + 7, hy = bowing ? hc[1] : sh[1] - 23;
+    const headTilt = run ? Math.sin(phase * 2) * 1.5 : bowing ? lean * .9 : pose === 'stand' ? 0 : -4;
 
     // Ponytail first: it streams out behind and swings with each step.
     if (C.ponytail) {
@@ -111,7 +119,7 @@
       ctx.beginPath(); ctx.arc(hx - 13, hy - 4, 4.2, 0, Math.PI * 2); ctx.fillStyle = C.tie; ctx.fill(); ctx.lineWidth = 1.6; ctx.strokeStyle = INK; ctx.stroke();
     }
 
-    arm(ctx, C, sh, phase + Math.PI, false, pose);
+    arm(ctx, C, sh, phase + Math.PI, false, pose, lean);
     leg(ctx, C, hip, phase + Math.PI, false, pose);
 
     // Body: a T-shirt that narrows to the waist, with the stripe and a collar.
@@ -208,7 +216,15 @@
     ctx.beginPath(); ctx.moveTo(hx + 16.5, hy + 2); ctx.quadraticCurveTo(hx + 18.5, hy + 5, hx + 15.5, hy + 6); ctx.stroke();
     // Cheek
     ctx.fillStyle = C.cheek; ctx.beginPath(); ctx.ellipse(hx + 7, hy + 8, 4, 2.8, 0, 0, Math.PI * 2); ctx.fill();
-    // Mouth: an open smile while running or jumping.
+    // Mouth: an open smile while running or jumping, a gentle one standing or bowing.
+    if (pose === 'stand' || bowing) {
+      ctx.strokeStyle = C.mouth; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(hx + 8.5, hy + 10); ctx.quadraticCurveTo(hx + 12, hy + 12.5, hx + 15, hy + 9.5); ctx.stroke();
+      ctx.restore();
+      arm(ctx, C, sh, phase, true, pose, lean);
+      ctx.restore();
+      return;
+    }
     blob(ctx, () => {
       ctx.moveTo(hx + 8, hy + 9.5); ctx.quadraticCurveTo(hx + 12.5, hy + 10.5, hx + 15.5, hy + 9);
       ctx.quadraticCurveTo(hx + 14, hy + 15, hx + 10, hy + 13.5);
@@ -216,7 +232,7 @@
     ctx.fillStyle = '#e8737a'; ctx.beginPath(); ctx.ellipse(hx + 11.5, hy + 12.6, 2.2, 1.2, 0, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
 
-    arm(ctx, C, sh, phase, true, pose);
+    arm(ctx, C, sh, phase, true, pose, lean);
     ctx.restore();
   }
 
