@@ -202,7 +202,7 @@
       if (canvas.width !== Math.round(w * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
       ctx.setTransform(canvas.width / 120, 0, 0, canvas.height / 160, 0, 0);
       ctx.clearRect(0, 0, 120, 160);
-      draw(ctx, phase, pose);
+      draw(ctx, phase, pose, { live: true });
     };
   };
   const drawCover = rovaOn($('.cover.journey .runner canvas'));
