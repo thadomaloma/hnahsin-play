@@ -63,7 +63,8 @@
   .cat h2 span { font-size: 18px; }
   .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   @media (min-width: 600px) { .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-  .gcard { position: relative; display: flex; flex-direction: column; overflow: hidden; border-radius: 20px; background: var(--panel); border: 1px solid var(--line); color: var(--ink); text-decoration: none; box-shadow: 0 1px 3px rgba(13, 71, 161, .05), 0 10px 22px -14px rgba(13, 71, 161, .35); transition: transform .25s cubic-bezier(.2, .8, .2, 1), box-shadow .25s; animation: cardIn .5s cubic-bezier(.2, .8, .2, 1) both; animation-delay: var(--d, 0ms); }
+  .gcard { position: relative; display: flex; flex-direction: column; overflow: hidden; border-radius: 20px; background: var(--panel); border: 1px solid var(--line); color: var(--ink); text-decoration: none; box-shadow: 0 1px 3px rgba(13, 71, 161, .05), 0 10px 22px -14px rgba(13, 71, 161, .35); transition: transform .25s cubic-bezier(.2, .8, .2, 1), box-shadow .25s; }
+  .library.first .gcard { animation: cardIn .5s cubic-bezier(.2, .8, .2, 1) both; animation-delay: min(var(--d, 0ms), 400ms); }   /* only on the first visit */
   .gcard:hover { transform: translateY(-3px); box-shadow: 0 2px 6px rgba(13, 71, 161, .08), 0 16px 30px -14px rgba(13, 71, 161, .45); }
   .gcard:active { transform: scale(.97); }
   .gcard .cover { display: grid; place-items: center; height: 84px; background: linear-gradient(135deg, var(--c1), var(--c2)); }
@@ -1463,10 +1464,22 @@ function appSection(n) {
   }</div></section>`;
 }
 
+// The library is built once and kept: coming back from a game only updates "Continue", so the
+// cards don't have to be made, dressed and animated in again.
+const continueCard = () => { const last = GAMES.find(g => g.id === store.get('lab.tab', '')); return last ? `<a class="continue" href="#${last.id}"><i>${last.icon}</i><span><small>Continue</small><b>${last.name}</b></span><em>Play ▸</em></a>` : ''; };
+let libraryBuilt = false;
 function renderLibrary() {
-  const last = GAMES.find(g => g.id === store.get('lab.tab', ''));
+  if (libraryBuilt) {
+    const old = $('library').querySelector('.continue'), html = continueCard();
+    if (old) old.outerHTML = html || ''; else if (html) $('library').insertAdjacentHTML('afterbegin', html);
+    if (location.hash === '#app') requestAnimationFrame(() => $('app').scrollIntoView({ block: 'start' }));
+    return;
+  }
+  libraryBuilt = true;
+  $('library').classList.add('first');
+  setTimeout(() => $('library').classList.remove('first'), 1200);
   let n = 0;
-  $('library').innerHTML = (last ? `<a class="continue" href="#${last.id}"><i>${last.icon}</i><span><small>Continue</small><b>${last.name}</b></span><em>Play ▸</em></a>` : '') +
+  $('library').innerHTML = continueCard() +
     KINDS.map(k => `<section class="cat" aria-labelledby="cat-${k.id}"><h2 id="cat-${k.id}"><span>${k.icon}</span>${k.name}</h2><div class="cards">${
       GAMES.filter(g => g.kind === k.id).map(g => `<a class="gcard" href="#${g.id}" style="--c1:${k.c[0]};--c2:${k.c[1]};--d:${n++ * 35}ms">${g.tag ? `<span class="tag">${g.tag}</span>` : ''}<span class="cover"><i>${g.icon}</i></span><b>${g.name}</b><small>${g.blurb}</small></a>`).join('')
     }</div></section>`).join('') + appSection(n);
@@ -1578,10 +1591,15 @@ function route() {
     document.title = g ? `${g.name} · Hnahsin Playground` : 'Hnahsin Playground';
     if (!g) { renderLibrary(); fromLibrary = true; } else hnStat(`playground/${g.id}`, `Playground: ${g.name}`);
     show(g ? g.id : null);
-    scrollTo(0, 0);
+    // Back in the library, you are where you were; a game opens at the top.
+    scrollTo(0, g ? 0 : libraryY);
   };
-  if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(swap); else swap();
+  if (!g && libraryBuilt && !$('library').hidden) return;   // already showing the library
+  if ($('library').hidden === false && g) libraryY = scrollY;
+  // A cross-fade is nice on a computer, but on a phone its snapshot of the page costs a moment.
+  if (document.startViewTransition && matchMedia('(pointer: fine)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(swap); else swap();
 }
+let libraryY = 0;
 // Back returns to the library: through history when we came from it, so the browser's back stays tidy.
 let fromLibrary = false;
 $('back').addEventListener('click', e => { e.preventDefault(); if (fromLibrary) history.back(); else location.hash = ''; });
@@ -3601,10 +3619,15 @@ cvNew(1);
     bg.width = Math.round(W * DPR); bg.height = Math.round(H * DPR);
     paintStill(); frame(performance.now());
   }
+  // Each scene is painted once and kept, so going back and forth costs nothing.
+  const stills = {};
   function setTheme(id) {
     const next = id ? kindOf(id) : 'library';
     if (next === theme && still) return;
-    theme = next; paintStill(); frame(performance.now());
+    theme = next;
+    if (stills[theme] && stills[theme].w === W && stills[theme].h === H) { still = stills[theme].c; movers = stills[theme].m; }
+    else { paintStill(); stills[theme] = { c: still, m: movers, w: W, h: H }; }
+    frame(performance.now());
   }
   // The scene moves slowly, so it is repainted only 20 times a second in the library and
   // 10 times a second behind a game, leaving the phone free for the game itself.
