@@ -42,7 +42,8 @@ A **word of the day** on the home page: tap the card to see what it means.
 
 The games work like an app and play without internet after the first visit.
 
-- **iPhone:** open the link in Safari, tap **Share**, then **Add to Home Screen**.
+- **iPhone:** open the link in Safari and tap **Add Hnahsin to your Home Screen**: a short
+  guide shows the three taps (Share, Add to Home Screen, Add).
 - **Android:** open the link in Chrome and tap **Install Hnahsin**.
 
 ## Privacy

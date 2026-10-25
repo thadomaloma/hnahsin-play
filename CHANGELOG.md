@@ -4,6 +4,18 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.8.3 (25 October 2026)
+
+- **Easier to put on an iPhone.** "Add Hnahsin to your Home Screen" opens a
+  short guide that shows the three taps on a little phone: Share, Add to
+  Home Screen, Add. It then points at where Share is in Safari, including
+  the ••• menu in Safari 26 and the top bar on an iPad. Inside Facebook,
+  Instagram or Messenger, it asks you to open the page in Safari and can
+  copy the link for you.
+- The flowers beside "Mizo Thumal Infiamna" turn, and scatter petals when
+  you tap them; a wave runs along the words now and then.
+- Letter tiles drift behind the words on the Open the Playground button.
+
 ## 1.8.2 (25 October 2026)
 
 - Rova and Mami now turn to face you and bow to you, Japanese style, when
