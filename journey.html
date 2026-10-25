@@ -843,6 +843,10 @@ const game = new Phaser.Game({
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   scene: [],
 });
+// The game's loop sleeps while a menu is showing (there is nothing to play), so the phone is
+// not drawing an empty game 60 times a second behind the level list.
+// (The loop starts after the game is ready, so it is put to sleep on its first step.)
+game.events.once('step', () => { if (!game.scene.getScene('play')) game.loop.sleep(); });
 
 function stars(level) { return store.get('rj.stars', {})[level] || 0; }
 function renderLevels() {
@@ -861,6 +865,7 @@ function start(level) {
   document.getElementById('title-screen').hidden = true;
   document.getElementById('end-screen').hidden = true;
   if (game.scene.getScene('play')) game.scene.remove('play');
+  game.loop.wake();
   game.scene.add('play', Play, true, { level });
 }
 function showEnd(level, won, right, met, coins) {
@@ -877,6 +882,7 @@ function showEnd(level, won, right, met, coins) {
   next.textContent = won && level < LEVELS.length - 1 ? 'Next level' : 'Play again';
   next.onclick = () => start(won && level < LEVELS.length - 1 ? level + 1 : level);
   document.getElementById('end-screen').hidden = false;
+  game.loop.sleep();   // the last picture stays behind the end screen
 }
 document.getElementById('levels').addEventListener('click', e => {
   const b = e.target.closest('.level'); if (!b || b.disabled) return;
@@ -893,8 +899,10 @@ renderLevels();
 (() => {
   const c = document.getElementById('title-rova'), ctx = c.getContext('2d');
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let last = 0;
   const draw = t => {
-    if (!document.getElementById('title-screen').hidden && !document.hidden) {
+    if (!document.getElementById('title-screen').hidden && !document.hidden && t - last > 33) {
+      last = t;
       const dpr = Math.min(devicePixelRatio || 1, 3);
       if (c.width !== Math.round(c.clientWidth * dpr)) { c.width = Math.round(c.clientWidth * dpr); c.height = Math.round(c.clientHeight * dpr); }
       ctx.setTransform(c.width / 120, 0, 0, c.height / 160, 0, 0);

@@ -173,7 +173,10 @@
     const COLS = ['#ffe08a', '#c9ddf3', '#f8bbd0', '#d9cff7', '#c8eebd'];
     let bits = [], fast = 0, last = 0;
     const make = (x) => ({ x, y: Math.random(), s: .7 + Math.random() * .5, v: .25 + Math.random() * .35, r: (Math.random() - .5) * .6, vr: (Math.random() - .5) * .02, t: BITS[Math.floor(Math.random() * BITS.length)], col: COLS[Math.floor(Math.random() * COLS.length)] });
-    const size = () => { const dpr = Math.min(devicePixelRatio || 1, 3), w = cv.clientWidth, h = cv.clientHeight; if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); } return [w, h, dpr]; };
+    // The button's size is read once (and again on resize), not every frame.
+    let dims = null;
+    addEventListener('resize', () => { dims = null; });
+    const size = () => { if (!dims) { const dpr = Math.min(devicePixelRatio || 1, 2), w = cv.clientWidth, h = cv.clientHeight; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); dims = [w, h, dpr]; } return dims; };
     const paint = t => {
       const [w, h, dpr] = size(); if (!w) return;
       if (!bits.length) bits = Array.from({ length: Math.round(w / 34) }, () => make(Math.random() * w));
@@ -192,7 +195,7 @@
         c.restore();
       }
     };
-    const loop = t => { requestAnimationFrame(loop); if (heroOnScreen && !document.hidden) paint(t); };
+    const loop = t => { requestAnimationFrame(loop); if (heroOnScreen && !document.hidden && t - (loop.last || 0) > 33) { loop.last = t; paint(t); } };
     if (calm) paint(0); else requestAnimationFrame(loop);
     ['pointerenter', 'pointerdown', 'focus'].forEach(ev => btn.addEventListener(ev, () => { fast = 1; }));
   }
@@ -364,7 +367,7 @@
     });
   }
   let gardenOn = false;
-  const gardenLoop = t => { if (gardenOn) { drawGarden(t); requestAnimationFrame(gardenLoop); } };
+  const gardenLoop = t => { if (gardenOn) { if (t - (gardenLoop.last || 0) > 33) { gardenLoop.last = t; drawGarden(t); } requestAnimationFrame(gardenLoop); } };
   new IntersectionObserver(([e]) => {
     gardenOn = e.isIntersecting && !document.hidden;
     if (gardenOn) requestAnimationFrame(gardenLoop);
@@ -462,14 +465,19 @@
   });
   hero.addEventListener('pointerleave', () => { tx = 0; ty = 0; });
   const content = $('.hero .wrap');
+  // Writes only when something moved: on a phone that is only while scrolling.
+  let lastS = -1, heroH = hero.clientHeight;
+  addEventListener('resize', () => { heroH = hero.clientHeight; lastS = -1; });
   const parallax = () => {
     requestAnimationFrame(parallax);
     if (!heroOnScreen) return;
+    const s = scrollY, moving = Math.abs(tx - px) > .002 || Math.abs(ty - py) > .002;
+    if (!moving && s === lastS) return;
+    lastS = s;
     px += (tx - px) * .06; py += (ty - py) * .06;
-    const s = scrollY;
     for (const { el, d } of layers) el.style.transform = `translate3d(${-px * d}px, ${-py * d * .6 + s * d * .02}px, 0)`;
     content.style.transform = `translate3d(0, ${s * .28}px, 0)`;
-    content.style.opacity = Math.max(0, 1 - s / (hero.clientHeight * .7));
+    content.style.opacity = Math.max(0, 1 - s / (heroH * .7));
   };
   requestAnimationFrame(parallax);
 
@@ -581,7 +589,8 @@
       const lift = Math.sin(k.hop * Math.PI / 2) * 40;
       k.el.style.transform = `translate3d(${k.x}px, ${ground - fh - lift - k.el.offsetHeight * .97}px, 0) scaleX(${k.dir}) rotate(${k.hop ? -6 * k.hop : 0}deg)`;
       const pose = k.hop > .25 ? 'jump' : scene === 'bow' ? 'front' : k.v > 0 ? 'run' : 'stand';
-      k.draw(k.phase, pose, { bow });
+      // They move every frame, but are redrawn about 30 times a second.
+      if (t - (k.drawn || 0) > 30) { k.drawn = t; k.draw(k.phase, pose, { bow }); }
     }
   };
   requestAnimationFrame(run);
@@ -596,10 +605,14 @@
   ];
   const doors = $$('.door', cover), q = $('.q', cover), runner = $('.runner', cover);
   let round = 0, coverPose = 'run';
-  const coverRun = t => { requestAnimationFrame(coverRun); if (!document.hidden) drawCover(t / 60, coverPose); };
-  requestAnimationFrame(coverRun);
+  // The Journey card's Rova runs only while the card is on the screen.
+  let coverSeen = false, coverLooping = false;
+  const coverRun = t => { if (!coverSeen || document.hidden) { coverLooping = false; return; } requestAnimationFrame(coverRun); if (t - (coverRun.last || 0) > 30) { coverRun.last = t; drawCover(t / 60, coverPose); } };
+  const coverWake = () => { if (coverSeen && !document.hidden && !coverLooping) { coverLooping = true; requestAnimationFrame(coverRun); } };
+  new IntersectionObserver(([e]) => { coverSeen = e.isIntersecting; coverWake(); }).observe(cover);
+  document.addEventListener('visibilitychange', coverWake);
   const play = () => {
-    if (!document.hidden) {
+    if (!document.hidden && coverSeen) {
       const r = ROUNDS[round++ % ROUNDS.length];
       q.textContent = `Which one means “${r.q}”?`;
       doors.forEach((d, i) => { d.textContent = r.doors[i]; d.classList.remove('hit'); });

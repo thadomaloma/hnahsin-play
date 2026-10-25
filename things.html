@@ -1462,14 +1462,15 @@ const LOOM = (() => {
     svg.innerHTML = fig.sky(st) + body + fig.over(st) + (labels ? labelLayer(cam) : '');
   }
 
-  // ---------- the loop: about 30 frames a second, faster while you drag ----------
+  // ---------- the loop: about 20 frames a second, faster while you drag ----------
   let last = performance.now(), lastDraw = 0, drag = null;
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     if (spin && !drag) yaw = (yaw + dt * 18) % 360;
     fig.step(st, reduce ? dt * 0.4 : dt);
     if (hl && now > hlUntil) hl = null;
-    if (drag || now - lastDraw > 32) { draw(); lastDraw = now; }
+    // 20 pictures a second is smooth enough for the walking hen and the clouds; every frame while you turn it.
+    if (drag || now - lastDraw > 48) { draw(); lastDraw = now; }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

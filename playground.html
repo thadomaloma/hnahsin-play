@@ -1528,14 +1528,26 @@ function fitGame() {
   // Drawn figures repaint at their new size.
   if (resized) { fitting = true; dispatchEvent(new Event('resize')); fitting = false; }
 }
-addEventListener('resize', () => requestAnimationFrame(fitGame));
+// Fit again only when the screen really changes size: fitGame itself sends a 'resize' so the
+// drawn games repaint at their new size, and answering that would start it over and over.
+let screenW = innerWidth, screenH = innerHeight;
+addEventListener('resize', () => {
+  if (innerWidth === screenW && innerHeight === screenH) return;
+  screenW = innerWidth; screenH = innerHeight;
+  requestAnimationFrame(fitGame);
+});
 // A game that grows once it starts (more tiles, a basket) is fitted again: watched quietly,
 // at most once a frame, and only while it does not fit.
-let refitQueued = false;
+let refitQueued = false, lastFitH = 0;
 new MutationObserver(() => {
   if (refitQueued || fitting) return;
   refitQueued = true;
-  requestAnimationFrame(() => { refitQueued = false; if (document.documentElement.scrollHeight > innerHeight + 2) fitGame(); });
+  setTimeout(() => requestAnimationFrame(() => {
+    refitQueued = false;
+    const h = document.documentElement.scrollHeight;
+    // Only when the game has grown since it was last fitted (a small phone may never fit fully).
+    if (h > innerHeight + 2 && Math.abs(h - lastFitH) > 8) { fitGame(); lastFitH = document.documentElement.scrollHeight; }
+  }), 400);
 }).observe(document.querySelector('.app'), { childList: true, subtree: true });
 document.addEventListener('showgame', e => {
   document.body.classList.toggle('playing', !!e.detail);
@@ -1543,7 +1555,8 @@ document.addEventListener('showgame', e => {
   // The help stays folded; the first time, its button glows to say it is there.
   const how = $(e.detail).querySelector('details.how');
   if (how) { how.open = false; how.classList.toggle('new', !store.get('lab.how.' + e.detail, false)); store.set('lab.how.' + e.detail, true); }
-  requestAnimationFrame(() => requestAnimationFrame(fitGame));
+  lastFitH = 0;
+  requestAnimationFrame(() => requestAnimationFrame(() => { fitGame(); lastFitH = document.documentElement.scrollHeight; }));
 });
 
 function show(game) {
@@ -2308,7 +2321,7 @@ function bpSpawn() {
   const b = document.createElement('button');
   b.className = 'bubble ' + faceClass(id); b.innerHTML = face(id); b.dataset.id = id;
   const x = 8 + Math.random() * 84;
-  b.style.left = x + '%';
+  b.style.left = x + '%'; b.style.top = '0';   // moved by transform only, so the page is not laid out again each frame
   sea.appendChild(b);
   bp.bubbles.push({ el: b, y: 105, speed: 9 + Math.random() * 6 + bp.score * .3, wobble: Math.random() * 6 });
 }
@@ -2317,14 +2330,14 @@ function bpTick(t) {
   const dt = Math.min(50, t - (bp.last || t)) / 1000; bp.last = t;
   bp.spawn -= dt;
   if (bp.spawn <= 0) { bpSpawn(); bp.spawn = Math.max(.45, 1.1 - bp.score * .02); }
+  const seaH = bp.seaH || (bp.seaH = $('bp-sea').clientHeight);
   for (const b of bp.bubbles) {
     b.y -= b.speed * dt;
-    b.el.style.top = b.y + '%';
-    b.el.style.transform = `translate(-50%, -50%) translateX(${Math.sin(t / 400 + b.wobble) * 8}px)`;
+    b.el.style.transform = `translate3d(calc(-50% + ${(Math.sin(t / 400 + b.wobble) * 8).toFixed(1)}px), calc(-50% + ${(b.y / 100 * seaH).toFixed(1)}px), 0)`;
   }
   bp.bubbles = bp.bubbles.filter(b => { if (b.y < -10) { b.el.remove(); return false; } return true; });
-  const left = bp.ends - Date.now();
-  $('bp-time').style.width = Math.max(0, left / 450) + '%';
+  const left = bp.ends - Date.now(), pct = Math.max(0, Math.round(left / 450));
+  if (pct !== bp.pct) { bp.pct = pct; $('bp-time').style.width = pct + '%'; }
   if (left <= 0) return bpEnd();
   requestAnimationFrame(bpTick);
 }
@@ -2347,11 +2360,12 @@ $('bp-sea').addEventListener('click', e => {
   }
   $('bp-score').textContent = bp.score;
   el.classList.add('popped');
+  el.style.transform += ' scale(1.5)'; el.style.opacity = '0';   // the pop (the moving transform is inline)
   bp.bubbles = bp.bubbles.filter(b => b.el !== el);
   setTimeout(() => el.remove(), 200);
 });
 $('bp-start').addEventListener('click', () => {
-  bp = { on: true, target: null, score: 0, ends: Date.now() + 45000, bubbles: [], last: 0, spawn: 0, changes: 0 };
+  bp = { on: true, target: null, score: 0, ends: Date.now() + 45000, bubbles: [], last: 0, spawn: 0, changes: 0, seaH: 0, pct: -1 };
   $('bp-score').textContent = 0; $('bp-feedback').textContent = '';
   $('bp-start').hidden = true;
   bpTarget();
@@ -2395,7 +2409,8 @@ $('wm-start').addEventListener('click', () => {
   wm = { on: true, target: null, score: 0, ends: Date.now() + 40000, timer: 0, hits: 0 };
   $('wm-score').textContent = 0; $('wm-feedback').textContent = ''; $('wm-start').hidden = true;
   wmTarget(); wmPop();
-  const clock = setInterval(() => {
+  clearInterval(wm.clock);
+  const clock = wm.clock = setInterval(() => {
     const left = wm.ends - Date.now();
     $('wm-time').style.width = Math.max(0, left / 400) + '%';
     if (left <= 0) {
@@ -2845,6 +2860,30 @@ $('sy-meanings').addEventListener('click', e => {
   }
 });
 syNew();
+// ---------------------------------------------------------------- leaving a game mid-round
+// A timed round (bubbles, the road, rats, the clock in Sort it, Rova says, the stall) stops
+// when you leave its game, so it does not go on in the background, using the phone and
+// ending later on its own. Coming back, the game is ready to start again.
+function stopRounds(keep) {
+  if (keep !== 'bubble' && bp.on) {
+    bp.on = false; bp.bubbles.forEach(b => b.el.remove()); bp.bubbles = [];
+    $('bp-start').hidden = false; $('bp-start').textContent = 'Play';
+  }
+  if (keep !== 'run' && ru.on) {
+    ru.on = false; $('ru-road').classList.remove('running');
+    $('ru-start').hidden = false; $('ru-start').textContent = 'Start';
+  }
+  if (keep !== 'whack' && wm.on) {
+    clearInterval(wm.clock); clearTimeout(wm.timer); wm.on = false;
+    document.querySelectorAll('#wm-holes .hole').forEach(h => h.classList.remove('up', 'hit'));
+    $('wm-start').hidden = false; $('wm-start').textContent = 'Start';
+  }
+  if (keep !== 'sort' && so.running) { clearInterval(so.timer); so.running = false; $('so-start').hidden = false; }
+  if (keep !== 'says' && rs.on) { clearInterval(rs.timer); rs.on = false; $('rs-start').hidden = false; }
+  if (keep !== 'stall' && fs.on) { clearInterval(fs.timer); fs.on = false; $('fs-start').hidden = false; }
+}
+document.addEventListener('showgame', e => stopRounds(e.detail));
+
 // ================================================================ Word quests
 // Two word games with Mizo letter tiles (AW, CH and NG are one tile each, as in the Mizo
 // alphabet; accents are folded). A word counts when it is in PUZ.lexicon: the app's words,
@@ -3044,11 +3083,15 @@ $('dg-clear').addEventListener('click', () => { dg.word = []; dgRender(); });
 $('dg-skip').addEventListener('click', dgSkip);
 $('dg-again').addEventListener('click', () => { $('dg-again').hidden = true; dgNew(); });
 // Rova, drawn on a canvas, lunges when he hits.
-let rovaLunge = 0;
+let rovaLunge = 0, rovaOn = false;
 function rovaSwing() { rovaLunge = performance.now(); }
-(function rovaLoop(t) {
+// Rova runs on the spot only while the dungeon is open (and the tab is shown).
+function rovaLoop(t) {
+  if ($('dungeon').hidden || document.hidden) { rovaOn = false; return; }
   requestAnimationFrame(rovaLoop);
-  if ($('dungeon').hidden) return;
+  // Standing, 20 frames a second is enough; lunging, every frame.
+  if (t - rovaLunge > 400 && t - (rovaLoop.last || 0) < 50) return;
+  rovaLoop.last = t;
   const c = $('dg-rova-c'), dpr = Math.min(devicePixelRatio || 1, 3), w = c.clientWidth, h = c.clientHeight;
   if (!w) return;
   if (c.width !== Math.round(w * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
@@ -3057,7 +3100,10 @@ function rovaSwing() { rovaLunge = performance.now(); }
   ctx.clearRect(0, 0, 120, 160);
   ctx.translate(Math.sin(k * Math.PI) * 18, 0);
   drawRova(ctx, k > 0 ? t / 50 : t / 260, k > 0 ? 'jump' : 'run');
-})(0);
+}
+const rovaWake = () => { if (!rovaOn && !$('dungeon').hidden && !document.hidden) { rovaOn = true; requestAnimationFrame(rovaLoop); } };
+document.addEventListener('showgame', rovaWake);
+document.addEventListener('visibilitychange', rovaWake);
 dgNew();
 
 // ---------------------------------------------------------------- Falling Letters
@@ -3540,12 +3586,21 @@ cvNew(1);
     if (next === theme && still) return;
     theme = next; paintStill(); frame(performance.now());
   }
-  (function loop(t) {
+  // The scene moves slowly, so it is repainted only 20 times a second in the library and
+  // 10 times a second behind a game, leaving the phone free for the game itself.
+  // It stops altogether when the tab is hidden, and with reduced motion.
+  let looping = false;
+  function loop(t) {
+    if (calm || document.hidden) { looping = false; return; }
     requestAnimationFrame(loop);
-    if (calm || document.hidden || t - lastPaint < 33) return;   // about 30 frames a second is plenty
+    if (t - lastPaint < (theme === 'library' ? 50 : 100)) return;
     lastPaint = t; frame(t);
-  })(0);
-  addEventListener('resize', () => { clearTimeout(resize.t); resize.t = setTimeout(resize, 150); });
+  }
+  const wake = () => { if (!looping && !calm && !document.hidden) { looping = true; requestAnimationFrame(loop); } };
+  document.addEventListener('visibilitychange', wake);
+  wake();
+  // Only a real change of screen size repaints the scene (the games also send 'resize' when they fit).
+  addEventListener('resize', () => { if (innerWidth === W && innerHeight === H) return; clearTimeout(resize.t); resize.t = setTimeout(resize, 150); });
   document.addEventListener('showgame', e => setTheme(e.detail));
   resize(); setTheme(location.hash.slice(1));
 
@@ -3555,8 +3610,8 @@ cvNew(1);
   document.body.appendChild(fx);
   const fctx = fx.getContext('2d');
   let bits = [], fxOn = false, fxLast = 0;
-  const sizeFx = () => { fx.width = Math.round(innerWidth * DPR); fx.height = Math.round(innerHeight * DPR); };
-  sizeFx(); addEventListener('resize', sizeFx);
+  const sizeFx = () => { fx.width = Math.round(innerWidth * DPR); fx.height = Math.round(innerHeight * DPR); };   // the burst layer is empty and still between bursts
+  sizeFx(); addEventListener('resize', () => { if (Math.round(innerWidth * DPR) !== fx.width || Math.round(innerHeight * DPR) !== fx.height) sizeFx(); });
   const CONF = ['#f06292', '#ffc94a', '#6dbe5e', '#3c9fea', '#9c7cf0'];
   function fxRun(t) {
     const dt = Math.min(50, t - (fxLast || t)) / 16.7; fxLast = t;
