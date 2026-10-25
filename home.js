@@ -73,13 +73,28 @@
   }, 7000);
 
   // ------------------------------------------------ install on the phone
-  // Android and desktop Chrome offer a prompt; iPhone needs Share → Add to Home Screen.
+  // Android and desktop Chrome offer a prompt. iPhone has none, so a button opens a short
+  // guide that acts the three taps out on a little phone, then points at Safari's Share
+  // button. Inside an app's own browser (Facebook, Instagram, Messenger …) a page can't be
+  // added at all, so we ask to open it in Safari and offer to copy the link.
+  const ua = navigator.userAgent;
   const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !/crios|fxios/i.test(navigator.userAgent);
+  const iPad = /ipad/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+  const ios = /iphone|ipod/i.test(ua) || iPad;
+  const inApp = /FBAN|FBAV|FB_IAB|Instagram|Messenger|Line\/|MicroMessenger|Snapchat|TikTok/i.test(ua);
+  // Safari 26 tucks Share into the ••• menu at the bottom right.
+  const safariVer = Number((ua.match(/Version\/(\d+)/) || [])[1] || 0);
+  const newSafari = safariVer >= 26;
   let prompt = null;
   if (!standalone) {
     addEventListener('beforeinstallprompt', e => { e.preventDefault(); prompt = e; $('#install').hidden = false; $('#install-btn').hidden = false; });
-    if (ios) { $('#install').hidden = false; $('#install-btn').hidden = true; $('#install-ios').hidden = false; }
+    if (ios) {
+      $('#install').hidden = false; $('#install-btn').hidden = true;
+      if (inApp) {
+        $('#install-inapp').hidden = false;
+        $('#inapp-browser').textContent = 'Safari';
+      } else $('#install-ios').hidden = false;
+    }
     $('#install-btn').addEventListener('click', async () => {
       if (!prompt) return;
       prompt.prompt();
@@ -88,6 +103,98 @@
       if (outcome === 'accepted') $('#install').hidden = true;
     });
     addEventListener('appinstalled', () => { $('#install').hidden = true; });
+  }
+  $('#inapp-copy').addEventListener('click', async () => {
+    const b = $('#inapp-copy');
+    try { await navigator.clipboard.writeText(location.href.split('#')[0]); b.textContent = '✓ Copied. Now open Safari and paste it'; }
+    catch (e) { b.textContent = location.href.split('#')[0]; }
+  });
+  // The guide
+  const sheet = $('#ios-sheet'), phone = $('.phone', sheet), steps = $$('#ios-steps li');
+  phone.classList.toggle('new-safari', newSafari);
+  $('#step1-where').textContent = iPad ? 'at the top right of Safari' : newSafari ? 'at the bottom right: first tap •••, then Share' : 'in the bar at the bottom of Safari';
+  let stepTimer = 0, step = 1;
+  const showStep = n => {
+    step = n; phone.dataset.step = n;
+    steps.forEach(li => li.classList.toggle('on', +li.dataset.step === n));
+  };
+  const openSheet = () => {
+    sheet.hidden = false; showStep(1);
+    clearInterval(stepTimer);
+    if (!calm) stepTimer = setInterval(() => showStep(step % 3 + 1), 2600);
+    hnStat('install/ios-guide', 'Opened the iPhone install guide');
+  };
+  const closeSheet = () => { sheet.hidden = true; clearInterval(stepTimer); };
+  $('#install-ios').addEventListener('click', openSheet);
+  steps.forEach(li => li.addEventListener('click', () => { clearInterval(stepTimer); showStep(+li.dataset.step); }));
+  sheet.addEventListener('click', e => { if (e.target.closest('[data-close]')) closeSheet(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !sheet.hidden) closeSheet(); });
+  // "Show me where": close the guide and point at the Share button for a while.
+  $('#sheet-go').addEventListener('click', () => {
+    closeSheet();
+    const ptr = $('#share-pointer');
+    ptr.classList.toggle('top', iPad); ptr.classList.toggle('right', !iPad && newSafari);
+    $('#pointer-tip').innerHTML = newSafari && !iPad ? 'Tap <b>•••</b> here, then <b>Share</b>' : 'Tap <b>Share</b> ⬆ ' + (iPad ? 'up here' : 'down here');
+    ptr.hidden = false;
+    clearTimeout(ptr.t); ptr.t = setTimeout(() => { ptr.hidden = true; }, 9000);
+  });
+  addEventListener('scroll', () => { const ptr = $('#share-pointer'); if (!ptr.hidden && scrollY > 400) ptr.hidden = true; }, { passive: true });
+
+  // ------------------------------------------------ the tagline: flowers and a wave of letters
+  // Tapping a flower spins it and scatters petals; every few seconds a wave runs along the words.
+  const tagText = $('.tag-text');
+  tagText.innerHTML = [...tagText.textContent].map((ch, i) => `<span style="--i:${i}">${ch}</span>`).join('');
+  const wave = () => { tagText.classList.remove('wave'); void tagText.offsetWidth; tagText.classList.add('wave'); };
+  $$('.bloom').forEach(b => b.addEventListener('click', () => {
+    b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
+    setTimeout(() => b.classList.remove('pop'), 700);
+    wave();
+    if (calm) return;
+    const r = b.getBoundingClientRect(), hr = hero.getBoundingClientRect();
+    for (let i = 0; i < 12; i++) {
+      const p = document.createElement('i');
+      p.className = 'petal-bit'; p.style.background = b.dataset.c;
+      p.style.left = r.left - hr.left + r.width / 2 + 'px'; p.style.top = r.top - hr.top + r.height / 2 + 'px';
+      hero.appendChild(p);
+      const a = Math.random() * Math.PI * 2, d = 40 + Math.random() * 50;
+      p.animate([{ transform: 'translate(-50%,-50%) rotate(0deg)', opacity: 1 },
+        { transform: `translate(calc(-50% + ${Math.cos(a) * d}px), calc(-50% + ${Math.sin(a) * d + 30}px)) rotate(${Math.random() * 540}deg)`, opacity: 0 }],
+        { duration: 900 + Math.random() * 400, easing: 'cubic-bezier(.2,.7,.3,1)' }).onfinish = () => p.remove();
+    }
+  }));
+  if (!calm) { setTimeout(wave, 1400); setInterval(() => { if (heroOnScreen && !document.hidden) wave(); }, 6500); }
+
+  // ------------------------------------------------ Open the Playground: tiles drift across the button
+  // Little letter tiles and game bits float from left to right behind the words; they hurry
+  // when the button is touched.
+  {
+    const btn = $('.play-btn'), cv = $('.btn-canvas', btn), c = cv.getContext('2d');
+    const BITS = ['A', 'AW', 'CH', 'NG', 'Ṭ', '🧩', '⭐', '🫧', '🐝', 'I', 'U', 'E'];
+    const COLS = ['#ffe08a', '#c9ddf3', '#f8bbd0', '#d9cff7', '#c8eebd'];
+    let bits = [], fast = 0, last = 0;
+    const make = (x) => ({ x, y: Math.random(), s: .7 + Math.random() * .5, v: .25 + Math.random() * .35, r: (Math.random() - .5) * .6, vr: (Math.random() - .5) * .02, t: BITS[Math.floor(Math.random() * BITS.length)], col: COLS[Math.floor(Math.random() * COLS.length)] });
+    const size = () => { const dpr = Math.min(devicePixelRatio || 1, 3), w = cv.clientWidth, h = cv.clientHeight; if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); } return [w, h, dpr]; };
+    const paint = t => {
+      const [w, h, dpr] = size(); if (!w) return;
+      if (!bits.length) bits = Array.from({ length: Math.round(w / 34) }, () => make(Math.random() * w));
+      const dt = Math.min(50, t - (last || t)) / 16.7; last = t;
+      fast = Math.max(0, fast - .02 * dt);
+      c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+      for (const b of bits) {
+        if (!calm) { b.x += (b.v + fast * 3) * dt; b.r += b.vr * dt; }
+        if (b.x > w + 20) Object.assign(b, make(-20));
+        const y = 6 + b.y * (h - 12) + (calm ? 0 : Math.sin(t / 700 + b.x * .05) * 3), z = 15 * b.s;
+        c.save(); c.translate(b.x, y); c.rotate(b.r); c.globalAlpha = .55;
+        if (/[A-ZṬ]/.test(b.t)) {
+          c.fillStyle = b.col; c.beginPath(); c.roundRect(-z / 2, -z / 2, z, z, 4); c.fill();
+          c.fillStyle = '#1565c0'; c.font = `800 ${z * (b.t.length > 1 ? .45 : .62)}px "Baloo 2", sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(b.t, 0, 1);
+        } else { c.font = `${z}px system-ui`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(b.t, 0, 0); }
+        c.restore();
+      }
+    };
+    const loop = t => { requestAnimationFrame(loop); if (heroOnScreen && !document.hidden) paint(t); };
+    if (calm) paint(0); else requestAnimationFrame(loop);
+    ['pointerenter', 'pointerdown', 'focus'].forEach(ev => btn.addEventListener(ev, () => { fast = 1; }));
   }
 
   // ------------------------------------------------ how far down the page you are
