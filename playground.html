@@ -446,6 +446,11 @@
   .sea { background-image: var(--spr-sea), linear-gradient(var(--sky-bottom), var(--sky-top)); background-size: 100% 100%; }
   .op-board .opt { background: radial-gradient(circle at 50% 40%, #fff, var(--panel-2) 70%); }
   .tree { background: radial-gradient(circle at 50% 30%, #fffaf0, #f3e6cf 80%); }
+
+  /* Emoji drawn as stickers (decor.js): about the size of the emoji they stand for */
+  img.stk { display: inline-block; height: 1.24em; width: auto; vertical-align: -.27em; margin: -.1em 0; pointer-events: none; -webkit-user-select: none; user-select: none; }
+  .gcard .cover i img.stk { height: 1.25em; vertical-align: middle; }
+  .item .e img.stk, .card .e img.stk, .dicon img.stk { height: 1.12em; vertical-align: top; margin: 0; }   /* the same height as the emoji they replace */
 </style>
 
 <div class="app">
@@ -3804,6 +3809,85 @@ cvNew(1);
     c.fillStyle = 'rgba(255,255,255,.6)';
     for (const [x, y, r] of [[30, 40, 14], [46, 34, 12], [60, 42, 10], [110, 110, 12], [124, 104, 10], [136, 112, 8]]) { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); }
   }));
+
+  // ---------------------------------------------------------------- emoji as stickers
+  // Every emoji in the Playground is drawn once on a canvas as a sticker: a white cut-out edge, a
+  // soft shadow beneath and a little shine on top, so pictures look alike and crisp on every
+  // phone. The games still write plain emoji; a watcher swaps each one for its sticker image
+  // (kept, so each emoji is drawn only once). Words and letters are left as they are.
+  const STK = new Map(), SPX = 128;
+  const isEmoji = g => /\p{Extended_Pictographic}|\p{Regional_Indicator}/u.test(g) && !/^[©®™‼⁉]$/.test(g) && !/^[0-9#*]$/.test(g);
+  function sticker(e) {
+    if (STK.has(e)) return STK.get(e);
+    const mk = () => { const c = document.createElement('canvas'); c.width = c.height = SPX; return [c, c.getContext('2d')]; };
+    const [g, gx] = mk();
+    gx.font = '84px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+    gx.textAlign = 'center'; gx.textBaseline = 'middle';
+    gx.fillText(e, SPX / 2, SPX / 2 + 5);
+    // Nothing drawn (no emoji font for it): keep the plain emoji.
+    const px = gx.getImageData(0, 0, SPX, SPX).data;
+    let ink = 0; for (let i = 3; i < px.length; i += 64) ink += px[i];
+    if (!ink) { STK.set(e, null); return null; }
+    // A white silhouette, stamped round in a ring, makes the cut-out edge.
+    const [w, wx] = mk();
+    wx.drawImage(g, 0, 0); wx.globalCompositeOperation = 'source-in'; wx.fillStyle = '#fff'; wx.fillRect(0, 0, SPX, SPX);
+    const [o, ox] = mk();
+    for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; ox.drawImage(w, Math.cos(a) * 5, Math.sin(a) * 5); }
+    ox.drawImage(w, 0, 0);
+    const [c, cx] = mk();
+    cx.save(); cx.shadowColor = 'rgba(20, 33, 58, .32)'; cx.shadowBlur = 7; cx.shadowOffsetY = 4; cx.drawImage(o, 0, 0); cx.restore();
+    cx.drawImage(g, 0, 0);
+    // A soft shine across the top
+    cx.globalCompositeOperation = 'source-atop';
+    const sh = cx.createLinearGradient(0, 14, 0, SPX * .55);
+    sh.addColorStop(0, 'rgba(255,255,255,.32)'); sh.addColorStop(1, 'rgba(255,255,255,0)');
+    cx.fillStyle = sh; cx.fillRect(0, 0, SPX, SPX * .55);
+    const url = c.toDataURL('image/png');
+    STK.set(e, url);
+    return url;
+  }
+  const seg = typeof Intl !== 'undefined' && Intl.Segmenter ? new Intl.Segmenter('en', { granularity: 'grapheme' }) : null;
+  const ROUGH = /[←-⯿〰〽㊗㊙\u{1F000}-\u{1FAFF}]/u;
+  function stickerise(root) {
+    if (!seg) return;
+    const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: n => (ROUGH.test(n.data) && !n.parentElement.closest('svg, canvas, textarea, input, option, .no-stk') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT),
+    });
+    const nodes = [];
+    while (walk.nextNode()) nodes.push(walk.currentNode);
+    for (const n of nodes) {
+      const parts = [...seg.segment(n.data)].map(x => x.segment);
+      if (!parts.some(isEmoji)) continue;
+      const frag = document.createDocumentFragment();
+      let text = '';
+      for (const g of parts) {
+        const url = isEmoji(g) && sticker(g);
+        if (!url) { text += g; continue; }
+        if (text) { frag.appendChild(document.createTextNode(text)); text = ''; }
+        const img = document.createElement('img');
+        img.className = 'stk'; img.src = url; img.alt = g; img.draggable = false;
+        frag.appendChild(img);
+      }
+      if (text) frag.appendChild(document.createTextNode(text));
+      n.replaceWith(frag);
+    }
+  }
+  const app = document.querySelector('.app');
+  let pendingStk = new Set(), stkQueued = false;
+  new MutationObserver(list => {
+    for (const m of list) {
+      if (m.type === 'characterData') pendingStk.add(m.target.parentElement);
+      else m.addedNodes.forEach(n => pendingStk.add(n.nodeType === 1 ? n : n.parentElement));
+    }
+    if (stkQueued) return;
+    stkQueued = true;
+    requestAnimationFrame(() => {
+      stkQueued = false;
+      const roots = [...pendingStk].filter(r => r && r.isConnected); pendingStk = new Set();
+      roots.forEach(stickerise);
+    });
+  }).observe(app, { childList: true, subtree: true, characterData: true });
+  stickerise(app);
 
   const plainRender = renderLibrary;
   renderLibrary = () => { plainRender(); dressCovers(); };
