@@ -4,6 +4,19 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.8.0 (25 October 2026)
+
+### New in the Playground: Crossword cave
+
+- A crossword in the dark. Only the first word is lit; each word you solve
+  lights up the words that cross it, on the way to the exit (🚪).
+- Clues are the English meaning. Spell the Mizo word with letter tiles, no
+  typing needed.
+- Chests (💰) give a hint. Monsters (👹) must be answered within 30 seconds.
+  A wrong word costs a heart.
+- Every floor is a new crossword, made from 817 of the app's own words.
+- The Playground has 32 games now, and the site 42.
+
 ## 1.7.0 (25 October 2026)
 
 ### New in the Playground: Word quests
