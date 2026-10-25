@@ -424,6 +424,14 @@
   .ltgrid.bank .lt { font-size: clamp(17px, 5vw, 21px); }
   .ltgrid.bank .lt.small { font-size: clamp(13px, 3.8vw, 16px); }
   .ltgrid.bank .lt:disabled { opacity: .25; }
+
+  /* ------------------------------------------------ decor layers (decor.js) */
+  .decor-bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+  .decor-fx { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 60; pointer-events: none; }
+  body { background: transparent; }
+  html { background: var(--ground); }
+  .gcard .cover { background-position: center; }
+  .stage { box-shadow: 0 2px 6px rgba(13, 71, 161, .06), 0 18px 40px -20px rgba(13, 71, 161, .45); }
 </style>
 
 <div class="app">
@@ -3361,6 +3369,285 @@ setInterval(() => {
   if (cv.clock <= 0.25 || cv.clock === 30) cvRender();
 }, 250);
 cvNew(1);
+// ================================================================ Decor: the look of the Playground
+// Three light canvas layers that dress every game without touching how it plays:
+//  - a scene behind the page, one per kind of game (a meadow, a desk of letters, a sunny sky,
+//    the village, a dusk sky with lanterns, a torch-lit dungeon). The scenery is painted once
+//    into a picture; only a few drifting things move, about 30 times a second, and nothing
+//    moves when the tab is hidden or the phone asks for reduced motion;
+//  - bursts on top: confetti for a right answer, a puff for a wrong one, stars that fly to the
+//    score. This layer only runs while something is flying;
+//  - illustrated covers for the library cards, drawn once and kept.
+(() => {
+  const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const DPR = Math.min(devicePixelRatio || 1, 2);
+  const kindOf = id => (GAMES.find(g => g.id === id) || {}).kind || 'library';
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const TILE_LETTERS = ['A', 'AW', 'B', 'CH', 'D', 'E', 'NG', 'H', 'I', 'K', 'L', 'M', 'Ṭ', 'U', 'Z'];
+
+  // ---------------------------------------------------------------- the scene behind the page
+  const bg = document.createElement('canvas');
+  bg.className = 'decor-bg'; bg.setAttribute('aria-hidden', 'true');
+  document.body.prepend(bg);
+  const bctx = bg.getContext('2d');
+  let theme = 'library', still = null, movers = [], W = 0, H = 0, lastPaint = 0;
+
+  const THEMES = {
+    library: { sky: ['#bfe6ff', '#eaf6ff'], hills: ['#a9dc8f', '#86c96b'], movers: 'clouds' },
+    puzzles: { sky: ['#f3ecff', '#fffaf0'], hills: null, movers: 'tiles' },
+    quick: { sky: ['#8fd3ff', '#e6f6ff'], hills: ['#9ed880', '#7cc65a'], movers: 'clouds', sun: true },
+    pictures: { sky: ['#bfe6ff', '#fff6e0'], hills: ['#b5e3a1', '#8cc96e'], movers: 'clouds', village: true },
+    talk: { sky: ['#5b4fa8', '#f4a6b8'], hills: ['#3f3a7a', '#2c2860'], movers: 'lanterns' },
+    quest: { sky: ['#241d33', '#4a3b63'], hills: null, movers: 'motes', bricks: true },
+  };
+
+  function paintStill() {
+    const T = THEMES[theme] || THEMES.library;
+    still = document.createElement('canvas');
+    still.width = Math.round(W * DPR); still.height = Math.round(H * DPR);
+    const c = still.getContext('2d');
+    c.scale(DPR, DPR);
+    const g = c.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, T.sky[0]); g.addColorStop(1, T.sky[1]);
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    if (T.sun) {
+      const sg = c.createRadialGradient(W * .82, H * .12, 0, W * .82, H * .12, 120);
+      sg.addColorStop(0, 'rgba(255,240,170,.95)'); sg.addColorStop(.35, 'rgba(255,224,120,.55)'); sg.addColorStop(1, 'rgba(255,224,120,0)');
+      c.fillStyle = sg; c.fillRect(0, 0, W, H * .4);
+    }
+    if (T.bricks) {
+      // Stone walls, lit by two torches.
+      c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 1;
+      for (let y = 0, row = 0; y < H; y += 26, row++) for (let x = (row % 2) * -24; x < W; x += 48) { c.fillStyle = `rgba(255,255,255,${.03 + ((x * 7 + y * 3) % 5) * .008})`; c.fillRect(x + 1, y + 1, 46, 24); c.strokeRect(x + 1, y + 1, 46, 24); }
+      for (const tx of [W * .08, W * .92]) {
+        const tg = c.createRadialGradient(tx, H * .3, 0, tx, H * .3, 160);
+        tg.addColorStop(0, 'rgba(255,170,80,.45)'); tg.addColorStop(1, 'rgba(255,170,80,0)');
+        c.fillStyle = tg; c.fillRect(0, 0, W, H);
+      }
+    }
+    if (theme === 'puzzles') {
+      // A desk of soft dots, like paper.
+      c.fillStyle = 'rgba(117,105,232,.07)';
+      for (let y = 12; y < H; y += 22) for (let x = 12; x < W; x += 22) { c.beginPath(); c.arc(x, y, 1.6, 0, Math.PI * 2); c.fill(); }
+    }
+    if (theme === 'talk') {
+      c.fillStyle = 'rgba(255,255,255,.8)';
+      for (let i = 0; i < 40; i++) { c.globalAlpha = rnd(.3, .9); c.beginPath(); c.arc(rnd(0, W), rnd(0, H * .55), rnd(.6, 1.6), 0, Math.PI * 2); c.fill(); }
+      c.globalAlpha = 1;
+    }
+    if (T.hills) {
+      const hill = (y, amp, col, ph) => {
+        c.fillStyle = col; c.beginPath(); c.moveTo(0, H);
+        for (let x = 0; x <= W + 10; x += 10) c.lineTo(x, y + Math.sin(x / 160 + ph) * amp + Math.sin(x / 63 + ph * 2) * amp * .3);
+        c.lineTo(W, H); c.fill();
+      };
+      hill(H * .78, 18, T.hills[0], 1.2);
+      if (T.village) {
+        // A few stilt houses along the far hill.
+        for (let i = 0; i < 5; i++) {
+          const x = W * (.1 + i * .2) + rnd(-20, 20), y = H * .78 + Math.sin(x / 160 + 1.2) * 18 - 6, s = rnd(.8, 1.2);
+          c.fillStyle = '#c99a6b'; c.fillRect(x - 12 * s, y - 14 * s, 24 * s, 12 * s);
+          c.fillStyle = ['#e46a4e', '#57a26f', '#5786c4'][i % 3];
+          c.beginPath(); c.moveTo(x - 16 * s, y - 13 * s); c.lineTo(x, y - 24 * s); c.lineTo(x + 16 * s, y - 13 * s); c.fill();
+          c.fillStyle = '#8a5a33'; c.fillRect(x - 10 * s, y - 2 * s, 2 * s, 6 * s); c.fillRect(x + 8 * s, y - 2 * s, 2 * s, 6 * s);
+        }
+      }
+      hill(H * .86, 14, T.hills[1], 3.1);
+      if (theme === 'library' || theme === 'quick' || theme === 'pictures') {
+        // Cosmos flowers in the near grass.
+        for (let i = 0; i < Math.round(W / 70); i++) {
+          const x = rnd(0, W), y = H * .9 + rnd(0, H * .08), r = rnd(4, 7);
+          c.fillStyle = ['#f06292', '#f48fb1', '#9c7cf0', '#fbe4ee'][i % 4];
+          for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; c.beginPath(); c.ellipse(x + Math.cos(a) * r * .7, y + Math.sin(a) * r * .7, r * .45, r * .3, a, 0, Math.PI * 2); c.fill(); }
+          c.fillStyle = '#f2a516'; c.beginPath(); c.arc(x, y, r * .3, 0, Math.PI * 2); c.fill();
+        }
+      }
+    }
+    // The movers for this scene
+    const n = { clouds: 6, tiles: 10, lanterns: 9, motes: 22 }[T.movers] || 0;
+    movers = Array.from({ length: n }, () => newMover(T.movers, true));
+  }
+  function newMover(kind, anywhere) {
+    if (kind === 'clouds') return { kind, x: anywhere ? rnd(-100, W) : -160, y: rnd(H * .04, H * .4), s: rnd(.6, 1.3), v: rnd(.08, .22) };
+    if (kind === 'tiles') return { kind, x: rnd(0, W), y: anywhere ? rnd(0, H) : H + 30, s: rnd(.7, 1.2), v: rnd(.12, .3), r: rnd(-.4, .4), vr: rnd(-.004, .004), t: TILE_LETTERS[Math.floor(Math.random() * TILE_LETTERS.length)], col: ['#ffe08a', '#c9ddf3', '#f8bbd0', '#d9cff7', '#c8eebd'][Math.floor(Math.random() * 5)] };
+    if (kind === 'lanterns') return { kind, x: rnd(0, W), y: anywhere ? rnd(0, H) : H + 30, s: rnd(.6, 1.1), v: rnd(.15, .35), ph: rnd(0, 6) };
+    return { kind, x: rnd(0, W), y: anywhere ? rnd(0, H) : H + 10, s: rnd(.5, 1.5), v: rnd(.1, .4), ph: rnd(0, 6) };
+  }
+  function drawMover(c, m, t) {
+    if (m.kind === 'clouds') {
+      c.fillStyle = 'rgba(255,255,255,.85)';
+      for (const [dx, dy, r] of [[0, 0, 22], [24, -8, 18], [44, 2, 16], [-20, 4, 14]]) { c.beginPath(); c.arc(m.x + dx * m.s, m.y + dy * m.s, r * m.s, 0, Math.PI * 2); c.fill(); }
+    } else if (m.kind === 'tiles') {
+      const z = 26 * m.s;
+      c.save(); c.translate(m.x, m.y); c.rotate(m.r); c.globalAlpha = .45;
+      c.fillStyle = m.col; c.beginPath(); c.roundRect(-z / 2, -z / 2, z, z, 6); c.fill();
+      c.fillStyle = '#5b4fa8'; c.font = `800 ${z * (m.t.length > 1 ? .42 : .6)}px "Baloo 2", sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(m.t, 0, 1);
+      c.restore();
+    } else if (m.kind === 'lanterns') {
+      const sway = Math.sin(t / 900 + m.ph) * 6, x = m.x + sway, z = 12 * m.s;
+      const g = c.createRadialGradient(x, m.y, 0, x, m.y, z * 3);
+      g.addColorStop(0, 'rgba(255,200,110,.5)'); g.addColorStop(1, 'rgba(255,200,110,0)');
+      c.fillStyle = g; c.fillRect(x - z * 3, m.y - z * 3, z * 6, z * 6);
+      c.fillStyle = '#ffb347'; c.beginPath(); c.ellipse(x, m.y, z * .7, z, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#c2185b'; c.fillRect(x - z * .45, m.y - z * 1.05, z * .9, z * .25); c.fillRect(x - z * .45, m.y + z * .8, z * .9, z * .25);
+    } else {
+      const fl = .5 + .5 * Math.sin(t / 300 + m.ph);
+      c.fillStyle = `rgba(255,200,120,${.25 + .45 * fl})`; c.beginPath(); c.arc(m.x + Math.sin(t / 1200 + m.ph) * 8, m.y, 1.4 * m.s, 0, Math.PI * 2); c.fill();
+    }
+  }
+  function frame(t) {
+    if (!still) return;
+    bctx.setTransform(1, 0, 0, 1, 0, 0);
+    bctx.drawImage(still, 0, 0);
+    bctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    for (const m of movers) {
+      if (!calm) {
+        if (m.kind === 'clouds') { m.x += m.v; if (m.x > W + 80) Object.assign(m, newMover('clouds', false)); }
+        else { m.y -= m.v; if (m.kind === 'tiles') m.r += m.vr; if (m.y < -40) Object.assign(m, newMover(m.kind, false)); }
+      }
+      drawMover(bctx, m, t);
+    }
+  }
+  function resize() {
+    W = innerWidth; H = innerHeight;
+    bg.width = Math.round(W * DPR); bg.height = Math.round(H * DPR);
+    paintStill(); frame(performance.now());
+  }
+  function setTheme(id) {
+    const next = id ? kindOf(id) : 'library';
+    if (next === theme && still) return;
+    theme = next; paintStill(); frame(performance.now());
+  }
+  (function loop(t) {
+    requestAnimationFrame(loop);
+    if (calm || document.hidden || t - lastPaint < 33) return;   // about 30 frames a second is plenty
+    lastPaint = t; frame(t);
+  })(0);
+  addEventListener('resize', () => { clearTimeout(resize.t); resize.t = setTimeout(resize, 150); });
+  document.addEventListener('showgame', e => setTheme(e.detail));
+  resize(); setTheme(location.hash.slice(1));
+
+  // ---------------------------------------------------------------- bursts: right, wrong, stars
+  const fx = document.createElement('canvas');
+  fx.className = 'decor-fx'; fx.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(fx);
+  const fctx = fx.getContext('2d');
+  let bits = [], fxOn = false, fxLast = 0;
+  const sizeFx = () => { fx.width = Math.round(innerWidth * DPR); fx.height = Math.round(innerHeight * DPR); };
+  sizeFx(); addEventListener('resize', sizeFx);
+  const CONF = ['#f06292', '#ffc94a', '#6dbe5e', '#3c9fea', '#9c7cf0'];
+  function fxRun(t) {
+    const dt = Math.min(50, t - (fxLast || t)) / 16.7; fxLast = t;
+    fctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    fctx.clearRect(0, 0, innerWidth, innerHeight);
+    bits = bits.filter(b => (b.life -= dt) > 0);
+    for (const b of bits) {
+      if (b.kind === 'star') {
+        // Stars fly in a curve to the score.
+        const k = 1 - b.life / b.max, e = k * k * (3 - 2 * k), x = b.x + (b.tx - b.x) * e, y = b.y + (b.ty - b.y) * e - Math.sin(k * Math.PI) * 60;
+        fctx.font = `${16 + 8 * Math.sin(k * Math.PI)}px system-ui`; fctx.textAlign = 'center'; fctx.textBaseline = 'middle'; fctx.fillText('⭐', x, y);
+        continue;
+      }
+      b.vy += b.g * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.r += b.vr * dt;
+      fctx.save(); fctx.globalAlpha = Math.min(1, b.life / 20); fctx.translate(b.x, b.y); fctx.rotate(b.r); fctx.fillStyle = b.col;
+      if (b.kind === 'puff') { fctx.beginPath(); fctx.arc(0, 0, b.s * (1 + (b.max - b.life) / 30), 0, Math.PI * 2); fctx.fill(); }
+      else if (b.kind === 'spark') { fctx.beginPath(); for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; fctx.lineTo(Math.cos(a) * b.s, Math.sin(a) * b.s); fctx.lineTo(Math.cos(a + Math.PI / 4) * b.s * .35, Math.sin(a + Math.PI / 4) * b.s * .35); } fctx.fill(); }
+      else fctx.fillRect(-b.s / 2, -b.s / 4, b.s, b.s / 2);
+      fctx.restore();
+    }
+    if (bits.length) requestAnimationFrame(fxRun); else { fxOn = false; fctx.clearRect(0, 0, innerWidth, innerHeight); }
+  }
+  const fxStart = () => { if (!fxOn) { fxOn = true; fxLast = 0; requestAnimationFrame(fxRun); } };
+  const fxApi = {
+    good(x, y) {
+      if (calm) return;
+      for (let i = 0; i < 22; i++) { const a = rnd(-Math.PI * .95, -Math.PI * .05), v = rnd(3, 7); bits.push({ kind: i % 4 ? 'conf' : 'spark', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: .18, r: rnd(0, 6), vr: rnd(-.2, .2), s: rnd(7, 11), col: CONF[i % CONF.length], life: 60, max: 60 }); }
+      fxStart();
+    },
+    bad(x, y) {
+      if (calm) return;
+      for (let i = 0; i < 7; i++) bits.push({ kind: 'puff', x: x + rnd(-14, 14), y: y + rnd(-6, 6), vx: rnd(-.6, .6), vy: rnd(-1, -.3), g: 0, r: 0, vr: 0, s: rnd(4, 7), col: 'rgba(194,24,91,.22)', life: 30, max: 30 });
+      fxStart();
+    },
+    stars(n, x, y) {
+      if (calm || n <= 0) return;
+      const s = $('score').getBoundingClientRect();
+      for (let i = 0; i < Math.min(n, 6); i++) bits.push({ kind: 'star', x: x + rnd(-20, 20), y: y + rnd(-10, 10), tx: s.left + s.width / 2, ty: s.top + s.height / 2, life: 42 + i * 6, max: 42 + i * 6 });
+      fxStart();
+    },
+  };
+  window.fxBurst = fxApi;
+  // Watch every game's feedback line: a right answer bursts, a wrong one puffs.
+  const where = el => { const r = el.getBoundingClientRect(); return [r.left + Math.min(r.width / 2, 120), r.top + 6]; };
+  document.querySelectorAll('.feedback').forEach(el => {
+    let lastText = '';
+    new MutationObserver(() => {
+      const text = el.textContent;
+      if (!text || text === lastText) return;
+      lastText = text;
+      if (el.classList.contains('good')) fxApi.good(...where(el));
+      else if (el.classList.contains('bad')) fxApi.bad(...where(el));
+    }).observe(el, { attributes: true, attributeFilter: ['class'], childList: true, characterData: true, subtree: true });
+  });
+  // Stars won fly from the game to the score.
+  const plainAddStars = addStars;
+  addStars = n => {
+    plainAddStars(n);
+    const st = [...document.querySelectorAll('.stage')].find(s => !s.hidden);
+    if (st && n > 0) { const r = st.getBoundingClientRect(); fxApi.stars(n, r.left + r.width / 2, Math.min(innerHeight * .6, r.top + r.height / 2)); }
+  };
+
+  // ---------------------------------------------------------------- illustrated library covers
+  const coverCache = {};
+  const KIND_COLS = { quest: ['#5b3fd1', '#c2185b'], puzzles: ['#7569e8', '#3c9fea'], quick: ['#ff8a65', '#ffc94a'], pictures: ['#6dbe5e', '#b5e3a1'], talk: ['#c2185b', '#f48fb1'], app: ['#0d47a1', '#3c9fea'] };
+  function coverArt(kind, seed) {
+    const key = kind + seed;
+    if (coverCache[key]) return coverCache[key];
+    const w = 220, h = 96, cv = document.createElement('canvas');
+    cv.width = w * 2; cv.height = h * 2;
+    const c = cv.getContext('2d'); c.scale(2, 2);
+    let s = seed * 9301 + 49297; const r = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
+    const [c1, c2] = KIND_COLS[kind] || KIND_COLS.puzzles;
+    const g = c.createLinearGradient(0, 0, w, h); g.addColorStop(0, c1); g.addColorStop(1, c2);
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+    // Soft round lights
+    for (let i = 0; i < 6; i++) { c.fillStyle = `rgba(255,255,255,${.06 + r() * .1})`; c.beginPath(); c.arc(r() * w, r() * h, 10 + r() * 30, 0, Math.PI * 2); c.fill(); }
+    c.save(); c.globalAlpha = .28; c.fillStyle = '#fff'; c.strokeStyle = '#fff';
+    if (kind === 'puzzles' || kind === 'app') {
+      for (let i = 0; i < 7; i++) { const x = r() * w, y = r() * h, z = 14 + r() * 10; c.save(); c.translate(x, y); c.rotate((r() - .5) * .8); c.beginPath(); c.roundRect(-z / 2, -z / 2, z, z, 4); c.fill(); c.restore(); }
+    } else if (kind === 'quick') {
+      c.lineWidth = 3; c.lineCap = 'round';
+      for (let i = 0; i < 8; i++) { const y = r() * h, x = r() * w; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 30 + r() * 30, y); c.stroke(); }
+    } else if (kind === 'pictures') {
+      c.globalAlpha = .35; c.beginPath(); c.moveTo(0, h); for (let x = 0; x <= w; x += 10) c.lineTo(x, h * .72 + Math.sin(x / 40 + seed) * 8); c.lineTo(w, h); c.fill();
+      c.beginPath(); c.arc(w * .85, h * .25, 12, 0, Math.PI * 2); c.fill();
+    } else if (kind === 'talk') {
+      for (let i = 0; i < 4; i++) { const x = r() * w, y = r() * h * .8, z = 16 + r() * 12; c.beginPath(); c.ellipse(x, y, z, z * .65, 0, 0, Math.PI * 2); c.fill(); c.beginPath(); c.moveTo(x - z * .3, y + z * .5); c.lineTo(x - z * .6, y + z * .95); c.lineTo(x, y + z * .55); c.fill(); }
+    } else if (kind === 'quest') {
+      c.globalAlpha = .18; c.lineWidth = 1;
+      for (let y = 0, row = 0; y < h; y += 16, row++) for (let x = (row % 2) * -14; x < w; x += 28) c.strokeRect(x, y, 28, 16);
+      c.globalAlpha = .5; const tg = c.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, 60); tg.addColorStop(0, 'rgba(255,200,110,.8)'); tg.addColorStop(1, 'rgba(255,200,110,0)'); c.fillStyle = tg; c.fillRect(0, 0, w, h);
+    }
+    c.restore();
+    // A white badge for the emoji to sit on.
+    c.fillStyle = 'rgba(255,255,255,.22)'; c.beginPath(); c.arc(w / 2, h / 2, 34, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.arc(w / 2, h / 2, 26, 0, Math.PI * 2); c.fill();
+    return (coverCache[key] = cv.toDataURL('image/png'));
+  }
+  function dressCovers() {
+    document.querySelectorAll('.gcard').forEach((card, i) => {
+      const cover = card.querySelector('.cover'); if (!cover || cover.dataset.art) return;
+      const id = (card.getAttribute('href') || '').replace('#', '');
+      const kind = card.dataset.app ? 'app' : kindOf(id);
+      cover.style.backgroundImage = `url(${coverArt(kind, [...(card.dataset.app || id)].reduce((a, ch) => a + ch.charCodeAt(0), i))})`;
+      cover.style.backgroundSize = 'cover';
+      cover.dataset.art = '1';
+    });
+  }
+  const plainRender = renderLibrary;
+  renderLibrary = () => { plainRender(); dressCovers(); };
+  dressCovers();
+})();
 </script>
 
 </body></html>
