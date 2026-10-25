@@ -4,6 +4,19 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.10.2 (26 October 2026)
+
+### Playground fixes and stickers
+
+- Fixed stars being given twice when a button was pressed again at the end
+  of a round, in Bazar, Dress Rova, Weather report, Sentence builder, Food
+  stall and Word dungeon.
+- Food stall no longer takes two hearts for one wrong plate. Whack the rat,
+  Falling letters, Crossword cave and Sentence builder's Skip no longer slip
+  when tapped quickly.
+- Every emoji in the Playground is now a sticker, with a white edge, a soft
+  shadow and a little shine, so the pictures look crisp and alike.
+
 ## 1.10.1 (26 October 2026)
 
 ### Bazar dâwr, redone
