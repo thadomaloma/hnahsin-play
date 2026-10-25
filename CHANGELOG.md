@@ -4,6 +4,14 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.8.2 (25 October 2026)
+
+- Rova and Mami now turn to face you and bow to you, Japanese style, when
+  they meet on the home page.
+- A new footer: a garden where the five most played games grow as flowers,
+  taller the more they are played, with how many games have been played and
+  how many visits the site has had. Small letter tiles spell HNAHSIN.
+
 ## 1.8.1 (25 October 2026)
 
 ### Rova and Mami

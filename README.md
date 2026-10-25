@@ -34,8 +34,7 @@ A **word of the day** on the home page: tap the card to see what it means.
 ## Words
 
 - 1,254 Mizo words, 383 sentences and 203 sayings from the Hnahsin app
-- 1,928 more words from J.F. Laldailova's English–Lushai Dictionary,
-  used with permission
+- 1,928 more words from J.F. Laldailova's English–Lushai Dictionary
 - photos from Wikimedia Commons (credited in the app) and pictures from
   Microsoft's Fluent Emoji
 
