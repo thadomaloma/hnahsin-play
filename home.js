@@ -193,6 +193,106 @@
     }, calm ? 5000 : 2600);
   }).catch(() => {});
 
+  // ------------------------------------------------ the garden: which games are played most
+  // Play counts come from GoatCounter's public counter (it must be switched on in the site's
+  // GoatCounter settings: "Allow adding visitor counts on your website"). The five most played
+  // games grow as cosmos flowers, taller the more they are played. Without counts the garden
+  // still grows, with no names, and the numbers stay hidden.
+  const GC = 'https://hnahsin.goatcounter.com/counter/';
+  const COUNTED = [
+    ['/hnahsin-play/journey.html', '🏃', "Rova's Journey"], ['/hnahsin-play/things.html', '🏠', 'Touch and learn'],
+    ...[['dungeon', '⚔️', 'Word dungeon'], ['fall', '🧱', 'Falling letters'], ['cave', '🔦', 'Crossword cave'], ['sentences', '🧱', 'Sentence builder'],
+      ['sayings', '🗣️', 'Saying match'], ['bee', '🐝', 'Spelling bee'], ['waffle', '🧇', 'Waffle'], ['strands', '🧵', 'Strands'], ['tubes', '🧪', 'Word tubes'],
+      ['sort', '⚡', 'Sort it'], ['run', '🏃', 'Rova run'], ['bubble', '🫧', 'Bubble pop'], ['whack', '🐁', 'Whack the rat'], ['bazar', '🛒', 'Bazar'],
+      ['spy', '🔍', 'I Spy'], ['count', '🔢', 'Count'], ['dress', '👕', 'Dress Rova'], ['size', '🐘', 'Big and small'], ['days', '📅', 'Days and times'],
+      ['says', '👃', 'Rova says'], ['colour', '🎨', 'Colour it'], ['family', '👪', "Rova's family"], ['weather', '🌦️', 'Weather report'], ['stall', '🍲', 'Food stall'],
+    ].map(([id, i, n]) => ['playground/' + id, i, n]),
+    ...[['picture_match', '🖼️', 'Picture Match'], ['spelling', '🔤', 'Spelling'], ['word_search', '🔍', 'Word Search'], ['word_chain', '🔗', 'Word Chain'],
+      ['tawng_upa', '🗣️', 'Tawng Upa'], ['crossword', '✏️', 'Crossword'], ['odd_one_out', '🐷', 'Odd One Out'], ['sentence_builder', '🧱', 'Sentence Builder'],
+    ].map(([id, i, n]) => ['playground/app/' + id, i, n]),
+  ];
+  const num = c => Number(String(c || '0').replace(/[^0-9]/g, '')) || 0;
+  const gc = path => fetch(GC + encodeURIComponent(path) + '.json').then(r => (r.ok ? r.json() : null)).then(j => (j ? num(j.count) : null)).catch(() => null);
+  const gardenCanvas = $('#garden'), gctx = gardenCanvas.getContext('2d');
+  const PETALS = ['#f06292', '#9c7cf0', '#ffc94a', '#f48fb1', '#3c9fea'];
+  let blooms = [0, 1, 2, 3, 4].map(i => ({ name: '', icon: '', count: 0, h: [.55, .8, .65, .9, .5][i], grow: 0 }));
+  function drawGarden(t) {
+    const dpr = Math.min(devicePixelRatio || 1, 3), w = gardenCanvas.clientWidth, h = gardenCanvas.clientHeight;
+    if (!w) return;
+    if (gardenCanvas.width !== Math.round(w * dpr)) { gardenCanvas.width = Math.round(w * dpr); gardenCanvas.height = Math.round(h * dpr); }
+    const c = gctx; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+    const ground = h - 44, named = blooms.some(b => b.name);
+    // The ground: a soft green hill with grass.
+    c.fillStyle = '#7cc65a';
+    c.beginPath(); c.moveTo(0, ground + 6); c.quadraticCurveTo(w / 2, ground - 12, w, ground + 6); c.lineTo(w, h); c.lineTo(0, h); c.fill();
+    c.strokeStyle = '#5dae47'; c.lineWidth = 1.5; c.lineCap = 'round';
+    for (let x = 6; x < w; x += 9) { const sway = calm ? 0 : Math.sin(t / 900 + x * .07) * 2; const gy = ground + 6 - 18 * Math.sin(Math.PI * x / w) * .6; c.beginPath(); c.moveTo(x, gy + 6); c.lineTo(x + sway, gy - 2 - (x * 7 % 5)); c.stroke(); }
+    const n = blooms.length, gap = w / n, maxH = ground - (named ? 40 : 26);   // room for the tags
+    blooms.forEach((b, i) => {
+      b.grow = Math.min(1, b.grow + .02);
+      const e = 1 - Math.pow(1 - b.grow, 3), x = gap * (i + .5), stem = 30 + (maxH - 30) * b.h * e;
+      const gy = ground + 6 - 18 * Math.sin(Math.PI * x / w) * .6, top = gy - stem;
+      const sway = calm ? 0 : Math.sin(t / 1100 + i * 1.7) * 3 * e;
+      c.strokeStyle = '#4a9a3e'; c.lineWidth = 3.5;
+      c.beginPath(); c.moveTo(x, gy); c.quadraticCurveTo(x + sway * .3, (gy + top) / 2, x + sway, top); c.stroke();
+      c.fillStyle = '#6dbe5e';   // a leaf
+      c.beginPath(); c.ellipse(x + 7, gy - stem * .4, 8, 3.5, -.6, 0, Math.PI * 2); c.fill();
+      // The cosmos: eight petals round a gold middle, turning slowly.
+      const r = 11 + 7 * b.h * e, spin = calm ? 0 : t / 6000 + i;
+      c.save(); c.translate(x + sway, top); c.rotate(spin); c.fillStyle = PETALS[i % PETALS.length];
+      for (let k = 0; k < 8; k++) { c.rotate(Math.PI / 4); c.beginPath(); c.ellipse(0, -r * .62, r * .32, r * .52, 0, 0, Math.PI * 2); c.fill(); }
+      c.restore();
+      c.fillStyle = '#f2a516'; c.beginPath(); c.arc(x + sway, top, r * .3, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#ffc94a'; c.beginPath(); c.arc(x + sway, top, r * .2, 0, Math.PI * 2); c.fill();
+      if (named) {
+        // The game's icon on the ground (its name is written under the canvas).
+        c.textAlign = 'center'; c.font = '700 22px system-ui, sans-serif'; c.fillText(b.icon, x, h - 12);
+        // How many plays, on a little tag above the flower.
+        c.font = '800 12px "Plus Jakarta Sans", system-ui, sans-serif';
+        const txt = Math.round(b.count * e).toLocaleString('en'), tw = c.measureText(txt).width + 12;
+        const ty = Math.max(2, top - r - 24);
+        c.fillStyle = 'rgba(255,255,255,.92)'; c.beginPath(); c.roundRect(x + sway - tw / 2, ty, tw, 18, 9); c.fill();
+        c.fillStyle = '#1565c0'; c.fillText(txt, x + sway, ty + 13);
+      }
+    });
+  }
+  let gardenOn = false;
+  const gardenLoop = t => { if (gardenOn) { drawGarden(t); requestAnimationFrame(gardenLoop); } };
+  new IntersectionObserver(([e]) => {
+    gardenOn = e.isIntersecting && !document.hidden;
+    if (gardenOn) requestAnimationFrame(gardenLoop);
+  }).observe(gardenCanvas);
+  // Counts are fetched once, the first time the garden comes into view.
+  let fetched = false;
+  new IntersectionObserver(([e], obs) => {
+    if (!e.isIntersecting || fetched) return;
+    fetched = true; obs.disconnect();
+    // Ask for the home page's count first: if the public counter is off, ask nothing more.
+    gc('/hnahsin-play/').then(visits => (visits === null ? null : Promise.all(COUNTED.map(([p]) => gc(p))).then(counts => [visits, ...counts]))).then(res => {
+      if (!res) return;   // the public counter is off: keep the plain garden
+      const [visits, ...counts] = res;
+      const games = COUNTED.map(([, icon, name], i) => ({ icon, name, count: counts[i] || 0 })).filter(g => g.count > 0).sort((a, b) => b.count - a.count).slice(0, 5);
+      const total = counts.reduce((a, b) => a + (b || 0), 0);
+      if (games.length) {
+        const most = games[0].count;
+        // Tallest in the middle, the rest either side, like a little podium.
+        const order = [3, 1, 0, 2, 4].map(i => games[i]).filter(Boolean);
+        blooms = order.map(g => ({ ...g, h: .25 + .75 * g.count / most, grow: 0 }));
+        $('#garden-sub').textContent = 'The most played games. Every game played helps its flower grow.';
+        $('#garden-list').innerHTML = games.map(g => `<li>${g.name}: played ${g.count.toLocaleString('en')} times</li>`).join('');
+        $('#garden-names').innerHTML = blooms.map(b => `<span>${b.name}</span>`).join('');
+        $('#garden-names').hidden = false;
+      }
+      $('#plays').hidden = false;
+      const countUp = (el, to) => {
+        const start = performance.now();
+        const step = t => { const p = Math.min(1, (t - start) / 1400), v = Math.round(to * (1 - Math.pow(1 - p, 3))); el.textContent = v.toLocaleString('en'); if (p < 1 && !calm) requestAnimationFrame(step); else el.textContent = to.toLocaleString('en'); };
+        requestAnimationFrame(step);
+      };
+      countUp($('#ft-plays'), total); countUp($('#ft-visits'), visits);
+    });
+  }, { rootMargin: '200px' }).observe(gardenCanvas);
+
   // A canvas that draws Rova at the screen's sharpness.
   const rovaOn = (canvas, draw = drawRova) => {
     const ctx = canvas.getContext('2d');

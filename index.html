@@ -187,6 +187,24 @@
   footer .dev { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 14px; }
   footer .dev b { color: var(--ink); }
   footer .ver a { color: var(--accent-text); }
+  /* The garden: a flower for each of the most played games, drawn on a canvas */
+  .garden-card { position: relative; margin: 0 auto 26px; padding: 18px 16px 16px; border-radius: var(--radius-lg); background: linear-gradient(180deg, color-mix(in srgb, var(--sky) 45%, var(--panel)), var(--panel) 70%); border: 1px solid var(--line); box-shadow: var(--shadow-1); text-align: center; overflow: hidden; }
+  .garden-title { margin: 0; font-family: var(--font-display); font-size: 22px; color: var(--ink); }
+  .garden-sub { margin: 2px 0 6px; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .garden { display: block; width: calc(100% + 32px); height: 200px; margin: 0 -16px; }
+  .garden-names { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin: 0 -16px; padding: 4px 6px 8px; background: #7cc65a; }
+  .garden-names span { font-size: 12px; font-weight: 800; line-height: 1.2; color: #15213a; overflow-wrap: anywhere; }
+  .plays { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+  .plays div { padding: 10px 6px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); }
+  .plays b { display: block; font-family: var(--font-display); font-size: 28px; line-height: 1.1; color: var(--accent-text); font-variant-numeric: tabular-nums; }
+  .plays span { font-size: 14px; font-weight: 700; color: var(--muted); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .foot-brand { display: grid; justify-items: center; gap: 6px; margin: 2px 0 12px; }
+  .mini-tiles { display: flex; gap: 4px; }
+  .mini-tiles i { display: grid; place-items: center; width: 24px; height: 26px; border-radius: 7px; background: #fffdf7; color: var(--coral); font-style: normal; font-family: var(--font-display); font-weight: 800; font-size: 15px; box-shadow: 0 3px 0 #f8bbd0; }
+  .mini-tiles i:nth-child(odd) { transform: rotate(-4deg); } .mini-tiles i:nth-child(even) { transform: rotate(3deg); }
+  .foot-tag { font-family: var(--font-display); font-weight: 800; font-size: 16px; color: var(--accent-text); letter-spacing: .02em; }
+  .foot-note { max-width: 46ch; margin-inline: auto !important; }
 
   /* ------------------------------------------------ more motion (home.js) */
   /* How far down the page you are */
@@ -410,17 +428,31 @@
 </main>
 
 <footer class="wrap">
+  <section class="garden-card" aria-labelledby="garden-title">
+    <h2 id="garden-title" class="garden-title">🌸 The games people play</h2>
+    <p class="garden-sub" id="garden-sub">Every game played helps its flower grow.</p>
+    <canvas class="garden" id="garden" aria-hidden="true"></canvas>
+    <div class="garden-names" id="garden-names" aria-hidden="true" hidden></div>
+    <ol class="sr-only" id="garden-list"></ol>
+    <div class="plays" id="plays" hidden>
+      <div><b id="ft-plays">0</b><span>games played</span></div>
+      <div><b id="ft-visits">0</b><span>visits</span></div>
+    </div>
+  </section>
   <button class="top-btn" id="to-top" type="button"><svg aria-hidden="true" style="--petal-fill:#f06292"><use href="#cosmos"/></svg>Back to the top</button>
-  <p>Hnahsin · Mizo Thumal Infiamna</p>
-  <p>Dictionary words from J.F. Laldailova's English–Lushai Dictionary, used with permission.</p>
-  <p>We count which games are played, without cookies or anything that tells who you are.</p>
+  <div class="foot-brand" aria-label="Hnahsin, Mizo Thumal Infiamna">
+    <span class="mini-tiles" aria-hidden="true"><i>H</i><i>N</i><i>A</i><i>H</i><i>S</i><i>I</i><i>N</i></span>
+    <span class="foot-tag">Mizo Thumal Infiamna</span>
+  </div>
+  <p class="foot-note">📖 Dictionary words from J.F. Laldailova's English–Lushai Dictionary.</p>
+  <p class="foot-note">🔒 We count which games are played, without cookies or anything that tells who you are.</p>
   <p class="dev">Developed by <b>Maloma Thado</b></p>
   <p class="ver">Version 1.8.1 · <a href="https://github.com/thadomaloma/hnahsin-play/releases">What's new</a> · <a href="https://github.com/thadomaloma/hnahsin-play/issues/new/choose">Tell us about a mistake</a></p>
 </footer>
 
 <script src="stats.js?v=39ba31d1" async></script>
 <script src="rova.js?v=f35ca6fa" defer></script>
-<script src="home.js?v=e4c29dfb" defer></script>
+<script src="home.js?v=34b0070e" defer></script>
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js'));</script>
 
 </body>
