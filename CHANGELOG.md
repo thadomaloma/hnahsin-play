@@ -4,6 +4,19 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.8.1 (25 October 2026)
+
+### Rova and Mami
+
+- Redrawn with more detail: ink outlines, a face with a shining eye, brow,
+  nose and smile, sleeves, socks and sneakers with laces, Rova's tufts of hair
+  and Mami's ponytail with a tie. They blink on the home page. The new look
+  shows everywhere: the home page, Rova's Journey and the Playground.
+- On the home page they run in from either side, meet in the middle and bow
+  to each other Japanese style while "Chibai!" shows over them. Then they play
+  a game picked at random: tag, a race, hopping, or wandering about. Every few
+  games they meet to bow again.
+
 ## 1.8.0 (25 October 2026)
 
 ### New in the Playground: Crossword cave
