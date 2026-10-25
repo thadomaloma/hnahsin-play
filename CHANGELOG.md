@@ -4,6 +4,21 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.10.1 (26 October 2026)
+
+### Bazar dâwr, redone
+
+- The shopkeeper stands by her money tray where you can see her, waves when
+  she says hello, and reaches out when she sells something.
+- Fruit and big vegetables sit in baskets on a raised shelf, small vegetables
+  on trays in front, with more detail.
+- New: a woven bamboo screen, a string of chillies, a sign saying "dâwr", a
+  sack of rice (buhfai), and eggs and fish on a stool.
+- Rova faces you, and his coins fly to the money tray when he pays.
+- Behind the stall: hills, far stalls, people walking past and bunting.
+- The stall is bigger on a phone, and buttons like Weigh it are ready as
+  soon as you tap something.
+
 ## 1.10.0 (26 October 2026)
 
 ### New in Touch and learn: Bazar dâwr
