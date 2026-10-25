@@ -1394,37 +1394,46 @@ const LOOM = (() => {
 })();
 </script>
 <script>
-// Bazar dâwr: a Mizo market stall, drawn with Ink3D. A bamboo stall with a striped awning, the
-// shopkeeper (dâwrkai) behind a counter of fruit and vegetables, bananas hanging at the front,
-// a balance for weighing, a tray of money, and Rova come to shop with his basket.
-// Play: Rova gets a shopping list in Mizo numbers ("serthlum pathum"); tap the things on the
-// counter to put them in his basket, then pay. Or put something on the balance to see if it is
-// heavy (rit) or light (zâng). Every word comes from the Hnahsin content.
+// Bazar dâwr: a Mizo market stall, drawn with Ink3D. A bamboo stall with a striped awning and a
+// woven back screen; the shopkeeper (dâwrkai) at the end of her counter beside the money tray;
+// fruit (thei) in round baskets on a raised shelf and vegetables (thlai) on trays in front;
+// bananas and a string of chillies hanging from the beam, a sign, a lamp; a sack of rice, eggs
+// and fish by the stall; and Rova come to shop with his basket.
+// Play: Rova gets a shopping list in Mizo numbers ("serthlum · pathum"); tap things to send them
+// flying into his basket, then pay, and his coins fly to the tray. Or put something on the balance
+// to see if it is heavy (rit) or light (zâng). Every word comes from the Hnahsin content.
 const BAZAR = (() => {
-  const { box, ball, cyl, line, poly, group, solid, add, mul, mix, dot, lerp3 } = Ink3D;
+  const { box, ball, cyl, line, poly, group, mix, lerp3 } = Ink3D;
   const person = (at, dir, o) => Ink3DPeople.person(at, dir, o);
   const shade = c => ({ l: mix(c, '#ffffff', 0.3), m: c, d: mix(c, '#000000', 0.55) });
 
-  const STONE = { l: '#e2d6bf', m: '#c8b896', d: '#6e6146' };
+  const STONE = { l: '#e6dcc6', m: '#cbbd9c', d: '#6e6146' };
   const BAMBOO = { l: '#d9e08a', m: '#b3ba62', d: '#5a5d2a' };
   const WOOD = { l: '#c98d55', m: '#a46c3c', d: '#55361d' };
-  const CANE = { l: '#e8c584', m: '#c9a05a', d: '#6b5126' };
+  const DARK = { l: '#8a5a36', m: '#6b4429', d: '#33200f' };
+  const CANE = { l: '#ecd08f', m: '#cfa862', d: '#6b5126' };
   const BRASS = { l: '#f3d27a', m: '#d4a93a', d: '#6e5212' };
-  const LEAF = { l: '#8fd06e', m: '#5fa451', d: '#2f5a28' };
+  const SACK = { l: '#efe3c4', m: '#d6c49a', d: '#7a6a45' };
   const AWNINGS = { sen: '#d8434c', hring: '#2f9a55', 'dumpâwl': '#2f6fc0', eng: '#f2b431' };
-  const COUNTER_TOP = 20, CX0 = -10, CX1 = 10, CY0 = -40, CY1 = 40;   // the counter
+  const TOP = 17;                                    // the counter's height
+  const CX0 = -8, CX1 = 10, CY0 = -38, CY1 = 38;     // the counter
+  const SHELF = 6;                                   // the back shelf stands this much above the counter
 
-  // ---------- the produce: where each sits on the counter, and how heavy it is (for the balance) ----------
-  const SPOTS = {
-    // The tall things on a raised step at the back, the low things in front, so all can be seen.
-    zikhlum: [-4, -17], 'mâi': [-4, -5], serthlum: [-4, 7], theihai: [-4, 19], alu: [-4, 31],
-    purun: [5, -18], hmarcha: [5, -6], bawkbawn: [5, 6], fanghma: [5, 18], sawhthing: [5, 30],
-  };
+  // ---------- where things are ----------
+  // Fruit and the big vegetables sit in round baskets on the back shelf; the small vegetables on
+  // trays along the front. The shopkeeper stands at the far (left) end, where nothing hides her.
+  const BACK = { zikhlum: -11, 'mâi': 1, serthlum: 13, theihai: 25 };
+  const FRONT = { purun: -30, hmarcha: -18, bawkbawn: -6, fanghma: 6, alu: 18, sawhthing: 30 };
+  const BX = -2, FX = 5;
+  const spotOf = w => (w in BACK ? [BX, BACK[w], TOP + SHELF] : w in FRONT ? [FX, FRONT[w], TOP] : w === 'artui' ? [20, 46, 9] : w === 'sangha' ? [26, 46, 9] : w === 'balhla' ? [20, -26, 44] : [FX, 0, TOP]);
   const WEIGHT = { serthlum: 2, theihai: 2, alu: 2, purun: 1, hmarcha: .5, zikhlum: 3, 'mâi': 5, bawkbawn: 2, fanghma: 1.5, sawhthing: .5, artui: 1, sangha: 2.5, balhla: 2 };
-  const STEP = 3, lift = x => (x < 0 ? STEP : 0);   // how high the back step is
-  const ITEMS = Object.keys(SPOTS).concat(['artui', 'sangha', 'balhla']);
-  const LISTABLE = ['serthlum', 'theihai', 'alu', 'purun', 'zikhlum', 'mâi', 'bawkbawn', 'fanghma', 'artui', 'balhla'];
+  const ITEMS = [...Object.keys(BACK), ...Object.keys(FRONT), 'artui', 'sangha', 'balhla'];
+  const LISTABLE = ['serthlum', 'theihai', 'alu', 'purun', 'zikhlum', 'mâi', 'bawkbawn', 'fanghma', 'artui', 'balhla', 'sangha'];
   const NUMBERS = ['pakhat', 'pahnih', 'pathum'];
+  const COLOUR = { serthlum: '#f39a2b', theihai: '#f2b84a', alu: '#c9965e', purun: '#c46a9e', hmarcha: '#d8323a', zikhlum: '#7cc65a', 'mâi': '#f08a2c', bawkbawn: '#6b3a8f', fanghma: '#4f9e3c', sawhthing: '#d9b56a', artui: '#fbf3e4', sangha: '#9fb6c8', balhla: '#f2cf3a' };
+  const ROVA_AT = [30, 2, 0], BASKET_AT = [27, -9, 0];
+  const TRAY = [-4, -31];
+  const SIGN_Y = 22;                                  // the sign hangs to one side, clear of the shopkeeper                             // the money tray, by the shopkeeper
 
   const rnd = (i, k) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
   const toward = (v, t, step) => (v < t ? Math.min(t, v + step) : Math.max(t, v - step));
@@ -1432,14 +1441,14 @@ const BAZAR = (() => {
   function init() {
     return {
       t: 0, awning: 'sen', open: 1, openT: 1, dusk: 0, duskT: 0,
-      list: null, basket: {}, flying: [], coinsOut: 0, say: null, sayT: 0,
-      onPan: null, tilt: 0, tiltT: 0, last: null,
+      list: null, basket: {}, flying: [], coins: [], paid: 0, say: null, sayT: 0,
+      onPan: null, tilt: 0, tiltT: 0, last: null, reach: 0, cheer: 0,
     };
   }
   function newList(s) {
     const pick = LISTABLE.slice().sort(() => Math.random() - .5).slice(0, 2);
     s.list = pick.map(w => [w, 1 + Math.floor(Math.random() * 3)]);
-    s.basket = {}; s.coinsOut = 0;
+    s.basket = {};
     speak(s, 'Rova', 'chibai');
   }
   function speak(s, who, word) { s.say = { who, word }; s.sayT = 2.6; }
@@ -1450,197 +1459,252 @@ const BAZAR = (() => {
     s.dusk = toward(s.dusk, s.duskT, dt * 0.8);
     s.tilt = toward(s.tilt, s.tiltT, dt * 1.5);
     s.sayT = Math.max(0, s.sayT - dt);
-    // Things bought fly in an arc from the counter into Rova's basket.
-    for (const f of s.flying) f.k += dt / .55;
-    s.flying = s.flying.filter(f => {
-      if (f.k < 1) return true;
-      s.basket[f.w] = (s.basket[f.w] || 0) + 1;
-      return false;
-    });
+    s.reach = Math.max(0, s.reach - dt * 2);
+    s.cheer = Math.max(0, s.cheer - dt);
+    // Things bought fly in an arc into Rova's basket; coins fly from Rova to the tray.
+    for (const f of s.flying) f.k += dt / .6;
+    s.flying = s.flying.filter(f => { if (f.k < 1) return true; s.basket[f.w] = (s.basket[f.w] || 0) + 1; return false; });
+    for (const c of s.coins) c.k += dt / .7;
+    s.coins = s.coins.filter(c => { if (c.k < 1) return true; s.paid++; return false; });
     return true;
   }
   const tint = s => c => mix(mix(c, '#ff9a5a', s.dusk * .15), '#1e2850', s.dusk * .38);
 
-  // ---------- drawing the produce ----------
-  const S = 1.3;   // the piles are drawn a little larger than life, so they read well on a phone
-  function produce(w, at, s, bias = 0) {
-    const [x, y, z] = at, k = [];
-    const B = (dx, dy, dz, r, pal, o = {}) => k.push(ball([x + dx * S, y + dy * S, z + dz * S], r * S, { pal, ...o }));
+  // ---------- the produce ----------
+  // k scales a pile (1 on the stall, smaller on the balance's pan).
+  function produce(w, at, k = 1, bias = 0) {
+    const [x, y, z] = at, out = [];
+    const B = (dx, dy, dz, r, pal, o = {}) => out.push(ball([x + dx * k, y + dy * k, z + dz * k], r * k, { pal, ...o }));
+    const L = (pts, col, wd, o = {}) => out.push(line(pts.map(([dx, dy, dz]) => [x + dx * k, y + dy * k, z + dz * k]), { col, w: wd * k, ...o }));
+    const leaf = (dx, dy, dz) => L([[dx, dy, dz], [dx + .8, dy + .6, dz + 1.2]], '#4f9e3c', .9, { ink: false });
     switch (w) {
-      case 'serthlum': for (let i = 0; i < 5; i++) B((i % 3 - 1) * 2.6, (i < 3 ? -1 : 1) * 1.6, i < 3 ? 1.8 : 4, 1.9, shade('#f39a2b')); break;
-      case 'theihai': for (let i = 0; i < 4; i++) B((i % 2 - .5) * 3.6, (i < 2 ? -1 : 1) * 1.8, 2, 2, shade(i % 2 ? '#f2b84a' : '#9bc94a')); break;
-      case 'alu': for (let i = 0; i < 6; i++) B((i % 3 - 1) * 2.6, (i < 3 ? -1 : 1) * 1.8, 1.6 + (i > 4 ? 2 : 0), 1.7, shade('#c9965e')); break;
-      case 'purun': for (let i = 0; i < 6; i++) B((i % 3 - 1) * 2.4, (i < 3 ? -1 : 1) * 1.7, 1.5, 1.5, shade('#c46a9e')); break;
-      case 'hmarcha': for (let i = 0; i < 6; i++) k.push(line([[x - 3 + i * 1.2, y - 3, z + .8], [x - 2 + i * 1.2, y + 3, z + .8 + (i % 2) * .6]], { col: '#d8323a', w: 1.2 })); break;
+      case 'serthlum': [[-2.2, -1.6, 2], [2.2, -1.6, 2], [0, 1.8, 2], [-1, 0, 4.6], [1.6, .6, 4.4]].forEach(([a, b, c], i) => { B(a, b, c, 2.3, shade('#f39a2b')); if (i > 2) leaf(a, b, c + 2.2); }); break;
+      case 'theihai': [[-2, -1.6, 2.2, '#9bc94a'], [2, -1.4, 2.2, '#f2b84a'], [0, 1.8, 2.2, '#f5a53a'], [0, 0, 4.8, '#e9c64a']].forEach(([a, b, c, col]) => B(a, b, c, 2.4, shade(col))); break;
       case 'zikhlum':
-        B(0, 0, 3.3, 3.6, shade('#7cc65a'));
-        for (const a of [0, 2.1, 4.2]) k.push(line([[x + Math.cos(a) * 1.5, y + Math.sin(a) * 1.5, z + 6.4], [x + Math.cos(a) * 3.4, y + Math.sin(a) * 3.4, z + 3.4]], { col: '#4f9e3c', w: .5, ink: false }));
+        B(0, 0, 3.6, 3.9, shade('#8fd06e'));
+        for (const a of [0, 1.6, 3.2, 4.8]) B(Math.cos(a) * 2.4, Math.sin(a) * 2.4, 2.6, 2.2, shade('#5fa451'));
         break;
-      case 'mâi': B(0, 0, 3.4, 3.9, shade('#f08a2c')); k.push(line([[x, y, z + 7.2], [x + .8, y + .6, z + 8.6]], { col: '#5a7a2a', w: .9 })); break;
-      case 'bawkbawn': for (let i = 0; i < 3; i++) k.push(line([[x - 3, y - 2 + i * 2, z + 1.4], [x + 3, y - 2.4 + i * 2, z + 1.6]], { col: '#6b3a8f', w: 2.6 })); break;
-      case 'fanghma': for (let i = 0; i < 3; i++) k.push(line([[x - 3.4, y - 2 + i * 2, z + 1.3], [x + 3.4, y - 1.6 + i * 2, z + 1.3]], { col: '#4f9e3c', w: 2.2 })); break;
-      case 'sawhthing': for (let i = 0; i < 4; i++) k.push(line([[x - 2.5 + i * 1.6, y - 2, z + 1], [x - 1.5 + i * 1.6, y, z + 1.6], [x - 2.2 + i * 1.6, y + 2.4, z + 1]], { col: '#d9b56a', w: 1.3 })); break;
+      case 'mâi':
+        B(0, 0, 3.6, 4.2, shade('#f08a2c'));
+        L([[0, 0, 7.6], [.6, .5, 9]], '#5a7a2a', 1.1);
+        break;
+      case 'purun': for (let i = 0; i < 6; i++) { const a = i % 3 - 1, b = i < 3 ? -1 : 1; B(a * 2.4, b * 1.6, 1.6, 1.6, shade('#c46a9e')); L([[a * 2.4, b * 1.6, 3.1], [a * 2.4 + .3, b * 1.6, 3.9]], '#7a8a3a', .4, { ink: false }); } break;
+      case 'hmarcha': for (let i = 0; i < 7; i++) L([[-3 + i, -3, .8 + (i % 2) * .5], [-2.4 + i, 0, 1.2], [-3 + i + (i % 2), 3, .8]], i % 3 ? '#d8323a' : '#e8574a', 1.1); break;
+      case 'bawkbawn': for (let i = 0; i < 3; i++) { L([[-3.2, -2 + i * 2, 1.5], [3, -2.4 + i * 2, 1.7]], '#6b3a8f', 2.6); L([[3, -2.4 + i * 2, 1.7], [4, -2.6 + i * 2, 1.8]], '#4f9e3c', 1.4, { ink: false }); } break;
+      case 'fanghma': for (let i = 0; i < 3; i++) L([[-3.4, -2 + i * 2, 1.3], [3.4, -1.6 + i * 2, 1.3]], i % 2 ? '#5fae48' : '#3f8a34', 2.2); break;
+      case 'alu': for (let i = 0; i < 6; i++) B((i % 3 - 1) * 2.5, (i < 3 ? -1 : 1) * 1.7, 1.5 + (i === 4 ? 1.8 : 0), 1.7, shade('#c9965e')); break;
+      case 'sawhthing': for (let i = 0; i < 4; i++) L([[-2.5 + i * 1.6, -2, 1], [-1.5 + i * 1.6, 0, 1.6], [-2.2 + i * 1.6, 2.4, 1]], '#d9b56a', 1.4); break;
+      case 'artui': for (let i = 0; i < 3; i++) B((i - 1) * 1.6, 0, 1.3, 1.3, null, { fill: '#fbf3e4', w: .5 }); break;
+      case 'sangha': out.push(poly([[x - 3 * k, y, z + .3], [x, y - .9 * k, z + .3], [x + 3 * k, y, z + .3], [x, y + .9 * k, z + .3]], { fill: '#9fb6c8', w: .5 })); break;
+      case 'balhla': for (let i = 0; i < 4; i++) L([[-1.5 + i, -1, 1], [-1 + i, 0, 1.6], [-1.5 + i, 1.4, 1]], '#f2cf3a', 1.6); break;
     }
-    return group(k, { part: w, bias });
+    return group(out, { part: w, bias });
   }
-  // A shallow tray of woven bamboo under each pile.
-  const tray = (x, y) => box(x - 4.6, x + 4.6, y - 5.6, y + 5.6, COUNTER_TOP + lift(x), COUNTER_TOP + lift(x) + 1, { pal: CANE, part: 'fawng', bias: -20 });
+  const tray = (x, y, z) => box(x - 4.4, x + 4.4, y - 5.4, y + 5.4, z, z + 1, { pal: CANE, part: 'fawng', bias: -20, decals: { zp: [{ pts: [[x - 4.4, y, z + 1.05], [x + 4.4, y, z + 1.05]], stroke: CANE.d, open: true, w: .4 }, { pts: [[x, y - 5.4, z + 1.05], [x, y + 5.4, z + 1.05]], stroke: CANE.d, open: true, w: .4 }] } });
+  const roundBasket = (x, y, z) => cyl([x, y], z, z + 2.6, 4.6, 5.6, { pal: CANE, bands: [z + 1.3], capFill: '#8a6a32', part: 'fawng', bias: -10 });
 
   // ---------- the stall ----------
   function stall(s) {
-    const items = [], A = shade(AWNINGS[s.awning]);
+    const items = [], A = AWNINGS[s.awning], o = s.open;
     // Bamboo posts
-    for (const [x, h] of [[-20, 70], [18, 66]]) for (const y of [CY0 - 4, CY1 + 4]) items.push(cyl([x, y], 0, h, 1.4, 1.2, { pal: BAMBOO, bands: [12, 24, 36, 48].filter(z => z < h), part: 'mau' }));
-    // The counter: a wooden table with a striped puan hanging down its front
-    const stripes = [];
-    [['#c8323d', 6], ['#2a2522', 9], ['#f4efe4', 12], ['#2f8a4a', 15], ['#c8323d', 18]].forEach(([c, z]) => stripes.push({ pts: [[CX1 + .06, CY0, z], [CX1 + .06, CY1, z], [CX1 + .06, CY1, z + 1.6], [CX1 + .06, CY0, z + 1.6]], fill: c, w: .3, part: 'puan' }));
-    items.push(box(CX0, CX1, CY0, CY1, 0, COUNTER_TOP - 1.2, { pal: shade('#c8323d'), part: 'puan', pals: { xp: shade('#c8323d') }, decals: { xp: stripes } }));
-    // Flat things under the produce are drawn first (big flat boxes sort badly by their middle).
-    items.push(box(CX0 - 1, CX1 + 1.4, CY0 - 1, CY1 + 1, COUNTER_TOP - 1.2, COUNTER_TOP, { pal: WOOD, part: 'dawhkân', bias: -40 }));
-    // Produce on trays
-    items.push(box(-9.4, 1, CY0 + 14, CY1 - 3, COUNTER_TOP, COUNTER_TOP + STEP, { pal: WOOD, part: 'dawhkân', bias: -30 }));   // the back step
-    for (const [w, [x, y]] of Object.entries(SPOTS)) { items.push(tray(x, y)); items.push(produce(w, [x, y, COUNTER_TOP + lift(x) + 1], s, 2)); }
-    // The awning: a sloping striped canvas with a scalloped front edge, rolled up when closed
-    const back = [-24, 72], front = [24, 66 - 22 * (1 - s.open)];   // nearly flat, so you can see under it
-    const yA = CY0 - 8, yB = CY1 + 8, th = 1.2;
-    const stripeDecals = [];
-    for (let i = 0; i < 8; i += 2) {
-      const y0 = yA + (yB - yA) * i / 8, y1 = yA + (yB - yA) * (i + 1) / 8;
-      stripeDecals.push({ pts: [[back[0], y0, back[1] + th + .05], [front[0], y0, front[1] + th + .05], [front[0], y1, front[1] + th + .05], [back[0], y1, back[1] + th + .05]], fill: '#fff8ec', w: .3 });
+    for (const [x, h] of [[-24, 70], [16, 64]]) for (const y of [CY0 - 4, CY1 + 4]) items.push(cyl([x, y], 0, h, 1.4, 1.2, { pal: BAMBOO, bands: [12, 24, 36, 48, 60].filter(z => z < h), part: 'mau' }));
+    // A woven bamboo screen at the back, so the stall reads against the busy market
+    const weave = [];
+    for (let z = 14; z < 58; z += 4) weave.push({ pts: [[-23.95, CY0 - 3, z], [-23.95, CY1 + 3, z]], stroke: CANE.d, open: true, w: .5 });
+    for (let y = CY0; y < CY1 + 2; y += 5) weave.push({ pts: [[-23.95, y, 10], [-23.95, y, 60]], stroke: mix(CANE.d, CANE.m, .5), open: true, w: .35 });
+    items.push(box(-25, -24, CY0 - 3, CY1 + 3, 10, 60, { pal: CANE, part: 'mau', decals: { xp: weave }, bias: -200 }));
+    // The counter: a wooden table with a Mizo puan hanging down its front
+    const bands = [['#2a2522', 2, 4], ['#c8323d', 4.5, 6.5], ['#2a2522', 7, 8], ['#f4efe4', 8.5, 9.3], ['#2f8a4a', 9.8, 11.2], ['#f4efe4', 11.7, 12.5], ['#c8323d', 13, 15]];
+    const front = bands.map(([c, z0, z1]) => ({ pts: [[CX1 + .06, CY0, z0], [CX1 + .06, CY1, z0], [CX1 + .06, CY1, z1], [CX1 + .06, CY0, z1]], fill: c, w: .25, part: 'puan' }));
+    for (let y = CY0 + 6; y < CY1; y += 12) front.push({ pts: [[CX1 + .07, y - 1.2, 10.5], [CX1 + .07, y, 12.2], [CX1 + .07, y + 1.2, 10.5], [CX1 + .07, y, 8.8]], fill: '#ffc94a', w: .25, part: 'puan' });
+    items.push(box(CX0, CX1, CY0, CY1, 0, TOP - 1.2, { pal: shade('#7a2a30'), part: 'puan', decals: { xp: front }, bias: -60 }));
+    items.push(box(CX0 - 1, CX1 + 1.4, CY0 - 1, CY1 + 1, TOP - 1.2, TOP, { pal: WOOD, part: 'dawhkân', bias: -50 }));
+    // The back shelf: a step of dark planks
+    items.push(box(BX - 5.2, BX + 5.2, CY0 + 20, CY1 - 7, TOP, TOP + SHELF, { pal: DARK, part: 'dawhkân', bias: -40 }));
+    // Baskets of fruit and big vegetables on the shelf, trays of small vegetables in front
+    for (const [w, y] of Object.entries(BACK)) { items.push(roundBasket(BX, y, TOP + SHELF)); items.push(produce(w, [BX, y, TOP + SHELF + 2.2], 1, 2)); }
+    for (const [w, y] of Object.entries(FRONT)) { items.push(tray(FX, y, TOP)); items.push(produce(w, [FX, y, TOP + 1], 1, 2)); }
+    // The money tray (by the shopkeeper) and the balance (at the near end)
+    const coins = [box(TRAY[0] - 3.4, TRAY[0] + 3.4, TRAY[1] - 4, TRAY[1] + 4, TOP, TOP + 1.2, { pal: DARK })];
+    for (let i = 0; i < Math.min(5 + s.paid, 14); i++) coins.push(cyl([TRAY[0] - 2 + (i % 3) * 2, TRAY[1] - 2.6 + Math.floor(i / 3) * 1.7], TOP + 1.2, TOP + 1.7 + (i % 2) * .4, .8, .8, { pal: BRASS, capFill: '#ffe08a' }));
+    items.push(group(coins, { part: 'pawisa' }));
+    items.push(...balance(s));
+    // The awning: a sloping striped canvas with a scalloped front, which drops when the stall closes
+    const back = [-26, 72], fr = [26, 64 - 22 * (1 - o)], yA = CY0 - 8, yB = CY1 + 8, th = 1.2;
+    const strip = [];
+    for (let i = 0; i < 10; i += 2) {
+      const y0 = yA + (yB - yA) * i / 10, y1 = yA + (yB - yA) * (i + 1) / 10;
+      strip.push({ pts: [[back[0], y0, back[1] + th + .05], [fr[0], y0, fr[1] + th + .05], [fr[0], y1, fr[1] + th + .05], [back[0], y1, back[1] + th + .05]], fill: '#fff8ec', w: .3 });
     }
-    items.push(Ink3D.hexa([[back[0], yA, back[1]], [front[0], yA, front[1]], [front[0], yB, front[1]], [back[0], yB, back[1]],
-      [back[0], yA, back[1] + th], [front[0], yA, front[1] + th], [front[0], yB, front[1] + th], [back[0], yB, back[1] + th]], { pal: A, part: 'dâwr', decals: { zp: stripeDecals }, bias: 50 }));
-    // Scallops along the front, alternating colours
+    items.push(Ink3D.hexa([[back[0], yA, back[1]], [fr[0], yA, fr[1]], [fr[0], yB, fr[1]], [back[0], yB, back[1]],
+      [back[0], yA, back[1] + th], [fr[0], yA, fr[1] + th], [fr[0], yB, fr[1] + th], [back[0], yB, back[1] + th]], { pal: shade(A), part: 'dâwr', decals: { zp: strip }, bias: 50 }));
     const sc = [];
-    for (let i = 0; i < 8; i++) {
-      const y0 = yA + (yB - yA) * i / 8, y1 = yA + (yB - yA) * (i + 1) / 8, ym = (y0 + y1) / 2, drop = 4 * s.open + 1;
-      sc.push(poly([[front[0], y0, front[1]], [front[0], y1, front[1]], [front[0] + .5, ym, front[1] - drop]], { fill: i % 2 ? '#fff8ec' : AWNINGS[s.awning], w: .7 }));
+    for (let i = 0; i < 10; i++) {
+      const y0 = yA + (yB - yA) * i / 10, y1 = yA + (yB - yA) * (i + 1) / 10, ym = (y0 + y1) / 2, drop = 4 * o + 1;
+      sc.push(poly([[fr[0], y0, fr[1]], [fr[0], y1, fr[1]], [fr[0] + .5, ym, fr[1] - drop]], { fill: i % 2 ? '#fff8ec' : A, w: .7 }));
     }
     items.push(group(sc, { part: 'dâwr', bias: 51 }));
-    // A hanging lamp, glowing at dusk
-    const lampAt = [6, 0, 58 - 6 * (1 - s.open)];
+    // A wooden sign hanging from the front beam ("dâwr" is written on it over the picture)
+    const sz = fr[1] - 9 * o - 2;
     items.push(group([
-      line([[6, 0, 68], [lampAt[0], lampAt[1], lampAt[2] + 2]], { col: '#4b4038', w: .5, ink: false }),
+      line([[fr[0] - .5, SIGN_Y - 7, fr[1] - 1], [fr[0] - .5, SIGN_Y - 7, sz + 7]], { col: '#7a6a55', w: .4, ink: false }),
+      line([[fr[0] - .5, SIGN_Y + 7, fr[1] - 1], [fr[0] - .5, SIGN_Y + 7, sz + 7]], { col: '#7a6a55', w: .4, ink: false }),
+      box(fr[0] - 1.2, fr[0] - .2, SIGN_Y - 10, SIGN_Y + 10, sz, sz + 7, { pal: WOOD }),
+    ], { part: 'dâwr', bias: 55, shadow: false }));
+    // A lamp, glowing at dusk
+    const lampAt = [4, 0, 56 - 8 * (1 - o)];
+    items.push(group([
+      line([[4, 0, 68], [4, 0, lampAt[2] + 2]], { col: '#4b4038', w: .5, ink: false }),
       ball(lampAt, 2, { fill: mix('#efe6cf', '#ffd04d', s.dusk), glow: true }),
-      ball(lampAt, 12, { fill: '#ffd36b', glow: true, ink: false, opacity: .3 * s.dusk, bias: .1, shadow: false }),
+      ball(lampAt, 13, { fill: '#ffd36b', glow: true, ink: false, opacity: .32 * s.dusk, bias: .1, shadow: false }),
     ], { part: 'khawnvâr', shadow: false, bias: 60 }));
-    // A bunch of bananas hanging from the front beam on a rope
-    const bx = 19, by = -30, bz = 52 - 8 * (1 - s.open), sw = Math.sin(s.t * 1.4) * .8;
-    const bananas = [line([[bx, by, 64 - 8 * (1 - s.open)], [bx + sw * .3, by, bz + 3]], { col: '#b98a4e', w: .6, part: 'hrui' })];
-    for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2, r = 4 + (i % 2); bananas.push(line([[bx + sw, by, bz + 3], [bx + sw + Math.cos(a) * r * .7, by + Math.sin(a) * r * .7, bz - 2], [bx + sw + Math.cos(a) * r, by + Math.sin(a) * r, bz + 1.6]], { col: i % 2 ? '#f2cf3a' : '#e8c22a', w: 2.4 })); }
-    bananas.push(ball([bx + sw, by, bz + 3.4], 1.2, { fill: '#7a5a2a', w: .5 }));
-    items.push(group(bananas, { part: 'balhla', shadow: false }));
-    // Eggs in a basket (kho) and fish on a banana leaf (hnah), on a low stool at the end
-    items.push(box(-2, 10, CY1 + 10, CY1 + 22, 0, 10, { pal: WOOD, part: 'dawhkân' }));
-    const eggs = [cyl([0, CY1 + 18], 10, 13.5, 3.6, 4.4, { pal: CANE, bands: [11.5], capFill: '#6b5126', part: 'kho' })];
-    for (let i = 0; i < 5; i++) eggs.push(ball([0 + (i % 3 - 1) * 1.8, CY1 + 18 + (i < 3 ? -1 : 1) * 1.4, 14 + (i > 2 ? .8 : 0)], 1.25, { fill: '#fbf3e4', w: .5 }));
-    items.push(group(eggs, { part: 'artui' }));
-    items.push(poly([[1.5, CY1 + 10.6, 10.05], [9.8, CY1 + 10.6, 10.05], [9.8, CY1 + 14.4, 10.05], [1.5, CY1 + 14.4, 10.05]], { fill: '#4f9e3c', w: .5, part: 'hnah' }));
-    const fish = [];
-    for (let i = 0; i < 2; i++) { const fx = 5.6, fy = CY1 + 11.8 + i * 1.4, fz = 10.3 + i * .6, d = i ? -1 : 1;
-      fish.push(poly([[fx - 4 * d, fy, fz], [fx, fy - .9, fz], [fx + 3 * d, fy, fz], [fx, fy + .9, fz]], { fill: '#9fb6c8', w: .5 }));
-      fish.push(poly([[fx + 3 * d, fy, fz], [fx + 4.6 * d, fy - 1.2, fz], [fx + 4.6 * d, fy + 1.2, fz]], { fill: '#7f98ad', w: .5 })); }
-    items.push(group(fish, { part: 'sangha', bias: 1 }));
-    // The balance (to weigh) and the money tray, on the counter
-    items.push(...balance(s));
-    const coins = [box(-9.5, -1.5, CY1 - 7, CY1 - 1, COUNTER_TOP, COUNTER_TOP + 1.4, { pal: WOOD, part: 'pawisa' })];
-    const nCoins = 4 + s.coinsOut;
-    for (let i = 0; i < nCoins; i++) coins.push(cyl([-8 + (i % 4) * 2, CY1 - 5.2 + Math.floor(i / 4) * 2.2], COUNTER_TOP + 1.4, COUNTER_TOP + 1.9 + (i % 3) * .3, .9, .9, { pal: BRASS, capFill: '#ffe08a' }));
-    items.push(group(coins, { part: 'pawisa' }));
+    // Bananas on a rope at one end of the beam, a string of chillies at the other, swaying a little
+    const sw = Math.sin(s.t * 1.4) * .8, [bx, by, bz] = spotOf('balhla');
+    const bananas = [line([[bx, by, fr[1] - 2], [bx + sw * .3, by, bz + 4]], { col: '#b98a4e', w: .6, part: 'hrui' })];
+    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2, r = 4 + (i % 2); bananas.push(line([[bx + sw, by, bz + 3], [bx + sw + Math.cos(a) * r * .7, by + Math.sin(a) * r * .7, bz - 2], [bx + sw + Math.cos(a) * r, by + Math.sin(a) * r, bz + 1.6]], { col: i % 2 ? '#f2cf3a' : '#e8c22a', w: 2.4 })); }
+    bananas.push(ball([bx + sw, by, bz + 3.6], 1.3, { fill: '#7a5a2a', w: .5 }));
+    items.push(group(bananas, { part: 'balhla', shadow: false, bias: 45 }));
+    const cy = 30, cz = fr[1] - 2, chil = [line([[20, cy, cz], [20 - sw * .3, cy, cz - 20]], { col: '#b98a4e', w: .5, ink: false })];
+    for (let i = 0; i < 9; i++) { const z = cz - 3 - i * 2, s2 = i % 2 ? 1 : -1; chil.push(line([[20, cy, z], [20 + s2 * 1.6, cy + s2 * .5, z - 2.2]], { col: i % 3 ? '#d8323a' : '#c21f2b', w: 1.4 })); }
+    items.push(group(chil, { part: 'hmarcha', shadow: false, bias: 45 }));
     // A closed stall: a cloth over the produce
-    if (s.open < .5) items.push(box(CX0 - 1.4, CX1 + 1.8, CY0 - 1.4, CY1 + 1.4, COUNTER_TOP, COUNTER_TOP + 5, { pal: shade('#e9dcc0'), part: 'puan', bias: 40 }));
+    if (o < .5) items.push(box(CX0 - 1.4, CX1 + 1.8, CY0 - 1.4, CY1 + 1.4, TOP, TOP + SHELF + 5, { pal: shade('#e9dcc0'), part: 'puan', bias: 40 }));
+    // By the stall: a sack of rice, and a stool with eggs in a basket and fish on a banana leaf
+    items.push(group([
+      cyl([22, -46], 0, 11, 5, 4.2, { pal: SACK, bands: [3, 8] }),
+      cyl([22, -46], 11, 12.5, 4.2, 5, { pal: SACK, capFill: '#f7f2e6' }),
+      ...Array.from({ length: 5 }, (_, i) => ball([22 + (i % 3 - 1) * 1.6, -46 + (i < 3 ? -1 : 1) * 1.2, 12.6], .9, { fill: '#fbf7ee', ink: false })),
+    ], { part: 'buhfai' }));
+    items.push(box(16, 30, 40, 52, 0, 9, { pal: WOOD, part: 'dawhkân', bias: -5 }));
+    const eggs = [cyl([20, 46], 9, 12.5, 3.4, 4.2, { pal: CANE, bands: [10.7], capFill: '#6b5126', part: 'kho' })];
+    for (let i = 0; i < 6; i++) eggs.push(ball([20 + (i % 3 - 1) * 1.7, 46 + (i < 3 ? -1 : 1) * 1.3, 13 + (i > 3 ? .8 : 0)], 1.25, { fill: '#fbf3e4', w: .5 }));
+    items.push(group(eggs, { part: 'artui' }));
+    items.push(poly([[23.5, 41, 9.05], [29.6, 41, 9.05], [29.6, 51, 9.05], [23.5, 51, 9.05]], { fill: '#4f9e3c', w: .5, part: 'hnah' }));
+    const fish = [];
+    for (let i = 0; i < 2; i++) {
+      const fx = 26.5 + (i ? .8 : -.8), fy = 46, fz = 9.4 + i * .6, d = i ? -1 : 1;
+      fish.push(poly([[fx, fy - 4 * d, fz], [fx - 1, fy, fz], [fx, fy + 3 * d, fz], [fx + 1, fy, fz]], { fill: i ? '#a8bfd2' : '#8fa6ba', w: .5 }));
+      fish.push(poly([[fx, fy + 3 * d, fz], [fx - 1.3, fy + 4.6 * d, fz], [fx + 1.3, fy + 4.6 * d, fz]], { fill: '#7f98ad', w: .5 }));
+      fish.push(ball([fx, fy - 2.6 * d, fz + .2], .3, { fill: '#231e16', ink: false }));
+    }
+    items.push(group(fish, { part: 'sangha', bias: 1 }));
     return items;
   }
 
   function balance(s) {
-    const X = 0, Y = CY0 + 6, Z = COUNTER_TOP, k = [];
-    const a = s.tilt * .35, arm = 7;
-    const pivot = [X, Y, Z + 12];
-    // A heavy thing pulls its pan (on the left) down; a light one lets the weight win.
+    const X = BX, Y = CY1 - 1, Z = TOP, k = [];
+    const a = s.tilt * .35, arm = 6;
+    const pivot = [X, Y, Z + 13];
+    // A heavy thing pulls its pan (the near one) down; a light one lets the weight win.
     const L = [X, Y - Math.cos(a) * arm, pivot[2] - Math.sin(a) * arm], R = [X, Y + Math.cos(a) * arm, pivot[2] + Math.sin(a) * arm];
-    k.push(box(X - 3, X + 3, Y - 3, Y + 3, Z, Z + 1.2, { pal: WOOD }));
+    k.push(box(X - 3, X + 3, Y - 3.4, Y + 3.4, Z, Z + 1.2, { pal: DARK }));
     k.push(cyl([X, Y], Z + 1.2, pivot[2], .6, .5, { pal: BRASS }));
+    k.push(ball(pivot, 1, { pal: BRASS }));
     k.push(line([L, R], { col: BRASS.m, w: 1 }));
     for (const P of [L, R]) {
       const pan = [P[0], P[1], P[2] - 6];
       k.push(line([P, [pan[0] + 1.8, pan[1], pan[2]]], { col: '#7a6a55', w: .3, ink: false }), line([P, [pan[0] - 1.8, pan[1], pan[2]]], { col: '#7a6a55', w: .3, ink: false }));
-      k.push(cyl([pan[0], pan[1]], pan[2] - .6, pan[2], 2.8, 3.2, { pal: BRASS, capFill: '#f6dd8f' }));
+      k.push(cyl([pan[0], pan[1]], pan[2] - .6, pan[2], 2.6, 3, { pal: BRASS, capFill: '#f6dd8f' }));
     }
-    // The weight on the right; the thing being weighed on the left
-    k.push(cyl([R[0], R[1]], R[2] - 6, R[2] - 4.2, 1.2, 1, { pal: shade('#5a5754') }));
-    if (s.onPan) k.push(produce(s.onPan, [L[0], L[1], L[2] - 6], s, 5));
+    k.push(cyl([R[0], R[1]], R[2] - 6, R[2] - 4.4, 1.1, .9, { pal: shade('#5a5754') }));
+    if (s.onPan) k.push(produce(s.onPan, [L[0], L[1], L[2] - 6], .6, 5));
     return [group(k, { part: 'rit', at: [X, Y, Z + 6] })];
   }
 
   // ---------- people ----------
-  const SELLER = { h: 28, shirt: { l: '#f27aa3', m: '#d8457b', d: '#7a1f43' }, lower: 'skirt', lowerPal: shade('#2a2522'), bands: [.2, .28, .36], hair: '#1d1b22', bun: true };
-  const ROVA = { h: 24, shirt: { l: '#3f86da', m: '#1565c0', d: '#0b3a78' }, stripe: { l: '#ffd66b', m: '#ffc94a', d: '#8a6a12' }, lower: 'shorts', lowerPal: { l: '#24456b', m: '#0d2a4a', d: '#06162a' }, hair: '#1d1b22', shoes: '#ffffff' };
+  const SELLER = { h: 29, shirt: { l: '#f27aa3', m: '#d8457b', d: '#7a1f43' }, lower: 'skirt', lowerPal: shade('#2a2522'), bands: [.2, .28, .36], hair: '#1d1b22', bun: true };
+  const ROVA = { h: 25, shirt: { l: '#3f86da', m: '#1565c0', d: '#0b3a78' }, stripe: { l: '#ffd66b', m: '#ffc94a', d: '#8a6a12' }, lower: 'shorts', lowerPal: { l: '#24456b', m: '#0d2a4a', d: '#06162a' }, hair: '#1d1b22', shoes: '#ffffff' };
   function people(s) {
     const out = [];
-    // The shopkeeper stands behind the counter; she weighs or hands things over.
-    const reach = s.flying.length ? 1 : 0, wave = Math.sin(s.t * 2) * .5;
-    const handsS = [[CX1 - 2 + 3 * reach, -6, COUNTER_TOP + 4 + wave], [CX1 - 2, 6, COUNTER_TOP + 4]];
-    out.push(group(person([-18, 0, 0], 0, { ...SELLER, t: s.t, hands: handsS }), { part: 'dâwrkai' }));
-    // Rova stands in front with his basket (êm), facing the stall.
-    const R = [32, 6, 0];
-    out.push(group(person(R, Math.PI, { ...ROVA, pose: 'stand', t: s.t }), { part: 'Rova' }));
-    const em = [cyl([30, -6], 0, 9, 3.4, 5, { pal: CANE, bands: [3, 6], capFill: '#6b5126' })];
+    // The shopkeeper, at the far end of her counter beside the money tray. She reaches out when
+    // she sells something and waves when she greets.
+    const S = [-15, -31, 0], r = s.reach, hello = s.say && s.sayT > 0 && s.say.who === 'seller' ? Math.sin(s.t * 12) : 0;
+    const hands = [[CX1 - 4 + 6 * r, -24 + 4 * r, TOP + 6 + 2 * r], [-6 + 3 * hello, -36, TOP + 10 + 8 * Math.abs(hello)]];
+    out.push(group(person(S, Math.atan2(.35, 1), { ...SELLER, t: s.t, hands }), { part: 'dâwrkai' }));
+    // Rova stands in front of the stall, turned three-quarters toward you; his basket (êm) at his side.
+    const jump = Math.sin(Math.min(1, s.cheer) * Math.PI) * 3;
+    out.push(group(person([ROVA_AT[0], ROVA_AT[1], jump], Math.atan2(.99, .15), { ...ROVA, pose: 'stand', t: s.t }), { part: 'Rova' }));
+    const em = [cyl(BASKET_AT.slice(0, 2), 0, 9, 3.4, 5, { pal: CANE, bands: [3, 6], capFill: '#6b5126' })];
     let n = 0;
     for (const [w, c] of Object.entries(s.basket)) for (let i = 0; i < c; i++, n++) {
-      const a = n * 2.1, r = n < 3 ? 1.8 : 0;
-      em.push(ball([30 + Math.cos(a) * r, -6 + Math.sin(a) * r, 9.6 + Math.floor(n / 3) * 1.4], 1.4, { fill: colourOf(w), w: .5 }));
+      const a = n * 2.1, rr = n < 3 ? 1.8 : 0;
+      em.push(ball([BASKET_AT[0] + Math.cos(a) * rr, BASKET_AT[1] + Math.sin(a) * rr, 9.6 + Math.floor(n / 3) * 1.4], 1.4, { fill: COLOUR[w], w: .5 }));
     }
     out.push(group(em, { part: 'êm' }));
-    // Things in the air, on their way to the basket
+    // Things in the air: produce to the basket, coins to the tray
     for (const f of s.flying) {
-      const [x, y] = SPOTS[f.w] || (f.w === 'artui' ? [0, CY1 + 18] : f.w === 'balhla' ? [19, -30] : [6, CY1 + 12]);
-      const from = [x, y, COUNTER_TOP + lift(x) + 3], to = [30, -6, 11], p = lerp3(from, to, f.k);
-      p[2] += Math.sin(f.k * Math.PI) * 14;
-      out.push(ball(p, 1.6, { fill: colourOf(f.w), w: .6, shadow: false, bias: 100 }));
+      const [x, y, z] = spotOf(f.w), p = lerp3([x, y, z + 3], [BASKET_AT[0], BASKET_AT[1], 11], f.k);
+      p[2] += Math.sin(f.k * Math.PI) * 16;
+      out.push(ball(p, 1.7, { fill: COLOUR[f.w], w: .6, shadow: false, bias: 100 }));
+    }
+    for (const c of s.coins) {
+      if (c.k < 0) continue;   // still waiting its turn
+      const p = lerp3([ROVA_AT[0] - 2, ROVA_AT[1] - 4, 16], [TRAY[0], TRAY[1], TOP + 2], c.k);
+      p[2] += Math.sin(c.k * Math.PI) * 18;
+      out.push(cyl([p[0], p[1]], p[2], p[2] + .5, 1, 1, { pal: BRASS, capFill: '#ffe08a', shadow: false, bias: 100 }));
     }
     return out;
   }
-  const colourOf = w => ({ serthlum: '#f39a2b', theihai: '#f2b84a', alu: '#c9965e', purun: '#c46a9e', hmarcha: '#d8323a', zikhlum: '#7cc65a', 'mâi': '#f08a2c', bawkbawn: '#6b3a8f', fanghma: '#4f9e3c', sawhthing: '#d9b56a', artui: '#fbf3e4', sangha: '#9fb6c8', balhla: '#f2cf3a' })[w] || '#ccc';
 
   function scene(s, cam) {
     s._cam = cam;
+    // A cobbled square: stones of two shades
     const dec = [];
-    for (let x = -40; x < 48; x += 8) for (let y = -52; y < 52; y += 8) if (rnd(x, y) > .55) dec.push(poly([[x, y, .03], [x + 5, y + 1, .03], [x + 4, y + 5, .03], [x - 1, y + 4, .03]], { fill: '#d6c8aa', ink: false }));
-    const slab = box(-42, 52, -54, 56, -5, 0, { pal: STONE, part: 'kawng', shadow: false });
-    return { ground: [slab], groundDecals: dec, clip: [[-42, -54, 0], [52, -54, 0], [52, 56, 0], [-42, 56, 0]], items: [...stall(s), ...people(s)] };
+    for (let x = -42; x < 54; x += 6) for (let y = -54; y < 56; y += 6) {
+      const j = rnd(x, y);
+      if (j > .45) dec.push(poly([[x + .6, y + .6, .03], [x + 5.2, y + .9, .03], [x + 5, y + 5.4, .03], [x + .4, y + 5, .03]], { fill: j > .8 ? '#d9cbac' : '#ddd1b6', ink: false }));
+    }
+    const slab = box(-44, 56, -56, 58, -5, 0, { pal: STONE, part: 'kawng', shadow: false });
+    return { ground: [slab], groundDecals: dec, clip: [[-44, -56, 0], [56, -56, 0], [56, 58, 0], [-44, 58, 0]], items: [...stall(s), ...people(s)] };
   }
 
-  // ---------- the sky, with stalls and bunting in the distance ----------
+  // ---------- behind: a busy market under the hills ----------
   function sky(s) {
-    const top = mix('#a9d8f5', '#26315e', s.dusk), low = mix('#fff1d6', '#e88b6a', s.dusk);
+    const d = s.dusk, top = mix('#9fd3f3', '#26315e', d), low = mix('#fff1d6', '#e88b6a', d);
     let o = `<defs><linearGradient id="bzsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${top}"/><stop offset="1" stop-color="${low}"/></linearGradient></defs>`;
     o += `<rect x="-140" y="-140" width="280" height="260" fill="url(#bzsky)"/>`;
-    // Far stalls: a row of little roofs
-    for (let i = 0; i < 9; i++) {
-      const x = -128 + i * 30, h = 18 + (i * 7 % 10), col = ['#e46a4e', '#57a26f', '#5786c4', '#f2b431'][i % 4];
-      o += `<rect x="${x}" y="${-28 - h}" width="24" height="${h}" fill="${mix('#efe2c4', '#2c2a48', s.dusk * .7)}" opacity=".8"/>`;
-      o += `<path d="M${x - 3} ${-28 - h}L${x + 12} ${-40 - h}L${x + 27} ${-28 - h}Z" fill="${mix(col, '#2c2a48', s.dusk * .6)}" opacity=".85"/>`;
+    const hill = (y, amp, col, ph) => `<path d="M-140 60${Array.from({ length: 29 }, (_, i) => { const x = -140 + i * 10; return `L${x} ${(y + Math.sin(x / 40 + ph) * amp).toFixed(1)}`; }).join('')}L140 60Z" fill="${mix(col, '#22284a', d * .7)}"/>`;
+    o += hill(-62, 7, '#b5dcc0', 1) + hill(-50, 5, '#98cba6', 2.4);
+    // A row of stalls far off, each with a striped roof
+    for (let i = 0; i < 10; i++) {
+      const x = -136 + i * 29, h = 14 + (i * 7 % 9), col = ['#e46a4e', '#57a26f', '#5786c4', '#f2b431', '#c2185b'][i % 5];
+      o += `<rect x="${x}" y="${-30 - h}" width="24" height="${h}" fill="${mix('#efe2c4', '#2c2a48', d * .7)}"/>`;
+      o += `<path d="M${x - 3} ${-30 - h}L${x + 12} ${-40 - h}L${x + 27} ${-30 - h}Z" fill="${mix(col, '#2c2a48', d * .6)}"/>`;
+      o += `<path d="M${x + 4} ${-33 - h}L${x + 12} ${-38 - h}L${x + 20} ${-33 - h}" stroke="${mix('#ffffff', '#2c2a48', d * .6)}" stroke-width="1.2" fill="none" opacity=".7"/>`;
     }
-    // Bunting across the top
-    o += '<path d="M-140 -98Q0 -76 140 -98" stroke="#7a6a55" stroke-width=".8" fill="none"/>';
+    // People walking past the far stalls
+    for (let i = 0; i < 5; i++) {
+      const dir = i % 2 ? 1 : -1, x = ((s.t * (5 + i) * dir + i * 70) % 300 + 300) % 300 - 150, y = -28 + (i % 3) * 2;
+      const col = mix(['#4f86c6', '#e0457b', '#57a26f', '#f2b431', '#7569e8'][i], '#2c2a48', .35 + d * .4), step = Math.sin(s.t * 6 + i) * 1.2;
+      o += `<g opacity=".75" transform="translate(${x.toFixed(1)} ${y}) scale(.7) translate(${(-x).toFixed(1)} ${-y})"><circle cx="${x.toFixed(1)}" cy="${y - 11}" r="2.6" fill="${mix('#d9a47c', '#2c2a48', .3 + d * .4)}"/>` +
+        `<rect x="${(x - 2.6).toFixed(1)}" y="${y - 8.6}" width="5.2" height="6" rx="2" fill="${col}"/>` +
+        `<path d="M${(x - 1.2).toFixed(1)} ${y - 2.8}l${step.toFixed(1)} 3.6M${(x + 1.2).toFixed(1)} ${y - 2.8}l${(-step).toFixed(1)} 3.6" stroke="${mix('#5a4a3a', '#2c2a48', d * .4)}" stroke-width="1.2" stroke-linecap="round"/></g>`;
+    }
+    // Bunting across the top, flapping a little
+    o += '<path d="M-140 -100Q0 -78 140 -100" stroke="#7a6a55" stroke-width=".8" fill="none"/>';
     for (let i = 0; i < 18; i++) {
-      const x = -132 + i * 15.5, y = -97 + 22 * Math.sin(Math.PI * (x + 140) / 280) * .9, c = ['#f06292', '#ffc94a', '#6dbe5e', '#3c9fea', '#9c7cf0'][i % 5];
-      o += `<path d="M${x} ${y}L${x + 10} ${y + 1}L${x + 5} ${y + 10}Z" fill="${c}" stroke="#231e16" stroke-width=".5"/>`;
+      const x = -132 + i * 15.5, y = -99 + 22 * Math.sin(Math.PI * (x + 140) / 280) * .9, c = ['#f06292', '#ffc94a', '#6dbe5e', '#3c9fea', '#9c7cf0'][i % 5];
+      const fl = Math.sin(s.t * 2 + i) * 1.2;
+      o += `<path d="M${x} ${y}L${x + 10} ${y + 1}L${(x + 5 + fl).toFixed(1)} ${y + 10}Z" fill="${c}" stroke="#231e16" stroke-width=".5"/>`;
     }
     return o;
   }
-  // Speech bubbles and Rova's shopping list, over the picture.
+  // Over the picture: the sign's lettering, speech bubbles and Rova's list.
   function over(s) {
     let o = '';
     const cam = s._cam;
+    if (cam && Math.sin(cam.yaw * Math.PI / 180) > .15) {
+      const fr = 64 - 22 * (1 - s.open), sz = fr - 9 * s.open - 2, [x, y] = cam.P([25.8, SIGN_Y, sz + 3.2]);
+      o += `<text x="${x.toFixed(1)}" y="${(y + 2.2).toFixed(1)}" text-anchor="middle" font-size="5.4" font-weight="800" letter-spacing=".2" fill="#fff4d6" font-family="Baloo 2, Plus Jakarta Sans, sans-serif" pointer-events="none">dâwr</text>`;
+    }
     if (s.list) {
-      const rows = s.list.map(([w, n]) => { const got = s.basket[w] || 0; return `<tspan x="-80" dy="11" ${got >= n ? 'fill="#2e7d32"' : ''}>${got >= n ? '✓ ' : ''}${w} · ${NUMBERS[n - 1]}${got && got < n ? ` (${got})` : ''}</tspan>`; }).join('');
-      o += `<g pointer-events="none"><rect x="-86" y="-114" width="104" height="${15 + 11 * s.list.length}" rx="5" fill="#fff8e6" stroke="#e9d9ad"/>` +
-        `<text x="-80" y="-105" font-size="7.5" font-weight="800" fill="#c2185b" font-family="Plus Jakarta Sans, sans-serif">Rova's list</text>` +
-        `<text x="-80" y="-104" font-size="8.6" font-weight="800" fill="#15213a" font-family="Plus Jakarta Sans, sans-serif">${rows}</text></g>`;
+      const rows = s.list.map(([w, n]) => { const got = s.basket[w] || 0; return `<tspan x="-72" dy="10.5" ${got >= n ? 'fill="#2e7d32"' : ''}>${got >= n ? '✓ ' : ''}${w} · ${NUMBERS[n - 1]}${got && got < n ? ` (${got})` : ''}</tspan>`; }).join('');
+      o += `<g pointer-events="none"><rect x="-77" y="-101" width="100" height="${15 + 11 * s.list.length}" rx="5" fill="#fff8e6" stroke="#e9d9ad"/>` +
+        `<text x="-72" y="-92.5" font-size="7" font-weight="800" fill="#c2185b" font-family="Plus Jakarta Sans, sans-serif">Rova's list</text>` +
+        `<text x="-72" y="-91.5" font-size="8" font-weight="800" fill="#15213a" font-family="Plus Jakarta Sans, sans-serif">${rows}</text></g>`;
     }
     if (s.say && s.sayT > 0 && cam) {
-      const at = s.say.who === 'Rova' ? [32, 6, 30] : [-18, 0, 34];
+      const at = s.say.who === 'Rova' ? [ROVA_AT[0], ROVA_AT[1], 31] : [-15, -31, 35];
       const [x, y] = cam.P(at), w = s.say.word.length * 6 + 14, a = Math.min(1, s.sayT * 2);
       o += `<g pointer-events="none" opacity="${a.toFixed(2)}"><rect x="${x - w / 2}" y="${y - 22}" width="${w}" height="16" rx="8" fill="#fff" stroke="#231e16" stroke-width=".8"/>` +
         `<path d="M${x - 3} ${y - 6.5}L${x} ${y - 1}L${x + 3} ${y - 6.5}Z" fill="#fff" stroke="#231e16" stroke-width=".8"/>` +
@@ -1651,33 +1715,33 @@ const BAZAR = (() => {
 
   // ---------- labels ----------
   const LABEL_GROUPS = ['Stall', 'Fruit', 'Vegetables', 'People'];
-  function anchors(s, cam) {
-    const a = [];
-    const at = (part, p, g, n) => a.push({ part, p, g, n });
-    at('dâwr', [6, 0, 72], 'Stall'); at('mau', [18, CY1 + 4, 30], 'Stall'); at('dawhkân', [CX1, -32, COUNTER_TOP], 'Stall');
-    at('puan', [CX1, 0, 10], 'Stall', [1, 0, 0]); at('khawnvâr', [6, 0, 56], 'Stall'); at('rit', [0, CY0 + 6, COUNTER_TOP + 13], 'Stall');
-    at('pawisa', [-5.5, CY1 - 4, COUNTER_TOP + 2], 'Stall'); at('kawng', [50, -40, 0], 'Stall'); at('fawng', [-4, -17, COUNTER_TOP + .5], 'Stall');
-    for (const w of ['serthlum', 'theihai']) at(w, [SPOTS[w][0], SPOTS[w][1], COUNTER_TOP + lift(SPOTS[w][0]) + 4], 'Fruit');
-    at('balhla', [19, -30, 50], 'Fruit');
-    for (const w of ['alu', 'purun', 'hmarcha', 'zikhlum', 'mâi', 'bawkbawn', 'fanghma', 'sawhthing']) at(w, [SPOTS[w][0], SPOTS[w][1], COUNTER_TOP + lift(SPOTS[w][0]) + 4], 'Vegetables');
-    at('artui', [0, CY1 + 18, 15], 'People'); at('sangha', [6, CY1 + 12.5, 11], 'People');
-    at('dâwrkai', [-18, 0, 30], 'People'); at('Rova', [32, 6, 26], 'People'); at('êm', [30, -6, 10], 'People');
-    if (s.open < .5) return a.filter(x => !SPOTS[x.part]);
+  function anchors(s) {
+    const a = [], at = (part, p, g, n) => a.push({ part, p, g, n });
+    const up = (w, dz) => { const p = spotOf(w); return [p[0], p[1], p[2] + dz]; };
+    at('dâwr', [4, 0, 72], 'Stall'); at('mau', [16, CY1 + 4, 32], 'Stall'); at('dawhkân', [CX1, -12, TOP], 'Stall');
+    at('puan', [CX1, 12, 9], 'Stall', [1, 0, 0]); at('khawnvâr', [4, 0, 54], 'Stall'); at('rit', [BX, CY1 - 1, TOP + 14], 'Stall');
+    at('pawisa', [TRAY[0], TRAY[1], TOP + 2], 'Stall'); at('kawng', [46, -30, 0], 'Stall'); at('fawng', [FX, FRONT.alu, TOP + .5], 'Stall');
+    at('buhfai', [22, -46, 13], 'Stall');
+    for (const w of ['serthlum', 'theihai']) at(w, up(w, 9), 'Fruit');
+    at('balhla', [20, -26, 49], 'Fruit');
+    for (const w of ['zikhlum', 'mâi']) at(w, up(w, 9), 'Vegetables');
+    for (const w of ['purun', 'hmarcha', 'bawkbawn', 'fanghma', 'alu', 'sawhthing']) at(w, up(w, 3), 'Vegetables');
+    at('artui', [20, 46, 14], 'People'); at('sangha', [26.5, 46, 10], 'People');
+    at('dâwrkai', [-15, -31, 33], 'People'); at('Rova', [ROVA_AT[0], ROVA_AT[1], 28], 'People'); at('êm', [BASKET_AT[0], BASKET_AT[1], 10], 'People');
+    if (s.open < .5) return a.filter(x => !(x.part in BACK) && !(x.part in FRONT));
     return a;
   }
 
   function tap(s, part) {
     if (part === 'kho' && s.list) part = 'artui';   // tapping the egg basket while shopping buys an egg
+    if (part === 'hnah' && s.list) part = 'sangha';
     s.last = ITEMS.includes(part) ? part : s.last;
-    if (part === 'dâwrkai') { speak(s, 'seller', 'chibai'); return 'hralh'; }
-    if (part === 'Rova') { speak(s, 'Rova', 'chibai'); return 'chibai'; }
+    if (part === 'dâwrkai') { speak(s, 'seller', 'chibai'); return 'zuar'; }
+    if (part === 'Rova') { speak(s, 'Rova', 'chibai'); s.cheer = 1; return 'chibai'; }
     if (part === 'rit') return s.onPan ? (WEIGHT[s.onPan] > 2 ? 'rit' : 'zâng') : null;
-    // With a shopping list, tapping a thing on the counter buys one.
-    if (s.list && s.open > .5 && ITEMS.includes(part)) {
-      s.flying.push({ w: part, k: 0 });
-      return 'pawisa';
-    }
-    if (part === 'thei' || ['serthlum', 'theihai', 'balhla'].includes(part)) return 'thei';
+    // With a shopping list, tapping a thing buys one.
+    if (s.list && s.open > .5 && ITEMS.includes(part)) { s.flying.push({ w: part, k: 0 }); s.reach = 1; return 'pawisa'; }
+    if (['serthlum', 'theihai', 'balhla'].includes(part)) return 'thei';
     if (['alu', 'purun', 'hmarcha', 'zikhlum', 'mâi', 'bawkbawn', 'fanghma', 'sawhthing'].includes(part)) return 'thlai';
     return null;
   }
@@ -1686,20 +1750,21 @@ const BAZAR = (() => {
     if (!s.list) return;
     const ok = s.list.every(([w, n]) => (s.basket[w] || 0) === n) && Object.keys(s.basket).every(w => s.list.some(([x]) => x === w));
     if (ok) {
-      s.coinsOut += s.list.reduce((t, [, n]) => t + n, 0);
+      const n = s.list.reduce((t, [, c]) => t + c, 0);
+      for (let i = 0; i < n; i++) s.coins.push({ k: -i * .18 });
       speak(s, 'seller', 'lawmthu');
+      s.cheer = 1.4;
       s.list = null; s.basket = {};
-      s.done = (s.done || 0) + 1;
     } else speak(s, 'seller', 'Not yet…');
     return ok;
   }
 
   return {
     id: 'bazar', name: 'Bazar dâwr', sub: 'a stall at the market',
-    view: { yaw: 60, pitch: 30, box: '-90 -118 180 156', centre: [0, -36], ink: .75 },
-    words: ['bazar', 'dâwr', 'dâwrkai', 'hralh', 'pawisa', 'thei', 'thlai', 'balhla', 'serthlum', 'theihai', 'alu', 'purun', 'hmarcha', 'fanghma',
-      'zikhlum', 'mâi', 'bawkbawn', 'sawhthing', 'artui', 'kho', 'sangha', 'hnah', 'êm', 'fawng', 'rit', 'zâng', 'lawmthu', 'chibai', 'khawnvâr',
-      'mau', 'hrui', 'puan', 'dawhkân', 'kawng', 'tlai', 'hawng', 'khar', 'pakhat', 'pahnih', 'pathum'],
+    view: { yaw: 60, pitch: 30, box: '-80 -104 160 138', centre: [0, -32], ink: .7 },   // close in, so the stall fills a phone
+    words: ['bazar', 'dâwr', 'dâwrkai', 'zuar', 'pawisa', 'thei', 'thlai', 'balhla', 'serthlum', 'theihai', 'alu', 'purun', 'hmarcha', 'fanghma',
+      'zikhlum', 'mâi', 'bawkbawn', 'sawhthing', 'artui', 'kho', 'sangha', 'hnah', 'êm', 'fawng', 'buhfai', 'rit', 'zâng', 'lawmthu', 'chibai',
+      'khawnvâr', 'mau', 'hrui', 'puan', 'dawhkân', 'kawng', 'tlai', 'hawng', 'khar', 'pakhat', 'pahnih', 'pathum'],
     names: { Rova: 'Rova, come to shop' },
     init, step, tint, scene, sky, over, anchors, tap, labelGroups: LABEL_GROUPS,
     swatches: { label: 'Awning', key: 'awning', list: AWNINGS },
@@ -1716,7 +1781,7 @@ const BAZAR = (() => {
 </script>
 <script>
 (() => {
-  const WORDS = {"in": "house", "kawngkhar": "door", "tukverh": "window", "bang": "wall", "chhuat": "floor", "chungkhuh": "roof", "khawnvâr": "lamp", "zawhte": "cat", "arpui": "hen", "êm": "carrying basket", "kawng": "road", "pal": "fence", "thing": "tree", "mau": "bamboo", "pangpâr": "flower", "tlang": "hill", "ni": "sun", "thla": "moon", "arsi": "star", "chhum": "cloud", "ruah": "rain", "vân": "sky", "meikhu": "smoke", "mei": "fire", "hawng": "open", "khar": "close", "zân": "night", "zîng": "morning", "harh": "wake", "muhil": "sleep", "chhûngah": "inside", "choka": "kitchen", "bel": "pot", "khum": "bed", "puan": "cloth", "dawhkân": "table", "ṭhutthlêng": "chair", "chhuatphah": "mat", "arbawm": "chicken coop", "artui": "hen's egg", "vawk": "pig", "chhun": "daytime", "tlai": "evening", "thli": "wind", "chhimbâl": "rainbow", "nu": "mother", "pa": "father", "pi": "grandmother", "naupang": "child", "phiat": "to sweep", "hmunphiah": "broom", "su": "to wash clothes", "tui": "water", "kal": "go", "tlân": "run", "ṭhian": "friend", "tlawh": "to visit", "chibai": "hello", "infiam": "to play", "tah": "weave", "puan chei": "decorated cloth", "rawng": "colour", "sen": "red", "dum": "black", "vâr": "white", "hring": "green", "dumpâwl": "blue", "sendang": "pink", "ziarâng": "pattern", "hrui": "rope", "kâwnghrên": "belt", "khawhthei": "shuttle", "vuakfung": "beating stick", "ṭhu": "sit", "fawng": "basket", "thingrem": "wooden chest", "êng": "light", "zo": "finish", "mawi": "beautiful", "bazar": "market", "dâwr": "shop", "dâwrkai": "shopkeeper", "hralh": "sell", "pawisa": "money", "thei": "fruit", "thlai": "vegetable", "balhla": "banana", "serthlum": "orange (fruit)", "theihai": "mango", "alu": "potato", "purun": "onion", "hmarcha": "chilli pepper", "fanghma": "cucumber", "zikhlum": "cabbage", "mâi": "pumpkin", "bawkbawn": "eggplant", "sawhthing": "ginger", "kho": "basket", "sangha": "fish", "hnah": "leaf", "rit": "heavy", "zâng": "light in weight", "lawmthu": "thanks", "pakhat": "one", "pahnih": "two", "pathum": "three"};   // Mizo → English, from the Hnahsin content
+  const WORDS = {"in": "house", "kawngkhar": "door", "tukverh": "window", "bang": "wall", "chhuat": "floor", "chungkhuh": "roof", "khawnvâr": "lamp", "zawhte": "cat", "arpui": "hen", "êm": "carrying basket", "kawng": "road", "pal": "fence", "thing": "tree", "mau": "bamboo", "pangpâr": "flower", "tlang": "hill", "ni": "sun", "thla": "moon", "arsi": "star", "chhum": "cloud", "ruah": "rain", "vân": "sky", "meikhu": "smoke", "mei": "fire", "hawng": "open", "khar": "close", "zân": "night", "zîng": "morning", "harh": "wake", "muhil": "sleep", "chhûngah": "inside", "choka": "kitchen", "bel": "pot", "khum": "bed", "puan": "cloth", "dawhkân": "table", "ṭhutthlêng": "chair", "chhuatphah": "mat", "arbawm": "chicken coop", "artui": "hen's egg", "vawk": "pig", "chhun": "daytime", "tlai": "evening", "thli": "wind", "chhimbâl": "rainbow", "nu": "mother", "pa": "father", "pi": "grandmother", "naupang": "child", "phiat": "to sweep", "hmunphiah": "broom", "su": "to wash clothes", "tui": "water", "kal": "go", "tlân": "run", "ṭhian": "friend", "tlawh": "to visit", "chibai": "hello", "infiam": "to play", "tah": "weave", "puan chei": "decorated cloth", "rawng": "colour", "sen": "red", "dum": "black", "vâr": "white", "hring": "green", "dumpâwl": "blue", "sendang": "pink", "ziarâng": "pattern", "hrui": "rope", "kâwnghrên": "belt", "khawhthei": "shuttle", "vuakfung": "beating stick", "ṭhu": "sit", "fawng": "basket", "thingrem": "wooden chest", "êng": "light", "zo": "finish", "mawi": "beautiful", "bazar": "market", "dâwr": "shop", "dâwrkai": "shopkeeper", "zuar": "sell", "pawisa": "money", "thei": "fruit", "thlai": "vegetable", "balhla": "banana", "serthlum": "orange (fruit)", "theihai": "mango", "alu": "potato", "purun": "onion", "hmarcha": "chilli pepper", "fanghma": "cucumber", "zikhlum": "cabbage", "mâi": "pumpkin", "bawkbawn": "eggplant", "sawhthing": "ginger", "kho": "basket", "sangha": "fish", "hnah": "leaf", "buhfai": "husked rice", "rit": "heavy", "zâng": "light in weight", "lawmthu": "thanks", "pakhat": "one", "pahnih": "two", "pathum": "three"};   // Mizo → English, from the Hnahsin content
   // The things you can play with; #loom or #bazar in the address opens that one.
   const FIGS = [HOUSE, LOOM, BAZAR];
   let fig = FIGS.find(f => '#' + f.id === location.hash) || FIGS[0];
@@ -1835,6 +1900,7 @@ const BAZAR = (() => {
     hl = id; hlUntil = performance.now() + 900;
     $('hint').classList.add('gone');
     const also = fig.tap ? fig.tap(st, part, id) : null;
+    drawActs();   // a tap can make a button ready (Weigh it, Pay) at once
     if (find) return checkFind(part, also);
     say(part, also);
   }
