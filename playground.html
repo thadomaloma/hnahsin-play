@@ -735,7 +735,8 @@
 // drawRova(ctx, phase, pose, opts) and drawMami(ctx, phase, pose, opts) paint them facing right
 // in a 120 × 160 box with their feet near the bottom. phase is the run cycle in radians; pose is
 // 'run', 'jump', 'stand' or 'bow' (opts.bow, 0–1, is how deep: a Japanese-style bow from the
-// hips, hands at the sides); opts.live lets them blink (leave it off when drawing frames to keep).
+// hips, hands at the sides), or 'front': facing the viewer, bowing toward them by opts.bow;
+// opts.live lets them blink (leave it off when drawing frames to keep).
 // Used by the home page, Rova's Journey and the Playground, so they look the same everywhere.
 // Every part has a dark ink edge and a lighter side toward the light, like a cartoon.
 (function (global) {
@@ -969,8 +970,95 @@
     ctx.restore();
   }
 
-  global.drawRova = (ctx, phase, pose, opts) => drawKid(ctx, ROVA, phase, pose, opts);
-  global.drawMami = (ctx, phase, pose, opts) => drawKid(ctx, MAMI, phase, pose, opts);
+  // ---------- facing the viewer, and bowing toward them ----------
+  // A bow toward the viewer: the body folds forward, so the chest looks shorter, the head
+  // comes down and forward, and the top of the head shows. The eyes close in the bow.
+  function drawFront(ctx, C, opts = {}) {
+    const k = Math.max(0, Math.min(1, opts.bow ?? 0)), cx = 60;
+    const hipY = 101, shY = 70 + 20 * k, headY = 44 + 32 * k, headR = 17 + 1.5 * k;
+    const skin = C.skin;
+    // Legs and shoes
+    for (const e of [-1, 1]) {
+      seg(ctx, [[cx + e * 6, hipY], [cx + e * 7, 146]], 10, skin, 1.8);
+      seg(ctx, [[cx + e * 7, 139], [cx + e * 7, 145]], 10.5, C.sock, 1.6);
+      blob(ctx, () => { ctx.ellipse(cx + e * 8, 149, 8, 5, 0, Math.PI, 0); ctx.lineTo(cx + e * 8 + 8, 152); ctx.lineTo(cx + e * 8 - 8, 152); }, C.shoe, 1.8);
+      ctx.fillStyle = C.sole; ctx.fillRect(cx + e * 8 - 8, 150.5, 16, 3);
+      ctx.strokeStyle = INK; ctx.lineWidth = 1.3; ctx.strokeRect(cx + e * 8 - 8, 150.5, 16, 3);
+    }
+    // Shorts or skirt
+    if (C.skirt) {
+      blob(ctx, () => { ctx.moveTo(cx - 13, hipY - 12); ctx.lineTo(cx + 13, hipY - 12); ctx.lineTo(cx + 21, hipY + 15); ctx.quadraticCurveTo(cx, hipY + 19, cx - 21, hipY + 15); }, C.shorts, 2);
+      ctx.strokeStyle = C.shortsFar; ctx.lineWidth = 1.4;
+      ctx.beginPath(); for (const e of [-7, 0, 7]) { ctx.moveTo(cx + e * .7, hipY - 10); ctx.lineTo(cx + e * 1.3, hipY + 15); } ctx.stroke();
+    } else {
+      blob(ctx, () => { ctx.moveTo(cx - 14, hipY - 12); ctx.lineTo(cx + 14, hipY - 12); ctx.lineTo(cx + 15, hipY + 9); ctx.lineTo(cx + 2, hipY + 9); ctx.lineTo(cx, hipY + 2); ctx.lineTo(cx - 2, hipY + 9); ctx.lineTo(cx - 15, hipY + 9); }, C.shorts, 2);
+    }
+    // Arms: down by the sides; in a bow they hang forward, hands meeting in front.
+    // Mami holds her hands together in front all the while.
+    const handX = C.skirt ? 5 : 19 - 12 * k, handY = C.skirt ? hipY - 2 + 4 * k : hipY + 4;
+    for (const e of [-1, 1]) {
+      const s0 = [cx + e * 13, shY + 4], el = [cx + e * (17 - 3 * k), (shY + handY) / 2 + 2];
+      seg(ctx, [s0, el, [cx + e * handX, handY]], 8, skin, 1.8);
+      seg(ctx, [s0, [cx + e * 15, shY + 13]], 11, C.shirt, 1.8);
+    }
+    // Body: the shirt, shorter the deeper the bow.
+    blob(ctx, () => {
+      ctx.moveTo(cx - 13, hipY - 10); ctx.lineTo(cx + 13, hipY - 10);
+      ctx.quadraticCurveTo(cx + 15, (hipY + shY) / 2, cx + 14, shY + 2);
+      ctx.quadraticCurveTo(cx, shY - 4, cx - 14, shY + 2);
+      ctx.quadraticCurveTo(cx - 15, (hipY + shY) / 2, cx - 13, hipY - 10);
+    }, C.shirt, 2.2);
+    ctx.fillStyle = C.stripe; ctx.fillRect(cx - 13.5, hipY - 21 + 4 * k, 27, 4.5);
+    ctx.strokeStyle = INK; ctx.lineWidth = 1; ctx.strokeRect(cx - 13.5, hipY - 21 + 4 * k, 27, 4.5);
+    // Hands in front, over the shirt
+    for (const e of [-1, 1]) { ctx.beginPath(); ctx.arc(cx + e * handX, handY, 4.6, 0, Math.PI * 2); ctx.fillStyle = skin; ctx.fill(); ctx.lineWidth = 1.8; ctx.strokeStyle = INK; ctx.stroke(); }
+    // Collar and neck (the neck hides as the head comes down)
+    if (k < .6) seg(ctx, [[cx, shY - 1], [cx, headY + headR - 3]], 8, C.skinShade, 1.6);
+    ctx.strokeStyle = C.collar; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx - 6, shY + 1); ctx.quadraticCurveTo(cx, shY + 6, cx + 6, shY + 1); ctx.stroke();
+    // Mami's ponytail peeks out behind her head.
+    if (C.ponytail) {
+      blob(ctx, () => { ctx.ellipse(cx + headR - 1, headY + 6, 6, 10, -.3, 0, Math.PI * 2); }, C.hair, 2);
+    }
+    // Head
+    blob(ctx, () => { ctx.ellipse(cx, headY, headR, headR - .5, 0, 0, Math.PI * 2); }, skin, 2.2);
+    for (const e of [-1, 1]) blob(ctx, () => { ctx.ellipse(cx + e * (headR + 1), headY + 3 + 3 * k, 3.4, 4.6, 0, 0, Math.PI * 2); }, C.skinShade, 1.4);
+    // The face slides down as the head bows, so more of the hair shows.
+    const fy = headY + 9 * k;
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(cx, headY, headR, headR - .5, 0, 0, Math.PI * 2); ctx.clip();
+    const closed = k > .25 || (opts.live && (Date.now() % 3800) < 130);
+    for (const e of [-1, 1]) {
+      if (closed) { ctx.strokeStyle = C.eye; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx + e * 6.5, fy + 2, 3, rad(200), rad(340)); ctx.stroke(); }
+      else {
+        ctx.fillStyle = C.eye; ctx.beginPath(); ctx.ellipse(cx + e * 6.5, fy + 1, 2.4, 3.2, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx + e * 6.5 + .8, fy, .9, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = C.cheek; ctx.beginPath(); ctx.ellipse(cx + e * 10, fy + 7, 3.6, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.strokeStyle = C.mouth; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx - 4, fy + 9); ctx.quadraticCurveTo(cx, fy + 12.5, cx + 4, fy + 9); ctx.stroke();
+    ctx.restore();
+    // Hair: a cap with a fringe; it covers more of the head the deeper the bow.
+    const edge = headY - 7 + 12 * k;
+    blob(ctx, () => {
+      ctx.moveTo(cx - headR - 1, headY + 4 + 6 * k);
+      ctx.bezierCurveTo(cx - headR - 2, headY - headR - 6, cx + headR + 2, headY - headR - 6, cx + headR + 1, headY + 4 + 6 * k);
+      if (C.ponytail) {   // a soft fringe
+        ctx.quadraticCurveTo(cx + 9, edge - 3, cx + 2, edge + 1); ctx.quadraticCurveTo(cx - 6, edge - 4, cx - headR - 1, headY + 4 + 6 * k);
+      } else {            // Rova's spiky fringe
+        ctx.lineTo(cx + 11, edge - 1); ctx.lineTo(cx + 7, edge + 3); ctx.lineTo(cx + 3, edge - 1); ctx.lineTo(cx - 2, edge + 3);
+        ctx.lineTo(cx - 6, edge - 1); ctx.lineTo(cx - 10, edge + 2); ctx.lineTo(cx - headR - 1, headY + 4 + 6 * k);
+      }
+    }, C.hair, 2);
+    if (C.ponytail) { ctx.beginPath(); ctx.arc(cx + headR - 2, headY - 6, 3.8, 0, Math.PI * 2); ctx.fillStyle = C.tie; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = INK; ctx.stroke(); }
+    ctx.strokeStyle = C.hairShine; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(cx - 3, headY - 2, headR - 4, rad(200), rad(250)); ctx.stroke();
+  }
+
+  const draw = C => (ctx, phase, pose, opts = {}) => pose === 'front' ? drawFront(ctx, C, opts) : drawKid(ctx, C, phase, pose, opts);
+  global.drawRova = draw(ROVA);
+  global.drawMami = draw(MAMI);
 })(typeof window !== 'undefined' ? window : globalThis);</script>
 <script>// Rova facing us, and his family, drawn with the canvas so they stay sharp at
 // any size (big emoji go soft on phones).

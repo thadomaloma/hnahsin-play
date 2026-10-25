@@ -267,8 +267,8 @@
   requestAnimationFrame(parallax);
 
   // ------------------------------------------------ Rova and Mami on the hill
-  // They run in from either side, meet in the middle and bow to each other, Japanese style,
-  // saying "Chibai!". Then they play: a game picked at random each time (tag, a race, hopping
+  // They run in from either side, meet in the middle, turn to face you and bow to you,
+  // Japanese style, saying "Chibai!". Then they play: a game picked at random each time (tag, a race, hopping
   // about, or wandering off to look at the flowers), and every so often they meet to bow again.
   const field = $('.field'), hill = $('#hill-front'), hello = $('.hello');
   const len = hill.getTotalLength();
@@ -310,9 +310,9 @@
     if (scene === 'enter') {
       // Each runs to a spot a little apart from the middle, facing the other.
       const a = runTo(kids[0], mid - kw * .95, 1.5), b = runTo(kids[1], mid - kw * .05, 1.5);
-      if (a && b) { kids[0].dir = 1; kids[1].dir = -1; scene = 'bow'; sceneT = t; }
+      if (a && b) { kids.forEach(k => { k.dir = 1; }); scene = 'bow'; sceneT = t; }
     } else if (scene === 'bow') {
-      // Stand, bow down slowly, hold, and come up: about two seconds.
+      // Face the viewer, bow down slowly, hold, and come up: about two seconds.
       const e = (t - sceneT) / 1000;
       bow = e < .35 ? 0 : e < 1 ? (e - .35) / .65 : e < 1.6 ? 1 : e < 2.2 ? 1 - (e - 1.6) / .6 : 0;
       hello.classList.toggle('on', e > .3 && e < 2.2);
@@ -373,7 +373,7 @@
       const ground = hillY(Math.max(0, Math.min(fw, k.x + kw / 2)) / fw * 1440) / 230 * fh;
       const lift = Math.sin(k.hop * Math.PI / 2) * 40;
       k.el.style.transform = `translate3d(${k.x}px, ${ground - fh - lift - k.el.offsetHeight * .97}px, 0) scaleX(${k.dir}) rotate(${k.hop ? -6 * k.hop : 0}deg)`;
-      const pose = k.hop > .25 ? 'jump' : scene === 'bow' ? 'bow' : k.v > 0 ? 'run' : 'stand';
+      const pose = k.hop > .25 ? 'jump' : scene === 'bow' ? 'front' : k.v > 0 ? 'run' : 'stand';
       k.draw(k.phase, pose, { bow });
     }
   };
