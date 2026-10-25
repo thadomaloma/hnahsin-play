@@ -4,6 +4,23 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.7.0 (25 October 2026)
+
+### New in the Playground: Word quests
+
+- **Word dungeon.** Rova fights monsters with Mizo names: sazu (rat), bak
+  (bat), rul (snake) and more. Make a word from 16 letter tiles to hit the
+  monster. Long words and rare letters hit harder, and a gold tile is a
+  critical hit. Each floor ends with a boss with a trick: awle (crocodile)
+  stops short words, saphai (python) heals, sakei (tiger) curses tiles.
+  Between fights, buy charms in the shop.
+- **Falling letters.** Drag across touching letters to make words. The tiles
+  vanish and the ones above fall. A new row comes up every third word; if a
+  column reaches the top, the game is over. Stones and bombs make it harder.
+- AW, CH and NG are one tile each, as in the Mizo alphabet. Words are checked
+  against 5,627 Mizo words, and the meaning shows when we know it.
+- The Playground has 31 games now, and the site 41.
+
 ## 1.6.2 (24 October 2026)
 
 ### Playground games fit on a phone screen
