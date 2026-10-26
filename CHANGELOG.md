@@ -4,6 +4,13 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.17.3 (27 October 2026)
+
+### Behind the scenes
+
+- The sources the game pages are built from are now kept private. The games
+  are the same as before.
+
 ## 1.17.2 (27 October 2026)
 
 ### Rova's Journey: fixes

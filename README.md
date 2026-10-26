@@ -67,8 +67,7 @@ nothing that tells who you are. Your stars and levels stay on your phone.
 ## For developers
 
 The pages are plain HTML, CSS and JavaScript, served by GitHub Pages.
-`source/` holds what the game pages are built from, and
-[source/README.md](source/README.md) says how to rebuild them.
+The sources and build scripts they are made from are kept private.
 
 ## Versions and feedback
 

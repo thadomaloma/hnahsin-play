@@ -1,3 +1,3 @@
-source/*/preview.html
-source/*/crosscheck.json
+# The sources are a private repo (hnahsin-play-source), cloned here as source/.
+source/
 __pycache__/
