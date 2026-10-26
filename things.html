@@ -1882,17 +1882,22 @@ const BAZAR = (() => {
 </script>
 <script>
 // La siam: making thread, drawn with Ink3D. Before a Mizo woman wove a puan she made the thread
-// herself from the cotton (la) grown in the jhum field. Five tools stand in a row on a bamboo
-// verandah, in the order they are used, and nu takes the cotton from one to the next:
-//   1 herawt (cotton gin): the seeds (la mu) come out of the raw cotton (lapua)
-//   2 lasai (cotton bow): its string (lasai thal) fluffs the cotton; it is rolled into lachawn
-//   3 hmui (spinning wheel): the spindle (hmuithlur) twists the roll into thread (la zai)
-//   4 ladawhkilh and suvel: the thread is wound on the reel into a skein
-//   5 lazarna (warping frame): soaked in rice starch water (buhhawp tui), the thread is laid
-//     back and forth on the pegs as the warp (sutpui), ready for the loom.
-// The names come from the developer (loom_words.json).
+// herself from the cotton (la) grown in the jhum field. Six steps stand in a row on a bamboo
+// verandah, in the order they are done, and nu takes the cotton from one to the next:
+//   1 herawt (cotton gin): turned by its handle (herawt ban), the rollers pull the fibres through
+//     and the seeds (la mu) drop out on her side
+//   2 lasai (cotton bow): its string (lasai thal), plucked with a striker, fluffs the cotton and
+//     shakes the dust out; the fluff is rolled round a stick into lachawn
+//   3 hmui (spinning wheel): the iron spindle (hmuithlur) twists the roll into thread (la zai)
+//     and winds it into a cone
+//   4 ladawhkilh (skein pegs): the thread is wound into a skein (lamuai), which is boiled in rice
+//     starch water (buhhawp tui)
+//   5 suvel (yarn swift): the dried skein goes round the turning cage and is wound into a ball
+//   6 lazarna (warping posts): walking back and forth, she lays the warp (sutpui) round the
+//     posts in a figure-eight cross, counting the threads and placing the colour stripes.
+// The names and how each tool works come from the developer (loom_words.json).
 const LA = (() => {
-  const { box, ball, cyl, line, poly, group, mix, lerp3 } = Ink3D;
+  const { box, ball, cyl, line, poly, group, mix } = Ink3D;
   const person = (at, dir, o) => Ink3DPeople.person(at, dir, o);
   const shade = c => ({ l: mix(c, '#ffffff', 0.3), m: c, d: mix(c, '#000000', 0.55) });
 
@@ -1900,199 +1905,232 @@ const LA = (() => {
   const BAMBOO = { l: '#d9e08a', m: '#b3ba62', d: '#5a5d2a' };
   const WOOD = { l: '#c98d55', m: '#a46c3c', d: '#55361d' }, DARK = { l: '#8a5a36', m: '#6b4429', d: '#33200f' };
   const CANE = { l: '#ecd08f', m: '#cfa862', d: '#6b5126' }, IRON = { l: '#a7a39c', m: '#7d7a76', d: '#3a3836' };
-  const COTTON = { l: '#ffffff', m: '#f1ede4', d: '#a9a293' }, THREAD = '#fbf7ee';
+  const COTTON = { l: '#ffffff', m: '#f1ede4', d: '#a9a293' }, THREAD = '#fbf7ee', RED = '#c8323d';
   const MAT = '#d8b56a';
-  // The five stations, from left to right as you look at them
-  const Y = [44, 22, 0, -22, -44];
+  // The six steps, from left to right as you look at them
+  const Y = [50, 30, 10, -10, -30, -50];
   const STEPS = [
-    { tool: 'herawt', word: 'herawt', label: 'Clean the cotton' },
-    { tool: 'lasai', word: 'lasai', label: 'Fluff the cotton' },
-    { tool: 'hmui', word: 'hmui', label: 'Spin the thread' },
-    { tool: 'suvel', word: 'suvel', label: 'Wind the thread' },
-    { tool: 'lazarna', word: 'lazarna', label: 'Lay the warp' },
+    { tool: 'herawt', label: 'Clean the cotton', parts: ['herawt', 'herawt ban'] },
+    { tool: 'lasai', label: 'Fluff the cotton', parts: ['lasai', 'lasai thal'] },
+    { tool: 'hmui', label: 'Spin the thread', parts: ['hmui', 'hmuithlur'] },
+    { tool: 'ladawhkilh', label: 'Make a skein', parts: ['ladawhkilh', 'buhhawp tui'] },
+    { tool: 'suvel', label: 'Wind a ball', parts: ['suvel'] },
+    { tool: 'lazarna', label: 'Lay the warp', parts: ['lazarna'] },
   ];
-  const WORK = 3.2;            // seconds a tool takes
+  const LAST = STEPS.length - 1;
+  const WORK = 3.4;            // seconds a step takes
   const rnd = (i, k) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
   const toward = (v, t, d) => (v < t ? Math.min(t, v + d) : Math.max(t, v - d));
+  const ring = (c, r, z, n = 16) => Array.from({ length: n + 1 }, (_, i) => { const a = i / n * Math.PI * 2; return [c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r, z]; });
 
-  function init() { return { t: 0, step: 0, pos: 0, k: 0, working: false, done: [false, false, false, false, false], auto: false }; }
-  // How far each station's work has gone (0 not started, 1 done)
+  function init() { return { t: 0, step: 0, pos: 0, k: 0, working: false, done: STEPS.map(() => false), auto: false }; }
+  // How far each step's work has gone (0 not started, 1 done)
   const kOf = (s, i) => (s.done[i] ? 1 : i === s.step ? s.k : 0);
+  const on = (s, i) => s.working && s.step === i;
   function startWork(s) { if (!s.working && !s.done[s.step] && Math.abs(s.pos - s.step) < .05) s.working = true; }
-  function next(s) { if (s.done[s.step] && s.step < 4) s.step++; }
+  function next(s) { if (s.done[s.step] && s.step < LAST) { s.step++; s.k = 0; } }
   function step(s, dt) {
     s.t += dt;
-    s.pos = toward(s.pos, s.step, dt * 1.1);           // nu walks to the next tool
+    s.pos = toward(s.pos, s.step, dt * 1.1);           // nu walks to the next step
     if (s.working) {
       s.k = Math.min(1, s.k + dt / WORK);
       if (s.k >= 1) { s.working = false; s.done[s.step] = true; }
     }
-    if (s.done[s.step] && s.step < 4 && s.k >= 1 && !s.working) {
-      if (s.auto && (s.wait = (s.wait || 0) + dt) > .5) { s.wait = 0; s.step++; s.k = 0; }
-    }
-    if (!s.done[s.step] && s.k >= 1) s.k = 0;
+    if (s.auto && s.done[s.step] && s.step < LAST && (s.wait = (s.wait || 0) + dt) > .5) { s.wait = 0; next(s); }
     if (s.auto && !s.working && !s.done[s.step]) startWork(s);
     if (s.done.every(Boolean)) s.auto = false;
     return true;
   }
   const tint = () => c => c;
 
-  // ---------- the tools ----------
-  // 1 Herawt: two rollers in a wooden frame, turned by a crank
+  // ---------- the steps ----------
+  // 1 Herawt: two hardwood rollers on an upright frame, turned by the handle
   function herawt(s) {
-    const y = Y[0], k = kOf(s, 0), on = s.working && s.step === 0, a = on ? s.t * 7 : .6, out = [];
+    const y = Y[0], k = kOf(s, 0), work = on(s, 0), a = work ? s.t * 7 : .6, out = [];
+    const tip = [-4.5 + Math.cos(a) * 3.2, y + 8.2, 15.5 + Math.sin(a) * 3.2];
     out.push(group([
       box(-6, -3, y - 7, y - 5, 0, 18, { pal: WOOD }), box(-6, -3, y + 5, y + 7, 0, 18, { pal: WOOD }),
       box(-7, -2, y - 8, y + 8, 0, 2, { pal: DARK }),
       box(-6.5, -2.5, y - 7.5, y + 7.5, 18, 19.5, { pal: DARK }),
       line([[-4.5, y - 5, 15.5], [-4.5, y + 5, 15.5]], { col: WOOD.l, w: 2.2 }),
       line([[-4.5, y - 5, 13], [-4.5, y + 5, 13]], { col: WOOD.m, w: 2.2 }),
-      // the crank on the near end, turning while she works
-      line([[-4.5, y + 7, 15.5], [-4.5 + Math.cos(a) * 3.2, y + 8.2, 15.5 + Math.sin(a) * 3.2]], { col: DARK.m, w: 1 }),
-      line([[-4.5 + Math.cos(a) * 3.2, y + 8.2, 15.5 + Math.sin(a) * 3.2], [-4.5 + Math.cos(a) * 3.2, y + 11, 15.5 + Math.sin(a) * 3.2]], { col: WOOD.l, w: 1.4 }),
     ], { part: 'herawt' }));
-    // A basket of raw cotton behind, getting emptier
+    out.push(group([
+      line([[-4.5, y + 7, 15.5], tip], { col: DARK.m, w: 1 }),
+      line([tip, [tip[0], y + 10.5, tip[2]]], { col: WOOD.l, w: 1.4 }),
+    ], { part: 'herawt ban' }));
+    // A basket of raw cotton by her, getting emptier
     const left = Math.round(6 * (1 - k));
-    const bk = [cyl([-12, y - 2], 0, 5, 3.6, 4.6, { pal: CANE, bands: [2.5], capFill: '#8a6a32' })];
-    for (let i = 0; i < left; i++) { const p = [-12 + (i % 3 - 1) * 1.8, y - 2 + (i < 3 ? -1 : 1) * 1.4, 5.8 + (i > 2 ? .6 : 0)]; bk.push(ball(p, 1.4, { pal: COTTON }), ball([p[0] + .5, p[1], p[2] + .2], .35, { fill: '#6b4e2a', ink: false })); }
+    const bk = [cyl([-12, y - 3], 0, 5, 3.4, 4.4, { pal: CANE, bands: [2.5], capFill: '#8a6a32' })];
+    for (let i = 0; i < left; i++) { const p = [-12 + (i % 3 - 1) * 1.8, y - 3 + (i < 3 ? -1 : 1) * 1.4, 5.8 + (i > 2 ? .6 : 0)]; bk.push(ball(p, 1.4, { pal: COTTON }), ball([p[0] + .5, p[1], p[2] + .2], .35, { fill: '#6b4e2a', ink: false })); }
     out.push(group(bk, { part: 'lapua' }));
-    // Seeds drop under the rollers; clean cotton comes out in front
+    // The seeds drop out on her side; the clean fibres come through on the far side
     if (k > 0) {
       const seeds = [];
-      for (let i = 0; i < Math.round(14 * k); i++) seeds.push(ball([-5 + rnd(i, 1) * 3, y - 4 + rnd(i, 2) * 8, 2.6], .45, { fill: '#5a3f22', ink: false }));
+      for (let i = 0; i < Math.round(14 * k); i++) seeds.push(ball([-9.5 + rnd(i, 1) * 3, y - 12 + rnd(i, 2) * 3, .5], .55, { fill: '#5a3f22', w: .3 }));
       out.push(group(seeds, { part: 'la mu', shadow: false }));
       const lint = [];
-      for (let i = 0; i < Math.round(8 * k) + 1; i++) lint.push(ball([1 + rnd(i, 3) * 4, y - 4 + rnd(i, 4) * 8, 1.4 + rnd(i, 5) * 1.6], 1.6 + rnd(i, 6), { pal: COTTON }));
+      for (let i = 0; i < Math.round(8 * k) + 1; i++) lint.push(ball([0 + rnd(i, 3) * 4, y - 4 + rnd(i, 4) * 8, 1.4 + rnd(i, 5) * 1.6], 1.6 + rnd(i, 6), { pal: COTTON }));
       out.push(group(lint, { part: 'la' }));
     }
-    if (on) out.push(ball([-2, y + Math.sin(s.t * 9) * 3, 14 - (s.t * 6 % 6)], .9, { fill: '#ffffff', w: .4, shadow: false }));
-    return out;
+    if (work) out.push(ball([-7.5, y - 6 - (s.t * 6 % 6) * .8, 13 - (s.t * 6 % 6) * 2], .5, { fill: '#5a3f22', w: .3, shadow: false }));
+    return { out, hands: [[-6.5, y - 2 + Math.sin(s.t * 3), 14.5], tip] };
   }
 
-  // 2 Lasai: a big bamboo bow over a heap of cotton on a mat; its string shakes the cotton loose
+  // 2 Lasai: a bamboo bow held in the heap of cotton; the string, plucked with a striker, fluffs it
   function lasai(s) {
-    const y = Y[1], k = kOf(s, 1), on = s.working && s.step === 1, out = [];
-    out.push(poly([[-8, y - 9, .05], [6, y - 9, .05], [6, y + 9, .05], [-8, y + 9, .05]], { fill: MAT, w: .6, part: 'la' }));
-    // The cotton heap: lumpy before, soft and big after
+    const y = Y[1], k = kOf(s, 1), work = on(s, 1), out = [];
+    out.push(poly([[-8, y - 8, .05], [6, y - 8, .05], [6, y + 8, .05], [-8, y + 8, .05]], { fill: MAT, w: .6, part: 'la' }));
+    // The cotton heap: lumpy before, soft and big after; once rolled into lachawn only a little is left
     if (s.done[0]) {
-      // Once rolled into lachawn, only a little is left on the mat
       const heap = [], n = s.done[1] ? 4 : 7 + Math.round(5 * k), r = s.done[1] ? 1 : 1 + .3 * k;
-      for (let i = 0; i < n; i++) heap.push(ball([-2 + (rnd(i, 7) - .5) * 7, y + (rnd(i, 8) - .5) * 10, 1.2 + rnd(i, 9) * 1.6], (1.2 + .7 * rnd(i, 10)) * r, { pal: COTTON }));
+      for (let i = 0; i < n; i++) heap.push(ball([-2 + (rnd(i, 7) - .5) * 7, y + (rnd(i, 8) - .5) * 9, 1.2 + rnd(i, 9) * 1.6], (1.2 + .7 * rnd(i, 10)) * r, { pal: COTTON }));
       out.push(group(heap, { part: 'la' }));
     }
-    // The bow, held above the heap
-    const lift = on ? Math.sin(s.t * 3) * 1.2 : 0, bz = 12 + lift, ends = [[-3, y - 11, bz], [-3, y + 11, bz]];
-    const arc = Array.from({ length: 9 }, (_, i) => { const u = i / 8; return [-3 - Math.sin(u * Math.PI) * 4, y - 11 + 22 * u, bz + Math.sin(u * Math.PI) * 3]; });
+    // The bow, held low in the heap
+    const lift = work ? Math.sin(s.t * 3) * .8 : 0, bz = 8 + lift, ends = [[-3, y - 9, bz], [-3, y + 9, bz]];
+    const arc = Array.from({ length: 9 }, (_, i) => { const u = i / 8; return [-3 - Math.sin(u * Math.PI) * 3.5, y - 9 + 18 * u, bz + Math.sin(u * Math.PI) * 2.6]; });
     out.push(group([line(arc, { col: BAMBOO.m, w: 1.8 })], { part: 'lasai', shadow: false }));
-    const pl = on ? Math.sin(s.t * 40) * 1.2 : 0;
-    out.push(group([line([ends[0], [-3 + pl, y, bz - .2], ends[1]], { col: '#7a6a55', w: .45 })], { part: 'lasai thal', shadow: false, bias: 2 }));
-    // Fluff flies up while she plucks
-    if (on) for (let i = 0; i < 6; i++) { const ph = (s.t * .9 + i / 6) % 1; out.push(ball([-1 + (rnd(i, 11) - .5) * 8, y + (rnd(i, 12) - .5) * 12, 4 + ph * 12], .7 + ph, { fill: '#ffffff', ink: false, opacity: .8 * (1 - ph), shadow: false })); }
-    // Rolled up, ready to spin
+    const pl = work ? Math.sin(s.t * 40) * 1.1 : 0, mid = [-3 + pl, y + 1, bz - .2];
+    out.push(group([line([ends[0], mid, ends[1]], { col: '#7a6a55', w: .45 })], { part: 'lasai thal', shadow: false, bias: 2 }));
+    // The little wooden striker in her hand
+    const hand = [-5.5, y + 1.5, bz + 2.6 + (work ? Math.abs(Math.sin(s.t * 20)) * 1.2 : 0)];
+    out.push(group([line([hand, [mid[0] - .8, mid[1], mid[2] + .6]], { col: DARK.m, w: .9 })], { part: 'lasai', shadow: false, bias: 3 }));
+    if (work) for (let i = 0; i < 7; i++) {
+      // Fluff flies up; dust and bits of leaf fall out
+      const ph = (s.t * .9 + i / 7) % 1;
+      out.push(ball([-1 + (rnd(i, 11) - .5) * 8, y + (rnd(i, 12) - .5) * 10, 4 + ph * 11], .7 + ph, { fill: '#ffffff', ink: false, opacity: .8 * (1 - ph), shadow: false }));
+      const fall = (s.t * 1.4 + i / 7) % 1;
+      out.push(ball([-2 + (rnd(i, 13) - .5) * 9, y + (rnd(i, 14) - .5) * 10, 3.5 * (1 - fall)], .3, { fill: '#7a5a32', ink: false, shadow: false }));
+    }
+    // Rolled round a thin stick into soft hollow rolls, ready to spin
     if (s.done[1]) {
       const rolls = [];
-      for (let i = 0; i < 4; i++) rolls.push(line([[2.5, y - 6 + i * 3, .9], [5.5, y - 6 + i * 3, .9]], { col: '#fbf8f0', w: 1.5 }));
+      for (let i = 0; i < 4; i++) { const yy = y - 5.5 + i * 3; rolls.push(line([[2.2, yy, .9], [5.6, yy, .9]], { col: '#fbf8f0', w: 1.6 }), ball([5.7, yy, .9], .3, { fill: '#cfc6b4', ink: false })); }
       out.push(group(rolls, { part: 'lachawn' }));
     }
-    return out;
+    return { out, hands: [[ends[0][0], ends[0][1], ends[0][2] + .5], hand] };
   }
 
-  // 3 Hmui: a spinning wheel; the band turns the iron spindle, which twists the roll into thread
+  // 3 Hmui: a low wheel on a heavy base; the cord loop turns the iron spindle, which twists the
+  // roll into thread and winds it on in a cone
   function hmui(s) {
-    const y = Y[2], k = kOf(s, 2), on = s.working && s.step === 2, out = [];
-    const C = [-2, y - 3, 11], R = 7, turn = on ? s.t * 4 : .3;
-    const rim = Array.from({ length: 25 }, (_, i) => { const a = i / 24 * Math.PI * 2; return [C[0], C[1] + Math.cos(a) * R, C[2] + Math.sin(a) * R]; });
+    const y = Y[2], k = kOf(s, 2), work = on(s, 2), out = [];
+    const C = [-2, y - 3, 10], R = 6.5, turn = work ? s.t * 4 : .3;
+    const rim = ring([0, 0], R, 0, 24).map(([a, b]) => [C[0], C[1] + a, C[2] + b]);
     const spokes = [];
     for (let i = 0; i < 8; i++) { const a = turn + i / 8 * Math.PI * 2; spokes.push(line([C, [C[0], C[1] + Math.cos(a) * R, C[2] + Math.sin(a) * R]], { col: WOOD.l, w: .6, ink: false })); }
+    const crank = [C[0] - 1.6, C[1] + Math.cos(turn) * 2.4, C[2] + Math.sin(turn) * 2.4];
     out.push(group([
-      box(-6, 4, y - 11, y + 9, 0, 1.6, { pal: DARK }),
-      box(-3, -1, y - 4, y - 2, 1.6, 11, { pal: WOOD }),
+      box(-6, 3, y - 9, y + 7, 0, 2, { pal: DARK }),
+      box(-3, -1, y - 4, y - 2, 2, 10, { pal: WOOD }),
       line(rim, { col: WOOD.m, w: 1.2 }), ...spokes, ball(C, .9, { pal: DARK }),
-      line([[C[0] + .6, C[1], C[2]], [C[0] + 3.4, C[1] + Math.cos(turn) * 2.6, C[2] + Math.sin(turn) * 2.6]], { col: DARK.m, w: .8 }),
-      box(-2.4, -1.2, y + 5, y + 6.2, 1.6, 6, { pal: WOOD }),
+      line([[C[0] - .6, C[1], C[2]], crank], { col: DARK.m, w: .8 }),
+      box(-2.4, -1.2, y + 3, y + 4.2, 2, 5.6, { pal: WOOD }),
     ], { part: 'hmui' }));
-    // The drive band from the wheel to the spindle
-    out.push(line([[C[0], C[1] + R * .2, C[2] + R], [-1.8, y + 6, 5.6], [C[0], C[1] + R * .2, C[2] - R]], { col: '#7a6a55', w: .3, ink: false, part: 'hmui' }));
-    // The spindle, with thread gathering on it
-    const sp = [line([[-1.8, y + 5, 5.6], [-1.8, y + 12, 5.6]], { col: IRON.m, w: .9 })];
-    if (k > 0) sp.push(ball([-1.8, y + 8.6, 5.6], .8 + 1.6 * k, { pal: COTTON }));
+    // The cord loop from the wheel to the spindle
+    out.push(line([[C[0], C[1] + R * .2, C[2] + R], [-1.8, y + 4, 5.2], [C[0], C[1] + R * .2, C[2] - R]], { col: '#7a6a55', w: .3, ink: false, part: 'hmui' }));
+    // The spindle, and the cone of thread on it
+    const sp = [line([[-1.8, y + 3, 5.2], [-1.8, y + 9.5, 5.2]], { col: IRON.m, w: .9 })];
+    if (k > 0) [[5.6, 1], [6.8, .72], [8, .42]].forEach(([dy, f]) => sp.push(ball([-1.8, y + dy, 5.2], (.5 + 1.4 * k) * f, { pal: COTTON })));
     out.push(group(sp, { part: 'hmuithlur' }));
-    // The thread runs from the spindle's tip to her hand, holding the cotton roll
+    // The thread runs from the spindle's tip to her left hand, which draws back with the lachawn
+    let hand = [-7, y + 10, 8];
     if (s.done[1]) {
-      const hand = on ? [-9, y + 12 + Math.sin(s.t * 2) * 1.5, 11 + Math.sin(s.t * 2) * 1] : [-9, y + 12, 10];
-      out.push(group([line([[-1.8, y + 12, 5.6], hand], { col: THREAD, w: .35, ink: false })], { part: 'la zai', shadow: false, bias: 3 }));
-      if (on || k < 1) out.push(group([line([hand, [hand[0] - 2.5, hand[1] + .5, hand[2] + .4]], { col: '#fbf8f0', w: 2 })], { part: 'lachawn', shadow: false, bias: 4 }));
+      if (work) { const d = s.t * .8 % 1; hand = [-7 - d * 3, y + 10.5, 8 + d * 2]; }
+      out.push(group([line([[-1.8, y + 9.5, 5.2], hand], { col: THREAD, w: .35, ink: false })], { part: 'la zai', shadow: false, bias: 3 }));
+      if (k < 1) out.push(group([line([hand, [hand[0] - 2.5, hand[1] + .5, hand[2] + .4]], { col: '#fbf8f0', w: 1.6 })], { part: 'lachawn', shadow: false, bias: 4 }));
     }
-    return out;
+    return { out, hands: [hand, crank] };
   }
 
-  // 4 Ladawhkilh and suvel: a stand with a turning cross-shaped reel; the thread winds into a skein
+  // 4 Ladawhkilh: the thread is wound round upright pegs into a skein (lamuai), then boiled in
+  // rice starch water (buhhawp tui)
+  const POT = [6, Y[3] + 4];
+  function ladawhkilh(s) {
+    const y = Y[3], k = kOf(s, 3), work = on(s, 3), out = [];
+    const wind = Math.min(1, k / .6), boiled = k >= .6;
+    out.push(group([
+      box(-7, 1, y - 6, y + 6, 0, 1.4, { pal: DARK }),
+      cyl([-3, y - 4.5], 1.4, 11, .6, .5, { pal: WOOD }), cyl([-3, y + 4.5], 1.4, 11, .6, .5, { pal: WOOD }),
+    ], { part: 'ladawhkilh' }));
+    if (wind > 0 && !boiled) {
+      const loop = [[-3.8, y - 4.5, 9], [-3.8, y + 4.5, 9], [-2.2, y + 4.5, 9], [-2.2, y - 4.5, 9], [-3.8, y - 4.5, 9]];
+      out.push(group([line(loop, { col: THREAD, w: .5 + 1.6 * wind })], { part: 'lamuai', bias: 2 }));
+    }
+    // The cone from the spindle, getting smaller as it unwinds
+    const cone = [-8, y + 6, 1.2];
+    if (s.done[2] && k < .6) out.push(group([ball(cone, 1.6 * (1 - .6 * wind) + .3, { pal: COTTON }), line([cone, [-3, y + (Math.sin(s.t * 5) > 0 ? 4.5 : -4.5), 9]], { col: THREAD, w: .3, ink: false })], { part: 'la zai' }));
+    // The pot of rice water on its stones; the skein soaks in it
+    const stone = shade('#8f8a80');
+    out.push(group([ball([POT[0] - 2.4, POT[1] - 2.4, .8], 1.2, { pal: stone }), ball([POT[0] + 2.4, POT[1] - 2.2, .8], 1.2, { pal: stone }), ball([POT[0], POT[1] + 3, .8], 1.2, { pal: stone }),
+      cyl(POT, 1.2, 7.2, 3.6, 3.2, { pal: shade('#8a5a36'), capFill: '#f2eee2' })], { part: 'buhhawp tui' }));
+    if (boiled && !(s.done[3] && kOf(s, 4) > 0)) out.push(group([line(ring(POT, 2, 7.4, 14), { col: THREAD, w: 1.6 })], { part: 'lamuai', bias: 3 }));
+    if (work && boiled) for (let i = 0; i < 4; i++) { const ph = (s.t * .7 + i / 4) % 1; out.push(ball([POT[0] + (rnd(i, 15) - .5) * 3, POT[1] + (rnd(i, 16) - .5) * 3, 8 + ph * 9], .8 + ph * 1.4, { fill: '#ffffff', ink: false, opacity: .55 * (1 - ph), shadow: false })); }
+    const a = s.t * 5;
+    return { out, hands: work && !boiled ? [[-3 + Math.cos(a) * 1.5, y + Math.sin(a) * 4.5, 9.5], [-6, y + 5, 7]] : [[POT[0] - 3, POT[1], 9], [-4, y, 10]] };
+  }
+
+  // 5 Suvel: a bamboo cage that turns on an upright pivot; the skein goes round it and is wound into a ball
   function suvel(s) {
-    const y = Y[3], k = kOf(s, 3), on = s.working && s.step === 3, out = [];
-    const H = 13, turn = on ? s.t * 3 : .4;
-    out.push(group([box(-5, 1, y - 3, y + 3, 0, 1.6, { pal: DARK }), box(-2.8, -1.2, y - .8, y + .8, 1.6, H, { pal: WOOD })], { part: 'ladawhkilh' }));
-    const tips = [0, 1, 2, 3].map(i => { const a = turn + i * Math.PI / 2; return [-2 + Math.cos(a) * 6, y + Math.sin(a) * 6, H + 1]; });
-    const reel = [ball([-2, y, H + 1], .9, { pal: DARK })];
-    tips.forEach(p => { reel.push(line([[-2, y, H + 1], p], { col: WOOD.m, w: .9 })); reel.push(line([p, [p[0], p[1], p[2] + 2.4]], { col: WOOD.l, w: .7 })); });
-    out.push(group(reel, { part: 'suvel' }));
+    const y = Y[4], k = kOf(s, 4), work = on(s, 4), out = [];
+    const C = [-1, y], turn = work ? s.t * 3 : .4, r = 3.6;
+    const cage = [cyl(C, 0, 15, .6, .5, { pal: WOOD }), box(-4, 2, y - 3, y + 3, 0, 1, { pal: DARK })];
+    for (let i = 0; i < 6; i++) { const a = turn + i * Math.PI / 3; cage.push(line([[C[0] + Math.cos(a) * r, C[1] + Math.sin(a) * r, 7], [C[0] + Math.cos(a) * r, C[1] + Math.sin(a) * r, 14]], { col: BAMBOO.m, w: 1 })); }
+    cage.push(line(ring(C, r, 7, 12), { col: BAMBOO.d, w: .7 }), line(ring(C, r, 14, 12), { col: BAMBOO.d, w: .7 }));
+    out.push(group(cage, { part: 'suvel' }));
+    // The skein round the cage, thinner as it winds off
+    if (s.done[3] && k < 1) out.push(group([line(ring(C, r + .3, 10.5, 16), { col: THREAD, w: .5 + 1.8 * (1 - k) })], { part: 'lamuai', bias: 2 }));
+    // The ball in her hand grows; then it sits on the floor, ready for the warp and the shuttle
+    const bh = work ? [-7.5 + Math.cos(s.t * 6) * .8, y + 5, 9 + Math.sin(s.t * 6) * .8] : k >= 1 ? [-6, y + 6, 1.6] : [-7.5, y + 5, 9];
     if (k > 0) {
-      // The skein, thicker as more thread is wound
-      const loop = [...tips, tips[0]].map(p => [p[0], p[1], p[2] + 1.2]);
-      out.push(group([line(loop, { col: THREAD, w: .4 + 1.2 * k })], { part: 'la zai', bias: 2 }));
+      out.push(group([ball(bh, .5 + 1.2 * k, { pal: COTTON })], { part: 'la zai', bias: 4 }));
+      if (k < 1) out.push(line([bh, [C[0] - r, C[1] + 1, 10.5]], { col: THREAD, w: .3, ink: false, part: 'la zai' }));
     }
-    // A ball of thread from the spindle, getting smaller as it unwinds
-    if (s.done[2]) out.push(group([ball([4, y + 5, 1.8], 1.8 * (1 - .6 * k) + .3, { pal: COTTON }), line([[4, y + 5, 2.6], tips[0]], { col: THREAD, w: .3, ink: false })], { part: 'la zai' }));
-    return out;
+    return { out, hands: [[bh[0] - .5, bh[1] - 1, bh[2]], [bh[0] - .5, bh[1] + 1, bh[2]]] };
   }
 
-  // 5 Lazarna: pegs in a board; the starched thread is laid back and forth as the warp
+  // 6 Lazarna: posts on a long beam, as far apart as the puan is long. Walking back and forth she
+  // lays the thread round them, crossing it between the middle pair (the cross the kaihbu holds later)
+  const LZ = [-7, 1, 4, 18];
   function lazarna(s) {
-    const y = Y[4], k = kOf(s, 4), out = [];
-    const pegs = [], n = 6;
-    out.push(group([box(-14, 14, y - 6, y + 6, 0, 1.4, { pal: DARK })], { part: 'lazarna' }));
-    for (let i = 0; i < n; i++) for (const x of [-12, 12]) pegs.push(cyl([x, y - 5 + i * 2], 1.4, 6, .45, .4, { pal: WOOD, cap: false }));
-    out.push(group(pegs, { part: 'lazarna' }));
-    const laid = Math.round(k * (n * 2 - 1)), warp = [];
-    for (let i = 0; i < laid; i++) {
-      const j = Math.floor(i / 2), a = i % 2 ? [12, y - 5 + j * 2, 4.5] : [-12, y - 5 + j * 2, 4.5], b = i % 2 ? [-12, y - 5 + (j + 1) * 2, 4.5] : [12, y - 5 + j * 2, 4.5];
-      warp.push(line([a, b], { col: THREAD, w: .4, ink: false }));
+    const y = Y[5], k = kOf(s, 5), work = on(s, 5), out = [];
+    out.push(group([box(-9, 20, y - 1.5, y + 1.5, 0, 1.6, { pal: DARK }), ...LZ.map(x => cyl([x, y], 1.6, 10, .55, .45, { pal: BAMBOO }))], { part: 'lazarna' }));
+    const n = Math.round(k * 16), warp = [];
+    for (let i = 0; i < n; i++) {
+      const z = 3 + i * .38, c = i % 2 ? .7 : -.7, red = i >= 6 && i < 9;   // a few red threads make a stripe
+      warp.push(line([[LZ[0], y, z], [LZ[1], y + c, z], [LZ[2], y - c, z], [LZ[3], y, z]], { col: red ? RED : THREAD, w: .35, ink: false }));
     }
     if (warp.length) out.push(group(warp, { part: 'sutpui', bias: 2, shadow: false }));
-    // The pot of rice starch water, and a skein soaking in it
-    out.push(group([cyl([16, y + 8], 0, 6, 4, 3.2, { pal: shade('#8a5a36'), capFill: '#f2eee2' })], { part: 'buhhawp tui' }));
-    if (s.done[3] && k < 1) out.push(group([line([[14.5, y + 7, 6.2], [17.5, y + 9, 6.2]], { col: THREAD, w: 1.6 })], { part: 'la zai' }));
-    return out;
+    // She walks the thread from end to end: where is she now?
+    const u = work ? .5 - .5 * Math.cos(s.t * 1.6) : 0, x = -12 + 26 * u;
+    if (work) out.push(line([[x + 1.5, y + 4, 7], [Math.sin(s.t * 1.6) > 0 ? LZ[3] : LZ[0], y, 3 + n * .38]], { col: THREAD, w: .3, ink: false, part: 'la zai' }));
+    return { out, walkX: x, back: work && Math.sin(s.t * 1.6) < 0, hands: [[x + 1.5, y + 3.6, 7], [x + 1.5, y + 4.4, 7]] };
   }
+  const STATIONS = [herawt, lasai, hmui, ladawhkilh, suvel, lazarna];
 
   // ---------- nu, who does the work ----------
   const NU = { h: 25, shirt: { l: '#f48fb1', m: '#e0457b', d: '#7a1f43' }, lower: 'skirt', lowerPal: shade('#2a2522'), bands: [.24, .32, .4], hair: '#1d1b22', bun: true };
-  function nu(s) {
-    const i = Math.round(s.pos), between = Math.abs(s.pos - i) > .02, y = Y[0] + (Y[4] - Y[0]) * s.pos / 4 + 4;
-    const at = [-15, y, 0], on = s.working;
-    if (between) return [group(person(at, -Math.PI / 2, { ...NU, pose: 'walk', phase: s.t * 7, t: s.t }), { part: 'nu' })];
-    const sitting = i <= 2, w = Math.sin(s.t * 7);
-    const hands = [
-      [[-6, Y[0] + 8 + (on ? Math.cos(s.t * 7) * 2 : 0), 14 + (on ? w * 2 : 0)], [-6, Y[0] - 3, 12]],
-      [[-4, Y[1] - 6, 12 + (on ? Math.sin(s.t * 3) : 0)], [-3 + (on ? Math.sin(s.t * 40) * 1.2 : 0), Y[1] + 1, 12]],
-      [[-6, Y[2] - 1, 13], [-9, Y[2] + 12 + (on ? Math.sin(s.t * 2) * 1.5 : 0), 11]],
-      [[-6, Y[3] + 4, 14], [-6, Y[3] - 2 + (on ? w : 0), 13]],
-      [[-6, Y[4] - 4 + (on ? Math.sin(s.t * 2) * 4 : 0), 8], [-6, Y[4] + 2, 8]],
-    ][i];
-    return [group(person(at, 0, { ...NU, pose: sitting ? 'sit' : 'stand', hands, t: s.t }), { part: 'nu' })];
+  function nu(s, st) {
+    const i = Math.round(s.pos), between = Math.abs(s.pos - i) > .02, y = Y[0] + (Y[LAST] - Y[0]) * s.pos / LAST + 4;
+    if (between) return [group(person([-15, y, 0], -Math.PI / 2, { ...NU, pose: 'walk', phase: s.t * 7, t: s.t }), { part: 'nu' })];
+    const S = st[i];
+    if (i === LAST && on(s, LAST)) return [group(person([S.walkX, Y[LAST] + 5, 0], S.back ? Math.PI : 0, { ...NU, pose: 'walk', phase: s.t * 5, t: s.t, hands: S.hands }), { part: 'nu' })];
+    return [group(person([-15, y, 0], 0, { ...NU, pose: i <= 2 || i === 4 ? 'sit' : 'stand', hands: S.hands, t: s.t }), { part: 'nu' })];
   }
 
   function scene(s) {
-    s._cam = arguments[1];
     const slats = [];
-    for (let x = -24; x < 24; x += 3) slats.push({ pts: [[x, -58, .02], [x, 58, .02]], stroke: SLAT, open: true });
-    const deck = box(-26, 26, -60, 60, -5, 0, { pal: FLOOR, part: 'chhuat', decals: { zp: slats }, shadow: false });
+    for (let x = -24; x < 24; x += 3) slats.push({ pts: [[x, -60, .02], [x, 60, .02]], stroke: SLAT, open: true });
+    const deck = box(-26, 26, -62, 62, -5, 0, { pal: FLOOR, part: 'chhuat', decals: { zp: slats }, shadow: false });
     // A low bamboo railing along the back edge of the verandah
-    const posts = [-57, -38, -19, 0, 19, 38, 57].map(y => cyl([-24.5, y], 0, 9, .9, .8, { pal: BAMBOO, bands: [4.5] }));
-    const rails = [5, 8.4].map(z => line([[-24.5, -57, z], [-24.5, 57, z]], { col: BAMBOO.m, w: 1.3 }));
+    const posts = [-59, -39, -20, 0, 20, 39, 59].map(y => cyl([-24.5, y], 0, 9, .9, .8, { pal: BAMBOO, bands: [4.5] }));
+    const rails = [5, 8.4].map(z => line([[-24.5, -59, z], [-24.5, 59, z]], { col: BAMBOO.m, w: 1.3 }));
     const railing = group([...posts, ...rails], { part: 'mau', bias: -20 });
+    const st = STATIONS.map(f => f(s));
     return {
-      ground: [deck], groundDecals: [], clip: [[-26, -60, 0], [26, -60, 0], [26, 60, 0], [-26, 60, 0]],
-      items: [railing, ...herawt(s), ...lasai(s), ...hmui(s), ...suvel(s), ...lazarna(s), ...nu(s)],
+      ground: [deck], groundDecals: [], clip: [[-26, -62, 0], [26, -62, 0], [26, 62, 0], [-26, 62, 0]],
+      items: [railing, ...st.flatMap(x => x.out), ...nu(s, st)],
     };
   }
 
@@ -2106,15 +2144,15 @@ const LA = (() => {
     for (let i = 0; i < 46; i++) { const x = -136 + rnd(i, 21) * 95, y = -46 + rnd(i, 22) * 22; o += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.3" fill="#ffffff" opacity=".9"/>`; }
     return o;
   }
-  // The five steps along the top: done, now, to come
+  // The six steps along the top: done, now, to come. The names sit on two lines, turn about.
   function over(s) {
-    let o = '<g pointer-events="none">';
+    let o = '<g pointer-events="none" font-family="Plus Jakarta Sans, sans-serif" font-weight="800" text-anchor="middle">';
     STEPS.forEach((st, i) => {
-      const x = -48 + i * 24, done = s.done[i], now = i === s.step;
-      o += `<circle cx="${x}" cy="-82" r="7" fill="${done ? '#43a047' : now ? '#ffc94a' : '#ffffff'}" stroke="#231e16" stroke-width=".8"/>`;
-      o += `<text x="${x}" y="-79.2" text-anchor="middle" font-size="7.5" font-weight="800" fill="${done ? '#ffffff' : '#231e16'}" font-family="Plus Jakarta Sans, sans-serif">${done ? '✓' : i + 1}</text>`;
-      o += `<text x="${x}" y="-69" text-anchor="middle" font-size="5.6" font-weight="800" fill="${now ? '#c2185b' : '#5d5547'}" font-family="Plus Jakarta Sans, sans-serif">${st.tool}</text>`;
-      if (i < 4) o += `<path d="M${x + 8} -82H${x + 16}" stroke="#231e16" stroke-width=".7" stroke-dasharray="1.5 1.5"/>`;
+      const x = -55 + i * 22, done = s.done[i], now = i === s.step;
+      if (i < LAST) o += `<path d="M${x + 7} -82H${x + 15}" stroke="#231e16" stroke-width=".7" stroke-dasharray="1.5 1.5"/>`;
+      o += `<circle cx="${x}" cy="-82" r="6.5" fill="${done ? '#43a047' : now ? '#ffc94a' : '#ffffff'}" stroke="#231e16" stroke-width=".8"/>`;
+      o += `<text x="${x}" y="-79.3" font-size="7" fill="${done ? '#ffffff' : '#231e16'}">${done ? '✓' : i + 1}</text>`;
+      o += `<text x="${x}" y="${i % 2 ? -64 : -70}" font-size="5.4" fill="${now ? '#c2185b' : '#5d5547'}">${st.tool}</text>`;
     });
     return o + '</g>';
   }
@@ -2123,35 +2161,39 @@ const LA = (() => {
   const LABEL_GROUPS = ['Tools', 'Cotton'];
   function anchors(s) {
     const a = [], T = (part, p) => a.push({ part, p, g: 'Tools' }), C = (part, p) => a.push({ part, p, g: 'Cotton' });
-    T('herawt', [-4.5, Y[0], 19.5]); T('lasai', [-6, Y[1], 15]); T('hmui', [-2, Y[2] - 3, 18]); T('hmuithlur', [-1.8, Y[2] + 10, 6]);
-    T('ladawhkilh', [-2, Y[3], 8]); T('suvel', [-2, Y[3] + 6, 15]); T('lazarna', [12, Y[4] - 5, 6]); T('buhhawp tui', [16, Y[4] + 8, 6]);
-    C('lapua', [-12, Y[0] - 2, 7]);
-    if (kOf(s, 0) > 0) { C('la mu', [-3.5, Y[0], 2.8]); C('la', [3, Y[0], 3.5]); }
-    C('lasai thal', [-3, Y[1] + 6, 12]);
-    if (s.done[1]) C('lachawn', [5, Y[1] + 3, 1.5]);
-    if (kOf(s, 2) > 0) C('la zai', [-1.8, Y[2] + 8.6, 8]);
-    if (kOf(s, 4) > 0) C('sutpui', [0, Y[4] - 2, 4.6]);
-    a.push({ part: 'nu', p: [-15, Y[0] + (Y[4] - Y[0]) * s.pos / 4 + 4, 26], g: 'Tools' });
+    T('herawt', [-4.5, Y[0] - 3, 19.5]); T('herawt ban', [-4.5, Y[0] + 10, 15.5]);
+    T('lasai', [-6, Y[1] - 4, 10]); T('hmui', [-2, Y[2] - 3, 16.5]); T('hmuithlur', [-1.8, Y[2] + 8, 5.5]);
+    T('ladawhkilh', [-3, Y[3] - 4.5, 11]); T('buhhawp tui', [POT[0], POT[1], 7.2]); T('suvel', [-1, Y[4], 15]);
+    T('lazarna', [18, Y[5], 10]);
+    C('lapua', [-12, Y[0] - 3, 7]);
+    if (kOf(s, 0) > 0) { C('la mu', [-8, Y[0] - 10.5, .8]); C('la', [2, Y[0], 3.5]); }
+    C('lasai thal', [-3, Y[1] + 5, 8]);
+    if (s.done[1]) C('lachawn', [4, Y[1] + 1, 1.2]);
+    if (kOf(s, 2) > 0) C('la zai', [-1.8, Y[2] + 6, 7]);
+    if (kOf(s, 3) > 0 && !(s.done[3] && kOf(s, 4) > 0)) C('lamuai', kOf(s, 3) >= .6 ? [POT[0], POT[1], 7.6] : [-3, Y[3], 9.5]);
+    else if (s.done[3] && kOf(s, 4) < 1) C('lamuai', [-1, Y[4] + 3.9, 10.5]);
+    if (kOf(s, 5) > 0) C('sutpui', [11, Y[5], 3 + Math.round(kOf(s, 5) * 16) * .38]);
+    a.push({ part: 'nu', p: [-15, Y[0] + (Y[LAST] - Y[0]) * s.pos / LAST + 4, 26], g: 'Tools' });
     return a;
   }
 
   function tap(s, part) {
     // Tapping the tool nu is at sets it to work.
-    if (part === STEPS[s.step].tool || (part === 'ladawhkilh' && s.step === 3)) { startWork(s); return null; }
+    if (STEPS[s.step].parts.includes(part)) { startWork(s); return null; }
     if (part === 'nu') return 'la';
     return null;
   }
 
   return {
     id: 'la', name: 'La siam', sub: 'making thread from cotton',
-    view: { yaw: 58, pitch: 30, box: '-82 -90 164 132', centre: [0, -30], ink: .7 },
-    words: ['la', 'lapua', 'la mu', 'herawt', 'lasai', 'lasai thal', 'lachawn', 'hmui', 'hmuithlur', 'la zai', 'ladawhkilh', 'suvel', 'lazarna', 'sutpui', 'buhhawp tui', 'nu', 'mau', 'chhuat'],
+    view: { yaw: 58, pitch: 30, box: '-84 -92 168 136', centre: [0, -30], ink: .7 },
+    words: ['la', 'lapua', 'la mu', 'herawt', 'herawt ban', 'lasai', 'lasai thal', 'lachawn', 'hmui', 'hmuithlur', 'la zai', 'ladawhkilh', 'lamuai', 'buhhawp tui', 'suvel', 'lazarna', 'sutpui', 'nu', 'mau', 'chhuat'],
     init, step, tint, scene, sky, over, anchors, tap, labelGroups: LABEL_GROUPS,
     swatches: null,
     actions: [
-      { label: s => (s.working ? STEPS[s.step].label + '…' : s.done[s.step] ? 'Done' : STEPS[s.step].label), word: s => STEPS[s.step].word,
+      { label: s => (s.working ? STEPS[s.step].label + '…' : s.done[s.step] ? 'Done' : STEPS[s.step].label), word: s => STEPS[s.step].tool,
         ready: s => !s.working && !s.done[s.step] && Math.abs(s.pos - s.step) < .05, run: s => startWork(s) },
-      { label: () => 'Next tool', word: () => null, ready: s => s.done[s.step] && s.step < 4, run: s => { next(s); s.k = 0; } },
+      { label: () => 'Next step', word: () => null, ready: s => s.done[s.step] && s.step < LAST, run: s => next(s) },
       { label: s => (s.auto ? 'Stop' : 'Do it all'), word: () => null, ready: s => !s.done.every(Boolean), run: s => { s.auto = !s.auto; } },
       { label: () => 'To the loom', word: () => 'sutpui', ready: s => s.done.every(Boolean), run: () => { location.hash = '#loom'; } },
       { label: () => 'Start again', word: () => null, run: s => Object.assign(s, init()) },
@@ -2161,8 +2203,8 @@ const LA = (() => {
 </script>
 <script>
 (() => {
-  const WORDS = {"in": "house", "kawngkhar": "door", "tukverh": "window", "bang": "wall", "chhuat": "floor", "chungkhuh": "roof", "khawnvâr": "lamp", "zawhte": "cat", "arpui": "hen", "êm": "carrying basket", "kawng": "road", "pal": "fence", "thing": "tree", "mau": "bamboo", "pangpâr": "flower", "tlang": "hill", "ni": "sun", "thla": "moon", "arsi": "star", "chhum": "cloud", "ruah": "rain", "vân": "sky", "meikhu": "smoke", "mei": "fire", "hawng": "open", "khar": "close", "zân": "night", "zîng": "morning", "harh": "wake", "muhil": "sleep", "chhûngah": "inside", "choka": "kitchen", "bel": "pot", "khum": "bed", "puan": "cloth", "dawhkân": "table", "ṭhutthlêng": "chair", "chhuatphah": "mat", "arbawm": "chicken coop", "artui": "hen's egg", "vawk": "pig", "chhun": "daytime", "tlai": "evening", "thli": "wind", "chhimbâl": "rainbow", "nu": "mother", "pa": "father", "pi": "grandmother", "naupang": "child", "phiat": "to sweep", "hmunphiah": "broom", "su": "to wash clothes", "tui": "water", "kal": "go", "tlân": "run", "ṭhian": "friend", "tlawh": "to visit", "chibai": "hello", "infiam": "to play", "la": "cotton", "lapua": "raw cotton", "la mu": "cotton seeds", "herawt": "cotton gin", "lasai": "cotton bow", "lasai thal": "bow string", "lachawn": "cotton roll", "hmui": "spinning wheel", "hmuithlur": "spindle", "la zai": "thread", "ladawhkilh": "skein stand", "suvel": "winding reel", "lazarna": "warping frame", "sutpui": "warp", "buhhawp tui": "rice starch water", "tah": "weave", "puan chei": "decorated cloth", "rawng": "colour", "sen": "red", "dum": "black", "vâr": "white", "hring": "green", "dumpâwl": "blue", "sendang": "pink", "ziarâng": "pattern", "hrui": "rope", "kawngvawn": "backstrap", "themkhawl": "breast beam", "thempui": "beater (weaving sword)", "thembupui": "shed stick", "hnahchawi": "heddle rod", "themte": "pattern rods", "tuirek": "reed (spacer bar)", "khawhtlang": "shuttle", "themtlang": "warp beam", "kaihbu": "lease rods", "ṭhu": "sit", "fawng": "basket", "thingrem": "wooden chest", "êng": "light", "zo": "finish", "mawi": "beautiful", "eng": "yellow", "puanchei": "the finest Mizo puan", "pawndum": "the black and red puan", "ngotekherh": "the white checked puan", "hmaram": "the girls' short puan", "tawlhlohpuan": "the puan of the brave", "bazar": "market", "dâwr": "shop", "dâwrkai": "shopkeeper", "zuar": "sell", "pawisa": "money", "thei": "fruit", "thlai": "vegetable", "balhla": "banana", "serthlum": "orange (fruit)", "theihai": "mango", "alu": "potato", "purun": "onion", "hmarcha": "chilli pepper", "fanghma": "cucumber", "zikhlum": "cabbage", "mâi": "pumpkin", "bawkbawn": "eggplant", "sawhthing": "ginger", "kho": "basket", "sangha": "fish", "hnah": "leaf", "buhfai": "husked rice", "rit": "heavy", "zâng": "light in weight", "lawmthu": "thanks", "pakhat": "one", "pahnih": "two", "pathum": "three"};   // Mizo → English, from the Hnahsin content
-  const NOTES = {"kawngvawn": "A strong strap of hide or cord round the weaver's back; leaning back pulls the warp tight.", "themkhawl": "The bar right in front of the weaver: the woven cloth rolls onto it, and the backstrap ties to it.", "thempui": "A long flat stick, thin and a little sharp, that beats each new row of weft tight.", "thembupui": "A wide flat bamboo bar that parts the upper and lower warp threads, opening the way for the shuttle.", "hnahchawi": "A thin straight rod tied with loops to every other warp thread; lifting it lifts them, so the threads cross.", "themte": "Thin rods added past the heddle to raise threads for the puan's design; four to seven for a fine pattern.", "tuirek": "A comb of bamboo or wood that keeps the warp threads evenly spaced.", "khawhtlang": "A slim stick with the weft wound on it, passed back and forth through the open shed.", "themtlang": "The big bar at the far end, tied to a wall or post, that holds every warp thread.", "kaihbu": "Two thin split bamboos near the warp beam that keep the warp threads from tangling.", "la": "Cotton grown in the jhum field, made into thread by hand before any weaving.", "lapua": "The fluffy cotton picked from the plant, with its seeds still inside.", "la mu": "The seeds taken out of the raw cotton by the cotton gin.", "herawt": "Two wooden rollers turned against each other by a handle: the cotton goes through, the seeds stay behind.", "lasai": "A bow of bent bamboo with a tight string; plucked over the cleaned cotton, it fluffs it up soft.", "lasai thal": "The tight string of the cotton bow, plucked so it shakes the cotton loose.", "lachawn": "The fluffed cotton rolled up, ready to be spun into thread.", "hmui": "A wheel turned by hand that twists the cotton roll into thread.", "hmuithlur": "The iron rod at the spinning wheel's end that turns fast and gathers the thread.", "la zai": "The cotton spun into a long strand.", "ladawhkilh": "The stand on which the spun thread is wound and kept tidy.", "suvel": "The reel that turns to wind the thread into a skein or a ball.", "lazarna": "Pegs where the thread is laid back and forth, counted, to the length of the warp.", "sutpui": "The long threads laid side by side on the loom; the weft goes across them.", "buhhawp tui": "The thread is soaked in it so it is stiff and strong for the loom.", "eng": "The colour of turmeric and ripe rice; a bright thread in many puans.", "puanchei": "White, with red and black stripes and rows of patterns in green, yellow and black: sakei ha (tiger's teeth), disul (sungrass in the wind), kawkpuizikzial (the fern shoot), lenbuangthuam (forked branches) and fanghma mu. Once called \"Puan Lallukhum\". Worn at the big festivals, for the Cheraw (bamboo dance), and by a bride.", "pawndum": "Black, with bold red, yellow and white stripes across. A puan of mourning and of love for life: a bride takes one into marriage as her zawlken puan (\"I will cover you all your life, and wrap you in this at your death\"), and people bring one when someone dies, to share the family's sorrow.", "ngotekherh": "White and black. \"Ngo\" is white, and \"kherh\" the black lines woven both ways into a grid, with a wide black band in the middle (puanhruikhau). Once only for chiefs' and rich families; now men and women both wear it at festivals and big days.", "hmaram": "Deep indigo-black, dyed with ting (Assam indigo), with fine white patterns: fern shoots (kawkpuizikzial), stars and small flower borders. A short wrap worn by girls and young women, from the waist to the calves. A girl who could weave her own was counted a grown woman.", "tawlhlohpuan": "\"Tawlh lo\" means never stepping back. Black, with bold red, white and yellow stripes in the middle and sawtooth edges beside them. Once worn only by pasalṭha, the bravest warriors who never ran from a fight; now given to honour people who served the land."};   // what some things do (the loom's parts)
+  const WORDS = {"in": "house", "kawngkhar": "door", "tukverh": "window", "bang": "wall", "chhuat": "floor", "chungkhuh": "roof", "khawnvâr": "lamp", "zawhte": "cat", "arpui": "hen", "êm": "carrying basket", "kawng": "road", "pal": "fence", "thing": "tree", "mau": "bamboo", "pangpâr": "flower", "tlang": "hill", "ni": "sun", "thla": "moon", "arsi": "star", "chhum": "cloud", "ruah": "rain", "vân": "sky", "meikhu": "smoke", "mei": "fire", "hawng": "open", "khar": "close", "zân": "night", "zîng": "morning", "harh": "wake", "muhil": "sleep", "chhûngah": "inside", "choka": "kitchen", "bel": "pot", "khum": "bed", "puan": "cloth", "dawhkân": "table", "ṭhutthlêng": "chair", "chhuatphah": "mat", "arbawm": "chicken coop", "artui": "hen's egg", "vawk": "pig", "chhun": "daytime", "tlai": "evening", "thli": "wind", "chhimbâl": "rainbow", "nu": "mother", "pa": "father", "pi": "grandmother", "naupang": "child", "phiat": "to sweep", "hmunphiah": "broom", "su": "to wash clothes", "tui": "water", "kal": "go", "tlân": "run", "ṭhian": "friend", "tlawh": "to visit", "chibai": "hello", "infiam": "to play", "la": "cotton", "lapua": "raw cotton", "la mu": "cotton seeds", "herawt": "cotton gin", "herawt ban": "gin handle", "lasai": "cotton bow", "lasai thal": "bow string", "lachawn": "cotton roll", "hmui": "spinning wheel", "hmuithlur": "spindle", "la zai": "thread", "ladawhkilh": "skein pegs", "lamuai": "skein", "buhhawp tui": "rice starch water", "suvel": "yarn swift", "lazarna": "warping posts", "sutpui": "warp", "tah": "weave", "puan chei": "decorated cloth", "rawng": "colour", "sen": "red", "dum": "black", "vâr": "white", "hring": "green", "dumpâwl": "blue", "sendang": "pink", "ziarâng": "pattern", "hrui": "rope", "kawngvawn": "backstrap", "themkhawl": "breast beam", "thempui": "beater (weaving sword)", "thembupui": "shed stick", "hnahchawi": "heddle rod", "themte": "pattern rods", "tuirek": "reed (spacer bar)", "khawhtlang": "shuttle", "themtlang": "warp beam", "kaihbu": "lease rods", "ṭhu": "sit", "fawng": "basket", "thingrem": "wooden chest", "êng": "light", "zo": "finish", "mawi": "beautiful", "eng": "yellow", "puanchei": "the finest Mizo puan", "pawndum": "the black and red puan", "ngotekherh": "the white checked puan", "hmaram": "the girls' short puan", "tawlhlohpuan": "the puan of the brave", "bazar": "market", "dâwr": "shop", "dâwrkai": "shopkeeper", "zuar": "sell", "pawisa": "money", "thei": "fruit", "thlai": "vegetable", "balhla": "banana", "serthlum": "orange (fruit)", "theihai": "mango", "alu": "potato", "purun": "onion", "hmarcha": "chilli pepper", "fanghma": "cucumber", "zikhlum": "cabbage", "mâi": "pumpkin", "bawkbawn": "eggplant", "sawhthing": "ginger", "kho": "basket", "sangha": "fish", "hnah": "leaf", "buhfai": "husked rice", "rit": "heavy", "zâng": "light in weight", "lawmthu": "thanks", "pakhat": "one", "pahnih": "two", "pathum": "three"};   // Mizo → English, from the Hnahsin content
+  const NOTES = {"kawngvawn": "A strong strap of hide or cord round the weaver's back; leaning back pulls the warp tight.", "themkhawl": "The bar right in front of the weaver: the woven cloth rolls onto it, and the backstrap ties to it.", "thempui": "A long flat stick, thin and a little sharp, that beats each new row of weft tight.", "thembupui": "A wide flat bamboo bar that parts the upper and lower warp threads, opening the way for the shuttle.", "hnahchawi": "A thin straight rod tied with loops to every other warp thread; lifting it lifts them, so the threads cross.", "themte": "Thin rods added past the heddle to raise threads for the puan's design; four to seven for a fine pattern.", "tuirek": "A comb of bamboo or wood that keeps the warp threads evenly spaced.", "khawhtlang": "A slim stick with the weft wound on it, passed back and forth through the open shed.", "themtlang": "The big bar at the far end, tied to a wall or post, that holds every warp thread.", "kaihbu": "Two thin split bamboos near the warp beam that keep the warp threads from tangling.", "la": "Cotton grown in the jhum field, made into thread by hand before any weaving.", "lapua": "The cotton bolls picked from the plant and dried in the sun, with the seeds still inside.", "la mu": "The hard seeds, too big to pass between the gin's rollers; they drop out on the weaver's side.", "herawt": "Two hardwood rollers on an upright frame, geared together by carved spiral grooves. The cotton fibres are pulled through the gap; the seeds stay behind.", "lasai": "A strip of mature bamboo bent into an arch with a tight string. Held in the heap and plucked, it shakes the clumps into soft, airy fluff and the dust out.", "lasai thal": "The bow's tight cord, twisted from tough bark fibre or cane. Plucked with a little wooden striker, it buzzes \"per ri tek tek\".", "lachawn": "A handful of the fluffed cotton rolled round a thin bamboo stick into a soft hollow roll, ready to spin.", "hmui": "A low wheel on a heavy wooden base, used sitting on the floor. The right hand turns the wheel; a cord loop drives the spindle.", "hmuithlur": "The sharp, thin iron spindle. It twists the cotton into thread, then the thread is wound onto it into a full cone.", "la zai": "The cotton spun into a long, strong strand.", "ladawhkilh": "Upright wooden pegs. The thread from the spindle is wound round them into loose skeins (lamuai), so water, dye and starch reach every part.", "suvel": "A bamboo cage that turns on an upright pivot. The dried skein goes round it, and as the thread is pulled the cage spins, so it winds into a ball without tangling.", "lazarna": "Posts set apart as long as the puan will be. Walking back and forth, the weaver lays the starched thread round them in a figure-eight cross, counting each thread and placing the colour stripes.", "sutpui": "The long threads of the puan, laid out on the lazarna; the cross is later held by the kaihbu, and the warp goes onto the themkhawl and themtlang.", "buhhawp tui": "Thick rice water. The skeins are boiled in it, so the starch coats the thread and it does not fray or break on the loom; then they dry in the sun.", "eng": "The colour of turmeric and ripe rice; a bright thread in many puans.", "puanchei": "White, with red and black stripes and rows of patterns in green, yellow and black: sakei ha (tiger's teeth), disul (sungrass in the wind), kawkpuizikzial (the fern shoot), lenbuangthuam (forked branches) and fanghma mu. Once called \"Puan Lallukhum\". Worn at the big festivals, for the Cheraw (bamboo dance), and by a bride.", "pawndum": "Black, with bold red, yellow and white stripes across. A puan of mourning and of love for life: a bride takes one into marriage as her zawlken puan (\"I will cover you all your life, and wrap you in this at your death\"), and people bring one when someone dies, to share the family's sorrow.", "ngotekherh": "White and black. \"Ngo\" is white, and \"kherh\" the black lines woven both ways into a grid, with a wide black band in the middle (puanhruikhau). Once only for chiefs' and rich families; now men and women both wear it at festivals and big days.", "hmaram": "Deep indigo-black, dyed with ting (Assam indigo), with fine white patterns: fern shoots (kawkpuizikzial), stars and small flower borders. A short wrap worn by girls and young women, from the waist to the calves. A girl who could weave her own was counted a grown woman.", "tawlhlohpuan": "\"Tawlh lo\" means never stepping back. Black, with bold red, white and yellow stripes in the middle and sawtooth edges beside them. Once worn only by pasalṭha, the bravest warriors who never ran from a fight; now given to honour people who served the land.", "herawt ban": "The crank that turns the gin's rollers in opposite directions.", "lamuai": "A loose loop of thread, bundled so it can be boiled, dyed with ting or starched without tangling."};   // what some things do (the loom's parts)
   // The things you can play with; #la, #loom or #bazar in the address opens that one.
   const FIGS = [HOUSE, LA, LOOM, BAZAR];
   let fig = FIGS.find(f => '#' + f.id === location.hash) || FIGS[0];
