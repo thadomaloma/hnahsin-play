@@ -35,7 +35,9 @@ Learn Mizo words by playing. Free, on any phone, no sign-up.
   from OpenStreetMap and Copernicus elevation data. Mizo words come up for what
   you ride past. Coins go into a wallet for scooters named by Mizo colours,
   and there are missions and badges to earn. On the Aizawl map you deliver
-  between 18 veng along real roads, past houses at their real heights.
+  between 18 veng along real roads, past houses at their real heights. Share
+  the road with cars, buses and bikes, and wait your turn in traffic jams, the
+  Aizawl way.
 - **The Hnahsin app.** A preview of the app in your browser. The app is
   coming to Android and iPhone.
 

@@ -4,6 +4,22 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.15.0 (26 October 2026)
+
+### Aizawl Ride: traffic, jams and Aizawl traffic discipline
+
+- Cars, taxis, SUVs, buses and bikes now share the road: on our side (we keep
+  left) and coming the other way. They slow down behind each other and go
+  round obstacles.
+- A Brake button (hold it), or the down arrow, S or the space bar.
+- Traffic jams at busy places, with a "No honking" sign before them. The
+  queue waits, then moves off from the front.
+- Aizawl traffic discipline: wait your turn in the queue and earn
+  dawhtheihna (patience) and 10 coins. Going round the queue on the other
+  side earns nothing. There is no horn.
+- A new mission (wait your turn in 3 jams) and a badge (Aizawl driver).
+- The pause button moved to the corner of the road.
+
 ## 1.14.1 (26 October 2026)
 
 - Shorter map credits on the Aizawl Ride page, with a link to the full
