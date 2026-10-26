@@ -4,6 +4,16 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.17.1 (26 October 2026)
+
+### Rova's Journey: a slower, easier pace
+
+- Rova runs about a quarter slower, and speeds up less after each right door.
+- Each question shows earlier, with more road between the doors, so there
+  are 3 to 4 seconds to read the question and choose a door.
+- On tall screens (the app on your Home Screen) the word from the last door
+  no longer sits on top of the new question.
+
 ## 1.17.0 (26 October 2026)
 
 ### Aizawl Ride: people, zebra crossings and more lifelike vehicles
