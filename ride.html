@@ -44,6 +44,7 @@
   .strip i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 4px; background: #2e7d32; }
   .strip .mk { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 7px; height: 7px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px #231e16; }
   .strip .mk.jam, .strip .mk.end { width: auto; height: auto; background: none; box-shadow: none; font-size: 13px; line-height: 1; }
+  .strip .mk.cross { background: #1565c0; box-shadow: 0 0 0 1.5px #fff; }
   .strip .mk.past { opacity: .45; }
   .strip .me { position: absolute; top: 50%; left: 0; width: 13px; height: 13px; transform: translate(-50%, -50%); border-radius: 50%; background: #1565c0; box-shadow: 0 0 0 2px #fff, 0 0 0 3px #231e16; }
   .dial { position: absolute; left: 8px; bottom: 8px; width: 104px; height: 66px; }
@@ -167,7 +168,7 @@
             <button class="route small" id="garageBtn" type="button">🛵 Garage</button>
             <button class="route small" id="missionsBtn" type="button">🎯 Missions <span class="dot" id="readyDot" hidden></span></button>
           </div>
-          <p class="fine">Tap a side of the road to steer, and hold Brake to slow down. In a traffic jam, wait your turn, the Aizawl way. Coins go into your wallet when the ride ends.</p>
+          <p class="fine">Tap a side of the road to steer, and hold Brake to slow down. Wait your turn in a jam, and stop for people at a crossing, the Aizawl way. Coins go into your wallet when the ride ends.</p>
         </div>
       </div>
       <div class="overlay" id="garageView" hidden>
@@ -315,6 +316,7 @@
     { id: 'veng5', icon: '🏘️', name: '5 veng visited', got: () => S.visited.length >= 5 },
     { id: 'vengall', icon: '🗺️', name: 'Every veng', got: () => S.visited.length >= 18 },
     { id: 'driver', icon: '🚦', name: 'Aizawl driver', got: () => S.jams >= 5 },
+    { id: 'zah', icon: '🚸', name: 'Let people cross', got: () => S.crossed >= 3 },
   ];
 
   // ---------- the save: one small versioned record, checked when read ----------
@@ -326,7 +328,7 @@
   };
   const fresh = () => ({ v: 1, best: {}, wallet: 0, lifetime: 0, metres: 0, rides: 0, deliveries: {}, bestCoins: 0, bestMetres: 0, bestTime: 0,
     owned: ['hring'], scooter: 'hring', badges: [], claimed: [], words: [], route: '', sound: true,
-    at: 'dawrpui', visited: [], cityDone: 0, cityBest: {}, jams: 0 });
+    at: 'dawrpui', visited: [], cityDone: 0, cityBest: {}, jams: 0, crossed: 0 });
   function readSave() {
     const f = fresh();
     let d = null;
@@ -350,7 +352,7 @@
     const vengId = x => typeof x === 'string' && /^[a-z]{2,20}$/.test(x);
     f.at = vengId(d.at) ? d.at : 'dawrpui';
     f.visited = Array.isArray(d.visited) ? [...new Set(d.visited.filter(vengId))].slice(0, 60) : [];
-    f.cityDone = num(d.cityDone); f.jams = num(d.jams);
+    f.cityDone = num(d.cityDone); f.jams = num(d.jams); f.crossed = num(d.crossed);
     if (d.cityBest && typeof d.cityBest === 'object') for (const [k, v] of Object.entries(d.cityBest)) if (/^[a-z]{2,20}>[a-z]{2,20}$/.test(k) && num(v)) f.cityBest[k] = num(v);
     return f;
   }
@@ -403,6 +405,7 @@
   let wordsSeen, wordT, banked = false;
   let crashBy = '';
   let cars = [], jams = [], braking = false, carT = 0, oncomingT = 0, eventWords = new Set();
+  let peds = [], crossings = [], pedT = 0;
   let s, v, px, lane, coins, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
   let soundOn = S.sound;
 
@@ -410,7 +413,7 @@
     prepRoute();
     s = 0; v = 0; lane = 1; px = 0; coins = 0; time = 0; bgX = 0; shake = 0; lean = 0; crashT = 0; crashDir = 1;
     things = []; sparks = []; pops = []; nextRow = 70; lastOpen = 1; passed = new Set();
-    cars = []; jams = planJams(); buildStrip(); prepMini(); braking = false; carT = 3; oncomingT = 5; eventWords = new Set(); brakeHint(false);
+    cars = []; jams = planJams(); crossings = planCrossings(); peds = []; pedT = 0; buildStrip(); prepMini(); braking = false; carT = 3; oncomingT = 5; eventWords = new Set(); brakeHint(false);
     best0 = bestOf(route.id); bestShown = false; wordsSeen = new Set(); wordT = 4;
     plan(); hud(true);
   }
@@ -522,6 +525,188 @@
     if (queue && !eventWords.has('tlar')) say('tlar', 'row · a queue ahead, hold Brake');
     brakeHint(!!queue && v > 4 && !braking);
   }
+  // ---------- people: on the footpath, and crossing at zebra crossings ----------
+  const FOOT = 6.15;                                   // the footpath runs from the kerb to here (m from the middle)
+  const footpath = i => housesNear(i) > 2;            // in town, where the map has houses
+  const LOOKS = [
+    { shirt: '#c0392b', lower: '#2c3e50', hair: '#1d1b22' },
+    { shirt: '#f4f4f0', lower: '#1f3a68', hair: '#1d1b22', bag: '#2e6da4' },            // a student
+    { shirt: '#e0457b', lower: '#2a2522', stripes: '#c8323d', hair: '#1d1b22', bun: 1 },  // a woman in a puan
+    { shirt: '#2e7d32', lower: '#3a3a3a', hair: '#3a2a1a', umbrella: '#1565c0' },
+    { shirt: '#f2c230', lower: '#2a2522', stripes: '#2f8a4a', hair: '#1d1b22', bun: 1 },
+    { shirt: '#5a7f9c', lower: '#6b5a48', hair: '#cfcac2' },                             // an elder
+  ];
+  function planCrossings() {
+    const out = [], spots = route.places.map(p => p[0] * SEG);
+    for (let m = 400; m < route.length - 120; m += 560) spots.push(m);
+    for (const m of spots.sort((a, b) => a - b)) {
+      if (m < 160 || m > route.length - 90 || !footpath(Math.floor(m / SEG)) || jams.some(j => Math.abs(j.at - m) < 110)) continue;
+      if (!out.length || m - out[out.length - 1].at > 260) out.push({ at: m, state: 'far', minV: 99, miss: false });
+    }
+    return out.slice(0, 4);
+  }
+  const newPed = (at, x, va, vx) => ({ at, x, va, vx, look: LOOKS[Math.random() * LOOKS.length | 0], phase: Math.random() * 4, cross: null });
+  function people(dt) {
+    const far = s + VIEW * SEG - 8;
+    if ((pedT -= dt) <= 0 && peds.length < 14) {
+      const i = Math.floor(far / SEG);
+      if (far < route.length && footpath(i)) {
+        const side = Math.random() < 0.5 ? -1 : 1;
+        if (sideAt(i, side) > -2.5) peds.push(newPed(far, side * (5.1 + Math.random() * 0.8), (Math.random() < 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.6), 0));
+      }
+      pedT = 0.6 + Math.random() * 1.2;
+    }
+    // People step onto a zebra crossing as you come near, and walk across
+    for (const c of crossings) {
+      if (c.state === 'far' && s > c.at - 115) {
+        c.state = 'crossing'; c.peds = [];
+        const n = 1 + (Math.random() * 3 | 0), side = Math.random() < 0.5 ? -1 : 1;
+        for (let k = 0; k < n; k++) { const p = newPed(c.at + 0.6 + (k % 2) * 1.2, side * (5.3 + k * 0.5), 0, -side * (1.0 + Math.random() * 0.3)); p.cross = c; c.peds.push(p); peds.push(p); }
+      }
+      if (c.state !== 'crossing') continue;
+      const onRoad = c.peds.some(p => Math.abs(p.x) < 4.7);
+      if (onRoad && s > c.at - 30 && s < c.at) c.minV = Math.min(c.minV, v);
+      // Riding through while someone is crossing: they hop back, and it is not the Aizawl way
+      if (onRoad && !c.miss && Math.abs(s - c.at) < 2.5) {
+        const close = c.peds.filter(p => Math.abs(p.x - px) < 1.6);
+        if (close.length) { c.miss = true; close.forEach(p => { p.vx = -Math.sign(p.vx) * 2.4; p.startled = 0.5; }); say('fimkhur', 'careful · stop for people crossing', true); }
+      }
+      if (s > c.at + 3) {
+        c.state = 'done';
+        if (!c.miss && c.minV < 1.5) {   // you stopped and let them cross
+          S.crossed++; coins += 5; pops.push({ text: '+5', x: W / 2, y: H * 0.84 - 120, life: 1.3 });
+          say('zah', 'respect · you let them cross, +5 coins', true);
+        }
+      }
+    }
+    for (const p of peds) {
+      p.at += p.va * dt;
+      if (p.vx) {
+        p.x += p.vx * dt;
+        if (p.startled > 0 && (p.startled -= dt) <= 0) p.vx = -p.vx;     // after a hop back, on across
+        if (Math.abs(p.x) > 5.4 && Math.sign(p.x) === Math.sign(p.vx)) { p.vx = 0; p.va = Math.random() < 0.5 ? 1 : -1; p.cross = null; }
+      }
+      p.phase += (Math.abs(p.va) + Math.abs(p.vx)) * dt * 2.6;
+    }
+    peds = peds.filter(p => p.at > s - 10 && p.at < s + VIEW * SEG + 20);
+    if (!eventWords.has('mi') && peds.some(p => p.at - s < 40 && p.at > s)) say('mi', 'person');
+    const cross = crossings.find(c => c.state === 'crossing' && c.at - s < 90 && c.at > s && c.peds.some(p => Math.abs(p.x) < 4.7));
+    if (cross && !eventWords.has('kalkawng')) say('kalkawng', 'path · people are crossing, stop');
+    return !!cross;
+  }
+
+  // ---------- sprites: vehicles and people drawn once, in detail, then copied ----------
+  // At 40 pixels a metre; each picture is drawn the first time it is needed and kept.
+  const PXM = 40, sprites = new Map();
+  function sprite(key, wM, hM, paint) {
+    let sp = sprites.get(key);
+    if (!sp) {
+      const c = document.createElement('canvas'), pad = 6;
+      c.width = Math.ceil(wM * PXM + pad * 2); c.height = Math.ceil(hM * PXM + pad);
+      const g = c.getContext('2d'); g.translate(pad + wM * PXM / 2, hM * PXM + pad - 1);
+      paint(g, wM * PXM, hM * PXM);
+      sp = { c, pad }; sprites.set(key, sp);
+    }
+    return sp;
+  }
+  const shadeHex = (c, t) => mixHex(c, t > 0 ? '#ffffff' : '#000000', Math.abs(t));
+  function paintVehicle(g, w, h, kind, col, dir) {
+    const R = (x, y, ww, hh, f, r = 0) => { g.fillStyle = f; g.beginPath(); g.roundRect(x, y, ww, hh, r); g.fill(); };
+    const grad = (y0, y1, c0, c1) => { const q = g.createLinearGradient(0, y0, 0, y1); q.addColorStop(0, c0); q.addColorStop(1, c1); return q; };
+    if (kind === 'bike') {
+      R(-w * 0.13, -h * 0.34, w * 0.26, h * 0.34, '#1b1d1c', w * 0.12);                                   // wheel
+      R(-w * 0.4, -h * 0.64, w * 0.8, h * 0.36, grad(-h * 0.64, -h * 0.28, shadeHex(col, 0.3), shadeHex(col, -0.3)), w * 0.22);
+      R(-w * 0.32, -h * 0.98, w * 0.64, h * 0.4, grad(-h, -h * 0.6, '#4a6f96', '#2c4a6b'), w * 0.22);   // rider
+      g.fillStyle = '#f2f2ee'; g.beginPath(); g.arc(0, -h * 1.02, w * 0.27, 0, 7); g.fill();               // helmet
+      g.fillStyle = shadeHex(col, -0.1); g.fillRect(-w * 0.27, -h * 1.04, w * 0.54, h * 0.04);
+      g.strokeStyle = '#231e16'; g.lineWidth = 3; g.beginPath(); g.moveTo(-w * 0.55, -h * 0.72); g.lineTo(w * 0.55, -h * 0.72); g.stroke();
+      if (dir < 0) { g.fillStyle = '#fff6c8'; g.beginPath(); g.arc(0, -h * 0.56, w * 0.13, 0, 7); g.fill(); }
+      else R(-w * 0.12, -h * 0.52, w * 0.24, h * 0.06, '#9e2a22', 2);
+      return;
+    }
+    const body = grad(-h * 0.62, -h * 0.1, shadeHex(col, 0.22), shadeHex(col, -0.25));
+    // tyres and the dark underside
+    R(-w * 0.47, -h * 0.17, w * 0.2, h * 0.17, '#141615', 4); R(w * 0.27, -h * 0.17, w * 0.2, h * 0.17, '#141615', 4);
+    R(-w * 0.48, -h * 0.2, w * 0.96, h * 0.08, '#2b2d2c', 3);
+    if (kind === 'bus') {
+      R(-w / 2, -h, w, h * 0.9, grad(-h, -h * 0.1, shadeHex(col, 0.2), shadeHex(col, -0.3)), w * 0.06);
+      R(-w * 0.44, -h * 0.92, w * 0.88, h * 0.34, grad(-h * 0.92, -h * 0.58, dir > 0 ? '#4b6273' : '#bfe0f2', dir > 0 ? '#2d3d48' : '#6f9ab4'), 4);
+      g.fillStyle = 'rgba(255,255,255,.25)'; g.beginPath(); g.moveTo(-w * 0.3, -h * 0.92); g.lineTo(-w * 0.12, -h * 0.92); g.lineTo(-w * 0.36, -h * 0.58); g.lineTo(-w * 0.44, -h * 0.58); g.fill();
+      g.fillStyle = '#1b1d1c'; g.fillRect(-w * 0.3, -h * 0.99, w * 0.6, h * 0.06);
+      g.fillStyle = '#ffc94a'; g.font = `800 ${Math.round(h * 0.045)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(dir > 0 ? '' : 'CITY', 0, -h * 0.96);
+      g.fillStyle = shadeHex(col, -0.35); g.fillRect(-w / 2, -h * 0.5, w, h * 0.03);
+    } else {
+      R(-w / 2, -h * 0.62, w, h * 0.46, body, w * 0.09);
+      // the cabin and its glass, with a slanting reflection
+      g.fillStyle = shadeHex(col, 0.08); g.beginPath(); g.moveTo(-w * 0.44, -h * 0.6); g.lineTo(-w * 0.33, -h); g.quadraticCurveTo(0, -h * 1.03, w * 0.33, -h); g.lineTo(w * 0.44, -h * 0.6); g.fill();
+      g.fillStyle = grad(-h * 0.95, -h * 0.63, dir > 0 ? '#5c7387' : '#c7e4f4', dir > 0 ? '#2f3e4b' : '#7fa7c0');
+      g.beginPath(); g.moveTo(-w * 0.37, -h * 0.63); g.lineTo(-w * 0.29, -h * 0.94); g.lineTo(w * 0.29, -h * 0.94); g.lineTo(w * 0.37, -h * 0.63); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.28)'; g.beginPath(); g.moveTo(-w * 0.18, -h * 0.94); g.lineTo(-w * 0.04, -h * 0.94); g.lineTo(-w * 0.2, -h * 0.63); g.lineTo(-w * 0.32, -h * 0.63); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(-w * 0.46, -h * 0.6, w * 0.92, h * 0.025);                 // a shine along the body
+      for (const e of [-1, 1]) R(e * w * 0.5 - (e > 0 ? 0 : w * 0.08), -h * 0.66, w * 0.08, h * 0.06, shadeHex(col, -0.2), 2); // mirrors
+      if (kind === 'taxi') { R(-w * 0.14, -h * 1.1, w * 0.28, h * 0.08, '#231e16', 2); g.fillStyle = '#ffc94a'; g.fillRect(-w * 0.1, -h * 1.08, w * 0.2, h * 0.04); }
+      if (kind === 'suv') R(-w * 0.36, -h * 1.04, w * 0.72, h * 0.03, '#2b2d2c', 2);                       // a roof rack
+    }
+    if (dir > 0) {
+      // the back: tail lights, a bumper and a number plate
+      R(-w * 0.47, -h * 0.53, w * 0.15, h * 0.09, '#9e2a22', 2); R(w * 0.32, -h * 0.53, w * 0.15, h * 0.09, '#9e2a22', 2);
+      R(-w * 0.44, -h * 0.51, w * 0.06, h * 0.04, '#ff8a7a', 1); R(w * 0.38, -h * 0.51, w * 0.06, h * 0.04, '#ff8a7a', 1);
+      R(-w * 0.48, -h * 0.29, w * 0.96, h * 0.09, '#3a3c3b', 3);
+      R(-w * 0.15, -h * 0.4, w * 0.3, h * 0.1, '#f6d54a', 2);
+      g.fillStyle = '#231e16'; g.font = `800 ${Math.round(h * 0.07)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('MZ 01', 0, -h * 0.35);
+    } else {
+      // the front: headlights with a glow, a grille, a bumper
+      for (const e of [-1, 1]) { g.fillStyle = 'rgba(255,246,200,.35)'; g.beginPath(); g.ellipse(e * w * 0.36, -h * 0.47, w * 0.14, h * 0.08, 0, 0, 7); g.fill(); R(e * w * 0.36 - w * 0.08, -h * 0.51, w * 0.16, h * 0.08, '#fffbe6', 3); }
+      R(-w * 0.2, -h * 0.47, w * 0.4, h * 0.12, '#2b2d2c', 3);
+      g.strokeStyle = '#8d918f'; g.lineWidth = 1.5; for (let k = 1; k < 4; k++) { g.beginPath(); g.moveTo(-w * 0.18, -h * 0.47 + k * h * 0.03); g.lineTo(w * 0.18, -h * 0.47 + k * h * 0.03); g.stroke(); }
+      R(-w * 0.48, -h * 0.29, w * 0.96, h * 0.09, '#3a3c3b', 3);
+    }
+  }
+  function paintPerson(g, w, h, L, front, frame) {
+    const sw = Math.sin(frame / 4 * Math.PI * 2), skin = '#d9a47c';
+    g.lineCap = 'round';
+    // legs, swinging as they walk
+    g.strokeStyle = L.lower; g.lineWidth = w * 0.18;
+    for (const e of [-1, 1]) { g.beginPath(); g.moveTo(e * w * 0.12, -h * 0.46); g.lineTo(e * w * 0.12 + sw * e * w * 0.08, -h * 0.03); g.stroke(); }
+    g.fillStyle = '#231e16'; for (const e of [-1, 1]) { g.beginPath(); g.ellipse(e * w * 0.12 + sw * e * w * 0.08, -h * 0.02, w * 0.11, h * 0.02, 0, 0, 7); g.fill(); }
+    // a puan (with its stripes) or trousers' top, then the shirt
+    if (L.stripes) { g.fillStyle = L.lower; g.fillRect(-w * 0.27, -h * 0.5, w * 0.54, h * 0.36); g.fillStyle = L.stripes; for (const y of [0.42, 0.3, 0.22]) g.fillRect(-w * 0.27, -h * y, w * 0.54, h * 0.025); }
+    g.fillStyle = L.shirt; g.beginPath(); g.roundRect(-w * 0.28, -h * 0.8, w * 0.56, h * 0.36, w * 0.14); g.fill();
+    if (L.bag && !front) { g.fillStyle = L.bag; g.beginPath(); g.roundRect(-w * 0.22, -h * 0.76, w * 0.44, h * 0.24, 4); g.fill(); }
+    // arms
+    g.strokeStyle = L.shirt; g.lineWidth = w * 0.13;
+    for (const e of [-1, 1]) { g.beginPath(); g.moveTo(e * w * 0.27, -h * 0.76); g.lineTo(e * w * 0.33 - sw * e * w * 0.06, -h * 0.5); g.stroke(); }
+    // head
+    g.fillStyle = skin; g.beginPath(); g.arc(0, -h * 0.88, w * 0.17, 0, 7); g.fill();
+    g.fillStyle = L.hair; g.beginPath(); g.arc(0, -h * 0.9, w * 0.18, front ? Math.PI * 1.05 : 0, front ? Math.PI * 1.95 : Math.PI * 2); g.fill();
+    if (L.bun) { g.beginPath(); g.arc(0, -h * 0.98, w * 0.09, 0, 7); g.fill(); }
+    if (front) { g.fillStyle = '#231e16'; for (const e of [-1, 1]) { g.beginPath(); g.arc(e * w * 0.06, -h * 0.87, w * 0.022, 0, 7); g.fill(); } }
+    if (L.umbrella) { g.strokeStyle = '#231e16'; g.lineWidth = 2; g.beginPath(); g.moveTo(w * 0.3, -h * 0.56); g.lineTo(w * 0.3, -h * 1.12); g.stroke(); g.fillStyle = L.umbrella; g.beginPath(); g.arc(w * 0.3, -h * 1.1, w * 0.62, Math.PI, 0); g.fill(); }
+  }
+  function person(p, P, i) {
+    const a = P[i], b = P[i + 1], u = (p.at - a.wz) / SEG;
+    const k = a.k + (b.k - a.k) * u, x = a.x + (b.x - a.x) * u + p.x * k, y = a.y + (b.y - a.y) * u;
+    if (k * 1.65 < 4 || x < -k || x > W + k) return;
+    const front = p.vx ? true : p.va < 0, frame = Math.floor(p.phase) % 4, li = LOOKS.indexOf(p.look);
+    const sp = sprite(`p${li}${front ? 'f' : 'b'}${frame}`, 0.62, 1.7, (g, w, h) => paintPerson(g, w, h, p.look, front, frame));
+    const sc = k / PXM, ga = ctx.globalAlpha;
+    ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(x, y, 0.3 * k, 0.07 * k, 0, 0, 7); ctx.fill();
+    if (a.f > 0.3) ctx.globalAlpha = ga * (1 - (a.f - 0.3) * 0.7);
+    ctx.drawImage(sp.c, x - sp.c.width * sc / 2, y - (sp.c.height - 1) * sc, sp.c.width * sc, sp.c.height * sc);
+    ctx.globalAlpha = ga;
+  }
+  // A blue "people crossing" sign before a zebra crossing
+  function crossingSign(a) {
+    const x = a.x - (footpath(a.idx) ? FOOT + 0.3 : 5.3) * a.k, y = a.y, r = 0.5 * a.k;
+    if (r < 3) return;
+    ctx.fillStyle = fog('#4b4b4b', a.f); ctx.fillRect(x - 0.05 * a.k, y - 2.6 * a.k, 0.1 * a.k, 2.6 * a.k);
+    const cy = y - 2.6 * a.k - r;
+    ctx.fillStyle = '#1565c0'; ctx.beginPath(); ctx.roundRect(x - r, cy - r, r * 2, r * 2, r * 0.2); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(x, cy - r * 0.75); ctx.lineTo(x + r * 0.75, cy + r * 0.65); ctx.lineTo(x - r * 0.75, cy + r * 0.65); ctx.fill();
+    ctx.fillStyle = '#231e16'; ctx.beginPath(); ctx.arc(x, cy - r * 0.18, r * 0.1, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#231e16'; ctx.lineWidth = Math.max(1, r * 0.08); ctx.beginPath(); ctx.moveTo(x, cy - r * 0.05); ctx.lineTo(x - r * 0.08, cy + r * 0.25); ctx.moveTo(x - r * 0.08, cy + r * 0.25); ctx.lineTo(x - r * 0.25, cy + r * 0.48); ctx.moveTo(x - r * 0.08, cy + r * 0.25); ctx.lineTo(x + r * 0.15, cy + r * 0.48); ctx.stroke();
+  }
+
   // A Mizo word as it comes up in the traffic (each once a ride)
   function say(m, e, again) {
     if (eventWords.has(m) && !again) return;
@@ -635,6 +820,7 @@
       p.idx = Math.floor(wz / SEG); p.f = Math.min(1, Math.pow(z / FAR, 1.3) * (1 + mist * 1.8) + mist * 0.12);
     }
     // Road, near to far, hiding what a hill top hides
+    const crossAt = new Set(crossings.map(c => Math.floor(c.at / SEG)));
     let maxY = H;
     for (let i = 0; i < VIEW; i++) {
       const a = P[i], b = P[i + 1];
@@ -651,6 +837,18 @@
         const ma = a.x + m * a.k, mb = b.x + m * b.k, la = 0.12 * a.k, lb = 0.12 * b.k;
         quad(ma - la, a.y, ma + la, a.y, mb + lb, b.y, mb - lb, b.y, fog('#f4efd9', f));
       }
+      // In town, a footpath (kalkawng) beside the road: a kerb, then paving
+      if (footpath(b.idx)) for (const e of [-1, 1]) {
+        if (sideAt(b.idx, e) < -2.5 && sideAt(a.idx, e) < -2.5) continue;    // the parapet side keeps no footpath
+        const at = (p, m) => p.x + e * m * p.k;
+        quad(at(a, 4.6), a.y, at(a, 4.8), a.y, at(b, 4.8), b.y, at(b, 4.6), b.y, fog('#9d998f', f));
+        quad(at(a, 4.8), a.y, at(a, FOOT), a.y, at(b, FOOT), b.y, at(b, 4.8), b.y, fog(even ? '#d8d2c4' : '#cfc9bb', f));
+      }
+      // A zebra crossing: white bars across our side of the road
+      if (crossAt.has(b.idx)) for (let k = 0; k < 8; k++) {
+        const x0 = -3.7 + k * 0.95, x1 = x0 + 0.5;
+        quad(a.x + x0 * a.k, a.y, a.x + x1 * a.k, a.y, b.x + x1 * b.k, b.y, b.x + x0 * b.k, b.y, fog('#f4f1e6', f));
+      }
       a.y = ay0;
       maxY = Math.min(maxY, b.y);
     }
@@ -659,6 +857,8 @@
     const by = new Map();
     for (const t of things) { const i = Math.floor((t.at - z0) / SEG); if (i >= 0 && i < VIEW) (by.get(i) || by.set(i, []).get(i)).push(t); }
     for (const c of cars) { const i = Math.floor((c.at - z0) / SEG); if (i >= 0 && i < VIEW) (by.get(i) || by.set(i, []).get(i)).push(c); }
+    for (const p of peds) { const i = Math.floor((p.at - z0) / SEG); if (i >= 0 && i < VIEW) (by.get(i) || by.set(i, []).get(i)).push(p); }
+    const walkSignAt = new Set(crossings.map(c => Math.floor((c.at - 32) / SEG)));
     const signAt = new Map(jams.map(j => [Math.floor((j.at - 45) / SEG), j]));
     for (let i = VIEW - 1; i >= 1; i--) {
       const a = P[i], b = P[i + 1], clip = P[i].clip;
@@ -672,7 +872,8 @@
       if (place) sign(a, place[1], place[2]);
       if (a.idx === route.curv.length - 1 || (a.wz <= route.length && a.wz + SEG > route.length)) finish(a);
       if (signAt.has(a.idx)) noHonking(a);
-      for (const t of (by.get(i) || []).sort((p, q) => q.at - p.at)) t.dir ? vehicle(t, P, i) : thing(t, P, i);
+      if (walkSignAt.has(a.idx)) crossingSign(a);
+      for (const t of (by.get(i) || []).sort((p, q) => q.at - p.at)) t.dir ? vehicle(t, P, i) : t.look ? person(t, P, i) : thing(t, P, i);
       ctx.globalAlpha = 1;
       ctx.restore();
     }
@@ -689,7 +890,7 @@
   const P = Array.from({ length: VIEW + 1 }, () => ({}));   // the projected road, reused every picture
   function post(a, side) {
     if (sideAt(a.idx, side) < -2.5) return;            // the parapet stands there instead
-    const x = a.x + side * 4.9 * a.k, y = a.y, w = 0.16 * a.k, h = 1.1 * a.k;
+    const x = a.x + side * (footpath(a.idx) ? FOOT + 0.15 : 4.9) * a.k, y = a.y, w = 0.16 * a.k, h = 1.1 * a.k;
     if (w < 0.6) return;
     ctx.fillStyle = fog('#f6f3ea', a.f); ctx.fillRect(x - w / 2, y - h, w, h);
     ctx.fillStyle = fog('#2b2b2b', a.f); ctx.fillRect(x - w / 2, y - h, w, h * 0.22);
@@ -702,7 +903,7 @@
   // into the hillside and houses stand above; where it falls, a parapet guards the edge and the
   // houses below show their roofs and stilts, as on Aizawl's hill roads.
   function land(a, b, side) {
-    const ra = sideAt(a.idx, side), rb = sideAt(b.idx, side), f = a.f, E = 4.75;
+    const ra = sideAt(a.idx, side), rb = sideAt(b.idx, side), f = a.f, E = ra > -2.5 && footpath(a.idx) ? FOOT : 4.75;
     const edge = (p, off) => p.x + side * off * p.k, sideX = side > 0 ? W + 10 : -10;
     const forest = housesNear(a.idx) <= 2;
     if (ra > 2.5 && rb > 2.5) {
@@ -823,38 +1024,18 @@
   function vehicle(c, P, i) {
     const a = P[i], b = P[i + 1], u = (c.at - a.wz) / SEG;
     const k = a.k + (b.k - a.k) * u, x = a.x + (b.x - a.x) * u + c.x * k, y = a.y + (b.y - a.y) * u;
-    const w = c.wid * k, h = c.hgt * k, f = a.f, R = (x0, y0, ww, hh, col, r = 0) => { ctx.fillStyle = col; ctx.beginPath(); ctx.roundRect(x0, y0, ww, hh, r); ctx.fill(); };
-    if (w < 1) return;
-    ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(x, y, w * 0.62, w * 0.14, 0, 0, 7); ctx.fill();
-    if (c.kind === 'bike') {
-      R(x - w * 0.12, y - h * 0.32, w * 0.24, h * 0.32, fog('#1b1d1c', f), w * 0.1);
-      R(x - w * 0.36, y - h * 0.62, w * 0.72, h * 0.36, fog(c.col, f), w * 0.2);
-      R(x - w * 0.3, y - h * 0.95, w * 0.6, h * 0.36, fog('#3d5a78', f), w * 0.2);
-      ctx.fillStyle = fog('#f2f2ee', f); ctx.beginPath(); ctx.arc(x, y - h * 1.02, w * 0.26, 0, 7); ctx.fill();
-      if (c.dir < 0) { ctx.fillStyle = '#fff6c8'; ctx.beginPath(); ctx.arc(x, y - h * 0.52, w * 0.12, 0, 7); ctx.fill(); }
-      else if (c.slowing) { ctx.fillStyle = '#ff4a3a'; ctx.fillRect(x - w * 0.12, y - h * 0.5, w * 0.24, h * 0.06); }
-      return;
-    }
-    // wheels, body, glass
-    R(x - w * 0.46, y - h * 0.16, w * 0.2, h * 0.16, fog('#1b1d1c', f), 2); R(x + w * 0.26, y - h * 0.16, w * 0.2, h * 0.16, fog('#1b1d1c', f), 2);
-    R(x - w / 2, y - h * 0.62, w, h * 0.5, fog(c.col, f), w * 0.08);
-    if (c.kind === 'bus') {
-      R(x - w / 2, y - h, w, h * 0.42, fog(c.col, f), w * 0.06);
-      R(x - w * 0.42, y - h * 0.92, w * 0.84, h * 0.3, fog(c.dir > 0 ? '#5a7387' : '#9cc3dc', f), w * 0.03);
-    } else {
-      ctx.fillStyle = fog(c.col, f); ctx.beginPath(); ctx.moveTo(x - w * 0.44, y - h * 0.6); ctx.lineTo(x - w * 0.34, y - h); ctx.lineTo(x + w * 0.34, y - h); ctx.lineTo(x + w * 0.44, y - h * 0.6); ctx.fill();
-      ctx.fillStyle = fog(c.dir > 0 ? '#4d6475' : '#a9d0e6', f); ctx.beginPath(); ctx.moveTo(x - w * 0.37, y - h * 0.63); ctx.lineTo(x - w * 0.3, y - h * 0.93); ctx.lineTo(x + w * 0.3, y - h * 0.93); ctx.lineTo(x + w * 0.37, y - h * 0.63); ctx.fill();
-    }
-    if (c.kind === 'taxi' && w > 8) R(x - w * 0.12, y - h * 1.08, w * 0.24, h * 0.09, fog('#231e16', f), 1);
-    if (c.dir > 0) {
-      // tail lights, brighter when it slows or stands in a queue; a number plate
-      const on = c.slowing;
-      if (on && w > 6) { ctx.fillStyle = 'rgba(255,60,40,.28)'; ctx.beginPath(); ctx.ellipse(x - w * 0.38, y - h * 0.48, w * 0.16, h * 0.1, 0, 0, 7); ctx.ellipse(x + w * 0.38, y - h * 0.48, w * 0.16, h * 0.1, 0, 0, 7); ctx.fill(); }
-      R(x - w * 0.46, y - h * 0.52, w * 0.14, h * 0.08, on ? '#ff3b2f' : fog('#9e2a22', f), 1); R(x + w * 0.32, y - h * 0.52, w * 0.14, h * 0.08, on ? '#ff3b2f' : fog('#9e2a22', f), 1);
-      if (w > 10) R(x - w * 0.14, y - h * 0.36, w * 0.28, h * 0.1, fog('#f6d54a', f), 1);
-    } else {
-      R(x - w * 0.44, y - h * 0.52, w * 0.16, h * 0.09, '#fff6c8', 2); R(x + w * 0.28, y - h * 0.52, w * 0.16, h * 0.09, '#fff6c8', 2);
-      R(x - w * 0.2, y - h * 0.42, w * 0.4, h * 0.12, fog('#3a3a3a', f), 1);
+    const w = c.wid * k, h = c.hgt * k;
+    if (w < 1 || x + w < 0 || x - w > W) return;
+    ctx.fillStyle = 'rgba(0,0,0,.24)'; ctx.beginPath(); ctx.ellipse(x, y, w * 0.62, w * 0.14, 0, 0, 7); ctx.fill();
+    const sp = sprite(`v${c.kind}${c.col}${c.dir}`, c.wid, c.hgt * 1.12, (g, ww, hh) => paintVehicle(g, ww, hh / 1.12, c.kind, c.col, c.dir));
+    const sc = k / PXM, ga = ctx.globalAlpha;
+    if (a.f > 0.3) ctx.globalAlpha = ga * (1 - (a.f - 0.3) * 0.7);   // far away: into the haze
+    ctx.drawImage(sp.c, x - sp.c.width * sc / 2, y - (sp.c.height - 1) * sc, sp.c.width * sc, sp.c.height * sc);
+    ctx.globalAlpha = ga;
+    // brake lights glow when it slows or waits in a queue
+    if (c.dir > 0 && c.slowing && w > 5 && c.kind !== 'bike') {
+      ctx.fillStyle = 'rgba(255,60,40,.3)'; ctx.beginPath(); ctx.ellipse(x - w * 0.4, y - h * 0.49, w * 0.16, h * 0.1, 0, 0, 7); ctx.ellipse(x + w * 0.4, y - h * 0.49, w * 0.16, h * 0.1, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#ff3b2f'; ctx.fillRect(x - w * 0.47, y - h * 0.53, w * 0.15, h * 0.09); ctx.fillRect(x + w * 0.32, y - h * 0.53, w * 0.15, h * 0.09);
     }
   }
   // "No honking": a round sign with a crossed-out horn, before a busy stretch
@@ -943,6 +1124,7 @@
     const add = (at, cls, txt, title) => { const m = document.createElement('span'); m.className = 'mk ' + cls; m.dataset.at = at; m.style.left = `${Math.min(100, at / route.length * 100)}%`; if (txt) m.textContent = txt; if (title) m.title = title; st.insertBefore(m, $('me')); };
     for (const [i, name] of route.places) if (i > 2) add(i * SEG, 'place', '', name);
     for (const j of jams) add(j.at, 'jam', '🚦');
+    for (const c of crossings) add(c.at, 'cross', '', 'People crossing');
     add(route.length, 'end', '🏁');
   }
 
@@ -1045,6 +1227,8 @@
     shake = Math.max(0, shake - dt * 3);
     plan();
     traffic(dt);
+    const crossing = people(dt);
+    if (crossing) brakeHint(v > 4 && !braking);
     const hit = hitCar();
     if (hit) {
       hit.hit = true; shake = 1; crashT = 0; crashDir = hit.x < px ? 1 : -1;
@@ -1403,7 +1587,8 @@
   document.querySelectorAll('.steer').forEach(b => b.addEventListener('contextmenu', e => e.preventDefault()));
 
   // For the automatic tests only (?test in the address): read the ride and steer.
-  if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy, save: JSON.parse(JSON.stringify(S)) }), steer, brake: on => setBrake(on) };
+  if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
+    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross })), crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)) }), steer, brake: on => setBrake(on) };
 
   syncSound(); syncWallet(); syncReady(); syncPause(); drawRoutes(); showParcel(); reset(); resize();
   hnStat('ride', 'Aizawl Ride');
