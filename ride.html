@@ -43,7 +43,7 @@
   .stage { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; background: #a9d8f5; }
   /* The whole game fits a phone screen with the header and buttons, no scrolling */
   canvas { display: block; width: 100%; height: clamp(280px, calc(100svh - 300px), min(128vw, 560px)); }
-  .toast { position: absolute; left: 50%; top: 12px; transform: translate(-50%, -8px); opacity: 0; transition: opacity .25s, transform .25s; background: #1d5c2e; color: #fff; border: 2px solid #fff; border-radius: 10px; padding: 6px 14px; font-weight: 800; font-size: 15px; white-space: nowrap; pointer-events: none; box-shadow: 0 2px 0 rgba(0,0,0,.25); }
+  .toast { position: absolute; left: 50%; top: 12px; transform: translate(-50%, -8px); opacity: 0; transition: opacity .25s, transform .25s; background: #1d5c2e; color: #fff; border: 2px solid #fff; border-radius: 10px; padding: 6px 14px; font-weight: 800; font-size: 15px; max-width: calc(100% - 24px); text-align: center; line-height: 1.3; pointer-events: none; box-shadow: 0 2px 0 rgba(0,0,0,.25); }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
   .overlay { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(20, 28, 18, .38); }
   .sheet { width: min(360px, 100%); background: var(--panel); color: var(--ink); border: 1.5px solid var(--ink); border-radius: 20px; box-shadow: 0 3px 0 var(--ink); padding: 18px; display: grid; gap: 10px; text-align: center; }
@@ -96,8 +96,13 @@
   .news:empty { display: none; }
   .link { background: none; border: 0; color: var(--muted); text-decoration: underline; font-size: 14px; min-height: 36px; }
   .confirm { display: grid; gap: 8px; }
-  .pause { width: 56px; height: 56px; border-radius: 50%; border: 1.5px solid var(--ink); background: var(--panel); box-shadow: 0 2px 0 var(--ink); font-size: 20px; }
-  .pause[disabled] { opacity: .35; box-shadow: none; }
+  .pause { position: absolute; right: 10px; bottom: 10px; z-index: 2; width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid #231e16; background: rgba(255,253,248,.92); color: #231e16; box-shadow: 0 2px 0 #231e16; font-size: 17px; }
+  .pause[disabled] { display: none; }
+  .brake { min-width: 96px; min-height: 56px; border-radius: 16px; border: 1.5px solid var(--ink); background: #fde4e1; color: #7a1d14; box-shadow: 0 2px 0 var(--ink); font-weight: 800; font-size: 17px; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .brake.on { transform: translateY(2px); box-shadow: none; background: #e53935; color: #fff; }
+  .brake.hint { animation: hint .7s ease-in-out infinite alternate; }
+  @keyframes hint { to { background: #ffb4aa; } }
+  @media (prefers-reduced-motion: reduce) { .brake.hint { animation: none; outline: 3px solid #e53935; } }
   .citybtn { background: #e5f0fc; color: #13304f; }
   .citybtn span { color: #3d5a78 !important; }
   #mapView { padding: 8px; }
@@ -133,6 +138,7 @@
     <div class="stage" id="stage">
       <canvas id="cv" aria-label="The road. Steer with the arrow keys, the buttons, or by tapping the left or right side."></canvas>
       <div class="toast" id="toast" aria-live="polite"></div>
+      <button class="pause" id="pauseBtn" type="button" aria-label="Pause" disabled>⏸</button>
       <div class="overlay" id="startView">
         <div class="sheet">
           <h2>Deliver the parcel</h2>
@@ -144,7 +150,7 @@
             <button class="route small" id="garageBtn" type="button">🛵 Garage</button>
             <button class="route small" id="missionsBtn" type="button">🎯 Missions <span class="dot" id="readyDot" hidden></span></button>
           </div>
-          <p class="fine">Dodge the rocks, logs and roadblocks: tap a side of the road to steer. Coins you pick up go into your wallet when the ride ends.</p>
+          <p class="fine">Tap a side of the road to steer, and hold Brake to slow down. In a traffic jam, wait your turn, the Aizawl way. Coins go into your wallet when the ride ends.</p>
         </div>
       </div>
       <div class="overlay" id="garageView" hidden>
@@ -199,7 +205,7 @@
     </div>
     <div class="controls">
       <button class="steer" id="leftBtn" type="button" aria-label="Steer left">←</button>
-      <button class="pause" id="pauseBtn" type="button" aria-label="Pause" disabled>⏸</button>
+      <button class="brake" id="brakeBtn" type="button" aria-label="Brake (hold)">Brake</button>
       <button class="steer" id="rightBtn" type="button" aria-label="Steer right">→</button>
     </div>
   </section>
@@ -280,6 +286,7 @@
     { id: 'chawnga', text: 'Deliver a parcel to Chawnga Road', goal: 1, reward: 200, have: () => S.deliveries.long || 0 },
     { id: 'bank200', text: 'Put 200 coins in your wallet, in all', goal: 200, reward: 100, have: () => S.lifetime },
     { id: 'city3', text: 'Make 3 deliveries on the Aizawl map', goal: 3, reward: 150, have: () => S.cityDone },
+    { id: 'jam3', text: 'Wait your turn in 3 traffic jams', goal: 3, reward: 120, have: () => S.jams },
   ];
   const BADGES = [
     { id: 'first', icon: '🛵', name: 'First ride', got: () => S.rides >= 1 },
@@ -290,6 +297,7 @@
     { id: 'words', icon: '🗣️', name: 'All 5 road words', got: () => S.words.length >= SCENE_WORDS.length },
     { id: 'veng5', icon: '🏘️', name: '5 veng visited', got: () => S.visited.length >= 5 },
     { id: 'vengall', icon: '🗺️', name: 'Every veng', got: () => S.visited.length >= 18 },
+    { id: 'driver', icon: '🚦', name: 'Aizawl driver', got: () => S.jams >= 5 },
   ];
 
   // ---------- the save: one small versioned record, checked when read ----------
@@ -301,7 +309,7 @@
   };
   const fresh = () => ({ v: 1, best: {}, wallet: 0, lifetime: 0, metres: 0, rides: 0, deliveries: {}, bestCoins: 0, bestMetres: 0, bestTime: 0,
     owned: ['hring'], scooter: 'hring', badges: [], claimed: [], words: [], route: '', sound: true,
-    at: 'dawrpui', visited: [], cityDone: 0, cityBest: {} });
+    at: 'dawrpui', visited: [], cityDone: 0, cityBest: {}, jams: 0 });
   function readSave() {
     const f = fresh();
     let d = null;
@@ -325,7 +333,7 @@
     const vengId = x => typeof x === 'string' && /^[a-z]{2,20}$/.test(x);
     f.at = vengId(d.at) ? d.at : 'dawrpui';
     f.visited = Array.isArray(d.visited) ? [...new Set(d.visited.filter(vengId))].slice(0, 60) : [];
-    f.cityDone = num(d.cityDone);
+    f.cityDone = num(d.cityDone); f.jams = num(d.jams);
     if (d.cityBest && typeof d.cityBest === 'object') for (const [k, v] of Object.entries(d.cityBest)) if (/^[a-z]{2,20}>[a-z]{2,20}$/.test(k) && num(v)) f.cityBest[k] = num(v);
     return f;
   }
@@ -376,6 +384,8 @@
   // 'over' (crashed) or 'done' (delivered)
   let mode = 'ready', loopId = 0, last = 0;
   let wordsSeen, wordT, banked = false;
+  let crashBy = '';
+  let cars = [], jams = [], braking = false, carT = 0, oncomingT = 0, eventWords = new Set();
   let s, v, px, lane, coins, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
   let soundOn = S.sound;
 
@@ -383,24 +393,128 @@
     prepRoute();
     s = 0; v = 0; lane = 1; px = 0; coins = 0; time = 0; bgX = 0; shake = 0; lean = 0; crashT = 0; crashDir = 1;
     things = []; sparks = []; pops = []; nextRow = 70; lastOpen = 1; passed = new Set();
+    cars = []; jams = planJams(); braking = false; carT = 3; oncomingT = 5; eventWords = new Set(); brakeHint(false);
     best0 = bestOf(route.id); bestShown = false; wordsSeen = new Set(); wordT = 4;
     plan(); hud(true);
   }
 
-  // Obstacles come in rows. A row never blocks every lane, and the open lane moves at most
-  // one lane from the last row's, so there is always a way through. Coins wait in open lanes.
+  // The road has our two lanes (0, 1; we keep left, as in India) and the oncoming lane (2).
+  // An obstacle blocks one of our lanes at most, so the other is open; coins wait in it. Rows
+  // keep clear of traffic jams. Braking always lets you stop in time.
   function plan() {
     const end = route.length - 40;
     while (nextRow < Math.min(end, s + VIEW * SEG + 40)) {
-      const two = time > 15 && Math.random() < 0.35;
-      const open = Math.max(0, Math.min(2, lastOpen + (Math.random() * 3 | 0) - 1));
-      const blocked = two ? [0, 1, 2].filter(l => l !== open) : [[0, 1, 2].filter(l => l !== open)[Math.random() * 2 | 0]];
-      for (const l of blocked) things.push({ kind: ['rock', 'log', 'barrier'][Math.random() * 3 | 0], lane: l, at: nextRow, hit: false });
-      if (Math.random() < 0.7) for (let i = 1; i <= 4; i++) things.push({ kind: 'coin', lane: open, at: nextRow + 4 + i * 3.2, got: false });
-      lastOpen = open;
-      // Rows are further apart at speed, so there is always time to change lanes
-      nextRow += Math.max(16, 1.15 * (v || 12)) + Math.random() * 14;
+      if (!jams.some(j => nextRow > j.at - 70 && nextRow < j.at + 70)) {
+        const blocked = Math.random() * 2 | 0, open = 1 - blocked;
+        things.push({ kind: ['rock', 'log', 'barrier'][Math.random() * 3 | 0], lane: blocked, at: nextRow, hit: false });
+        if (Math.random() < 0.7) for (let i = 1; i <= 4; i++) things.push({ kind: 'coin', lane: open, at: nextRow + 4 + i * 3.2, got: false });
+      }
+      nextRow += Math.max(18, 1.3 * (v || 12)) + Math.random() * 18;
     }
+  }
+
+  // ---------- traffic: cars, bikes, buses and Aizawl's queues ----------
+  const KINDS = {
+    car: { len: 3.8, wid: 1.7, hgt: 1.45, cols: ['#d9dde2', '#c0392b', '#2c3e50', '#f4f4f0', '#7f8c8d', '#2e6da4'] },
+    taxi: { len: 3.6, wid: 1.6, hgt: 1.45, cols: ['#f2c230'] },
+    suv: { len: 4.4, wid: 1.8, hgt: 1.9, cols: ['#f4f4f0', '#b8bec4', '#3a4a3a'] },
+    bus: { len: 9, wid: 2.4, hgt: 3, cols: ['#2e6da4', '#c0392b'] },
+    bike: { len: 1.8, wid: 0.8, hgt: 1.5, cols: ['#e74c3c', '#2c3e50', '#16a085', '#8e44ad'] },
+  };
+  const KIND_MIX = ['car', 'car', 'car', 'taxi', 'taxi', 'suv', 'suv', 'bike', 'bike', 'bus'];
+  const newCar = (kind, lane, at, v, dir) => { const K = KINDS[kind]; return { kind, lane, at, v, cruise: Math.abs(v), dir, x: LANES[lane], len: K.len, wid: K.wid, hgt: K.hgt, col: K.cols[Math.random() * K.cols.length | 0], hit: false, slowing: false }; };
+  // Jams wait where the road is busy: at the veng and named places along it, spaced apart
+  function planJams() {
+    const out = [], spots = route.places.map(p => p[0] * SEG).filter(m => m > 260 && m < route.length - 180);
+    if (route.length > 1200) spots.push(route.length * 0.45);
+    for (const m of spots.sort((a, b) => a - b)) if (!out.length || m - out[out.length - 1].at > 420) out.push({ at: m, n: 4 + (Math.random() * 4 | 0), state: 'far', wait: 6 + Math.random() * 3, broke: false });
+    return out.slice(0, route.length > 2500 ? 3 : 2);
+  }
+  const carNear = (lane, from, to) => cars.some(c => c.lane === lane && c.at > from && c.at < to);
+  const thingNear = (lane, from, to) => things.some(t => t.kind !== 'coin' && t.lane === lane && t.at > from && t.at < to);
+  function traffic(dt) {
+    const far = s + VIEW * SEG - 6;
+    // New traffic far ahead: slower cars on our side, and cars coming the other way
+    if (time > 3 && (carT -= dt) <= 0 && far < route.length - 30) {
+      const lane = Math.random() * 2 | 0;
+      if (!carNear(lane, far - 25, far + 25) && !thingNear(lane, far - 12, far + 12) && !jams.some(j => Math.abs(far - j.at) < 90)) cars.push(newCar(KIND_MIX[Math.random() * KIND_MIX.length | 0], lane, far, 7 + Math.random() * 4, 1));
+      carT = 3 + Math.random() * 3;
+    }
+    if (time > 5 && (oncomingT -= dt) <= 0 && far < route.length - 30) {
+      if (!carNear(2, far - 30, far + 30)) cars.push(newCar(KIND_MIX[Math.random() * KIND_MIX.length | 0], 2, far, -(9 + Math.random() * 4), -1));
+      oncomingT = 2 + Math.random() * 2.5;
+    }
+    // Jams: when you come near, a queue is waiting in both our lanes; after a while it moves off
+    for (const j of jams) {
+      if (j.state === 'far' && s > j.at - 230) {
+        j.state = 'stopped'; j.cars = [];
+        for (let k = 0; k < j.n; k++) { const c = newCar(KIND_MIX[Math.random() * 9 | 0], k % 2, j.at + Math.floor(k / 2) * 7 + (k % 2) * 2, 0, 1); c.jam = j; c.cruise = 8; j.cars.push(c); cars.push(c); }
+        // and someone coming the other way, so going round the queue is no shortcut
+        cars.push(newCar('car', 2, j.at + 90, -10, -1));
+      }
+      if (j.state === 'stopped' && s > j.at - 45) { j.state = 'waiting'; j.t = 0; }
+      if (j.state === 'waiting' && (j.t += dt) > j.wait) {
+        j.state = 'going'; j.t = 0;
+        // the front moves first, then each in turn
+        j.cars.sort((a, b) => b.at - a.at).forEach((c, k) => (c.goAt = k * 0.45));
+        // Waited in the queue, not going round it: Aizawl style
+        if (!j.broke) {
+          S.jams++; coins += 10; burst('#ffd34d');
+          pops.push({ text: '+10', x: W / 2, y: H * 0.84 - 120, life: 1.3 });
+          say('dawhtheihna', 'patience · +10 coins');
+        }
+      }
+      if (j.state === 'going') j.t += dt;
+      // Going round the queue on the oncoming side is not how Aizawl drives
+      if ((j.state === 'stopped' || j.state === 'waiting') && !j.broke && lane === 2 && j.cars.length) {
+        const back = Math.min(...j.cars.map(c => c.at)) - 4, front = Math.max(...j.cars.map(c => c.at)) + 4;
+        if (s > back && s < front) { j.broke = true; say('hmanhmawh', 'hurried · wait your turn', true); }
+      }
+    }
+    // Each car: keeps its lane, slows for what is ahead, goes round an obstacle if it can
+    for (const c of cars) {
+      if (c.dir > 0) {
+        let want = c.cruise;
+        if (c.jam) {
+          const j = c.jam;
+          want = j.state === 'going' && j.t > c.goAt ? 8 : 0;
+          if (j.state === 'going' && j.t > c.goAt + 6) c.jam = null;
+        }
+        // what is ahead in its lane: a car, the scooter, or an obstacle
+        let gap = 1e9, aheadV = 0;
+        for (const o of cars) if (o !== c && o.dir > 0 && o.lane === c.lane && o.at > c.at) { const g = o.at - o.len / 2 - (c.at + c.len / 2); if (g < gap) { gap = g; aheadV = o.v; } }
+        if (lane === c.lane && s > c.at) { const g = s - 0.9 - (c.at + c.len / 2); if (g < gap) { gap = g; aheadV = v; } }
+        const block = things.find(t => t.kind !== 'coin' && t.lane === c.lane && t.at > c.at && t.at - c.at < 22);
+        if (block && !c.jam) {
+          const other = 1 - c.lane;
+          if (c.lane < 2 && !carNear(other, c.at - 8, c.at + 14) && !thingNear(other, c.at - 4, c.at + 24) && !(lane === other && Math.abs(s - c.at) < 8)) c.lane = other;
+          else { const g = block.at - 1.2 - (c.at + c.len / 2); if (g < gap) { gap = g; aheadV = 0; } }
+        }
+        if (gap < 12) want = Math.min(want, aheadV + Math.max(0, gap - 2.5) * 0.8);
+        c.slowing = want < c.v - 0.3 || c.v < 0.5;
+        c.v += Math.max(-10 * dt, Math.min(3 * dt, want - c.v));
+        c.v = Math.max(0, c.v);
+      }
+      c.at += c.v * dt;
+      c.x += (LANES[c.lane] - c.x) * Math.min(1, dt * 3);
+    }
+    cars = cars.filter(c => c.at > s - 12 && c.at < s + VIEW * SEG + 40);
+    // Hints and words: a car for the first time, and the brake when a queue is ahead
+    if (!eventWords.has('motor') && cars.some(c => c.dir > 0 && c.at - s < 70 && c.at > s)) say('motor', 'car');
+    const queue = jams.find(j => (j.state === 'stopped' || j.state === 'waiting') && j.cars && j.cars.some(c => c.at - s < 120 && c.at > s));
+    if (queue && !eventWords.has('tlar')) say('tlar', 'row · a queue ahead, hold Brake');
+    brakeHint(!!queue && v > 4 && !braking);
+  }
+  // A Mizo word as it comes up in the traffic (each once a ride)
+  function say(m, e, again) {
+    if (eventWords.has(m) && !again) return;
+    eventWords.add(m); toast(`<b>${m}</b> · ${e}`, true);
+  }
+  function brakeHint(on) { $('brakeBtn').classList.toggle('hint', on); }
+  // The scooter against the traffic
+  function hitCar() {
+    for (const c of cars) if (!c.hit && Math.abs(c.at - s) < c.len / 2 + 0.9 && Math.abs(c.x - px) < c.wid / 2 + 0.35) return c;
+    return null;
   }
 
   // ---------- drawing ----------
@@ -527,6 +641,8 @@
     // Far to near: the land beside the road, houses and trees, signs, then what is on the road
     const by = new Map();
     for (const t of things) { const i = Math.floor((t.at - z0) / SEG); if (i >= 0 && i < VIEW) (by.get(i) || by.set(i, []).get(i)).push(t); }
+    for (const c of cars) { const i = Math.floor((c.at - z0) / SEG); if (i >= 0 && i < VIEW) (by.get(i) || by.set(i, []).get(i)).push(c); }
+    const signAt = new Map(jams.map(j => [Math.floor((j.at - 45) / SEG), j]));
     for (let i = VIEW - 1; i >= 1; i--) {
       const a = P[i], b = P[i + 1], clip = P[i].clip;
       if (a.y > clip + 40) continue;
@@ -538,7 +654,8 @@
       const place = route.places.find(p => p[0] === a.idx);
       if (place) sign(a, place[1], place[2]);
       if (a.idx === route.curv.length - 1 || (a.wz <= route.length && a.wz + SEG > route.length)) finish(a);
-      for (const t of (by.get(i) || []).sort((p, q) => q.at - p.at)) thing(t, P, i);
+      if (signAt.has(a.idx)) noHonking(a);
+      for (const t of (by.get(i) || []).sort((p, q) => q.at - p.at)) t.dir ? vehicle(t, P, i) : thing(t, P, i);
       ctx.globalAlpha = 1;
       ctx.restore();
     }
@@ -610,10 +727,11 @@
       ctx.fillStyle = fog(HOUSE_D[(a.idx + j) % HOUSE.length], a.f); ctx.fillRect(sx0, y - h + sw * 0.3, sw, h - sw * 0.3);
       ctx.fillStyle = fog(ROOF[(a.idx * 3 + j) % ROOF.length], a.f);
       ctx.beginPath(); ctx.moveTo(x - w * 0.6, y - h); ctx.lineTo(x, y - h - w * 0.35); ctx.lineTo(x + w * 0.6, y - h); ctx.fill();
-      if (w > 10) {   // a pair of windows on every floor (about 3 m each)
-        ctx.fillStyle = fog('#5a7f9c', a.f);
-        const fl = Math.max(1, Math.round(h / (3 * a.k))), fh = h / fl;
-        for (let k = 0; k < fl; k++) { const wy = y - h + fh * (k + 0.3); ctx.fillRect(x - w * 0.3, wy, w * 0.18, fh * 0.4); ctx.fillRect(x + w * 0.12, wy, w * 0.18, fh * 0.4); }
+      if (w > 12 && a.f < 0.6) {   // a pair of windows on every floor (about 3 m each), in one fill
+        ctx.fillStyle = fog('#5a7f9c', a.f); ctx.beginPath();
+        const fl = Math.min(8, Math.max(1, Math.round(h / (3 * a.k)))), fh = h / fl;
+        for (let k = 0; k < fl; k++) { const wy = y - h + fh * (k + 0.3); ctx.rect(x - w * 0.3, wy, w * 0.18, fh * 0.4); ctx.rect(x + w * 0.12, wy, w * 0.18, fh * 0.4); }
+        ctx.fill();
       }
     }
   }
@@ -683,13 +801,65 @@
       ctx.fillStyle = '#4b4b4b'; ctx.fillRect(x - 0.95 * k, y - 0.55 * k, 0.12 * k, 0.55 * k); ctx.fillRect(x + 0.83 * k, y - 0.55 * k, 0.12 * k, 0.55 * k);
     }
   }
+  // A vehicle: from behind when it goes our way (tail lights glow when it slows), from the front
+  // when it comes towards us (headlights, windscreen)
+  function vehicle(c, P, i) {
+    const a = P[i], b = P[i + 1], u = (c.at - a.wz) / SEG;
+    const k = a.k + (b.k - a.k) * u, x = a.x + (b.x - a.x) * u + c.x * k, y = a.y + (b.y - a.y) * u;
+    const w = c.wid * k, h = c.hgt * k, f = a.f, R = (x0, y0, ww, hh, col, r = 0) => { ctx.fillStyle = col; ctx.beginPath(); ctx.roundRect(x0, y0, ww, hh, r); ctx.fill(); };
+    if (w < 1) return;
+    ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(x, y, w * 0.62, w * 0.14, 0, 0, 7); ctx.fill();
+    if (c.kind === 'bike') {
+      R(x - w * 0.12, y - h * 0.32, w * 0.24, h * 0.32, fog('#1b1d1c', f), w * 0.1);
+      R(x - w * 0.36, y - h * 0.62, w * 0.72, h * 0.36, fog(c.col, f), w * 0.2);
+      R(x - w * 0.3, y - h * 0.95, w * 0.6, h * 0.36, fog('#3d5a78', f), w * 0.2);
+      ctx.fillStyle = fog('#f2f2ee', f); ctx.beginPath(); ctx.arc(x, y - h * 1.02, w * 0.26, 0, 7); ctx.fill();
+      if (c.dir < 0) { ctx.fillStyle = '#fff6c8'; ctx.beginPath(); ctx.arc(x, y - h * 0.52, w * 0.12, 0, 7); ctx.fill(); }
+      else if (c.slowing) { ctx.fillStyle = '#ff4a3a'; ctx.fillRect(x - w * 0.12, y - h * 0.5, w * 0.24, h * 0.06); }
+      return;
+    }
+    // wheels, body, glass
+    R(x - w * 0.46, y - h * 0.16, w * 0.2, h * 0.16, fog('#1b1d1c', f), 2); R(x + w * 0.26, y - h * 0.16, w * 0.2, h * 0.16, fog('#1b1d1c', f), 2);
+    R(x - w / 2, y - h * 0.62, w, h * 0.5, fog(c.col, f), w * 0.08);
+    if (c.kind === 'bus') {
+      R(x - w / 2, y - h, w, h * 0.42, fog(c.col, f), w * 0.06);
+      R(x - w * 0.42, y - h * 0.92, w * 0.84, h * 0.3, fog(c.dir > 0 ? '#5a7387' : '#9cc3dc', f), w * 0.03);
+    } else {
+      ctx.fillStyle = fog(c.col, f); ctx.beginPath(); ctx.moveTo(x - w * 0.44, y - h * 0.6); ctx.lineTo(x - w * 0.34, y - h); ctx.lineTo(x + w * 0.34, y - h); ctx.lineTo(x + w * 0.44, y - h * 0.6); ctx.fill();
+      ctx.fillStyle = fog(c.dir > 0 ? '#4d6475' : '#a9d0e6', f); ctx.beginPath(); ctx.moveTo(x - w * 0.37, y - h * 0.63); ctx.lineTo(x - w * 0.3, y - h * 0.93); ctx.lineTo(x + w * 0.3, y - h * 0.93); ctx.lineTo(x + w * 0.37, y - h * 0.63); ctx.fill();
+    }
+    if (c.kind === 'taxi' && w > 8) R(x - w * 0.12, y - h * 1.08, w * 0.24, h * 0.09, fog('#231e16', f), 1);
+    if (c.dir > 0) {
+      // tail lights, brighter when it slows or stands in a queue; a number plate
+      const on = c.slowing;
+      if (on && w > 6) { ctx.fillStyle = 'rgba(255,60,40,.28)'; ctx.beginPath(); ctx.ellipse(x - w * 0.38, y - h * 0.48, w * 0.16, h * 0.1, 0, 0, 7); ctx.ellipse(x + w * 0.38, y - h * 0.48, w * 0.16, h * 0.1, 0, 0, 7); ctx.fill(); }
+      R(x - w * 0.46, y - h * 0.52, w * 0.14, h * 0.08, on ? '#ff3b2f' : fog('#9e2a22', f), 1); R(x + w * 0.32, y - h * 0.52, w * 0.14, h * 0.08, on ? '#ff3b2f' : fog('#9e2a22', f), 1);
+      if (w > 10) R(x - w * 0.14, y - h * 0.36, w * 0.28, h * 0.1, fog('#f6d54a', f), 1);
+    } else {
+      R(x - w * 0.44, y - h * 0.52, w * 0.16, h * 0.09, '#fff6c8', 2); R(x + w * 0.28, y - h * 0.52, w * 0.16, h * 0.09, '#fff6c8', 2);
+      R(x - w * 0.2, y - h * 0.42, w * 0.4, h * 0.12, fog('#3a3a3a', f), 1);
+    }
+  }
+  // "No honking": a round sign with a crossed-out horn, before a busy stretch
+  function noHonking(a) {
+    const x = a.x - 5.4 * a.k, y = a.y, r = 0.55 * a.k;
+    if (r < 3) return;
+    ctx.fillStyle = fog('#4b4b4b', a.f); ctx.fillRect(x - 0.05 * a.k, y - 2.6 * a.k, 0.1 * a.k, 2.6 * a.k);
+    const cy = y - 2.6 * a.k - r;
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x, cy, r, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#d32f2f'; ctx.lineWidth = r * 0.2; ctx.stroke();
+    ctx.fillStyle = '#231e16'; ctx.beginPath(); ctx.moveTo(x - r * 0.45, cy - r * 0.15); ctx.lineTo(x + r * 0.3, cy - r * 0.42); ctx.lineTo(x + r * 0.3, cy + r * 0.42); ctx.lineTo(x - r * 0.45, cy + r * 0.15); ctx.fill();
+    ctx.strokeStyle = '#d32f2f'; ctx.beginPath(); ctx.moveTo(x - r * 0.7, cy - r * 0.7); ctx.lineTo(x + r * 0.7, cy + r * 0.7); ctx.stroke();
+    if (r > 8) { ctx.fillStyle = '#fff'; ctx.fillRect(x - r * 1.3, y - 2.6 * a.k + r * 0.15, r * 2.6, r * 0.62); ctx.fillStyle = '#231e16'; ctx.font = `800 ${Math.round(r * 0.36)}px "Plus Jakarta Sans", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('NO HONKING', x, y - 2.6 * a.k + r * 0.47); }
+  }
+
   // The rider on the scooter, from behind: it leans into bends and lane changes, the tyre hums
   // on the road, the brake light glows on a climb, and the parcel box rides on the back.
   function scooter(x, y) {
     const sc = Math.max(0.8, Math.min(1.3, W / 420));
     const ride = mode === 'playing' && !reduce, bob = ride ? Math.sin(time * 31) * 0.6 + Math.sin(time * 7.3) * 0.4 : 0;
     const fall = mode === 'crashing' ? Math.min(1, crashT / 0.45) : 0, tilt = lean + crashDir * fall * 1.25;
-    const brake = Math.max(0, Math.min(1, roadAt(route.grade, s, 1e-3) * 8)) || (mode === 'crashing' ? 1 : 0);
+    const brake = braking || mode === 'crashing' ? 1 : Math.max(0, Math.min(1, roadAt(route.grade, s, 1e-3) * 8));
     ctx.save(); ctx.translate(x, y + bob); ctx.scale(sc, sc);
     ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(-tilt * 18, 3, 24 + Math.abs(tilt) * 14, 6, 0, 0, 7); ctx.fill();
     ctx.rotate(tilt);
@@ -774,7 +944,8 @@
     }
     // Speed builds up to a top speed that rises slowly; it eases off on a steep climb
     const top = 11 + Math.min(7, time * 0.1), climb = roadAt(route.grade, s, 1e-3);
-    v += ((top - Math.max(0, climb) * 12) - v) * Math.min(1, dt * 0.9);
+    if (braking) v = Math.max(0, v - 12 * dt);                 // a firm brake: stops in a few metres
+    else v += ((top - Math.max(0, climb) * 12) - v) * Math.min(1, dt * 0.9);
     s += v * dt;
     const was = px;
     px += (LANES[lane] - px) * Math.min(1, dt * 12);
@@ -785,6 +956,13 @@
     bgX += curvAt(s) * v * dt * W * 0.9;
     shake = Math.max(0, shake - dt * 3);
     plan();
+    traffic(dt);
+    const hit = hitCar();
+    if (hit) {
+      hit.hit = true; shake = 1; crashT = 0; crashDir = hit.x < px ? 1 : -1;
+      crashBy = `${hit.dir > 0 ? 'our way' : 'oncoming'} ${hit.kind} in lane ${hit.lane} (x ${hit.x.toFixed(1)}, ${(hit.at - s).toFixed(1)} m), scooter x ${px.toFixed(1)}`;
+      beep(160, 0.3, 'sawtooth'); burst('#c33f3f'); mode = 'crashing'; braking = false; return;
+    }
     // What the scooter meets: each coin once, the first obstacle ends the ride
     for (const t of things) {
       if (t.got || t.hit || Math.abs(t.at - s) > 0.9) continue;
@@ -795,6 +973,7 @@
         const b = $('coins'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump');
         if (coins % 10 === 0) toast(`${coins} coins!`);
       } else {
+        crashBy = `${t.kind} in lane ${t.lane}, scooter x ${px.toFixed(1)}`;
         t.hit = true; shake = 1; crashT = 0; crashDir = t.lane < lane || (t.lane === lane && px > LANES[lane]) ? 1 : -1;
         beep(160, 0.3, 'sawtooth'); burst('#c33f3f'); mode = 'crashing'; return;
       }
@@ -886,7 +1065,7 @@
     hnStat(`ride/${route.id}`, `Aizawl Ride: ${route.to}`);
   }
   // Pause stops everything: no time passes, nothing moves, nothing is hit
-  function pause() { if (mode !== 'playing') return; mode = 'paused'; $('pauseView').hidden = false; syncPause(); $('resumeBtn').focus(); }
+  function pause() { if (mode !== 'playing') return; setBrake(false); mode = 'paused'; $('pauseView').hidden = false; syncPause(); $('resumeBtn').focus(); }
   function resume() { if (mode !== 'paused') return; mode = 'playing'; $('pauseView').hidden = true; syncPause(); run(); }
   function syncPause() {
     const b = $('pauseBtn');
@@ -1110,13 +1289,20 @@
   };
   $('leftBtn').addEventListener('pointerdown', e => { e.preventDefault(); steer(-1); });
   $('rightBtn').addEventListener('pointerdown', e => { e.preventDefault(); steer(1); });
+  // Brake: hold the button (or the down arrow, S or the space bar)
+  const setBrake = on => { braking = on && mode === 'playing'; $('brakeBtn').classList.toggle('on', braking); };
+  $('brakeBtn').addEventListener('pointerdown', e => { e.preventDefault(); try { $('brakeBtn').setPointerCapture(e.pointerId); } catch (err) {} setBrake(true); });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) $('brakeBtn').addEventListener(ev, () => setBrake(false));
+  $('brakeBtn').addEventListener('contextmenu', e => e.preventDefault());
+  addEventListener('keyup', e => { if (['ArrowDown', 's', 'S', ' '].includes(e.key)) setBrake(false); });
   $('stage').addEventListener('pointerdown', e => {
     if (mode !== 'playing' || e.target !== cv) return;
     const r = cv.getBoundingClientRect(); steer(e.clientX - r.left < r.width / 2 ? -1 : 1);
   });
   addEventListener('keydown', e => {
     const k = e.key;
-    if (mode === 'playing' && ['ArrowLeft', 'ArrowRight', 'a', 'A', 'd', 'D'].includes(k)) e.preventDefault();
+    if (mode === 'playing' && ['ArrowLeft', 'ArrowRight', 'a', 'A', 'd', 'D', 'ArrowDown', 's', 'S', ' '].includes(k)) e.preventDefault();
+    if (['ArrowDown', 's', 'S', ' '].includes(k)) setBrake(true);
     if (k === 'ArrowLeft' || k === 'a' || k === 'A') steer(-1);
     if (k === 'ArrowRight' || k === 'd' || k === 'D') steer(1);
     if (k === 'Escape' && panel) return closePanel();
@@ -1127,7 +1313,7 @@
   document.querySelectorAll('.steer').forEach(b => b.addEventListener('contextmenu', e => e.preventDefault()));
 
   // For the automatic tests only (?test in the address): read the ride and steer.
-  if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), save: JSON.parse(JSON.stringify(S)) }), steer };
+  if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy, save: JSON.parse(JSON.stringify(S)) }), steer, brake: on => setBrake(on) };
 
   syncSound(); syncWallet(); syncReady(); syncPause(); drawRoutes(); showParcel(); reset(); resize();
   hnStat('ride', 'Aizawl Ride');
