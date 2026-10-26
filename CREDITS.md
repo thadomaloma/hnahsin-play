@@ -18,6 +18,18 @@ Hnahsin Games is developed by Maloma Thado.
   [Fluent Emoji](https://github.com/microsoft/fluentui-emoji) (MIT licence).
 - Rova, Mami, his family and the game scenes are drawn for Hnahsin.
 
+## Maps
+
+- **Aizawl Ride** uses real Aizawl roads. Map data © [OpenStreetMap
+  contributors](https://www.openstreetmap.org/copyright), under the Open
+  Database License (ODbL). The baked roads in `ride/routes.json` are an
+  adapted database and stay under the ODbL.
+- Elevation: Copernicus WorldDEM-30 © DLR e.V. 2010–2014 and © Airbus Defence
+  and Space GmbH 2014–2018, provided under COPERNICUS by the European Union
+  and ESA.
+- The routes were prepared and checked in the developer's Zoram Delivery
+  project.
+
 ## Tools
 
 - [Phaser](https://phaser.io/) runs Rova's Journey (MIT licence).
