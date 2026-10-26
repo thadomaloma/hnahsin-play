@@ -60,6 +60,44 @@
   .route[aria-pressed="true"] span { color: #44513a; }
   .go { text-align: center; background: #2e7d32; color: #fff; font-weight: 800; font-size: 17px; place-items: center; }
   .result { display: flex; justify-content: space-between; font-weight: 700; font-size: 15px; padding: 8px 12px; border-radius: 12px; background: color-mix(in srgb, var(--ink) 7%, transparent); }
+  .wallet { flex: none; font-weight: 800; background: var(--panel); border: 1.5px solid var(--ink); border-radius: 99px; padding: 7px 12px; font-variant-numeric: tabular-nums; }
+  .wallet.bump { animation: bump .4s cubic-bezier(.2, .8, .2, 1.4); }
+  .sheet { max-height: 100%; overflow-y: auto; }
+  #startView .sheet { gap: 8px; padding: 14px; }
+  #startView .route { min-height: 46px; padding: 7px 12px; }
+  .sheet h3 { margin: 4px 0 0; font-size: 17px; text-align: left; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .route.small { min-height: 44px; text-align: center; place-items: center; font-weight: 800; font-size: 15px; }
+  .route.danger { background: #fde4e1; color: #7a1d14; }
+  .fine { font-size: 14px !important; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #e53935; vertical-align: middle; }
+  .list { display: grid; gap: 8px; text-align: left; }
+  .coin { display: inline-block; width: .95em; height: .95em; border-radius: 50%; vertical-align: -.12em; background: radial-gradient(circle at 35% 30%, #fff3b0, #ffc94a 45%, #c98a00); box-shadow: inset 0 0 0 .09em #b07800; }
+  .item { text-align: left; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 9px 12px; border: 1.5px solid var(--ink); border-radius: 14px; background: var(--panel); }
+  button.item { box-shadow: 0 2px 0 var(--ink); }
+  .item[aria-pressed="true"] { background: #e3f4dd; color: #1d2a16; }
+  .item .sw { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--ink); }
+  .item b { font-size: 16px; color: var(--brand); }
+  .item[aria-pressed="true"] b { color: #1d4f8a; }
+  .item small { display: block; font-size: 14px; color: var(--muted); font-weight: 600; }
+  .item[aria-pressed="true"] small { color: #44513a; }
+  .item .tag { font-weight: 800; font-size: 14px; white-space: nowrap; }
+  .meter { height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--ink) 14%, transparent); margin-top: 5px; overflow: hidden; }
+  .meter i { display: block; height: 100%; background: var(--leaf); }
+  .claim { min-height: 40px; padding: 4px 12px; border-radius: 99px; border: 1.5px solid var(--ink); background: #2e7d32; color: #fff; font-weight: 800; font-size: 14px; }
+  .claim[disabled] { background: transparent; color: var(--muted); border-color: color-mix(in srgb, var(--ink) 30%, transparent); }
+  .badges { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .badge { padding: 8px 4px; border-radius: 12px; border: 1.5px dashed color-mix(in srgb, var(--ink) 35%, transparent); font-size: 13px; font-weight: 700; color: var(--muted); line-height: 1.25; }
+  .badge span { display: block; font-size: 22px; filter: grayscale(1); opacity: .45; }
+  .badge.got { border-style: solid; border-color: var(--ink); color: var(--ink); background: #fff8e1; }
+  .badge.got { color: #231e16; }
+  .badge.got span { filter: none; opacity: 1; }
+  .news { display: grid; gap: 4px; font-size: 15px; font-weight: 700; }
+  .news:empty { display: none; }
+  .link { background: none; border: 0; color: var(--muted); text-decoration: underline; font-size: 14px; min-height: 36px; }
+  .confirm { display: grid; gap: 8px; }
+  .pause { width: 56px; height: 56px; border-radius: 50%; border: 1.5px solid var(--ink); background: var(--panel); box-shadow: 0 2px 0 var(--ink); font-size: 20px; }
+  .pause[disabled] { opacity: .35; box-shadow: none; }
   .controls { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; padding: 10px 14px; border-top: 1.5px solid var(--ink); }
   .steer { min-height: 56px; border-radius: 16px; border: 1.5px solid var(--ink); background: var(--panel); box-shadow: 0 2px 0 var(--ink); font-size: 26px; font-weight: 800; touch-action: manipulation; }
   .steer:active { transform: translateY(2px); box-shadow: none; }
@@ -72,7 +110,8 @@
 <div class="app">
   <header class="top">
     <a class="nav-link" href="./" aria-label="Back to Hnahsin Games">‹</a>
-    <div class="brand"><b>Aizawl Ride</b><span>Ride Zoram's real hill roads</span></div>
+    <div class="brand"><b>Aizawl Ride</b><span>Zoram's real hill roads</span></div>
+    <span class="wallet" id="wallet" aria-live="polite"><i class="coin"></i> 0</span>
     <button class="icon" id="sound" type="button" aria-pressed="true" aria-label="Sound">🔊</button>
   </header>
 
@@ -89,10 +128,38 @@
       <div class="overlay" id="startView">
         <div class="sheet">
           <h2>Deliver the parcel</h2>
-          <p>Ride real Aizawl roads. Dodge the rocks, logs and roadblocks, and pick up coins on the way.</p>
           <p class="parcel" id="parcel"></p>
           <div class="routes" id="routes"></div>
           <button class="go" id="startBtn" type="button">Start riding</button>
+          <div class="row2">
+            <button class="route small" id="garageBtn" type="button">🛵 Garage</button>
+            <button class="route small" id="missionsBtn" type="button">🎯 Missions <span class="dot" id="readyDot" hidden></span></button>
+          </div>
+          <p class="fine">Dodge the rocks, logs and roadblocks: tap a side of the road to steer. Coins you pick up go into your wallet when the ride ends.</p>
+        </div>
+      </div>
+      <div class="overlay" id="garageView" hidden>
+        <div class="sheet" role="dialog" aria-labelledby="garageTitle">
+          <h2 id="garageTitle">Garage</h2>
+          <p>Every scooter rides the same. Pick the colour you like, by its Mizo name.</p>
+          <div class="list" id="scooters"></div>
+          <p class="fine" id="garageNote" aria-live="polite"></p>
+          <button class="go" type="button" data-close>Done</button>
+        </div>
+      </div>
+      <div class="overlay" id="missionsView" hidden>
+        <div class="sheet" role="dialog" aria-labelledby="missionsTitle">
+          <h2 id="missionsTitle">Missions</h2>
+          <div class="list" id="missions"></div>
+          <h3>Badges</h3>
+          <div class="badges" id="badges"></div>
+          <button class="go" type="button" data-close>Done</button>
+          <button class="link" id="resetBtn" type="button">Reset my progress</button>
+          <div class="confirm" id="resetAsk" hidden>
+            <p>This clears your coins, scooters, missions, badges and best scores on this device.</p>
+            <button class="route small danger" id="resetYes" type="button">Yes, reset everything</button>
+            <button class="route small" id="resetNo" type="button">Keep it</button>
+          </div>
         </div>
       </div>
       <div class="overlay" id="pauseView" hidden>
@@ -104,6 +171,7 @@
           <p id="endText"></p>
           <div class="result"><span>Score</span><span id="endScore">0</span></div>
           <div class="result"><span>Best on this road</span><span id="endBest">0</span></div>
+          <div class="news" id="endNews"></div>
           <button class="go" id="againBtn" type="button">Ride again</button>
           <button class="route" id="otherBtn" type="button" style="text-align:center"><b>Choose a road</b></button>
         </div>
@@ -111,7 +179,7 @@
     </div>
     <div class="controls">
       <button class="steer" id="leftBtn" type="button" aria-label="Steer left">←</button>
-      <span class="mid" id="mid">Tap a side<br>to steer</span>
+      <button class="pause" id="pauseBtn" type="button" aria-label="Pause" disabled>⏸</button>
       <button class="steer" id="rightBtn" type="button" aria-label="Steer right">→</button>
     </div>
   </section>
@@ -155,11 +223,6 @@
   const cv = $('cv'), ctx = cv.getContext('2d');
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // ---------- safe local storage: the game works without it ----------
-  const mem = {};
-  const load = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return k in mem ? mem[k] : d; } };
-  const save = (k, v) => { mem[k] = String(v); try { localStorage.setItem(k, String(v)); } catch (e) {} };
-  const bestOf = id => { const n = parseInt(load('hn-ride-best-' + id, '0'), 10); return Number.isFinite(n) && n > 0 ? n : 0; };
 
   // ---------- the parcel: something from the bazar, by its Mizo name ----------
   const PARCELS = [['alu', 'potatoes', '🥔'], ['artui', 'eggs', '🥚'], ['purun', 'onions', '🧅'], ['sangha', 'fish', '🐟'], ['balhla', 'bananas', '🍌'],
@@ -175,6 +238,68 @@
     ['tlang', 'hill', i => sideAt(i, -1) > 8 || sideAt(i, 1) > 8],
     ['ruam', 'valley', i => sideAt(i, -1) < -10 || sideAt(i, 1) < -10],
   ];
+
+  // ---------- scooters, missions and badges ----------
+  // Scooters are named by Mizo colour words. They look different and ride the same.
+  const SCOOTERS = [
+    { id: 'hring', name: 'hring', en: 'green', price: 0, body: ['#e2f58a', '#b9db4a', '#86a82e'] },
+    { id: 'sen', name: 'sen', en: 'red', price: 150, body: ['#ff9a8a', '#e0453a', '#a52a22'] },
+    { id: 'dumpawl', name: 'dumpâwl', en: 'blue', price: 300, body: ['#9ccbff', '#3d7fd6', '#24528f'] },
+    { id: 'var', name: 'vâr', en: 'white', price: 500, body: ['#ffffff', '#ebe8e0', '#b9b6ad'] },
+    { id: 'dum', name: 'dum', en: 'black', price: 800, body: ['#6a6a6a', '#333333', '#151515'] },
+  ];
+  const MISSIONS = [
+    { id: 'coins10', text: 'Pick up 10 coins in one ride', goal: 10, reward: 50, have: () => S.bestCoins },
+    { id: 'm500', text: 'Ride 500 m in one ride', goal: 500, reward: 50, have: () => S.bestMetres },
+    { id: 'time60', text: 'Keep riding for a whole minute', goal: 60, reward: 75, have: () => S.bestTime },
+    { id: 'hospital', text: 'Deliver a parcel to Civil Hospital', goal: 1, reward: 100, have: () => S.deliveries.hospital || 0 },
+    { id: 'chawnga', text: 'Deliver a parcel to Chawnga Road', goal: 1, reward: 200, have: () => S.deliveries.long || 0 },
+    { id: 'bank200', text: 'Put 200 coins in your wallet, in all', goal: 200, reward: 100, have: () => S.lifetime },
+  ];
+  const BADGES = [
+    { id: 'first', icon: '🛵', name: 'First ride', got: () => S.rides >= 1 },
+    { id: 'deliver', icon: '📦', name: 'Delivered', got: () => Object.values(S.deliveries).some(n => n > 0) },
+    { id: 'coins25', icon: '<i class="coin"></i>', name: '25 coins saved', got: () => S.lifetime >= 25 },
+    { id: 'km1', icon: '🛣️', name: '1 km ridden', got: () => S.metres >= 1000 },
+    { id: 'garage', icon: '🔑', name: 'A second scooter', got: () => S.owned.length >= 2 },
+    { id: 'words', icon: '🗣️', name: 'All 5 road words', got: () => S.words.length >= SCENE_WORDS.length },
+  ];
+
+  // ---------- the save: one small versioned record, checked when read ----------
+  // If storage is blocked the game keeps everything in memory for this visit.
+  const SAVE_KEY = 'hn-ride-save', mem = {};
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return k in mem ? mem[k] : null; } },
+    set(k, v) { mem[k] = v; try { localStorage.setItem(k, v); } catch (e) {} },
+  };
+  const fresh = () => ({ v: 1, best: {}, wallet: 0, lifetime: 0, metres: 0, rides: 0, deliveries: {}, bestCoins: 0, bestMetres: 0, bestTime: 0,
+    owned: ['hring'], scooter: 'hring', badges: [], claimed: [], words: [], route: '', sound: true });
+  function readSave() {
+    const f = fresh();
+    let d = null;
+    try { d = JSON.parse(store.get(SAVE_KEY) || 'null'); } catch (e) { d = null; }
+    if (!d || typeof d !== 'object' || d.v !== 1) {
+      // No save yet (or one we cannot read): carry over the older single values, if any
+      for (const r of DATA.routes) { const n = parseInt(store.get('hn-ride-best-' + r.id) || '0', 10); if (n > 0) f.best[r.id] = n; }
+      f.sound = store.get('hn-ride-sound') !== '0'; f.route = store.get('hn-ride-route') || '';
+      return f;
+    }
+    const num = x => (Number.isFinite(x) && x > 0 ? Math.floor(x) : 0);
+    const ids = (list, ok) => (Array.isArray(list) ? [...new Set(list.filter(x => ok.includes(x)))] : []);
+    for (const r of DATA.routes) { f.best[r.id] = num(d.best && d.best[r.id]); f.deliveries[r.id] = num(d.deliveries && d.deliveries[r.id]); }
+    for (const k of ['wallet', 'lifetime', 'metres', 'rides', 'bestCoins', 'bestMetres', 'bestTime']) f[k] = num(d[k]);
+    f.owned = ids(d.owned, SCOOTERS.map(x => x.id)); if (!f.owned.includes('hring')) f.owned.unshift('hring');
+    f.scooter = f.owned.includes(d.scooter) ? d.scooter : 'hring';
+    f.badges = ids(d.badges, BADGES.map(x => x.id)); f.claimed = ids(d.claimed, MISSIONS.map(x => x.id));
+    f.words = ids(d.words, SCENE_WORDS.map(x => x[0]));
+    f.route = typeof d.route === 'string' ? d.route : ''; f.sound = d.sound !== false;
+    return f;
+  }
+  let S = readSave();
+  const writeSave = () => store.set(SAVE_KEY, JSON.stringify(S));
+  const bestOf = id => S.best[id] || 0;
+  const myScooter = () => SCOOTERS.find(x => x.id === S.scooter) || SCOOTERS[0];
+  const missionReady = m => !S.claimed.includes(m.id) && m.have() >= m.goal;
 
   // ---------- the world ----------
   const LANE = 2.4, LANES = [-LANE, 0, LANE];      // lane centres, metres from the road's middle
@@ -201,9 +326,9 @@
   // mode: 'ready' (choosing a road), 'playing', 'paused', 'crashing' (a moment, falling over),
   // 'over' (crashed) or 'done' (delivered)
   let mode = 'ready', loopId = 0, last = 0;
-  let wordsSeen, wordT;
+  let wordsSeen, wordT, banked = false;
   let s, v, px, lane, coins, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
-  let soundOn = load('hn-ride-sound', '1') === '1';
+  let soundOn = S.sound;
 
   function reset() {
     s = 0; v = 0; lane = 1; px = 0; coins = 0; time = 0; bgX = 0; shake = 0; lean = 0; crashT = 0; crashDir = 1;
@@ -514,7 +639,7 @@
     rr(-6, -16, 12, 19, 5, '#1b1d1c');
     ctx.fillStyle = '#3a3d3b'; for (let i = 0; i < 4; i++) { const ty = -15 + ((i * 5 + time * 60) % 18); ctx.fillRect(-4, ty, 8, 1.4); }
     // body: a curved rear cowl, lit from the left
-    const g = ctx.createLinearGradient(-17, 0, 17, 0); g.addColorStop(0, '#e2f58a'); g.addColorStop(0.55, '#b9db4a'); g.addColorStop(1, '#86a82e');
+    const g = ctx.createLinearGradient(-17, 0, 17, 0); const body = myScooter().body; g.addColorStop(0, body[0]); g.addColorStop(0.55, body[1]); g.addColorStop(1, body[2]);
     ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-15, -12); ctx.quadraticCurveTo(-19, -30, -12, -40); ctx.lineTo(12, -40); ctx.quadraticCurveTo(19, -30, 15, -12); ctx.quadraticCurveTo(0, -6, -15, -12); ctx.fill();
     ctx.strokeStyle = 'rgba(35,30,22,.55)'; ctx.lineWidth = 1.2; ctx.stroke();
     // tail light (brighter when braking) and number plate
@@ -576,7 +701,7 @@
     } catch (e) {}
   }
   function syncSound() { $('sound').textContent = soundOn ? '🔊' : '🔈'; $('sound').setAttribute('aria-pressed', soundOn); $('sound').setAttribute('aria-label', soundOn ? 'Sound on' : 'Sound off'); }
-  $('sound').onclick = () => { soundOn = !soundOn; save('hn-ride-sound', soundOn ? '1' : '0'); syncSound(); beep(700); };
+  $('sound').onclick = () => { soundOn = !soundOn; S.sound = soundOn; writeSave(); syncSound(); beep(700); };
 
   // ---------- the game ----------
   function update(dt) {
@@ -627,7 +752,7 @@
     if (wordT <= 0) {
       const i = Math.floor(s / SEG);
       const w = SCENE_WORDS.find(([m, , when]) => !wordsSeen.has(m) && when(i));
-      if (w) { wordsSeen.add(w[0]); wordT = 7; toast(`<b>${w[0]}</b> · ${w[1]}`, true); }
+      if (w) { wordsSeen.add(w[0]); if (!S.words.includes(w[0])) S.words.push(w[0]); wordT = 7; toast(`<b>${w[0]}</b> · ${w[1]}`, true); }
     }
     if (s >= route.length) return end(true);
     hud();
@@ -645,9 +770,25 @@
     for (let i = 0; i < 14; i++) sparks.push({ x, y, vx: (Math.random() - .5) * 260, vy: -Math.random() * 220, r: 2 + Math.random() * 3, life: 1, c });
   }
   function end(delivered) {
-    mode = delivered ? 'done' : 'over';
+    if (banked) return;
+    banked = true; mode = delivered ? 'done' : 'over';
     const score = Math.floor(s) + coins * 25 + (delivered ? 500 : 0), best = bestOf(route.id);
-    if (score > best) save('hn-ride-best-' + route.id, score);
+    // Bank the ride, once: coins into the wallet, records, deliveries, badges
+    const readyBefore = MISSIONS.filter(missionReady).length;
+    S.rides++; S.wallet += coins; S.lifetime += coins; S.metres += Math.floor(s);
+    S.bestCoins = Math.max(S.bestCoins, coins); S.bestMetres = Math.max(S.bestMetres, Math.floor(s)); S.bestTime = Math.max(S.bestTime, Math.floor(time));
+    if (delivered) S.deliveries[route.id] = (S.deliveries[route.id] || 0) + 1;
+    if (score > best) S.best[route.id] = score;
+    const newBadges = BADGES.filter(x => !S.badges.includes(x.id) && x.got());
+    newBadges.forEach(x => S.badges.push(x.id));
+    writeSave();
+    const readyNow = MISSIONS.filter(missionReady).length;
+    $('endNews').innerHTML = [
+      coins ? `<span><i class="coin"></i> +${coins} into your wallet (now ${S.wallet})</span>` : '',
+      ...newBadges.map(x => `<span>${x.icon} New badge: ${x.name}</span>`),
+      readyNow > readyBefore ? `<span>🎯 A mission is done: claim it in Missions</span>` : '',
+    ].join('');
+    syncWallet(true); syncPause();
     $('endTitle').textContent = delivered ? 'Delivered!' : 'Crash!';
     $('endText').innerHTML = delivered
       ? `You took the ${parcel[2]} <b>${parcel[0]}</b> (${parcel[1]}) ${(route.length / 1000).toFixed(1)} km to ${route.to} and picked up ${coins} coins.`
@@ -672,14 +813,21 @@
     last = performance.now(); loopId = requestAnimationFrame(frame);
   }
   function start() {
-    reset(); mode = 'playing';
-    $('startView').hidden = $('endView').hidden = $('pauseView').hidden = true;
+    reset(); mode = 'playing'; banked = false;
+    $('startView').hidden = $('endView').hidden = $('pauseView').hidden = true; syncPause();
     toast(`${parcel[2]} <b>${parcel[0]}</b> · ${parcel[1]}, to ${route.to}`, true);
     hnStat(`ride/${route.id}`, `Aizawl Ride: ${route.to}`);
     run();
   }
-  function pause() { if (mode !== 'playing') return; mode = 'paused'; $('pauseView').hidden = false; }
-  function resume() { if (mode !== 'paused') return; mode = 'playing'; $('pauseView').hidden = true; run(); }
+  // Pause stops everything: no time passes, nothing moves, nothing is hit
+  function pause() { if (mode !== 'playing') return; mode = 'paused'; $('pauseView').hidden = false; syncPause(); $('resumeBtn').focus(); }
+  function resume() { if (mode !== 'paused') return; mode = 'playing'; $('pauseView').hidden = true; syncPause(); run(); }
+  function syncPause() {
+    const b = $('pauseBtn');
+    b.disabled = mode !== 'playing' && mode !== 'paused';
+    b.textContent = mode === 'paused' ? '▶' : '⏸'; b.setAttribute('aria-label', mode === 'paused' ? 'Keep riding' : 'Pause');
+  }
+  $('pauseBtn').onclick = () => (mode === 'paused' ? resume() : pause());
   function steer(d) { if (mode !== 'playing') return; const l = Math.max(0, Math.min(2, lane + d)); if (l !== lane) { lane = l; beep(440, 0.03); } }
 
   // ---------- choosing a road ----------
@@ -688,16 +836,77 @@
   }
   $('routes').addEventListener('click', e => {
     const b = e.target.closest('.route'); if (!b) return;
-    route = DATA.routes.find(r => r.id === b.dataset.id); save('hn-ride-route', route.id);
+    route = DATA.routes.find(r => r.id === b.dataset.id); S.route = route.id; writeSave();
     drawRoutes(); reset(); draw();
   });
-  route = DATA.routes.find(r => r.id === load('hn-ride-route', '')) || DATA.routes[0];
+  route = DATA.routes.find(r => r.id === S.route) || DATA.routes[0];
 
   // ---------- controls ----------
   $('startBtn').onclick = start;
   $('againBtn').onclick = () => { parcel = PARCELS[Math.random() * PARCELS.length | 0]; showParcel(); start(); };
   $('resumeBtn').onclick = resume;
-  $('otherBtn').onclick = () => { mode = 'ready'; $('endView').hidden = true; $('startView').hidden = false; drawRoutes(); reset(); draw(); };
+  $('otherBtn').onclick = () => { mode = 'ready'; $('endView').hidden = true; $('startView').hidden = false; drawRoutes(); syncReady(); reset(); draw(); };
+
+  // ---------- the wallet, the garage and the missions ----------
+  function syncWallet(bump) {
+    const w = $('wallet'); w.innerHTML = `<i class="coin"></i> ${S.wallet}`; w.setAttribute('aria-label', `${S.wallet} coins in your wallet`);
+    if (bump) { w.classList.remove('bump'); void w.offsetWidth; w.classList.add('bump'); }
+  }
+  const syncReady = () => { $('readyDot').hidden = !MISSIONS.some(missionReady); };
+  let panel = null;
+  function openPanel(id) {
+    panel = id; $('startView').hidden = true; $(id).hidden = false;
+    id === 'garageView' ? drawGarage() : drawMissions();
+    const f = $(id).querySelector('button'); if (f) f.focus();
+  }
+  function closePanel() {
+    if (!panel) return;
+    $(panel).hidden = true; panel = null; $('resetAsk').hidden = true; $('garageNote').textContent = '';
+    $('startView').hidden = false; drawRoutes(); syncReady(); $('startBtn').focus();
+  }
+  document.querySelectorAll('[data-close]').forEach(b => b.onclick = closePanel);
+  $('garageBtn').onclick = () => openPanel('garageView');
+  $('missionsBtn').onclick = () => openPanel('missionsView');
+
+  function drawGarage() {
+    $('scooters').innerHTML = SCOOTERS.map(x => {
+      const own = S.owned.includes(x.id), on = S.scooter === x.id;
+      const tag = on ? 'Riding' : own ? 'Ride it' : `<i class="coin"></i> ${x.price}`;
+      return `<button class="item" type="button" data-id="${x.id}" aria-pressed="${on}" aria-label="${x.name}, ${x.en}${own ? '' : `, ${x.price} coins`}"><span class="sw" style="background:linear-gradient(135deg, ${x.body[0]}, ${x.body[2]})"></span><span><b>${x.name}</b><small>${x.en}</small></span><span class="tag">${tag}</span></button>`;
+    }).join('');
+  }
+  $('scooters').addEventListener('click', e => {
+    const b = e.target.closest('.item'); if (!b) return;
+    const x = SCOOTERS.find(y => y.id === b.dataset.id);
+    if (!S.owned.includes(x.id)) {
+      if (S.wallet < x.price) { $('garageNote').textContent = `You need ${x.price - S.wallet} more coins for ${x.name}.`; return; }
+      S.wallet -= x.price; S.owned.push(x.id); $('garageNote').textContent = `${x.name} (${x.en}) is yours!`; beep(990, 0.15); syncWallet(true);
+      BADGES.filter(y => !S.badges.includes(y.id) && y.got()).forEach(y => S.badges.push(y.id));
+    }
+    S.scooter = x.id; writeSave(); drawGarage(); draw();
+    const again = $('scooters').querySelector(`[data-id="${x.id}"]`); if (again) again.focus();
+  });
+
+  function drawMissions() {
+    $('missions').innerHTML = MISSIONS.map(m => {
+      const have = Math.min(m.goal, m.have()), done = S.claimed.includes(m.id), ready = missionReady(m);
+      return `<div class="item"><span aria-hidden="true">${done ? '✅' : '🎯'}</span><span>${m.text}<small>${done ? 'Done' : `${have} of ${m.goal} · <i class="coin"></i> ${m.reward}`}</small><span class="meter"><i style="width:${have / m.goal * 100}%"></i></span></span>` +
+        `<button class="claim" type="button" data-id="${m.id}"${ready ? '' : ' disabled'}>${done ? 'Claimed' : 'Claim'}</button></div>`;
+    }).join('');
+    $('badges').innerHTML = BADGES.map(x => `<div class="badge${S.badges.includes(x.id) ? ' got' : ''}"><span aria-hidden="true">${x.icon}</span>${x.name}</div>`).join('');
+  }
+  $('missions').addEventListener('click', e => {
+    const b = e.target.closest('.claim'); if (!b || b.disabled) return;
+    const m = MISSIONS.find(y => y.id === b.dataset.id);
+    if (!missionReady(m)) return;                       // each reward is paid once
+    S.claimed.push(m.id); S.wallet += m.reward; writeSave(); beep(990, 0.15); syncWallet(true); drawMissions();
+  });
+  $('resetBtn').onclick = () => { $('resetAsk').hidden = false; $('resetNo').focus(); };
+  $('resetNo').onclick = () => { $('resetAsk').hidden = true; $('resetBtn').focus(); };
+  $('resetYes').onclick = () => {
+    const keep = S.sound; S = fresh(); S.sound = keep; writeSave();
+    $('resetAsk').hidden = true; syncWallet(); drawMissions(); draw();
+  };
   $('leftBtn').addEventListener('pointerdown', e => { e.preventDefault(); steer(-1); });
   $('rightBtn').addEventListener('pointerdown', e => { e.preventDefault(); steer(1); });
   $('stage').addEventListener('pointerdown', e => {
@@ -709,6 +918,7 @@
     if (mode === 'playing' && ['ArrowLeft', 'ArrowRight', 'a', 'A', 'd', 'D'].includes(k)) e.preventDefault();
     if (k === 'ArrowLeft' || k === 'a' || k === 'A') steer(-1);
     if (k === 'ArrowRight' || k === 'd' || k === 'D') steer(1);
+    if (k === 'Escape' && panel) return closePanel();
     if (k === 'p' || k === 'P' || k === 'Escape') mode === 'paused' ? resume() : pause();
   });
   // Leaving the page pauses the ride, so it never runs on unseen
@@ -716,9 +926,9 @@
   document.querySelectorAll('.steer').forEach(b => b.addEventListener('contextmenu', e => e.preventDefault()));
 
   // For the automatic tests only (?test in the address): read the ride and steer.
-  if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })) }), steer };
+  if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), save: JSON.parse(JSON.stringify(S)) }), steer };
 
-  syncSound(); drawRoutes(); showParcel(); reset(); resize();
+  syncSound(); syncWallet(); syncReady(); syncPause(); drawRoutes(); showParcel(); reset(); resize();
   hnStat('ride', 'Aizawl Ride');
 })();
 </script>
