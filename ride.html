@@ -320,10 +320,25 @@
     return out;
   };
   const mixHex = (a, b, t) => { const A = parseInt(a.slice(1), 16), B = parseInt(b.slice(1), 16); return `rgb(${[16, 8, 0].map(sh => Math.round(((A >> sh) & 255) * (1 - t) + ((B >> sh) & 255) * t))})`; };
-  const smooth01 = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };  let route = DATA.routes[0];
+  const smooth01 = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  let route = DATA.routes[0];
   const roadAt = (arr, s, k) => { const i = Math.max(0, Math.min(arr.length - 1, s / SEG)), a = Math.floor(i), b = Math.min(arr.length - 1, a + 1), t = i - a; return (arr[a] * (1 - t) + arr[b] * t) * k; };
   const curvAt = s => { const c = roadAt(route.curv, s, 1e-4); return Math.max(-CURVE_MAX, Math.min(CURVE_MAX, c)) * CURVE; };
   const heightAt = s => roadAt(route.height, s, 0.1) * HILL;
+  // The road's sideways drift is worked out once per route as running sums of the (softened)
+  // bends: its heading TH and the sum of the heading XI, every SEG metres. Where a point of road
+  // lies, seen from the camera, then changes smoothly as you ride, with no jump at each segment.
+  let TH = [0], XI = [0];
+  function prepRoute() {
+    const n = route.curv.length; TH = new Float64Array(n + 1); XI = new Float64Array(n + 1);
+    for (let i = 0; i < n; i++) {
+      const c = Math.max(-CURVE_MAX, Math.min(CURVE_MAX, route.curv[i] * 1e-4)) * CURVE;
+      TH[i + 1] = TH[i] + c * SEG; XI[i + 1] = XI[i] + (TH[i] + TH[i + 1]) / 2 * SEG;
+    }
+  }
+  const sumAt = (A, w) => { const i = Math.max(0, Math.min(A.length - 1.001, w / SEG)), a = Math.floor(i), t = i - a; return A[a] + (A[a + 1] - A[a]) * t; };
+  // sideways place of the road at distance w, relative to the camera at distance cam, facing along the road
+  const driftAt = (w, cam) => (sumAt(XI, w) - sumAt(XI, cam)) - sumAt(TH, cam) * (w - cam);
 
   // ---------- state ----------
   // mode: 'ready' (choosing a road), 'playing', 'paused', 'crashing' (a moment, falling over),
@@ -334,6 +349,7 @@
   let soundOn = S.sound;
 
   function reset() {
+    prepRoute();
     s = 0; v = 0; lane = 1; px = 0; coins = 0; time = 0; bgX = 0; shake = 0; lean = 0; crashT = 0; crashDir = 1;
     things = []; sparks = []; pops = []; nextRow = 70; lastOpen = 1; passed = new Set();
     best0 = bestOf(route.id); bestShown = false; wordsSeen = new Set(); wordT = 4;
@@ -450,10 +466,9 @@
 
     // Project the road ahead: x drifts with the bends, y with the hills
     const cam = s - PLAYER_Z, h0 = heightAt(cam) + camH, FAR = VIEW * SEG, mist = look.mist;
-    let x = 0, dx = 0, z0 = cam - (cam % SEG);
+    const z0 = cam - (cam % SEG);
     for (let i = 0; i <= VIEW; i++) {
-      const wz = z0 + i * SEG, z = Math.max(0.3, wz - cam), p = P[i];
-      if (i > 0) { dx += curvAt(wz) * SEG; x += dx * SEG; }
+      const wz = z0 + i * SEG, z = Math.max(0.3, wz - cam), p = P[i], x = driftAt(wz, cam);
       p.wz = wz; p.z = z; p.k = F / z; p.x = W / 2 + (x - px * 0.82) * p.k; p.y = horizon + (h0 - heightAt(wz)) * p.k;
       p.idx = Math.floor(wz / SEG); p.f = Math.min(1, Math.pow(z / FAR, 1.3) * (1 + mist * 1.8) + mist * 0.12);
     }
@@ -485,12 +500,15 @@
       const a = P[i], b = P[i + 1], clip = P[i].clip;
       if (a.y > clip + 40) continue;
       ctx.save(); ctx.beginPath(); ctx.rect(-10, 0, W + 20, clip + 1); ctx.clip();
+      // Far away, things fade in out of the haze instead of popping up
+      ctx.globalAlpha = Math.min(1, (FAR - a.z) / 36);
       for (const side of [-1, 1]) land(a, b, side);
       if (a.idx % 3 === 0) { post(a, 1); post(a, -1); }  // roadside posts slip past: you feel the speed
       const place = route.places.find(p => p[0] === a.idx);
       if (place) sign(a, place[1], place[2]);
       if (a.idx === route.curv.length - 1 || (a.wz <= route.length && a.wz + SEG > route.length)) finish(a);
       for (const t of (by.get(i) || []).sort((p, q) => q.at - p.at)) thing(t, P, i);
+      ctx.globalAlpha = 1;
       ctx.restore();
     }
     // The scooter
@@ -529,16 +547,16 @@
       quad(edge(a, E), a.y, edge(b, E), b.y, edge(b, T), b.y - hb, edge(a, T), a.y - ha, fog(forest ? (a.idx % 2 ? '#5d9058' : '#64975d') : (a.idx % 2 ? '#a19c90' : '#9a958a'), f));
       if (!forest && a.idx % 2 === 0) { ctx.fillStyle = fog('#86817a', f); ctx.fillRect(Math.min(edge(a, E), edge(a, T)), a.y - ha * 0.55, Math.abs(0.8 * a.k), Math.max(1, 0.06 * a.k)); }
       quad(edge(a, T), a.y - ha, edge(b, T), b.y - hb, sideX, b.y - hb, sideX, a.y - ha, fog(a.idx % 2 ? '#5f9a6c' : '#66a172', f));
-      if (a.z > 14) forest ? trees(a, side, -ha) : houses(a, side, -ha, false);
+      if (a.z > 6) forest ? trees(a, side, -ha) : houses(a, side, -ha, false);
     } else if (ra < -2.5 && rb < -2.5) {
       // The ground falls away: a darker slope, houses lower down on stilts, a parapet at the edge
       quad(edge(a, E), a.y, edge(b, E), b.y, sideX, b.y, sideX, a.y, fog(a.idx % 2 ? '#4f8a62' : '#558f67', f));
       const drop = Math.min(10, -ra * 0.55) * a.k;
-      if (a.z > 12) forest ? trees(a, side, drop) : houses(a, side, drop, true);
+      if (a.z > 6) forest ? trees(a, side, drop) : houses(a, side, drop, true);
       const pa = 0.65 * a.k, pb = 0.65 * b.k;
       quad(edge(a, E), a.y, edge(b, E), b.y, edge(b, E), b.y - pb, edge(a, E), a.y - pa, fog(a.idx % 4 === 0 ? '#3a3a3a' : a.idx % 2 ? '#f1ede2' : '#e6e1d4', f));
       quad(edge(a, E), a.y - pa, edge(b, E), b.y - pb, edge(b, E + 0.3), b.y - pb, edge(a, E + 0.3), a.y - pa, fog('#d9d4c6', f));
-    } else if (a.z > 14) forest ? trees(a, side, 0) : houses(a, side, 0, false);
+    } else if (a.z > 6) forest ? trees(a, side, 0) : houses(a, side, 0, false);
   }
   // Houses beside the road, as many as the real map has there. lift: how far above (−) or below (+)
   // the road their ground is, on screen.
@@ -576,9 +594,9 @@
         // bamboo: a fan of tall green canes bending out
         ctx.strokeStyle = fog('#5f8f3a', a.f); ctx.lineWidth = Math.max(0.6, 0.12 * k); ctx.lineCap = 'round';
         for (let c = -3; c <= 3; c++) { const lean = c * 0.55 + (side > 0 ? 0.3 : -0.3); ctx.beginPath(); ctx.moveTo(x + c * 0.08 * k, y); ctx.quadraticCurveTo(x + lean * 1.5 * k, y - 5 * k, x + lean * 3.2 * k, y - 7.5 * k + Math.abs(c) * 0.6 * k); ctx.stroke(); }
-        ctx.fillStyle = fog('#78a94a', a.f); ctx.globalAlpha = 0.8;
+        const ga = ctx.globalAlpha; ctx.fillStyle = fog('#78a94a', a.f); ctx.globalAlpha = ga * 0.8;
         for (let c = -3; c <= 3; c += 2) { ctx.beginPath(); ctx.ellipse(x + (c * 0.55) * 3 * k, y - 7 * k + Math.abs(c) * 0.5 * k, 1.1 * k, 0.5 * k, c * 0.3, 0, 7); ctx.fill(); }
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = ga;
       } else {
         // a broad tree
         ctx.fillStyle = fog('#6b5a48', a.f); ctx.fillRect(x - 0.15 * k, y - 3 * k, 0.3 * k, 3 * k);
