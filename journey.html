@@ -499,55 +499,71 @@ const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.f
 const fold = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ṭ/g, 't');
 const senses = g => new Set(g.toLowerCase().replace(/\(.*?\)/g, ' ').split(/[;,/]|\bor\b/).map(s => s.trim().replace(/^to /, '')).filter(Boolean));
 
-// The example with the word left out, only where it stands as a whole word.
+// A word where it stands as a whole word, and how many times it does in a sentence.
+const wordRe = word => new RegExp('(^|[^\\p{L}])(' + word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')(?=$|[^\\p{L}])', 'giu');
+const times = (s, word) => (String(s || '').match(wordRe(word)) || []).length;
+
+// The example with the word left out. Only a word that is there once: one that is there
+// twice would still show the answer (and “In in” may leave out the wrong one of the two).
 function blank(example, word) {
-  const re = new RegExp('(^|[^\\p{L}])(' + word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')(?=$|[^\\p{L}])', 'iu');
-  if (!re.test(example)) return null;
-  return example.replace(re, (m, a) => a + '____');
+  if (times(example, word) !== 1) return null;
+  return example.replace(wordRe(word), (m, a) => a + '____');
 }
 
+// Two wrong doors that do not look the same as each other (a few words are in the list twice).
+const pair = others => {
+  const second = others.find(w => fold(w[0]) !== fold(others[0][0]));
+  return second ? [others[0], second] : null;
+};
+
 // A question: the word to find and two others of its topic that mean
-// something else and are spelt differently.
-function question(level, sentence) {
+// something else and are spelt differently. `used` holds the level's words so far
+// (folded), so no word comes twice in one level.
+function question(level, sentence, used = new Set()) {
   const L = LEVELS[level];
   if (L.dict && sentence) return saying();
-  if (sentence && Math.random() < .6) { const q = fromSentence(level); if (q) return q; }
+  if (sentence && Math.random() < .6) { const q = fromSentence(level, used); if (q) return q; }
   const [lo, hi] = L.band;
   const words = L.dict ? DICT : WORDS;
   const pool = words.filter(w => w[3] >= lo && w[3] <= hi && w[0].length <= 16);
   for (let tries = 0; tries < 200; tries++) {
     const target = pool[Math.floor(Math.random() * pool.length)];
+    if (used.has(fold(target[0]))) continue;
     const gap = sentence ? blank(target[2], target[0]) : null;
     if (sentence && !gap) continue;
     const mine = senses(target[6]);
     const others = shuffle(words.filter(w => w !== target && w[4] === target[4] && w[0].length <= 16 &&
       fold(w[0]) !== fold(target[0]) && ![...senses(w[6])].some(s => mine.has(s)) &&
-      !(gap && blank(target[2], w[0])) &&
+      !(gap && times(target[2], w[0])) &&
       // A dictionary word's other Mizo senses must not be a wrong door.
       !(L.dict && (target[7].includes(fold(w[0])) || w[7].includes(fold(target[0]))))));
-    if (others.length < 2) continue;
-    return { target, options: shuffle([target, others[0], others[1]]), gap };
+    const two = others.length >= 2 && pair(others);
+    if (!two) continue;
+    return { target, options: shuffle([target, ...two]), gap };
   }
+  // Nothing found that the level has not had yet: a word may come again.
+  if (used.size) return question(level, sentence);
 }
 
 // A boss door from the content's sentences: one of its words, from this level, left out.
-function fromSentence(level) {
+function fromSentence(level, used) {
   const [lo, hi] = LEVELS[level].band;
   const byWord = new Map(WORDS.filter(w => w[3] >= lo && w[3] <= hi && !w[0].includes(' ')).map(w => [fold(w[0]), w]));
   for (const [mizo, english] of shuffle(SENTENCES.slice())) {
     // Only a word whose English meaning is in the sentence's English: “in” is house, but also drink.
     const eng = ' ' + english.toLowerCase().replace(/[^a-z' ]+/g, ' ') + ' ';
     const means = w => [...senses(w[6])].some(s => s.length > 2 && eng.includes(' ' + s.replace(/[^a-z' ]+/g, ' ').trim() + ' '));
-    const hits = mizo.split(/\s+/).map(t => byWord.get(fold(t.replace(/[^\p{L}]/gu, '')))).filter(w => w && means(w));
+    const hits = mizo.split(/\s+/).map(t => byWord.get(fold(t.replace(/[^\p{L}]/gu, '')))).filter(w => w && means(w) && !used.has(fold(w[0])));
     if (!hits.length) continue;
     const target = hits[Math.floor(Math.random() * hits.length)];
     const gap = blank(mizo, target[0]);
     if (!gap) continue;
     const mine = senses(target[6]);
     const others = shuffle(WORDS.filter(w => w !== target && w[4] === target[4] && w[0].length <= 16 && !w[0].includes(' ') &&
-      fold(w[0]) !== fold(target[0]) && ![...senses(w[6])].some(s => mine.has(s)) && !blank(mizo, w[0])));
-    if (others.length < 2) continue;
-    return { target, options: shuffle([target, others[0], others[1]]), gap, english };
+      fold(w[0]) !== fold(target[0]) && ![...senses(w[6])].some(s => mine.has(s)) && !times(mizo, w[0])));
+    const two = others.length >= 2 && pair(others);
+    if (!two) continue;
+    return { target, options: shuffle([target, ...two]), gap, english };
   }
   return null;
 }
@@ -625,11 +641,14 @@ class Play extends Phaser.Scene {
 
     // Gates and coins.
     this.gates = [];
+    const used = new Set();
     this.coins = this.physics.add.group({ allowGravity: false, immovable: true });
     for (let i = 0; i < GATES + 1; i++) {
       const x = 1500 + i * GAP;
       const boss = i === GATES;
-      this.gates.push({ x, q: question(this.level, boss), boss, done: false, built: false });
+      const q = question(this.level, boss, used);
+      used.add(fold(q.target[0]));
+      this.gates.push({ x, q, boss, done: false, built: false });
       if (!boss) this.coinArc(x + 520 + Math.random() * 200, [0, 1, 2][i % 3]);
     }
     this.finishX = this.gates[GATES].x + 700;
@@ -639,7 +658,7 @@ class Play extends Phaser.Scene {
     // The heads-up display.
     this.hearts = 3; this.coinsGot = 0; this.right = 0; this.met = [];
     this.hud = this.add.text(24, 24, '', { fontFamily: 'Plus Jakarta Sans', fontSize: '34px', fontStyle: '800', color: '#ffffff', stroke: '#0d2a4a', strokeThickness: 8 }).setScrollFactor(0).setDepth(10);
-    this.ask = this.add.text(W / 2, 110 + Math.max(0, extra - 120), '', { fontFamily: 'Plus Jakarta Sans', fontSize: '40px', fontStyle: '800', color: '#15213a', backgroundColor: '#ffffffee', padding: { x: 22, y: 14 }, align: 'center', wordWrap: { width: 640 } }).setOrigin(.5, 0).setScrollFactor(0).setDepth(10).setVisible(false);
+    this.ask = this.add.text(W / 2, 88 + Math.max(0, extra - 120), '', { fontFamily: 'Plus Jakarta Sans', fontSize: '40px', fontStyle: '800', color: '#15213a', backgroundColor: '#ffffffee', padding: { x: 22, y: 10 }, align: 'center', wordWrap: { width: Math.min(W - 80, 760) } }).setOrigin(.5, 0).setScrollFactor(0).setDepth(10).setVisible(false);
     this.banner = this.add.text(W / 2, 330, '', { fontFamily: 'Plus Jakarta Sans', fontSize: '36px', fontStyle: '800', color: '#ffffff', stroke: '#0d2a4a', strokeThickness: 8, align: 'center', wordWrap: { width: 660 } }).setOrigin(.5).setScrollFactor(0).setDepth(10).setAlpha(0);
     this.updateHud();
 
@@ -708,12 +727,15 @@ class Play extends Phaser.Scene {
     this.strip('city', top, .25);
   }
 
-  lanes() { return [this.groundY - 70, this.groundY - 420, this.groundY - 760]; }
+  // The three doors' middles. The top one sits low enough to leave room above it for a
+  // long boss question; a double jump still takes Rova well into it.
+  lanes() { return [this.groundY - 70, this.groundY - 420, this.groundY - 720]; }
 
   coinArc(x, lane) {
     const y = this.lanes()[lane];
     for (let i = 0; i < 5; i++) {
-      const c = this.coins.create(x + i * 70, y - Math.sin(i / 4 * Math.PI) * 120, 'coin');
+      // Over the top door a lower arc: a double jump reaches no higher than that.
+      const c = this.coins.create(x + i * 70, y - Math.sin(i / 4 * Math.PI) * (lane === 2 ? 50 : 120), 'coin');
       c.body.setCircle(22);
       this.tweens.add({ targets: c, scaleX: { from: 1, to: .25 }, duration: 520, yoyo: true, repeat: -1, delay: i * 80 });
     }
@@ -747,6 +769,11 @@ class Play extends Phaser.Scene {
     this.ask.setText(q.saying ? `Boss! What does\n“${q.saying}” mean?`
       : gate.boss ? `Boss! Fill the gap:\n${q.gap}${q.english ? `\n(${q.english})` : ''}`
       : `Which one means\n“${asks(q.target)}”?`).setVisible(true);
+    // A long boss question gets smaller letters (down to 28, about 15px on a phone), so it
+    // stays above the top door. The top door's frame is at its lane less 95.
+    const room = this.lanes()[2] - 95 + (GH - 1280) - 6;
+    this.ask.setScale(1);
+    for (const size of [40, 36, 32, 30, 28]) { this.ask.setFontSize(size); if (this.ask.getBounds().bottom <= room) break; }
     // On tall screens the last door's word sits where the question goes: the question wins.
     if (this.banner.alpha > 0 && Phaser.Geom.Intersects.RectangleToRectangle(this.banner.getBounds(), this.ask.getBounds())) {
       this.tweens.killTweensOf(this.banner);
