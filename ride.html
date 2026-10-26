@@ -35,7 +35,9 @@
   .hud { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 6px; padding: 10px 14px; border-bottom: 1.5px solid var(--ink); }
   .hud div { display: grid; gap: 1px; min-width: 0; }
   .hud small { font-size: 13px; font-weight: 700; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .hud b { font-size: 20px; font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .hud b { display: inline-block; transform-origin: left center; font-size: 20px; font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .hud b.bump { animation: bump .3s cubic-bezier(.2, .8, .2, 1.4); }
+  @keyframes bump { 40% { transform: scale(1.25); color: #e39b00; } }
   .bar { height: 6px; background: color-mix(in srgb, var(--ink) 14%, transparent); }
   .bar i { display: block; height: 100%; width: 0; background: var(--leaf); transition: width .3s linear; }
   .stage { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; background: #a9d8f5; }
@@ -61,7 +63,7 @@
   .mid { font-size: 14px; color: var(--muted); font-weight: 700; text-align: center; }
   .note { font-size: 14px; color: var(--muted); margin: 0; line-height: 1.45; }
   .note a { color: var(--brand); }
-  @media (prefers-reduced-motion: reduce) { .toast, .bar i { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .toast, .bar i { transition: none; } .hud b.bump { animation: none; } }
 </style>
 
 <div class="app">
@@ -159,21 +161,31 @@
   const LANE = 2.4, LANES = [-LANE, 0, LANE];      // lane centres, metres from the road's middle
   const SEG = 4, VIEW = 50;                         // a segment per sample; how many are drawn ahead
   const PLAYER_Z = 3;                               // the scooter rides this far ahead of the camera
-  const CURVE = 0.55, CURVE_MAX = 0.045, HILL = 0.45; // real bends and hills, softened to fit the screen
+  const CURVE = 0.55, CURVE_MAX = 0.045, HILL = 0.8;  // real bends and hills, softened to fit the screen
+  // Far things fade into the haze of the hills; colours are mixed once and kept
+  const HAZE = [214, 232, 222], fogMemo = new Map();
+  const fog = (c, f) => {
+    const q = Math.round(Math.min(1, f) * 12), key = c + q;
+    let out = fogMemo.get(key);
+    if (!out) { const n = parseInt(c.slice(1), 16), t = q / 12 * 0.8, ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v, i) => Math.round(v + (HAZE[i] - v) * t)); out = `rgb(${ch})`; fogMemo.set(key, out); }
+    return out;
+  };
   let route = DATA.routes[0];
   const roadAt = (arr, s, k) => { const i = Math.max(0, Math.min(arr.length - 1, s / SEG)), a = Math.floor(i), b = Math.min(arr.length - 1, a + 1), t = i - a; return (arr[a] * (1 - t) + arr[b] * t) * k; };
   const curvAt = s => { const c = roadAt(route.curv, s, 1e-4); return Math.max(-CURVE_MAX, Math.min(CURVE_MAX, c)) * CURVE; };
   const heightAt = s => roadAt(route.height, s, 0.1) * HILL;
 
   // ---------- state ----------
-  // mode: 'ready' (choosing a road), 'playing', 'paused', 'over' (crashed) or 'done' (delivered)
+  // mode: 'ready' (choosing a road), 'playing', 'paused', 'crashing' (a moment, falling over),
+  // 'over' (crashed) or 'done' (delivered)
   let mode = 'ready', loopId = 0, last = 0;
-  let s, v, px, lane, coins, things, nextRow, lastOpen, bgX, passed, toastT, shake, sparks, time;
+  let s, v, px, lane, coins, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
   let soundOn = load('hn-ride-sound', '1') === '1';
 
   function reset() {
-    s = 0; v = 0; lane = 1; px = 0; coins = 0; time = 0; bgX = 0; shake = 0;
-    things = []; sparks = []; nextRow = 70; lastOpen = 1; passed = new Set();
+    s = 0; v = 0; lane = 1; px = 0; coins = 0; time = 0; bgX = 0; shake = 0; lean = 0; crashT = 0; crashDir = 1;
+    things = []; sparks = []; pops = []; nextRow = 70; lastOpen = 1; passed = new Set();
+    best0 = bestOf(route.id); bestShown = false;
     plan(); hud(true);
   }
 
@@ -207,12 +219,12 @@
   addEventListener('resize', () => { cancelAnimationFrame(rq); rq = requestAnimationFrame(resize); });
 
   const rnd = (i, k) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
-  const HOUSE = ['#f4e1c1', '#e8c9a4', '#f0d4d0', '#d9e4ee', '#f6f0e2', '#e3d3b8'], ROOF = ['#b5523b', '#6f7f8f', '#3f6f8f', '#8b5a3c', '#5f7f4f'];
+  const HOUSE = ['#f4e1c1', '#e8c9a4', '#f0d4d0', '#d9e4ee', '#f6f0e2', '#e3d3b8'], HOUSE_D = ['#cdb48f', '#c1a27c', '#c8aaa6', '#aebdc9', '#cfc6b2', '#bba98d'], ROOF = ['#b5523b', '#6f7f8f', '#3f6f8f', '#8b5a3c', '#5f7f4f'];
 
   function draw() {
     const horizon = H * 0.34, F = W * 0.42;
     const camH = (H * 0.84 - horizon) * PLAYER_Z / F;     // so the scooter sits low on the screen
-    const sx = shake ? (Math.random() - .5) * shake * 8 : 0;
+    const sx = shake && !reduce ? (Math.random() - .5) * shake * 8 : 0;
     ctx.save(); ctx.translate(sx, 0);
     // Sky and hills; the hills slide as the road turns
     const g = ctx.createLinearGradient(0, 0, 0, horizon);
@@ -223,13 +235,13 @@
     ctx.fillStyle = '#6aa57a'; ctx.fillRect(-10, horizon, W + 20, H - horizon);
 
     // Project the road ahead: x drifts with the bends, y with the hills
-    const cam = s - PLAYER_Z, h0 = heightAt(cam) + camH, P = [];
+    const cam = s - PLAYER_Z, h0 = heightAt(cam) + camH, FAR = VIEW * SEG;
     let x = 0, dx = 0, z0 = cam - (cam % SEG);
     for (let i = 0; i <= VIEW; i++) {
-      const wz = z0 + i * SEG, z = Math.max(0.3, wz - cam);
+      const wz = z0 + i * SEG, z = Math.max(0.3, wz - cam), p = P[i];
       if (i > 0) { dx += curvAt(wz) * SEG; x += dx * SEG; }
-      const k = F / z;
-      P.push({ wz, z, k, x: W / 2 + (x - px * 0.82) * k, y: horizon + (h0 - heightAt(wz)) * k, idx: Math.floor(wz / SEG) });
+      p.wz = wz; p.z = z; p.k = F / z; p.x = W / 2 + (x - px * 0.82) * p.k; p.y = horizon + (h0 - heightAt(wz)) * p.k;
+      p.idx = Math.floor(wz / SEG); p.f = Math.pow(z / FAR, 1.3);
     }
     // Road, near to far, hiding what a hill top hides
     let maxY = H;
@@ -237,14 +249,18 @@
       const a = P[i], b = P[i + 1];
       a.clip = maxY;
       if (b.y >= maxY || b.y >= a.y && i > 0) continue;
-      const even = b.idx % 2 === 0, wa = 3.9 * a.k, wb = 3.9 * b.k;
-      quad(-10, a.y, W + 10, a.y, W + 10, b.y, -10, b.y, even ? '#6aa57a' : '#62a073');
-      quad(a.x - wa * 1.18, a.y, a.x + wa * 1.18, a.y, b.x + wb * 1.18, b.y, b.x - wb * 1.18, b.y, even ? '#c33f3f' : '#f3efe4');
-      quad(a.x - wa, a.y, a.x + wa, a.y, b.x + wb, b.y, b.x - wb, b.y, even ? '#5b5e5c' : '#565957');
+      const even = b.idx % 2 === 0, wa = 3.9 * a.k, wb = 3.9 * b.k, f = b.f;
+      quad(-10, a.y, W + 10, a.y, W + 10, b.y, -10, b.y, fog(even ? '#6aa57a' : '#62a073', f));
+      const ay0 = a.y; a.y += 0.9;   // the road reaches a little over the nearer strip, so no seam shows
+      quad(a.x - wa * 1.18, a.y, a.x + wa * 1.18, a.y, b.x + wb * 1.18, b.y, b.x - wb * 1.18, b.y, fog(even ? '#c33f3f' : '#f3efe4', f));
+      quad(a.x - wa, a.y, a.x + wa, a.y, b.x + wb, b.y, b.x - wb, b.y, fog(even ? '#5b5e5c' : '#565957', f));
+      // a white edge line, and the lane dashes
+      for (const e of [-1, 1]) { const ea = a.x + e * (wa - 0.12 * a.k), eb = b.x + e * (wb - 0.12 * b.k); quad(ea - 0.06 * a.k, a.y, ea + 0.06 * a.k, a.y, eb + 0.06 * b.k, b.y, eb - 0.06 * b.k, b.y, fog('#e9e4d0', f)); }
       if (even) for (const m of [-LANE / 2, LANE / 2]) {
         const ma = a.x + m * a.k, mb = b.x + m * b.k, la = 0.12 * a.k, lb = 0.12 * b.k;
-        quad(ma - la, a.y, ma + la, a.y, mb + lb, b.y, mb - lb, b.y, '#f4efd9');
+        quad(ma - la, a.y, ma + la, a.y, mb + lb, b.y, mb - lb, b.y, fog('#f4efd9', f));
       }
+      a.y = ay0;
       maxY = Math.min(maxY, b.y);
     }
     P[VIEW].clip = maxY;
@@ -256,6 +272,7 @@
       if (a.y > clip + 40) continue;
       ctx.save(); ctx.beginPath(); ctx.rect(-10, 0, W + 20, clip + 1); ctx.clip();
       if (a.z > 14) { houses(a, 1); houses(a, -1); }   // close by they would fill the screen
+      if (a.idx % 3 === 0) { post(a, 1); post(a, -1); }  // roadside posts slip past: you feel the speed
       const place = route.places.find(p => p[0] === a.idx);
       if (place) sign(a, place[1], place[2]);
       if (a.idx === route.curv.length - 1 || (a.wz <= route.length && a.wz + SEG > route.length)) finish(a);
@@ -264,9 +281,18 @@
     }
     // The scooter
     scooter(W / 2 + (px - px * 0.82) * F / PLAYER_Z, H * 0.84);
-    for (const p of sparks) { ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); }
+    for (const p of sparks) { ctx.globalAlpha = Math.max(0, p.life) * (p.a || 1); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); }
+    ctx.font = '800 18px "Plus Jakarta Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const p of pops) { ctx.globalAlpha = Math.max(0, p.life); ctx.lineWidth = 3; ctx.strokeStyle = '#7a4b00'; ctx.strokeText(p.text, p.x, p.y); ctx.fillStyle = '#ffd34d'; ctx.fillText(p.text, p.x, p.y); }
     ctx.globalAlpha = 1;
     ctx.restore();
+  }
+  const P = Array.from({ length: VIEW + 1 }, () => ({}));   // the projected road, reused every picture
+  function post(a, side) {
+    const x = a.x + side * 4.9 * a.k, y = a.y, w = 0.16 * a.k, h = 1.1 * a.k;
+    if (w < 0.6) return;
+    ctx.fillStyle = fog('#f6f3ea', a.f); ctx.fillRect(x - w / 2, y - h, w, h);
+    ctx.fillStyle = fog('#2b2b2b', a.f); ctx.fillRect(x - w / 2, y - h, w, h * 0.22);
   }
   function quad(x1, y1, x2, y2, x3, y3, x4, y4, c) {
     ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.lineTo(x4, y4); ctx.closePath(); ctx.fill();
@@ -286,8 +312,11 @@
       const off = 6.5 + j * 5.5 + rnd(a.idx, j + side) * 2, w = (3.6 + rnd(a.idx, j * 3 + side) * 2.4) * a.k, h = (3 + rnd(a.idx, j + 7) * 5 + j * 2) * a.k;
       const x = a.x + side * off * a.k, y = a.y;
       if (w < 1.2) continue;
-      ctx.fillStyle = HOUSE[(a.idx + j) % HOUSE.length]; ctx.fillRect(x - w / 2, y - h, w, h);
-      ctx.fillStyle = ROOF[(a.idx * 3 + j) % ROOF.length];
+      ctx.fillStyle = fog(HOUSE[(a.idx + j) % HOUSE.length], a.f); ctx.fillRect(x - w / 2, y - h, w, h);
+      // the side wall that faces the road, in shade
+      const sw = w * 0.22, sx0 = side > 0 ? x - w / 2 - sw : x + w / 2;
+      ctx.fillStyle = fog(HOUSE_D[(a.idx + j) % HOUSE.length], a.f); ctx.fillRect(sx0, y - h + sw * 0.3, sw, h - sw * 0.3);
+      ctx.fillStyle = fog(ROOF[(a.idx * 3 + j) % ROOF.length], a.f);
       ctx.beginPath(); ctx.moveTo(x - w * 0.6, y - h); ctx.lineTo(x, y - h - w * 0.35); ctx.lineTo(x + w * 0.6, y - h); ctx.fill();
       if (w > 10) { ctx.fillStyle = '#5a7f9c'; ctx.fillRect(x - w * 0.3, y - h * 0.7, w * 0.18, h * 0.22); ctx.fillRect(x + w * 0.12, y - h * 0.7, w * 0.18, h * 0.22); }
     }
@@ -332,22 +361,49 @@
       ctx.fillStyle = '#4b4b4b'; ctx.fillRect(x - 0.95 * k, y - 0.55 * k, 0.12 * k, 0.55 * k); ctx.fillRect(x + 0.83 * k, y - 0.55 * k, 0.12 * k, 0.55 * k);
     }
   }
-  // The rider on the scooter, from behind
+  // The rider on the scooter, from behind: it leans into bends and lane changes, the tyre hums
+  // on the road, the brake light glows on a climb, and the parcel box rides on the back.
   function scooter(x, y) {
-    const sc = Math.max(0.8, Math.min(1.3, W / 420)), lean = (LANES[lane] - px) * -0.09, bob = mode === 'playing' && !reduce ? Math.sin(time * 18) * 0.8 : 0;
+    const sc = Math.max(0.8, Math.min(1.3, W / 420));
+    const ride = mode === 'playing' && !reduce, bob = ride ? Math.sin(time * 31) * 0.6 + Math.sin(time * 7.3) * 0.4 : 0;
+    const fall = mode === 'crashing' ? Math.min(1, crashT / 0.45) : 0, tilt = lean + crashDir * fall * 1.25;
+    const brake = Math.max(0, Math.min(1, roadAt(route.grade, s, 1e-3) * 8)) || (mode === 'crashing' ? 1 : 0);
     ctx.save(); ctx.translate(x, y + bob); ctx.scale(sc, sc);
-    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0, 4, 26, 7, 0, 0, 7); ctx.fill();
-    ctx.rotate(lean);
-    ctx.fillStyle = '#1b1f1d'; ctx.beginPath(); ctx.roundRect(-6, -14, 12, 20, 5); ctx.fill();          // back wheel
-    ctx.fillStyle = '#d9f36d'; ctx.beginPath(); ctx.roundRect(-15, -34, 30, 24, 9); ctx.fill();          // body
-    ctx.fillStyle = '#c03a2e'; ctx.fillRect(-6, -22, 12, 4);                                             // tail light
-    ctx.fillStyle = '#e8b04a'; ctx.beginPath(); ctx.roundRect(-11, -48, 22, 16, 5); ctx.fill();          // parcel box
-    ctx.fillStyle = '#b07a2a'; ctx.fillRect(-11, -42, 22, 2.5);
-    ctx.fillStyle = '#2f6fb0'; ctx.beginPath(); ctx.roundRect(-11, -70, 22, 24, 8); ctx.fill();          // rider
-    ctx.strokeStyle = '#1b1f1d'; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(-10, -64); ctx.lineTo(-22, -56); ctx.moveTo(10, -64); ctx.lineTo(22, -56); ctx.stroke();   // arms to the handlebar
-    ctx.fillStyle = '#f2f2ee'; ctx.beginPath(); ctx.arc(0, -78, 10, 0, 7); ctx.fill();                    // helmet
-    ctx.fillStyle = '#c03a2e'; ctx.fillRect(-10, -80, 20, 3);
+    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(-tilt * 18, 3, 24 + Math.abs(tilt) * 14, 6, 0, 0, 7); ctx.fill();
+    ctx.rotate(tilt);
+    const rr = (x0, y0, w, h, r, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.roundRect(x0, y0, w, h, r); ctx.fill(); };
+    // rear tyre, its tread sliding by
+    rr(-6, -16, 12, 19, 5, '#1b1d1c');
+    ctx.fillStyle = '#3a3d3b'; for (let i = 0; i < 4; i++) { const ty = -15 + ((i * 5 + time * 60) % 18); ctx.fillRect(-4, ty, 8, 1.4); }
+    // body: a curved rear cowl, lit from the left
+    const g = ctx.createLinearGradient(-17, 0, 17, 0); g.addColorStop(0, '#e2f58a'); g.addColorStop(0.55, '#b9db4a'); g.addColorStop(1, '#86a82e');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-15, -12); ctx.quadraticCurveTo(-19, -30, -12, -40); ctx.lineTo(12, -40); ctx.quadraticCurveTo(19, -30, 15, -12); ctx.quadraticCurveTo(0, -6, -15, -12); ctx.fill();
+    ctx.strokeStyle = 'rgba(35,30,22,.55)'; ctx.lineWidth = 1.2; ctx.stroke();
+    // tail light (brighter when braking) and number plate
+    if (brake > 0.05) { ctx.fillStyle = `rgba(255,70,50,${0.25 * brake})`; ctx.beginPath(); ctx.ellipse(0, -24, 14, 7, 0, 0, 7); ctx.fill(); }
+    rr(-8, -27, 16, 5, 2, brake > 0.05 ? '#ff4a3a' : '#b8352a');
+    rr(-7.5, -19, 15, 7, 1.5, '#f6d54a');
+    ctx.fillStyle = '#231e16'; ctx.font = '800 5px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('MZ 01', 0, -15.3);
+    // seat, rider and handlebar
+    rr(-13, -46, 26, 7, 3.5, '#2a2622');
+    ctx.strokeStyle = '#2a2622'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-27, -60); ctx.lineTo(27, -60); ctx.stroke();
+    ctx.fillStyle = '#2a2622'; for (const e of [-1, 1]) { ctx.beginPath(); ctx.arc(e * 28, -70, 3.2, 0, 7); ctx.fill(); ctx.fillRect(e * 27.5 - 0.8, -69, 1.6, 9); }
+    const jg = ctx.createLinearGradient(-12, 0, 12, 0); jg.addColorStop(0, '#4a8ad0'); jg.addColorStop(1, '#244f8a');
+    ctx.fillStyle = jg; ctx.beginPath(); ctx.roundRect(-12, -82, 24, 30, 9); ctx.fill();
+    ctx.strokeStyle = '#2f6fb0'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(-10, -76); ctx.lineTo(-24, -61); ctx.moveTo(10, -76); ctx.lineTo(24, -61); ctx.stroke();
+    ctx.fillStyle = '#e8b48a'; for (const e of [-1, 1]) { ctx.beginPath(); ctx.arc(e * 24, -61, 3, 0, 7); ctx.fill(); }
+    // the parcel box on the rack
+    const bg = ctx.createLinearGradient(0, -66, 0, -44); bg.addColorStop(0, '#f0c27a'); bg.addColorStop(1, '#c98f3d');
+    ctx.fillStyle = bg; ctx.beginPath(); ctx.roundRect(-14, -66, 28, 22, 3); ctx.fill();
+    ctx.strokeStyle = 'rgba(35,30,22,.5)'; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.fillStyle = '#a8742c'; ctx.fillRect(-2, -66, 4, 22);
+    ctx.fillStyle = '#fff7e6'; ctx.fillRect(5, -58, 6, 5);
+    // helmet, with a shine
+    const hg = ctx.createRadialGradient(-4, -98, 2, 0, -93, 12); hg.addColorStop(0, '#ffffff'); hg.addColorStop(1, '#d9dcd6');
+    ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(0, -93, 11, 0, 7); ctx.fill();
+    ctx.fillStyle = '#c03a2e'; ctx.fillRect(-11, -95, 22, 3.5);
+    ctx.fillStyle = '#2a2622'; ctx.fillRect(-7, -84, 14, 3);
     ctx.restore();
   }
 
@@ -387,11 +443,23 @@
   // ---------- the game ----------
   function update(dt) {
     time += dt;
+    if (mode === 'crashing') {
+      // The scooter slides to a stop and tips over; nothing else can happen now
+      crashT += dt; v *= Math.max(0, 1 - dt * 4); s += v * dt; shake = Math.max(0, shake - dt * 2);
+      tick(dt);
+      if (crashT > 0.9) end(false);
+      return;
+    }
     // Speed builds up to a top speed that rises slowly; it eases off on a steep climb
     const top = 11 + Math.min(7, time * 0.1), climb = roadAt(route.grade, s, 1e-3);
     v += ((top - Math.max(0, climb) * 12) - v) * Math.min(1, dt * 0.9);
     s += v * dt;
+    const was = px;
     px += (LANES[lane] - px) * Math.min(1, dt * 12);
+    // Lean with the lane change, and into the bend
+    const want = Math.max(-0.4, Math.min(0.4, (px - was) / dt * 0.045 + curvAt(s) * v * v * 0.012));
+    lean += (want - lean) * Math.min(1, dt * 8);
+    if (!reduce && Math.random() < dt * 9) sparks.push({ x: W / 2 + px * 0.18 * W * 0.42 / PLAYER_Z + 9, y: H * 0.84 - 8, vx: (Math.random() - .5) * 20, vy: 30 + Math.random() * 20, r: 2.5, life: 0.6, c: '#9aa39b', a: 0.5, puff: true });
     bgX += curvAt(s) * v * dt * W * 0.9;
     shake = Math.max(0, shake - dt * 3);
     plan();
@@ -399,17 +467,32 @@
     for (const t of things) {
       if (t.got || t.hit || Math.abs(t.at - s) > 0.9) continue;
       if (Math.abs(LANES[t.lane] - px) > 1.15) continue;
-      if (t.kind === 'coin') { t.got = true; coins++; beep(880, 0.06); burst('#ffd34d'); if (coins % 10 === 0) toast(`${coins} coins!`); }
-      else { t.hit = true; shake = 1; beep(160, 0.3, 'sawtooth'); burst('#c33f3f'); return end(false); }
+      if (t.kind === 'coin') {
+        t.got = true; coins++; beep(880, 0.06); burst('#ffd34d');
+        pops.push({ text: '+1', x: W / 2 + (Math.random() - .5) * 30, y: H * 0.84 - 110, life: 1 });
+        const b = $('coins'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump');
+        if (coins % 10 === 0) toast(`${coins} coins!`);
+      } else {
+        t.hit = true; shake = 1; crashT = 0; crashDir = t.lane < lane || (t.lane === lane && px > LANES[lane]) ? 1 : -1;
+        beep(160, 0.3, 'sawtooth'); burst('#c33f3f'); mode = 'crashing'; return;
+      }
     }
     things = things.filter(t => t.at > s - 8 && !t.got);
-    for (const p of sparks) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; p.life -= dt * 1.4; }
-    sparks = sparks.filter(p => p.life > 0);
+    tick(dt);
+    const score = Math.floor(s) + coins * 25;
+    if (best0 > 0 && !bestShown && score > best0) { bestShown = true; toast('New best!'); }
     // Road names and places, as you pass them
     for (const [i, name] of route.roads) if (!passed.has('r' + i) && s >= i * SEG) { passed.add('r' + i); toast(name); }
     for (const [i, name] of route.places) if (!passed.has('p' + i) && s >= i * SEG) { passed.add('p' + i); if (i > 2) toast(name); }
     if (s >= route.length) return end(true);
     hud();
+  }
+  // Sparks, exhaust puffs and the +1s drift and fade
+  function tick(dt) {
+    for (const p of sparks) { p.x += p.vx * dt; p.y += p.vy * dt; if (p.puff) { p.r += dt * 9; p.vy *= 1 - dt * 2; } else p.vy += 300 * dt; p.life -= dt * 1.4; }
+    sparks = sparks.filter(p => p.life > 0);
+    for (const p of pops) { p.y -= dt * 60; p.life -= dt * 1.5; }
+    pops = pops.filter(p => p.life > 0);
   }
   function burst(c) {
     if (reduce) return;
@@ -432,11 +515,11 @@
     hnStat(`ride/${route.id}/${delivered ? 'done' : 'over'}`, `Aizawl Ride: ${route.to} ${delivered ? 'delivered' : 'crashed'}`);
   }
   function frame(now) {
-    if (mode !== 'playing') { loopId = 0; return; }
+    if (mode !== 'playing' && mode !== 'crashing') { loopId = 0; return; }
     const dt = Math.min(0.04, (now - last) / 1000); last = now;
     update(dt);
     draw();
-    if (mode === 'playing') loopId = requestAnimationFrame(frame);
+    if (mode === 'playing' || mode === 'crashing') loopId = requestAnimationFrame(frame);
     else { loopId = 0; draw(); }
   }
   function run() {
