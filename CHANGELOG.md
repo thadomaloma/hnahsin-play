@@ -4,6 +4,20 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.16.0 (26 October 2026)
+
+### Aizawl Ride: a new HUD on the road
+
+- The HUD now sits on the road in light glass pills, so the road is bigger
+  on a phone.
+- A strip along the top shows what is ahead: the places on the way, traffic
+  jams (🚦) and the end (🏁), with you moving along it. A warning tells you
+  how far the next jam is.
+- A speedometer dial with a needle: green, amber when fast, red when you
+  brake.
+- A mini-map shows the real shape of the road, north up, with how far you
+  have come.
+
 ## 1.15.0 (26 October 2026)
 
 ### Aizawl Ride: traffic, jams and Aizawl traffic discipline
