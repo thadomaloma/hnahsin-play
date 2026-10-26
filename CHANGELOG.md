@@ -4,6 +4,22 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.14.0 (26 October 2026)
+
+### Aizawl Ride: the Aizawl map, and a smoother ride
+
+- New: **the Aizawl map**. Deliver parcels between 18 veng, from Dawrpui and
+  Chanmari to Ramhlun, Luangmual and Khatla, along real roads (one-way roads
+  stay one way). Each delivery takes you to that veng, so you can ride your
+  way round the city. Each veng is placed at its main church or another
+  landmark.
+- Houses on the Aizawl map stand where they really are and as tall as they
+  really are, from Google Open Buildings: Aizawl's tall buildings show, with
+  windows on every floor.
+- A new mission (3 deliveries on the map) and two badges (5 veng, every veng).
+- Smoother riding: the road no longer jumps on bends, far houses fade in out
+  of the haze, and near houses slide away to the side instead of vanishing.
+
 ## 1.13.1 (26 October 2026)
 
 - Fixed Aizawl Ride not moving on a browser that blocks saved data: the
