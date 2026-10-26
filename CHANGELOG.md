@@ -4,6 +4,19 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.17.2 (27 October 2026)
+
+### Rova's Journey: fixes
+
+- A boss sentence never gives the answer away: a sentence with its word in
+  it twice is no longer used.
+- No word comes twice in one level, and the two wrong doors never show the
+  same word.
+- Long boss questions no longer cover the top door on a phone: the question
+  sits just under the hearts, its letters get smaller when needed, and the
+  top door is a little lower.
+- All the coins over the top door can now be reached with a double jump.
+
 ## 1.17.1 (26 October 2026)
 
 ### Rova's Journey: a slower, easier pace
