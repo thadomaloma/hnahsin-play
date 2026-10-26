@@ -1095,44 +1095,59 @@ const LOOM = (() => {
   const WARP = '#efe3c8', ROPE = '#b98a4e', STRAP = '#7a4a2a';
   // The yarns, named by their Mizo colour words.
   const YARNS = { sen: '#c8323d', dum: '#2a2522', 'vâr': '#f4efe4', hring: '#2f8a4a', 'dumpâwl': '#2f5fae', sendang: '#ec7fa6', eng: '#f2c230' };
+  // Every colour a puan may use: the yarns, and the deep indigo-black of ting (Assam indigo) dye
+  const COL = { ...YARNS, ting: '#232a48' }, YARN_IDS = Object.keys(YARNS);
   const shade = c => ({ l: mix(c, '#ffffff', 0.25), m: c, d: mix(c, '#000000', 0.55) });
   const yarnAt = (i, up = 0) => [-26.9 + i * 3.4, 23.5, 6.4 + up];
-  const contrast = c => ['dum', 'dumpâwl', 'sen', 'hring'].includes(c) ? 'vâr' : 'dum';
-  const motifCol = r => YARNS[typeof r.m === 'string' ? r.m : contrast(r.c)];
+  const contrast = c => ['dum', 'dumpâwl', 'sen', 'hring', 'ting'].includes(c) ? 'vâr' : 'dum';
+  const motifCol = r => COL[typeof r.m === 'string' ? r.m : contrast(r.c)];
 
   // ---------- the famous Mizo puans ----------
-  // Each is its rows from one end to the other: [colour, rows, pattern colour]. A pattern row has
-  // little diamonds (or, on hmaram, the zigzag of the fern shoot, kawkpuizikzial). Ngotekherh also
-  // has black warp lines, which make its grid. Their meanings are in loom_words.json.
+  // Each is its rows from one end to the other: [colour, rows, pattern colour, pattern]. The patterns:
+  // 'teeth' sakei ha (tiger's teeth, a sawtooth), 'wave' disul (sungrass in the wind), 'zig' kawkpuizikzial
+  // (the fern shoot), 'fork' lenbuangthuam (forked branches), 'seed' fanghma mu (cucumber seeds) and 'star'.
+  // Ngotekherh also has black warp lines, which make its grid (kherh). Their meanings are in loom_words.json.
   const FAMOUS = {
-    puanchei: { rows: [['vâr', 2], ['dum', 1], ['sen', 2], ['dum', 1], ['vâr', 1], ['vâr', 2, 'hring'], ['vâr', 1], ['vâr', 2, 'eng'], ['vâr', 1], ['sen', 1], ['dum', 2], ['sen', 1],
-      ['vâr', 1], ['vâr', 2, 'sendang'], ['vâr', 1], ['vâr', 2, 'hring'], ['vâr', 1], ['dum', 1], ['sen', 2], ['dum', 1], ['vâr', 2]] },
-    pawndum: { rows: [['dum', 4], ['sen', 1], ['eng', 1], ['dum', 3], ['sen', 1], ['vâr', 1], ['hring', 1], ['vâr', 1], ['sen', 1], ['dum', 3], ['eng', 1], ['sen', 1], ['dum', 4]] },
-    ngotekherh: { grid: true, rows: [['vâr', 2], ['dum', 1], ['vâr', 3], ['dum', 1], ['vâr', 3], ['dum', 4], ['vâr', 3], ['dum', 1], ['vâr', 3], ['dum', 1], ['vâr', 2]] },
-    hmaram: { short: true, zig: true, rows: [['dum', 2], ['dum', 2, 'vâr'], ['dum', 1], ['dum', 2, 'vâr'], ['dum', 1], ['dum', 2, 'vâr'], ['dum', 2]] },
-    tawlhlohpuan: { rows: [['dum', 5], ['dum', 1, 'sen'], ['dum', 3], ['sen', 1], ['vâr', 1], ['eng', 1], ['vâr', 1], ['sen', 1], ['dum', 3], ['dum', 1, 'sen'], ['dum', 5]] },
+    puanchei: { rows: [['vâr', 2], ['dum', 1], ['sen', 2], ['dum', 1], ['vâr', 1], ['vâr', 2, 'hring', 'teeth'], ['vâr', 1], ['vâr', 2, 'eng', 'wave'], ['vâr', 1], ['sen', 1], ['dum', 2], ['sen', 1],
+      ['vâr', 1], ['vâr', 2, 'dum', 'zig'], ['vâr', 1], ['vâr', 2, 'hring', 'fork'], ['vâr', 1], ['vâr', 2, 'eng', 'seed'], ['vâr', 1], ['dum', 1], ['sen', 2], ['dum', 1], ['vâr', 2]] },
+    pawndum: { rows: [['dum', 4], ['sen', 1], ['eng', 1], ['dum', 3], ['sen', 1], ['vâr', 1], ['eng', 1], ['vâr', 1], ['sen', 1], ['dum', 3], ['eng', 1], ['sen', 1], ['dum', 4]] },
+    ngotekherh: { grid: true, rows: [['vâr', 3], ['dum', 1], ['vâr', 4], ['dum', 1], ['vâr', 4], ['dum', 3], ['vâr', 4], ['dum', 1], ['vâr', 4], ['dum', 1], ['vâr', 3]] },
+    hmaram: { short: true, rows: [['ting', 1], ['ting', 1, 'vâr', 'seed'], ['ting', 1], ['ting', 2, 'vâr', 'star'], ['ting', 1], ['ting', 2, 'vâr', 'zig'], ['ting', 1], ['ting', 2, 'vâr', 'star'], ['ting', 1], ['ting', 1, 'vâr', 'seed'], ['ting', 1]] },
+    tawlhlohpuan: { rows: [['dum', 5], ['dum', 1, 'sen', 'teeth'], ['dum', 2], ['sen', 1], ['vâr', 1], ['eng', 1], ['vâr', 1], ['sen', 1], ['dum', 2], ['dum', 1, 'sen', 'teeth'], ['dum', 5]] },
   };
   const FAMOUS_IDS = Object.keys(FAMOUS);
   // One row each, as the loom weaves them
   const planOf = id => FAMOUS[id].rows.flatMap(([c, n, m]) => Array.from({ length: n }, () => ({ c, m: m || false })));
+  // One pattern across a band: u from u0 to u1, centred on v = vm, h high; along(u, v) → 3D.
+  function motif(kind, col, u0, u1, vm, h, along, part) {
+    const out = [], U = (u1 - u0), at = (n, j) => u0 + U * (j + 0.5) / n;
+    if (kind === 'teeth') for (let j = 0; j < 8; j++) { const a = u0 + U * j / 8, b = u0 + U * (j + 1) / 8; out.push({ pts: [along(a, vm + h), along(b, vm + h), along((a + b) / 2, vm - h)], fill: col, w: 0.2, part }); }
+    else if (kind === 'wave' || kind === 'zig') {
+      const n = kind === 'wave' ? 33 : 13;
+      out.push({ pts: Array.from({ length: n }, (_, i) => along(u0 + U * (i + 0.5) / n, vm + (kind === 'wave' ? Math.sin(i / 2) * h : i % 2 ? h : -h))), stroke: col, w: 0.35, open: true, part });
+    } else if (kind === 'fork') for (let j = 0; j < 5; j++) {
+      const m = at(5, j), w = U / 14;
+      out.push({ pts: [along(m - w, vm - h), along(m, vm), along(m + w, vm - h)], stroke: col, w: 0.35, open: true, part });
+      out.push({ pts: [along(m, vm), along(m, vm + h)], stroke: col, w: 0.35, open: true, part });
+    } else if (kind === 'star') for (let j = 0; j < 5; j++) {
+      const m = at(5, j), w = U / 12;
+      out.push({ pts: Array.from({ length: 8 }, (_, i) => { const a = i * Math.PI / 4, r = i % 2 ? 0.35 : 1; return along(m + Math.cos(a) * w * r, vm + Math.sin(a) * h * r); }), fill: col, w: 0.15, part });
+    } else for (let j = 0, n = kind === 'seed' ? 7 : 5; j < n; j++) {
+      const m = at(n, j), w = U / (kind === 'seed' ? 26 : 16);
+      out.push({ pts: [along(m - w, vm), along(m, vm + h), along(m + w, vm), along(m, vm - h)], fill: col, w: 0.2, part });
+    }
+    return out;
+  }
   // The decals of a famous puan on a flat rectangle: u runs across it, v from end to end; along(u, v) → 3D.
   function famousDecals(id, [u0, u1, v0, v1], along, part) {
     const F = FAMOUS[id], N = F.rows.reduce((a, r) => a + r[1], 0), out = [];
     let at = 0;
-    for (const [c, n, m] of F.rows) {
+    for (const [c, n, m, kind] of F.rows) {
       const a = v0 + (v1 - v0) * at / N, b = v0 + (v1 - v0) * (at + n) / N; at += n;
-      out.push({ pts: [along(u0, a), along(u1, a), along(u1, b), along(u0, b)], fill: YARNS[c], w: 0.25, part });
-      if (!m) continue;
-      const vm = (a + b) / 2, h = (b - a) * 0.36;
-      if (F.zig) {
-        const pts = Array.from({ length: 13 }, (_, i) => along(u0 + (u1 - u0) * (i + 0.5) / 13, vm + (i % 2 ? h : -h)));
-        out.push({ pts, stroke: YARNS[m], w: 0.35, open: true, part });
-      } else for (let j = 0; j < 5; j++) {
-        const um = u0 + (u1 - u0) * (j + 0.5) / 5, w = (u1 - u0) / 16;
-        out.push({ pts: [along(um - w, vm), along(um, vm + h), along(um + w, vm), along(um, vm - h)], fill: YARNS[m], w: 0.2, part });
-      }
+      out.push({ pts: [along(u0, a), along(u1, a), along(u1, b), along(u0, b)], fill: COL[c], w: 0.25, part });
+      if (m) out.push(...motif(kind, COL[m], u0, u1, (a + b) / 2, (b - a) * 0.36, along, part));
     }
-    if (F.grid) for (let j = 1; j < 5; j++) { const u = u0 + (u1 - u0) * j / 5; out.push({ pts: [along(u, v0), along(u, v1)], stroke: YARNS.dum, w: 0.25, open: true, part }); }
+    if (F.grid) for (let j = 1; j < 5; j++) { const u = u0 + (u1 - u0) * j / 5; out.push({ pts: [along(u, v0), along(u, v1)], stroke: COL.dum, w: 0.25, open: true, part }); }
     return out;
   }
   // Where each hangs on the left wall: a strip across y, from z 42 down
@@ -1197,7 +1212,7 @@ const LOOM = (() => {
     if (s.rows.length < 8 || s.finish >= 0) return;
     s.auto = false; s.pass = -1;
     s.piece = { bands: bandsOf(s.rows), motif: s.rows.some(r => r.m), famous: s.plan && s.plan.i >= s.plan.rows.length ? s.plan.id : null };
-    s.plan = null; s.pattern = false;
+    s.plan = null; s.pattern = false; if (!YARNS[s.yarn]) s.yarn = 'dum';
     s.finish = 0;
   }
 
@@ -1229,10 +1244,10 @@ const LOOM = (() => {
     const [u0, u1, v0, v1] = rect, n = bands.length, out = [];
     bands.forEach((c, i) => {
       const a = u0 + (u1 - u0) * i / n, b = u0 + (u1 - u0) * (i + 1) / n;
-      out.push({ pts: [along(a, v0), along(b, v0), along(b, v1), along(a, v1)], fill: YARNS[c], w: 0.3 });
+      out.push({ pts: [along(a, v0), along(b, v0), along(b, v1), along(a, v1)], fill: COL[c], w: 0.3 });
       if (motif && i % 2 === 1) for (let j = 0; j < 5; j++) {
         const m = (a + b) / 2, h = (b - a) * 0.32, vv = v0 + (v1 - v0) * (j + 0.5) / 5, w = (v1 - v0) / 14;
-        out.push({ pts: [along(m - h, vv), along(m, vv + w), along(m + h, vv), along(m, vv - w)], fill: YARNS[contrast(c)], w: 0.25 });
+        out.push({ pts: [along(m - h, vv), along(m, vv + w), along(m + h, vv), along(m, vv - w)], fill: COL[contrast(c)], w: 0.25 });
       }
     });
     return out;
@@ -1273,7 +1288,7 @@ const LOOM = (() => {
       const z0 = 11 + i * 1.7;
       const top = p.famous ? famousDecals(p.famous, [-28.5, -19.5, -46.5, -29.5], (y, x) => [x, y, z0 + 1.55], p.famous)
         : puanStripes(p.bands, [-46.5, -29.5, -28.5, -19.5], p.motif, (x, y) => [x, y, z0 + 1.55]);
-      chest.push(box(-46.5, -29.5, -28.5, -19.5, z0, z0 + 1.5, { pal: shade(YARNS[p.famous ? FAMOUS[p.famous].rows[0][0] : p.bands[0]]), part: p.famous || 'puan chei', bias: i + 1, decals: { zp: top } }));
+      chest.push(box(-46.5, -29.5, -28.5, -19.5, z0, z0 + 1.5, { pal: shade(COL[p.famous ? FAMOUS[p.famous].rows[0][0] : p.bands[0]]), part: p.famous || 'puan chei', bias: i + 1, decals: { zp: top } }));
     });
     items.push(group(chest, { part: 'thingrem' }));
     // The basket of yarn: tap a ball to weave with that colour
@@ -1281,7 +1296,7 @@ const LOOM = (() => {
     const yarn = [box(-30, -6, 20, 27, 0, 5, { pal: CANE, part: 'fawng', decals: { zp: [{ pts: [[-29, 21, 5.02], [-7, 21, 5.02], [-7, 26, 5.02], [-29, 26, 5.02]], fill: '#6b5126', w: 0.4 }] } })];
     Object.keys(YARNS).forEach((c, i) => {
       const up = c === s.yarn ? 1.8 + 0.5 * Math.sin(s.t * 4) : 0;
-      yarn.push(ball(yarnAt(i, up), 1.9, { pal: shade(YARNS[c]), part: c, bias: 1 }));
+      yarn.push(ball(yarnAt(i, up), 1.9, { pal: shade(COL[c]), part: c, bias: 1 }));
     });
     items.push(group(yarn));
     // The cat sleeps by the basket
@@ -1335,8 +1350,8 @@ const LOOM = (() => {
     if (rolled) {
       const R = 0.8 + Math.min(2.6, rolled * 0.06), c = s.rows[rolled - 1].c, z = pz(BEAM_X) - 1;
       const recent = s.rows.slice(Math.max(0, rolled - 5), rolled).map(r => r.c);
-      kids.push(box(BEAM_X - 1.2 - R * 0.6, BEAM_X + 1.2 + R * 0.4, -WY - 0.4, WY + 0.4, z - R * 0.7, z + 1 + R, { pal: shade(YARNS[c]), part: 'puan', bias: 380,
-        decals: { zp: recent.map((rc, i) => ({ pts: [[BEAM_X - 1.2 - R * 0.6 + i * 0.5, -WY - 0.4, z + 1.05 + R], [BEAM_X - 0.9 - R * 0.6 + i * 0.5, -WY - 0.4, z + 1.05 + R], [BEAM_X - 0.9 - R * 0.6 + i * 0.5, WY + 0.4, z + 1.05 + R], [BEAM_X - 1.2 - R * 0.6 + i * 0.5, WY + 0.4, z + 1.05 + R]], fill: YARNS[rc], w: 0.2 })) } }));
+      kids.push(box(BEAM_X - 1.2 - R * 0.6, BEAM_X + 1.2 + R * 0.4, -WY - 0.4, WY + 0.4, z - R * 0.7, z + 1 + R, { pal: shade(COL[c]), part: 'puan', bias: 380,
+        decals: { zp: recent.map((rc, i) => ({ pts: [[BEAM_X - 1.2 - R * 0.6 + i * 0.5, -WY - 0.4, z + 1.05 + R], [BEAM_X - 0.9 - R * 0.6 + i * 0.5, -WY - 0.4, z + 1.05 + R], [BEAM_X - 0.9 - R * 0.6 + i * 0.5, WY + 0.4, z + 1.05 + R], [BEAM_X - 1.2 - R * 0.6 + i * 0.5, WY + 0.4, z + 1.05 + R]], fill: COL[rc], w: 0.2 })) } }));
     }
     // The woven rows in view, run together into bands, with the pattern on top
     let x = BEAM_X + 0.6, i0 = 0;
@@ -1345,7 +1360,7 @@ const LOOM = (() => {
       let i1 = i0;
       while (i1 + 1 < vis.length && vis[i1 + 1].c === vis[i0].c) i1++;
       const xa = x + i0 * ROW, xb = x + (i1 + 1) * ROW;
-      kids.push(poly([[xa, -WY - 0.4, pz(xa) + 0.06], [xb, -WY - 0.4, pz(xb) + 0.06], [xb, WY + 0.4, pz(xb) + 0.06], [xa, WY + 0.4, pz(xa) + 0.06]], { fill: YARNS[vis[i0].c], w: 0.5, part: 'puan', bias: 400 }));
+      kids.push(poly([[xa, -WY - 0.4, pz(xa) + 0.06], [xb, -WY - 0.4, pz(xb) + 0.06], [xb, WY + 0.4, pz(xb) + 0.06], [xa, WY + 0.4, pz(xa) + 0.06]], { fill: COL[vis[i0].c], w: 0.5, part: 'puan', bias: 400 }));
       i0 = i1 + 1;
     }
     vis.forEach((r, i) => {
@@ -1365,9 +1380,9 @@ const LOOM = (() => {
     const sx = M.fell + 2.4, sz = pz(sx) + 1.4;
     kids.push(group([
       box(sx - 0.6, sx + 0.6, M.sy - 5, M.sy + 5, sz, sz + 0.9, { pal: WOOD }),
-      box(sx - 0.85, sx + 0.85, M.sy - 2.4, M.sy + 2.4, sz - 0.25, sz + 1.15, { pal: shade(YARNS[s.yarn]) }),
+      box(sx - 0.85, sx + 0.85, M.sy - 2.4, M.sy + 2.4, sz - 0.25, sz + 1.15, { pal: shade(COL[s.yarn]) }),
     ], { part: 'khawhtlang', bias: 600 }));
-    if (M.crossing) kids.push(line([[M.fell + 0.3, -s.side * (WY + 0.4), pz(M.fell) + 0.1], [sx, M.sy, sz + 0.4]], { col: YARNS[s.yarn], w: 0.45, ink: false, bias: 550 }));
+    if (M.crossing) kids.push(line([[M.fell + 0.3, -s.side * (WY + 0.4), pz(M.fell) + 0.1], [sx, M.sy, sz + 0.4]], { col: COL[s.yarn], w: 0.45, ink: false, bias: 550 }));
     // The finished puan, folded, flies to the chest
     if (s.finish >= 0 && s.piece) {
       const k = s.finish, e = k * k * (3 - 2 * k), from = [-24, 0, 12], to = [-38, -24, 11 + s.done.length * 1.7 + 0.8];
@@ -1375,7 +1390,7 @@ const LOOM = (() => {
       const hw = 8 - 0.5 * e, hd = 5;
       const P = s.piece, top = P.famous ? famousDecals(P.famous, [c[1] - hd, c[1] + hd, c[0] - hw, c[0] + hw], (y, x) => [x, y, c[2] + 0.8], P.famous)
         : puanStripes(P.bands, [c[0] - hw, c[0] + hw, c[1] - hd, c[1] + hd], P.motif, (x, y) => [x, y, c[2] + 0.8]);
-      kids.push(box(c[0] - hw, c[0] + hw, c[1] - hd, c[1] + hd, c[2] - 0.75, c[2] + 0.75, { pal: shade(YARNS[P.famous ? FAMOUS[P.famous].rows[0][0] : P.bands[0]]), part: P.famous || 'puan chei', bias: 2000, decals: { zp: top } }));
+      kids.push(box(c[0] - hw, c[0] + hw, c[1] - hd, c[1] + hd, c[2] - 0.75, c[2] + 0.75, { pal: shade(COL[P.famous ? FAMOUS[P.famous].rows[0][0] : P.bands[0]]), part: P.famous || 'puan chei', bias: 2000, decals: { zp: top } }));
     }
     return { kids, M };
   }
@@ -1452,7 +1467,7 @@ const LOOM = (() => {
   }
 
   function tap(s, part) {
-    if (YARNS[part]) { s.yarn = part; return 'rawng'; }   // pick this yarn
+    if (YARN_IDS.includes(part)) { s.yarn = part; return 'rawng'; }   // pick this yarn
     if (part === 'pi') return s.pass >= 0 || s.auto ? 'tah' : 'ṭhu';
     if (part === 'zawhte') return 'muhil';
     if (part === 'puan chei') return 'mawi';
@@ -2147,7 +2162,7 @@ const LA = (() => {
 <script>
 (() => {
   const WORDS = {"in": "house", "kawngkhar": "door", "tukverh": "window", "bang": "wall", "chhuat": "floor", "chungkhuh": "roof", "khawnvâr": "lamp", "zawhte": "cat", "arpui": "hen", "êm": "carrying basket", "kawng": "road", "pal": "fence", "thing": "tree", "mau": "bamboo", "pangpâr": "flower", "tlang": "hill", "ni": "sun", "thla": "moon", "arsi": "star", "chhum": "cloud", "ruah": "rain", "vân": "sky", "meikhu": "smoke", "mei": "fire", "hawng": "open", "khar": "close", "zân": "night", "zîng": "morning", "harh": "wake", "muhil": "sleep", "chhûngah": "inside", "choka": "kitchen", "bel": "pot", "khum": "bed", "puan": "cloth", "dawhkân": "table", "ṭhutthlêng": "chair", "chhuatphah": "mat", "arbawm": "chicken coop", "artui": "hen's egg", "vawk": "pig", "chhun": "daytime", "tlai": "evening", "thli": "wind", "chhimbâl": "rainbow", "nu": "mother", "pa": "father", "pi": "grandmother", "naupang": "child", "phiat": "to sweep", "hmunphiah": "broom", "su": "to wash clothes", "tui": "water", "kal": "go", "tlân": "run", "ṭhian": "friend", "tlawh": "to visit", "chibai": "hello", "infiam": "to play", "la": "cotton", "lapua": "raw cotton", "la mu": "cotton seeds", "herawt": "cotton gin", "lasai": "cotton bow", "lasai thal": "bow string", "lachawn": "cotton roll", "hmui": "spinning wheel", "hmuithlur": "spindle", "la zai": "thread", "ladawhkilh": "skein stand", "suvel": "winding reel", "lazarna": "warping frame", "sutpui": "warp", "buhhawp tui": "rice starch water", "tah": "weave", "puan chei": "decorated cloth", "rawng": "colour", "sen": "red", "dum": "black", "vâr": "white", "hring": "green", "dumpâwl": "blue", "sendang": "pink", "ziarâng": "pattern", "hrui": "rope", "kawngvawn": "backstrap", "themkhawl": "breast beam", "thempui": "beater (weaving sword)", "thembupui": "shed stick", "hnahchawi": "heddle rod", "themte": "pattern rods", "tuirek": "reed (spacer bar)", "khawhtlang": "shuttle", "themtlang": "warp beam", "kaihbu": "lease rods", "ṭhu": "sit", "fawng": "basket", "thingrem": "wooden chest", "êng": "light", "zo": "finish", "mawi": "beautiful", "eng": "yellow", "puanchei": "the finest Mizo puan", "pawndum": "the black and red puan", "ngotekherh": "the white checked puan", "hmaram": "the girls' short puan", "tawlhlohpuan": "the puan of the brave", "bazar": "market", "dâwr": "shop", "dâwrkai": "shopkeeper", "zuar": "sell", "pawisa": "money", "thei": "fruit", "thlai": "vegetable", "balhla": "banana", "serthlum": "orange (fruit)", "theihai": "mango", "alu": "potato", "purun": "onion", "hmarcha": "chilli pepper", "fanghma": "cucumber", "zikhlum": "cabbage", "mâi": "pumpkin", "bawkbawn": "eggplant", "sawhthing": "ginger", "kho": "basket", "sangha": "fish", "hnah": "leaf", "buhfai": "husked rice", "rit": "heavy", "zâng": "light in weight", "lawmthu": "thanks", "pakhat": "one", "pahnih": "two", "pathum": "three"};   // Mizo → English, from the Hnahsin content
-  const NOTES = {"kawngvawn": "A strong strap of hide or cord round the weaver's back; leaning back pulls the warp tight.", "themkhawl": "The bar right in front of the weaver: the woven cloth rolls onto it, and the backstrap ties to it.", "thempui": "A long flat stick, thin and a little sharp, that beats each new row of weft tight.", "thembupui": "A wide flat bamboo bar that parts the upper and lower warp threads, opening the way for the shuttle.", "hnahchawi": "A thin straight rod tied with loops to every other warp thread; lifting it lifts them, so the threads cross.", "themte": "Thin rods added past the heddle to raise threads for the puan's design; four to seven for a fine pattern.", "tuirek": "A comb of bamboo or wood that keeps the warp threads evenly spaced.", "khawhtlang": "A slim stick with the weft wound on it, passed back and forth through the open shed.", "themtlang": "The big bar at the far end, tied to a wall or post, that holds every warp thread.", "kaihbu": "Two thin split bamboos near the warp beam that keep the warp threads from tangling.", "la": "Cotton grown in the jhum field, made into thread by hand before any weaving.", "lapua": "The fluffy cotton picked from the plant, with its seeds still inside.", "la mu": "The seeds taken out of the raw cotton by the cotton gin.", "herawt": "Two wooden rollers turned against each other by a handle: the cotton goes through, the seeds stay behind.", "lasai": "A bow of bent bamboo with a tight string; plucked over the cleaned cotton, it fluffs it up soft.", "lasai thal": "The tight string of the cotton bow, plucked so it shakes the cotton loose.", "lachawn": "The fluffed cotton rolled up, ready to be spun into thread.", "hmui": "A wheel turned by hand that twists the cotton roll into thread.", "hmuithlur": "The iron rod at the spinning wheel's end that turns fast and gathers the thread.", "la zai": "The cotton spun into a long strand.", "ladawhkilh": "The stand on which the spun thread is wound and kept tidy.", "suvel": "The reel that turns to wind the thread into a skein or a ball.", "lazarna": "Pegs where the thread is laid back and forth, counted, to the length of the warp.", "sutpui": "The long threads laid side by side on the loom; the weft goes across them.", "buhhawp tui": "The thread is soaked in it so it is stiff and strong for the loom.", "eng": "The colour of turmeric and ripe rice; a bright thread in many puans.", "puanchei": "White, with red and black stripes and rows of patterns in green, yellow and pink: disul, sakei ha, fanghma mu, kawkpuizikzial and lenbuangthuam. Once called \"Puan Lallukhum\". Girls wear it at festivals and for Cheraw, and a bride takes one with her.", "pawndum": "Mostly black, with red, yellow, white and green stripes. A bride brings one as her zawlken puan: \"I will cover you all your life, and wrap you in this at your death.\" Neighbours bring one when someone dies, so the family is not alone.", "ngotekherh": "\"Ngo\" is white and \"kherh\" the lines woven across: a white puan with a black grid, and a wide black band in the middle (puanhruikhau). Once only for chiefs' families; men and women both wear it.", "hmaram": "A short puan, from the waist to the knee, dyed deep dark with ting (Assam indigo) and woven with fine white patterns like kawkpuizikzial. A girl who could weave her own hmaram was counted a grown woman.", "tawlhlohpuan": "\"Tawlh lo\" means never stepping back. A thick black puan with straight red, white and yellow stripes down the middle. Once only for the bravest men; now given to honour people who served the land."};   // what some things do (the loom's parts)
+  const NOTES = {"kawngvawn": "A strong strap of hide or cord round the weaver's back; leaning back pulls the warp tight.", "themkhawl": "The bar right in front of the weaver: the woven cloth rolls onto it, and the backstrap ties to it.", "thempui": "A long flat stick, thin and a little sharp, that beats each new row of weft tight.", "thembupui": "A wide flat bamboo bar that parts the upper and lower warp threads, opening the way for the shuttle.", "hnahchawi": "A thin straight rod tied with loops to every other warp thread; lifting it lifts them, so the threads cross.", "themte": "Thin rods added past the heddle to raise threads for the puan's design; four to seven for a fine pattern.", "tuirek": "A comb of bamboo or wood that keeps the warp threads evenly spaced.", "khawhtlang": "A slim stick with the weft wound on it, passed back and forth through the open shed.", "themtlang": "The big bar at the far end, tied to a wall or post, that holds every warp thread.", "kaihbu": "Two thin split bamboos near the warp beam that keep the warp threads from tangling.", "la": "Cotton grown in the jhum field, made into thread by hand before any weaving.", "lapua": "The fluffy cotton picked from the plant, with its seeds still inside.", "la mu": "The seeds taken out of the raw cotton by the cotton gin.", "herawt": "Two wooden rollers turned against each other by a handle: the cotton goes through, the seeds stay behind.", "lasai": "A bow of bent bamboo with a tight string; plucked over the cleaned cotton, it fluffs it up soft.", "lasai thal": "The tight string of the cotton bow, plucked so it shakes the cotton loose.", "lachawn": "The fluffed cotton rolled up, ready to be spun into thread.", "hmui": "A wheel turned by hand that twists the cotton roll into thread.", "hmuithlur": "The iron rod at the spinning wheel's end that turns fast and gathers the thread.", "la zai": "The cotton spun into a long strand.", "ladawhkilh": "The stand on which the spun thread is wound and kept tidy.", "suvel": "The reel that turns to wind the thread into a skein or a ball.", "lazarna": "Pegs where the thread is laid back and forth, counted, to the length of the warp.", "sutpui": "The long threads laid side by side on the loom; the weft goes across them.", "buhhawp tui": "The thread is soaked in it so it is stiff and strong for the loom.", "eng": "The colour of turmeric and ripe rice; a bright thread in many puans.", "puanchei": "White, with red and black stripes and rows of patterns in green, yellow and black: sakei ha (tiger's teeth), disul (sungrass in the wind), kawkpuizikzial (the fern shoot), lenbuangthuam (forked branches) and fanghma mu. Once called \"Puan Lallukhum\". Worn at the big festivals, for the Cheraw (bamboo dance), and by a bride.", "pawndum": "Black, with bold red, yellow and white stripes across. A puan of mourning and of love for life: a bride takes one into marriage as her zawlken puan (\"I will cover you all your life, and wrap you in this at your death\"), and people bring one when someone dies, to share the family's sorrow.", "ngotekherh": "White and black. \"Ngo\" is white, and \"kherh\" the black lines woven both ways into a grid, with a wide black band in the middle (puanhruikhau). Once only for chiefs' and rich families; now men and women both wear it at festivals and big days.", "hmaram": "Deep indigo-black, dyed with ting (Assam indigo), with fine white patterns: fern shoots (kawkpuizikzial), stars and small flower borders. A short wrap worn by girls and young women, from the waist to the calves. A girl who could weave her own was counted a grown woman.", "tawlhlohpuan": "\"Tawlh lo\" means never stepping back. Black, with bold red, white and yellow stripes in the middle and sawtooth edges beside them. Once worn only by pasalṭha, the bravest warriors who never ran from a fight; now given to honour people who served the land."};   // what some things do (the loom's parts)
   // The things you can play with; #la, #loom or #bazar in the address opens that one.
   const FIGS = [HOUSE, LA, LOOM, BAZAR];
   let fig = FIGS.find(f => '#' + f.id === location.hash) || FIGS[0];
