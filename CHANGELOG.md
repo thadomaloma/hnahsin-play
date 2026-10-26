@@ -4,6 +4,21 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.13.0 (26 October 2026)
+
+### Aizawl Ride: wallet, garage, missions and badges
+
+- The coins you pick up now go into a wallet when the ride ends, once per
+  ride. Your wallet shows at the top.
+- A garage with five scooters named by Mizo colours: hring (green), sen
+  (red), dumpâwl (blue), vâr (white) and dum (black). Buy them with your
+  coins. They look different and all ride the same.
+- Six missions with coin rewards, such as riding for a whole minute or
+  delivering to Chawnga Road. Each reward can be claimed once.
+- Six badges, including one for meeting all five Mizo words of the road.
+- A pause button, and a "Reset my progress" button that asks first.
+- Your progress is kept safely on this device; older best scores carry over.
+
 ## 1.12.0 (26 October 2026)
 
 ### Aizawl Ride
