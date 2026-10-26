@@ -4,6 +4,11 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.14.1 (26 October 2026)
+
+- Shorter map credits on the Aizawl Ride page, with a link to the full
+  credits.
+
 ## 1.14.0 (26 October 2026)
 
 ### Aizawl Ride: the Aizawl map, and a smoother ride
