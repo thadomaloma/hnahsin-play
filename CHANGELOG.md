@@ -4,6 +4,26 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.11.0 (26 October 2026)
+
+### La siam, the famous puans, and smoother Touch and learn
+
+- New in Touch and learn: **La siam**, making thread. Nu takes the cotton
+  through six steps on a bamboo verandah: herawt (cotton gin), lasai (cotton
+  bow), hmui (spinning wheel), ladawhkilh (skein pegs) and buhhawp tui
+  (rice starch water), suvel (yarn swift) and lazarna (warping posts). Tap a
+  tool to see its name and what it does, or let her do it all, then take the
+  thread to the loom.
+- Puan tah: every part of the loom now has its proper Mizo name, with a
+  line on what it does.
+- Puan tah: the five famous Mizo puans hang on the wall: puanchei, pawndum,
+  ngotekherh, hmaram and tawlhlohpuan. Tap one to read what it means, and
+  watch pi weave it row by row, with its own stripes and patterns.
+- Touch and learn looks and moves more smoothly: the camera follows the
+  work, round things have soft light, shadows are softer, people breathe,
+  blink and look at their hands, and it draws 30 pictures a second (fewer on
+  a slow phone, so it never stutters).
+
 ## 1.10.3 (26 October 2026)
 
 - Going back from a game to the Playground is now instant. Before, the game
