@@ -137,9 +137,12 @@
 (function () {
   var CODE = 'hnahsin';
   var queue = [];
+  // Counting must never stop a game: any error here (say, storage blocked) is ignored.
   window.hnStat = function (name, title) {
-    if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path: name, title: title || name, event: true });
-    else queue.push([name, title]);
+    try {
+      if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path: name, title: title || name, event: true });
+      else queue.push([name, title]);
+    } catch (e) {}
   };
   // Count only on the real site, not while testing or in a preview.
   if (location.hostname !== 'thadomaloma.github.io') { window.hnStat = function () {}; return; }

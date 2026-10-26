@@ -194,9 +194,12 @@
 (function () {
   var CODE = 'hnahsin';
   var queue = [];
+  // Counting must never stop a game: any error here (say, storage blocked) is ignored.
   window.hnStat = function (name, title) {
-    if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path: name, title: title || name, event: true });
-    else queue.push([name, title]);
+    try {
+      if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path: name, title: title || name, event: true });
+      else queue.push([name, title]);
+    } catch (e) {}
   };
   // Count only on the real site, not while testing or in a preview.
   if (location.hostname !== 'thadomaloma.github.io') { window.hnStat = function () {}; return; }
@@ -816,8 +819,8 @@
     reset(); mode = 'playing'; banked = false;
     $('startView').hidden = $('endView').hidden = $('pauseView').hidden = true; syncPause();
     toast(`${parcel[2]} <b>${parcel[0]}</b> · ${parcel[1]}, to ${route.to}`, true);
-    hnStat(`ride/${route.id}`, `Aizawl Ride: ${route.to}`);
     run();
+    hnStat(`ride/${route.id}`, `Aizawl Ride: ${route.to}`);
   }
   // Pause stops everything: no time passes, nothing moves, nothing is hit
   function pause() { if (mode !== 'playing') return; mode = 'paused'; $('pauseView').hidden = false; syncPause(); $('resumeBtn').focus(); }

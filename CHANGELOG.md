@@ -4,6 +4,12 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.13.1 (26 October 2026)
+
+- Fixed Aizawl Ride not moving on a browser that blocks saved data: the
+  play counter could stop the ride from starting. The counter can no
+  longer stop any game.
+
 ## 1.13.0 (26 October 2026)
 
 ### Aizawl Ride: wallet, garage, missions and badges
