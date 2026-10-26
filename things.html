@@ -204,6 +204,8 @@
   }
   // A palette is three inks: l (lit), m (middle), d (in shade).
   const tone = (pal, b) => b > 0.62 ? pal.l : b > 0.2 ? pal.m : pal.d;
+  // On a curved surface the light runs smoothly from shade to lit instead of in three steps.
+  const smoothTone = (pal, b) => { const t = Math.max(0, Math.min(1, (b + 0.1) / 0.95)); return t < 0.5 ? mix(pal.d, pal.m, t * 2) : mix(pal.m, pal.l, (t - 0.5) * 2); };
 
   // ---------- camera (orthographic: yaw turns around the up axis, pitch looks down) ----------
   function camera(yaw, pitch) {
@@ -321,6 +323,16 @@
     // A shape sorts by its centre, or by `at` when given (a group that should sort as one point).
     const depthOf = p => p._d ?? (p._d = cam.depth(p.at || (p.c && p.t === 'ball' ? p.c : centroid(vertsOf(p)))) + (p.bias || 0));
     const light2 = (() => { const s = P(Lt), l = Math.hypot(s[0], s[1]) || 1; return [s[0] / l, s[1] / l]; })();
+    // A round thing is lit by a soft radial gradient, its bright side toward the light; one per palette.
+    const grads = new Map();
+    const fx = (0.5 + light2[0] * 0.26).toFixed(2), fy = (0.5 + light2[1] * 0.26).toFixed(2);
+    const gradOf = pal => {
+      const l = T(pal.l), m = T(pal.m), d = mix(m, T(pal.d), 0.45), key = l + m + d;
+      let id = grads.get(key);
+      if (!id) { id = 'rg' + grads.size; grads.set(key, id); gdefs.push(`<radialGradient id="${id}" cx="${fx}" cy="${fy}" r=".62"><stop offset="0" stop-color="${l}"/><stop offset=".5" stop-color="${m}"/><stop offset="1" stop-color="${d}"/></radialGradient>`); }
+      return id;
+    };
+    const gdefs = [];
 
     function decal(d, part) {
       const fill = d.fill ? col(d.fill, d.glow) : 'none';
@@ -350,9 +362,7 @@
             out.push(circ(x, y, r, ` fill="${col(p.fill, p.glow)}"${ink}${op}${tag(p.part)}`));
             break;
           }
-          const hx = x + light2[0] * r * 0.3, hy = y + light2[1] * r * 0.3;
-          out.push(`<g${op}${tag(p.part)}>` + circ(x, y, r, ` fill="${T(p.pal.m)}"`) + circ(hx, hy, r * 0.62, ` fill="${T(p.pal.l)}"`) +
-            circ(x, y, r, ` fill="none" stroke="${INK}" stroke-width="${f1(W * (p.w || 1))}"`) + '</g>');
+          out.push(circ(x, y, r, ` fill="url(#${gradOf(p.pal)})" stroke="${INK}" stroke-width="${f1(W * (p.w || 1))}"${op}${tag(p.part)}`));
           break;
         }
         case 'cyl': {
@@ -363,7 +373,7 @@
           for (let i = 0; i < N; i++) {
             const a = (i + 0.5) / N * 2 * Math.PI, n = norm([Math.cos(a), Math.sin(a), slope]);
             if (dot(n, cam.view) <= 0) continue;
-            const fill = T(tone(p.pal, dot(n, Lt))), j = (i + 1) % N;
+            const fill = T(smoothTone(p.pal, dot(n, Lt))), j = (i + 1) % N;
             s += `<path d="${d3([B[i], B[j], U[j], U[i]])}" fill="${fill}" stroke="${fill}" stroke-width=".6"/>`;
           }
           for (const z of p.bands || []) {
@@ -390,7 +400,7 @@
         case 'poly': {
           let n = newell(p.pts); if (dot(n, cam.view) < 0) n = mul(n, -1);
           const fill = p.fill ? col(p.fill, p.glow) : T(tone(p.pal, dot(n, Lt)));
-          out.push(`<path d="${d3(p.pts)}" fill="${fill}" stroke="${p.ink === false ? fill : INK}" stroke-width="${f1(W * (p.w || 0.9))}" stroke-linejoin="round"${tag(p.part)}/>`);
+          out.push(`<path d="${d3(p.pts)}" fill="${fill}" stroke="${p.ink === false ? fill : INK}" stroke-width="${f1(W * (p.w || 0.9))}" stroke-linejoin="round"${p.opacity != null ? ` opacity="${p.opacity.toFixed(2)}"` : ''}${tag(p.part)}/>`);
           break;
         }
         case 'group': {
@@ -413,14 +423,17 @@
     for (const g of sc.ground || []) draw(g);
     for (const g of sc.groundDecals || []) draw(g);
     if (sc.clip) out.push(`<defs><clipPath id="gclip"><path d="${d3(sc.clip)}"/></clipPath></defs>`);
-    out.push(`<g${sc.clip ? ' clip-path="url(#gclip)"' : ''} fill="${o.shadowColour || '#41538f'}" opacity="${(o.shadowOpacity ?? 0.24).toFixed(2)}" pointer-events="none">${(sc.items || []).map(shadow).join('')}</g>`);
+    // Soft shadows: a wide faint edge round a darker middle (cheaper on a phone than a blur filter).
+    const sh = (sc.items || []).map(shadow).join(''), sop = (o.shadowOpacity ?? 0.24) * 0.56, scol = o.shadowColour || '#41538f';
+    out.push(`<g${sc.clip ? ' clip-path="url(#gclip)"' : ''} fill="${scol}" pointer-events="none"><g opacity="${sop.toFixed(2)}" stroke="${scol}" stroke-width="2.2" stroke-linejoin="round">${sh}</g><g opacity="${sop.toFixed(2)}">${sh}</g></g>`);
     const items = (sc.items || []).slice().sort((a, b) => depthOf(a) - depthOf(b));
     for (const p of items) draw(p);
     WOB = 0;
+    if (gdefs.length) out.push(`<defs>${gdefs.join('')}</defs>`);
     return out.join('');
   }
 
-  global.Ink3D = { INK, LIGHT, add, sub, mul, dot, norm, lerp3, centroid, mix, tone, camera, solid, hexa, box, panel, ball, cyl, line, poly, group, hull, render };
+  global.Ink3D = { INK, LIGHT, add, sub, mul, dot, norm, lerp3, centroid, mix, tone, smoothTone, camera, solid, hexa, box, panel, ball, cyl, line, poly, group, hull, render };
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
 <script>
@@ -430,6 +443,7 @@
 // o: h (height), shirt, lower ('skirt' or 'shorts'), lowerPal, bands (skirt stripes, as parts of h),
 //    hair, bun, ponytail, tie, stripe, shoes, pose ('stand', 'walk', 'run', 'sweep', 'wash', 'sit'),
 //    phase (walk cycle), t (clock, for moving hands), hands ([left, right] points to reach for).
+// With a clock they breathe and blink, and look toward their hands while they work.
 const Ink3DPeople = (() => {
   const { ball, cyl, line, add, mul } = Ink3D;
   const SKIN = { l: '#efc29b', m: '#d9a47c', d: '#7a4f33' };
@@ -462,11 +476,14 @@ const Ink3DPeople = (() => {
       kids.push(cyl(P(lean * 0.3 + (sit ? 0.06 * h : 0), 0, 0).slice(0, 2), Z + bot, Z + 0.52 * h - crouch, sit ? 0.24 * h : 0.2 * h, 0.14 * h,
         { pal: o.lowerPal, bands: o.bands ? o.bands.map(f => Z + f * h - crouch).filter(z => z > Z + bot + 0.2) : [], cap: false }));
     } else kids.push(cyl(P(0, 0, 0).slice(0, 2), Z + 0.36 * h - crouch, Z + 0.52 * h - crouch, 0.15 * h, 0.14 * h, { pal: o.lowerPal, cap: false }));
-    // Body and head
+    // Body and head: the chest rises a little with each breath, and the head turns toward the work
+    const seed = (at[0] * 7.1 + at[1] * 3.3) % 5, breath = t ? Math.sin(t * 1.7 + seed) * 0.008 * h : 0;
+    let look = 0;
+    if (o.hands && t) { const m = mul(add(o.hands[0], o.hands[1]), 0.5), v = [m[0] - at[0], m[1] - at[1]], l = Math.hypot(v[0], v[1]) || 1; look = Math.max(-0.35, Math.min(0.35, (v[0] * sd[0] + v[1] * sd[1]) / l)); }
     const body = P(lean, 0, 0);
-    kids.push(cyl(body.slice(0, 2), Z + 0.5 * h - crouch, Z + 0.79 * h - crouch, 0.14 * h, 0.115 * h, { pal: o.shirt }));
+    kids.push(cyl(body.slice(0, 2), Z + 0.5 * h - crouch, Z + 0.79 * h - crouch + breath, 0.14 * h, 0.115 * h, { pal: o.shirt }));
     if (o.stripe) kids.push(cyl(body.slice(0, 2), Z + 0.6 * h - crouch, Z + 0.645 * h - crouch, 0.137 * h, 0.134 * h, { pal: o.stripe, cap: false }));
-    const head = P(lean * 1.4, 0, 0.9 * h - crouch), r = 0.13 * h;
+    const r = 0.13 * h, head = add(P(lean * 1.4, look * 0.25 * r, 0.9 * h - crouch), [0, 0, breath]);
     kids.push(ball(add(head, add(mul(d, -0.22 * r), [0, 0, 0.18 * r])), r * 1.04, { fill: o.hair }));
     kids.push(ball(add(head, mul(d, 0.12 * r)), r, { pal: SKIN }));
     if (o.bun) kids.push(ball(add(head, add(mul(d, -0.95 * r), [0, 0, 0.35 * r])), 0.45 * r, { fill: o.hair }));
@@ -476,7 +493,13 @@ const Ink3DPeople = (() => {
       kids.push(ball(add(head, add(add(mul(d, -1.5 * r), mul(sd, sw * 1.6)), [0, 0, -0.35 * r])), 0.32 * r, { fill: o.hair }));
       kids.push(ball(add(head, add(mul(d, -0.95 * r), [0, 0, 0.3 * r])), 0.2 * r, { fill: o.tie || '#c2185b' }));
     }
-    for (const e of [-1, 1]) kids.push(ball(add(head, add(add(mul(d, 0.95 * r), mul(sd, 0.38 * r * e)), [0, 0, 0.12 * r])), 0.09 * r + 0.15, { fill: '#231e16', ink: false }));
+    // Eyes, turned with the head; now and then a blink (a short line for a moment)
+    const blink = t && (t + seed * 0.7) % 3.6 < 0.13;
+    for (const e of [-1, 1]) {
+      const c = add(head, add(add(mul(d, 0.95 * r), mul(sd, (0.38 * e + look) * r)), [0, 0, 0.12 * r]));
+      if (blink) kids.push(line([add(c, mul(sd, -0.13 * r)), add(c, mul(sd, 0.13 * r))], { col: '#231e16', w: 0.45, ink: false }));
+      else kids.push(ball(c, 0.09 * r + 0.15, { fill: '#231e16', ink: false }));
+    }
     // Arms: to the given hand points, or as the pose says
     for (const side of [-1, 1]) {
       const sh = P(lean, side * 0.15 * h, 0.75 * h - crouch);
@@ -1466,6 +1489,12 @@ const LOOM = (() => {
     return a;
   }
 
+  // The camera comes close to the cloth while a famous puan is woven, and steps back to see it fly to the chest
+  function focus(s) {
+    if (!s.plan) return null;
+    return { p: [moment(s).fell + 2, 0, plane(moment(s).fell) + 2], zoom: 1.5 };
+  }
+
   function tap(s, part) {
     if (YARN_IDS.includes(part)) { s.yarn = part; return 'rawng'; }   // pick this yarn
     if (part === 'pi') return s.pass >= 0 || s.auto ? 'tah' : 'ṭhu';
@@ -1481,7 +1510,7 @@ const LOOM = (() => {
     words: ['puan', 'tah', 'puan chei', 'rawng', 'sen', 'dum', 'vâr', 'hring', 'dumpâwl', 'sendang', 'ziarâng', 'hrui', 'kawngvawn',
       'themkhawl', 'thempui', 'thembupui', 'hnahchawi', 'themte', 'tuirek', 'khawhtlang', 'themtlang', 'kaihbu', 'pi', 'ṭhu', 'chhuatphah', 'tukverh', 'bang', 'chhuat', 'fawng', 'thingrem', 'zawhte', 'muhil', 'êng', 'zo', 'mawi', 'eng',
       'puanchei', 'pawndum', 'ngotekherh', 'hmaram', 'tawlhlohpuan'],
-    init, step, tint, scene, sky, over, anchors, tap, labelGroups: LABEL_GROUPS,
+    init, step, tint, scene, sky, over, anchors, tap, focus, labelGroups: LABEL_GROUPS,
     swatches: { label: 'Yarn colour', key: 'yarn', list: YARNS },
     actions: [
       { label: s => s.plan ? `Weaving ${s.plan.id}… ${s.plan.i}/${s.plan.rows.length}` : 'Weave this puan', word: s => s.plan ? null : s.pick, ready: s => !s.plan && s.finish < 0, run: s => startPlan(s) },
@@ -1815,6 +1844,13 @@ const BAZAR = (() => {
   }
 
   // ---------- labels ----------
+  // The camera comes close to the scales for a moment when something is weighed, and to the tray while coins fly
+  function focus(s) {
+    if (s.coins.length) return { p: [TRAY[0], TRAY[1], TOP], zoom: 1.5 };
+    if (s.onPan && s.t - s.panAt < 2.6) return { p: [BX, CY1 - 1, TOP + 8], zoom: 1.5 };
+    return null;
+  }
+
   const LABEL_GROUPS = ['Stall', 'Fruit', 'Vegetables', 'People'];
   function anchors(s) {
     const a = [], at = (part, p, g, n) => a.push({ part, p, g, n });
@@ -1867,13 +1903,13 @@ const BAZAR = (() => {
       'zikhlum', 'mâi', 'bawkbawn', 'sawhthing', 'artui', 'kho', 'sangha', 'hnah', 'êm', 'fawng', 'buhfai', 'rit', 'zâng', 'lawmthu', 'chibai',
       'khawnvâr', 'mau', 'hrui', 'puan', 'dawhkân', 'kawng', 'tlai', 'hawng', 'khar', 'pakhat', 'pahnih', 'pathum'],
     names: { Rova: 'Rova, come to shop' },
-    init, step, tint, scene, sky, over, anchors, tap, labelGroups: LABEL_GROUPS,
+    init, step, tint, scene, sky, over, anchors, tap, focus, labelGroups: LABEL_GROUPS,
     swatches: { label: 'Awning', key: 'awning', list: AWNINGS },
     actions: [
       { label: s => (s.list ? 'New list' : 'Go shopping'), word: () => null, run: s => newList(s) },
       { label: () => 'Pay', word: () => 'pawisa', ready: s => !!s.list && Object.keys(s.basket).length > 0, run: s => pay(s) },
       { label: s => (s.onPan ? 'Take it off' : 'Weigh it'), word: s => (s.onPan ? null : 'rit'), ready: s => !!s.onPan || !!s.last,
-        run: s => { if (s.onPan) { s.onPan = null; s.tiltT = 0; } else { s.onPan = s.last; s.tiltT = Math.max(-1, Math.min(1, (WEIGHT[s.last] - 2) / 2)); } } },
+        run: s => { if (s.onPan) { s.onPan = null; s.tiltT = 0; } else { s.onPan = s.last; s.panAt = s.t; s.tiltT = Math.max(-1, Math.min(1, (WEIGHT[s.last] - 2) / 2)); } } },
       { label: s => (s.openT ? 'Close the stall' : 'Open the stall'), word: s => (s.openT ? 'khar' : 'hawng'), run: s => { s.openT = s.openT ? 0 : 1; } },
       { label: s => (s.duskT ? 'Daytime' : 'Evening'), word: s => (s.duskT ? null : 'tlai'), run: s => { s.duskT = s.duskT ? 0 : 1; } },
     ],
@@ -1921,6 +1957,8 @@ const LA = (() => {
   const WORK = 3.4;            // seconds a step takes
   const rnd = (i, k) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
   const toward = (v, t, d) => (v < t ? Math.min(t, v + d) : Math.max(t, v - d));
+  // A thread between two points hangs in a gentle curve; pulled tight it hangs less.
+  const sag = (a, b, d = .8) => Array.from({ length: 7 }, (_, i) => { const u = i / 6, p = [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u]; p[2] -= Math.sin(u * Math.PI) * d; return p; });
   const ring = (c, r, z, n = 16) => Array.from({ length: n + 1 }, (_, i) => { const a = i / n * Math.PI * 2; return [c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r, z]; });
 
   function init() { return { t: 0, step: 0, pos: 0, k: 0, working: false, done: STEPS.map(() => false), auto: false }; }
@@ -2021,10 +2059,12 @@ const LA = (() => {
     const spokes = [];
     for (let i = 0; i < 8; i++) { const a = turn + i / 8 * Math.PI * 2; spokes.push(line([C, [C[0], C[1] + Math.cos(a) * R, C[2] + Math.sin(a) * R]], { col: WOOD.l, w: .6, ink: false })); }
     const crank = [C[0] - 1.6, C[1] + Math.cos(turn) * 2.4, C[2] + Math.sin(turn) * 2.4];
+    // Turning fast, the spokes fade into a soft blur
+    const blur = work ? [poly(rim.slice(0, -1), { fill: WOOD.l, ink: false, opacity: .35 })] : [];
     out.push(group([
       box(-6, 3, y - 9, y + 7, 0, 2, { pal: DARK }),
       box(-3, -1, y - 4, y - 2, 2, 10, { pal: WOOD }),
-      line(rim, { col: WOOD.m, w: 1.2 }), ...spokes, ball(C, .9, { pal: DARK }),
+      ...blur, line(rim, { col: WOOD.m, w: 1.2 }), ...(work ? spokes.map(l => ({ ...l, opacity: .45 })) : spokes), ball(C, .9, { pal: DARK }),
       line([[C[0] - .6, C[1], C[2]], crank], { col: DARK.m, w: .8 }),
       box(-2.4, -1.2, y + 3, y + 4.2, 2, 5.6, { pal: WOOD }),
     ], { part: 'hmui' }));
@@ -2038,7 +2078,7 @@ const LA = (() => {
     let hand = [-7, y + 10, 8];
     if (s.done[1]) {
       if (work) { const d = s.t * .8 % 1; hand = [-7 - d * 3, y + 10.5, 8 + d * 2]; }
-      out.push(group([line([[-1.8, y + 9.5, 5.2], hand], { col: THREAD, w: .35, ink: false })], { part: 'la zai', shadow: false, bias: 3 }));
+      out.push(group([line(sag([-1.8, y + 9.5, 5.2], hand, work ? .15 : .9), { col: THREAD, w: .35, ink: false })], { part: 'la zai', shadow: false, bias: 3 }));
       if (k < 1) out.push(group([line([hand, [hand[0] - 2.5, hand[1] + .5, hand[2] + .4]], { col: '#fbf8f0', w: 1.6 })], { part: 'lachawn', shadow: false, bias: 4 }));
     }
     return { out, hands: [hand, crank] };
@@ -2060,7 +2100,7 @@ const LA = (() => {
     }
     // The cone from the spindle, getting smaller as it unwinds
     const cone = [-8, y + 6, 1.2];
-    if (s.done[2] && k < .6) out.push(group([ball(cone, 1.6 * (1 - .6 * wind) + .3, { pal: COTTON }), line([cone, [-3, y + (Math.sin(s.t * 5) > 0 ? 4.5 : -4.5), 9]], { col: THREAD, w: .3, ink: false })], { part: 'la zai' }));
+    if (s.done[2] && k < .6) out.push(group([ball(cone, 1.6 * (1 - .6 * wind) + .3, { pal: COTTON }), line(sag(cone, [-3, y + (Math.sin(s.t * 5) > 0 ? 4.5 : -4.5), 9], .5), { col: THREAD, w: .3, ink: false })], { part: 'la zai' }));
     // The pot of rice water on its stones; the skein soaks in it
     const stone = shade('#8f8a80');
     out.push(group([ball([POT[0] - 2.4, POT[1] - 2.4, .8], 1.2, { pal: stone }), ball([POT[0] + 2.4, POT[1] - 2.2, .8], 1.2, { pal: stone }), ball([POT[0], POT[1] + 3, .8], 1.2, { pal: stone }),
@@ -2085,7 +2125,7 @@ const LA = (() => {
     const bh = work ? [-7.5 + Math.cos(s.t * 6) * .8, y + 5, 9 + Math.sin(s.t * 6) * .8] : k >= 1 ? [-6, y + 6, 1.6] : [-7.5, y + 5, 9];
     if (k > 0) {
       out.push(group([ball(bh, .5 + 1.2 * k, { pal: COTTON })], { part: 'la zai', bias: 4 }));
-      if (k < 1) out.push(line([bh, [C[0] - r, C[1] + 1, 10.5]], { col: THREAD, w: .3, ink: false, part: 'la zai' }));
+      if (k < 1) out.push(line(sag(bh, [C[0] - r, C[1] + 1, 10.5], work ? .1 : .7), { col: THREAD, w: .3, ink: false, part: 'la zai' }));
     }
     return { out, hands: [[bh[0] - .5, bh[1] - 1, bh[2]], [bh[0] - .5, bh[1] + 1, bh[2]]] };
   }
@@ -2104,7 +2144,7 @@ const LA = (() => {
     if (warp.length) out.push(group(warp, { part: 'sutpui', bias: 2, shadow: false }));
     // She walks the thread from end to end: where is she now?
     const u = work ? .5 - .5 * Math.cos(s.t * 1.6) : 0, x = -12 + 26 * u;
-    if (work) out.push(line([[x + 1.5, y + 4, 7], [Math.sin(s.t * 1.6) > 0 ? LZ[3] : LZ[0], y, 3 + n * .38]], { col: THREAD, w: .3, ink: false, part: 'la zai' }));
+    if (work) out.push(line(sag([x + 1.5, y + 4, 7], [Math.sin(s.t * 1.6) > 0 ? LZ[3] : LZ[0], y, 3 + n * .38], .6), { col: THREAD, w: .3, ink: false, part: 'la zai' }));
     return { out, walkX: x, back: work && Math.sin(s.t * 1.6) < 0, hands: [[x + 1.5, y + 3.6, 7], [x + 1.5, y + 4.4, 7]] };
   }
   const STATIONS = [herawt, lasai, hmui, ladawhkilh, suvel, lazarna];
@@ -2146,7 +2186,8 @@ const LA = (() => {
   }
   // The six steps along the top: done, now, to come. The names sit on two lines, turn about.
   function over(s) {
-    let o = '<g pointer-events="none" font-family="Plus Jakarta Sans, sans-serif" font-weight="800" text-anchor="middle">';
+    let o = '<g pointer-events="none" font-family="Plus Jakarta Sans, sans-serif" font-weight="800" text-anchor="middle">' +
+      '<rect x="-66" y="-91.5" width="132" height="32" rx="9" fill="#fffdf6" opacity=".82"/>';
     STEPS.forEach((st, i) => {
       const x = -55 + i * 22, done = s.done[i], now = i === s.step;
       if (i < LAST) o += `<path d="M${x + 7} -82H${x + 15}" stroke="#231e16" stroke-width=".7" stroke-dasharray="1.5 1.5"/>`;
@@ -2177,6 +2218,13 @@ const LA = (() => {
     return a;
   }
 
+  // The camera follows nu while she works or walks, and steps back when she waits or is done
+  function focus(s) {
+    if (!(s.working || s.auto || Math.abs(s.pos - s.step) > .02)) return null;
+    const y = Y[0] + (Y[LAST] - Y[0]) * s.pos / LAST;
+    return { p: [s.pos > LAST - .5 ? 4 : -3, y, 15], zoom: 1.75 };
+  }
+
   function tap(s, part) {
     // Tapping the tool nu is at sets it to work.
     if (STEPS[s.step].parts.includes(part)) { startWork(s); return null; }
@@ -2188,7 +2236,7 @@ const LA = (() => {
     id: 'la', name: 'La siam', sub: 'making thread from cotton',
     view: { yaw: 58, pitch: 30, box: '-84 -92 168 136', centre: [0, -30], ink: .7 },
     words: ['la', 'lapua', 'la mu', 'herawt', 'herawt ban', 'lasai', 'lasai thal', 'lachawn', 'hmui', 'hmuithlur', 'la zai', 'ladawhkilh', 'lamuai', 'buhhawp tui', 'suvel', 'lazarna', 'sutpui', 'nu', 'mau', 'chhuat'],
-    init, step, tint, scene, sky, over, anchors, tap, labelGroups: LABEL_GROUPS,
+    init, step, tint, scene, sky, over, anchors, tap, focus, labelGroups: LABEL_GROUPS,
     swatches: null,
     actions: [
       { label: s => (s.working ? STEPS[s.step].label + '…' : s.done[s.step] ? 'Done' : STEPS[s.step].label), word: s => STEPS[s.step].tool,
@@ -2241,7 +2289,7 @@ const LA = (() => {
     for (const a of visibleAnchors(cam)) {
       if (seen.has(a.part) || (only && a.g && a.g !== only)) continue;
       seen.add(a.part);
-      const s = a.s || cam.P(a.p);
+      const s = view(a.s || cam.P(a.p));
       const m = a.part, w = m.length * 8.6 * k + pad * 2, h = lh + pad;
       const dx = s[0] - fig.view.centre[0], dy = s[1] - fig.view.centre[1], l = Math.hypot(dx, dy) || 1;
       tags.push({ m, s, w, h, x: s[0] + dx / l * 30 * k - w / 2, y: s[1] + dy / l * 30 * k - h / 2 });
@@ -2265,21 +2313,42 @@ const LA = (() => {
         `<text x="${t.x + t.w / 2}" y="${t.y + pad / 2 + lh * 0.78}" text-anchor="middle" font-size="${fs}" font-weight="800" fill="#1565c0" font-family="Plus Jakarta Sans, system-ui, sans-serif">${t.m}</text></g>`;
     }).join('') + '</g>';
   }
-  function draw() {
+  // ---------- the camera follows the work ----------
+  // A thing may name a point to look at closely (fig.focus → { p, zoom }); the camera glides there
+  // and back out. Only the scene moves: the sky, the step dots and the labels' boxes stay put.
+  const cv = { z: 1, x: 0, y: 0 };
+  function aim(cam, dt) {
+    const f = !labels && fig.focus ? fig.focus(st) : null, c = fig.view.centre;
+    let z = 1, x = c[0], y = c[1];
+    if (f) { const q = cam.P(f.p); z = f.zoom; x = q[0]; y = q[1]; }
+    const k = reduce ? 1 : 1 - Math.exp(-dt * 2.6);
+    cv.z += (z - cv.z) * k; cv.x += (x - cv.x) * k; cv.y += (y - cv.y) * k;
+  }
+  // Scene point → picture point, under the camera's zoom
+  const view = q => { const c = fig.view.centre; return [c[0] + (q[0] - cv.x) * cv.z, c[1] + (q[1] - cv.y) * cv.z]; };
+  const zoomed = () => Math.abs(cv.z - 1) > 0.004 || Math.abs(cv.x - fig.view.centre[0]) > 0.05 || Math.abs(cv.y - fig.view.centre[1]) > 0.05;
+  function draw(dt = 1) {
     const cam = Ink3D.camera(yaw, fig.view.pitch);
+    aim(cam, dt);
     const body = Ink3D.render(fig.scene(st, cam), cam, { tint: fig.tint(st), hl, ink: fig.view.ink || 1, wobble: pen ? 0.45 * (fig.view.ink || 1) : 0, light: fig.light && fig.light(st) });
-    svg.innerHTML = fig.sky(st) + body + fig.over(st) + (labels ? labelLayer(cam) : '');
+    const c = fig.view.centre, g = zoomed() ? `<g transform="translate(${(c[0] - cv.x * cv.z).toFixed(2)} ${(c[1] - cv.y * cv.z).toFixed(2)}) scale(${cv.z.toFixed(4)})">` : '<g>';
+    svg.innerHTML = fig.sky(st) + g + body + '</g>' + fig.over(st) + (labels ? labelLayer(cam) : '');
   }
 
-  // ---------- the loop: about 20 frames a second, faster while you drag ----------
-  let last = performance.now(), lastDraw = 0, drag = null;
+  // ---------- the loop: 30 frames a second, fewer on a slow phone, every frame while you drag ----------
+  let last = performance.now(), lastDraw = 0, drag = null, cost = 8;
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     if (spin && !drag) yaw = (yaw + dt * 18) % 360;
     fig.step(st, reduce ? dt * 0.4 : dt);
     if (hl && now > hlUntil) hl = null;
-    // 20 pictures a second is smooth enough for the walking hen and the clouds; every frame while you turn it.
-    if (drag || now - lastDraw > 48) { draw(); lastDraw = now; }
+    // A drawing that takes long (an older phone) gets more time between pictures, so it never stutters.
+    const gap = cost > 16 ? 48 : cost > 10 ? 40 : 32;
+    if (drag || now - lastDraw > gap) {
+      const t0 = performance.now();
+      draw(Math.min(0.1, (now - lastDraw) / 1000)); lastDraw = now;
+      cost = cost * 0.9 + (performance.now() - t0) * 0.1;
+    }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -2423,6 +2492,7 @@ const LA = (() => {
     $('fname').textContent = f.name;
     $('fsub').textContent = `· ${f.sub}`;
     yaw = f.view.yaw; spin = false; toggle('t-turn', false); hl = null;
+    cv.z = 1; [cv.x, cv.y] = f.view.centre;
     stopFind(); showLabels(0);
     wordEl.className = 'word idle'; wordEl.innerHTML = '<b>Tap anything</b><span>to see its Mizo name</span>';
     $('acts').dataset.html = ''; drawActs(); drawSwatches();
