@@ -29,6 +29,11 @@ Learn Mizo words by playing. Free, on any phone, no sign-up.
   her loom, with every tool named, and the five famous Mizo puans to learn
   about and weave. And Bazar dâwr: Rova shops at a market stall from a list
   in Mizo numbers.
+- **Aizawl Ride.** Ride a scooter along real Aizawl roads to deliver a parcel:
+  from Millennium Centre to Civil Hospital, or down past Vanapa Hall and the
+  Assembly House to Chawnga Road. The bends, hills, hillsides and houses come
+  from OpenStreetMap and Copernicus elevation data. Mizo words come up for what
+  you ride past.
 - **The Hnahsin app.** A preview of the app in your browser. The app is
   coming to Android and iPhone.
 

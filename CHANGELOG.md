@@ -4,6 +4,25 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.12.0 (26 October 2026)
+
+### Aizawl Ride
+
+- New game: **Aizawl Ride**. Deliver a parcel by scooter along real Aizawl
+  roads, from Millennium Centre to Civil Hospital (1.4 km) or to Chawnga Road
+  (3.1 km). Steer between the lanes, dodge rocks, logs and roadblocks, and
+  pick up coins.
+- The road's bends and hills, the hillsides beside it and the houses along it
+  come from real map data (OpenStreetMap and Copernicus elevation), prepared
+  in the Zoram Delivery project. Roadside signs show real places such as
+  Solomon's Cave, Vanapa Hall and the Head Post Office.
+- The parcel has a Mizo name (alu, artui, purun…), and Mizo words come up as
+  you ride: tlang, ruam, romei, mau and tlai.
+- The light turns golden towards the end of the ride, and part of the road
+  runs through morning haze.
+- Works on a phone screen without scrolling, in light and dark mode, and
+  stays smooth on slower phones.
+
 ## 1.11.0 (26 October 2026)
 
 ### La siam, the famous puans, and smoother Touch and learn

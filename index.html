@@ -115,6 +115,10 @@
 
   /* Cover: Touch and learn, a still of the Mizo house */
   .cover.things { background: #cfe8f6; }
+  /* Aizawl Ride cover: a still from the ride, with a slow pan along the road */
+  .cover.ride { background: #a9d8f5 url(pics/ride.jpg) center 62% / cover no-repeat; }
+  .cover.ride .q { position: absolute; left: 12px; top: 12px; padding: 5px 11px; border-radius: 99px; background: #1d6b34; color: #fff; font-weight: 800; font-size: 14px; border: 2px solid #fff; }
+  @media (prefers-reduced-motion: no-preference) { .card.game:hover .cover.ride { background-position: center 66%; transition: background-position 2s ease; } }
   /* The card shows the house, then the loom, and back: each picture fades in over the other. */
   .cover.things .scene { position: absolute; inset: 0; background: center / cover no-repeat; transition: opacity .9s ease, transform 6s ease-out; }
   .cover.things .scene.house { background-image: url(pics/things-house.svg); }
@@ -484,9 +488,19 @@
       <a class="card game wide" href="things.html">
         <div class="cover things" aria-hidden="true"><span class="scene house"></span><span class="scene loom"></span><span class="scene bazar"></span><span class="which"><span class="on">🏠 In</span><span>🧶 Puan tah</span><span>🛒 Bazar</span></span><span class="pin" hidden></span><span class="q">tukverh · window</span></div>
         <div class="body">
-          <div class="tags"><span class="pill">🆕 New</span><span class="pill">👆 Tap and turn</span><span class="pill">🏠 A Mizo house</span><span class="pill">🧶 A loom</span><span class="pill">🛒 A market stall</span></div>
+          <div class="tags"><span class="pill">👆 Tap and turn</span><span class="pill">🏠 A Mizo house</span><span class="pill">🧶 A loom</span><span class="pill">🛒 A market stall</span></div>
           <h3>Touch and learn</h3>
-          <p>A Mizo house on stilts, pi weaving a puan on her loom, and a stall at the bazar where Rova goes shopping. Tap anything to learn its Mizo name.</p>
+          <p>A Mizo house on stilts, nu making thread from cotton, pi weaving the famous Mizo puans on her loom, and a stall at the bazar where Rova goes shopping. Tap anything to learn its Mizo name.</p>
+          <span class="btn play">Play</span>
+        </div>
+      </a>
+
+      <a class="card game wide" href="ride.html">
+        <div class="cover ride" aria-hidden="true"><span class="q">tlang · hill</span></div>
+        <div class="body">
+          <div class="tags"><span class="pill">🆕 New</span><span class="pill">🛵 A scooter ride</span><span class="pill">🗺️ Real Aizawl roads</span></div>
+          <h3>Aizawl Ride</h3>
+          <p>Deliver a parcel along real Aizawl roads, with their true bends, hills and houses. Dodge the roadblocks, pick up coins, and learn the Mizo words for what you ride past.</p>
           <span class="btn play">Play</span>
         </div>
       </a>
@@ -536,7 +550,7 @@
   <p class="foot-note">📖 Dictionary words from J.F. Laldailova's English–Lushai Dictionary.</p>
   <p class="foot-note">🔒 We count which games are played, without cookies or anything that tells who you are.</p>
   <p class="dev">Developed by <b>Maloma Thado</b></p>
-  <p class="ver">Version 1.11.0 · <a href="https://github.com/thadomaloma/hnahsin-play/releases">What's new</a> · <a href="https://github.com/thadomaloma/hnahsin-play/issues/new/choose">Tell us about a mistake</a></p>
+  <p class="ver">Version 1.12.0 · <a href="https://github.com/thadomaloma/hnahsin-play/releases">What's new</a> · <a href="https://github.com/thadomaloma/hnahsin-play/issues/new/choose">Tell us about a mistake</a></p>
 </footer>
 
 <div class="sheet" id="ios-sheet" hidden>
