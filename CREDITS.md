@@ -27,6 +27,10 @@ Hnahsin Games is developed by Maloma Thado.
 - Elevation: Copernicus WorldDEM-30 © DLR e.V. 2010–2014 and © Airbus Defence
   and Space GmbH 2014–2018, provided under COPERNICUS by the European Union
   and ESA.
+- Where houses stand on the Aizawl map, and how tall they are: Google Open
+  Buildings 2.5D Temporal (CC BY 4.0 / ODbL).
+- The veng are placed at their main church or another named landmark in
+  OpenStreetMap.
 - The routes were prepared and checked in the developer's Zoram Delivery
   project.
 
