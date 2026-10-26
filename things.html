@@ -64,6 +64,7 @@
   .word span { font-size: 16px; font-weight: 600; color: var(--muted); }
   .word .also { font-size: 15px; font-weight: 700; color: var(--leaf); }
   .word.idle b { color: var(--ink); font-size: 20px; }
+  .word .what { flex-basis: 100%; font-size: 14px; font-weight: 600; color: var(--muted); line-height: 1.35; }
   .word.pop b { animation: pop .35s cubic-bezier(.2, .8, .2, 1.4); }
   .word.good { background: #e3f4dd; }
   .word.bad { animation: shake .35s; }
@@ -1087,6 +1088,7 @@ const LOOM = (() => {
 
   const FLOOR = { l: '#dcb07c', m: '#bf9160', d: '#5e4127' }, PLANK = '#9a6e43';
   const WALL = { l: '#f1d9a0', m: '#d9b978', d: '#86683a' }, WALL_LINE = '#b08a4f';
+  const BAMBOO = { l: '#d9e08a', m: '#b3ba62', d: '#5a5d2a' };
   const WOOD = { l: '#c98d55', m: '#a46c3c', d: '#55361d' }, DARK = { l: '#8a5a36', m: '#6b4429', d: '#33200f' };
   const CANE = { l: '#e8c584', m: '#c9a05a', d: '#6b5126' }, CAT = { l: '#d8d2c9', m: '#aaa197', d: '#4d4640' };
   const WARP = '#efe3c8', ROPE = '#b98a4e', STRAP = '#7a4a2a';
@@ -1242,8 +1244,10 @@ const LOOM = (() => {
   // ---------- the loom ----------
   function loom(s) {
     const M = moment(s), kids = [], pz = plane;
-    // The far beam, tied with rope to the post
-    kids.push(box(FAR_X - 1.2, FAR_X + 1.2, -10, 10, pz(FAR_X) - 1.2, pz(FAR_X) + 1, { pal: WOOD, bias: 50 }));
+    // The warp beam (themtlang) at the far end, tied with rope to the post
+    kids.push(box(FAR_X - 2.2, FAR_X + 2.2, -12, 12, pz(FAR_X) - 2.4, pz(FAR_X) + 1.4, { pal: WOOD, part: 'themtlang', bias: 120 }));   // a big bar, easy to tap
+    // The lease rods (kaihbu): two thin split bamboos through the warp near the warp beam
+    kids.push(group([34.5, 38].map((x, i) => box(x - .35, x + .35, -9.5, 9.5, pz(x) + (i ? -.5 : .15), pz(x) + (i ? -.05 : .6), { pal: BAMBOO })), { part: 'kaihbu', bias: 160 }));
     kids.push(group([
       line([[FAR_X + 0.6, -10, pz(FAR_X)], [50, -2.2, 17]], { col: ROPE, w: 0.8 }),
       line([[FAR_X + 0.6, 10, pz(FAR_X)], [50, 2.2, 17]], { col: ROPE, w: 0.8 }),
@@ -1255,12 +1259,23 @@ const LOOM = (() => {
       const y = -WY + i, up = (i % 2 === 0 ? Math.max(0, s.shedV) : Math.max(0, -s.shedV)) * 2.6 - 0.4;
       kids.push(line([[M.fell, y, pz(M.fell) + 0.05], [HEDDLE_X, y, pz(HEDDLE_X) + up], [STICK_X, y, pz(STICK_X) + (i % 2 ? 0.7 : -0.3)], [FAR_X, y, pz(FAR_X)]],
         { col: WARP, w: 0.55, ink: i === 0 || i === WY * 2, bias: 100, part: 'puan' }));
-      if (up > 0.6) kids.push(line([[HEDDLE_X, y, rodZ], [HEDDLE_X, y, pz(HEDDLE_X) + up]], { col: '#7a6a55', w: 0.3, ink: false, bias: 250 }));
+      if (up > 0.6) kids.push(line([[HEDDLE_X, y, rodZ], [HEDDLE_X, y, pz(HEDDLE_X) + up]], { col: '#7a6a55', w: 0.3, ink: false, bias: 250, part: 'hnahchawi' }));
     }
-    kids.push(box(HEDDLE_X - 0.6, HEDDLE_X + 0.6, -10, 10, rodZ, rodZ + 1.1, { pal: WOOD, bias: 300 }));
-    kids.push(box(STICK_X - 1.2, STICK_X + 1.2, -10, 10, pz(STICK_X) + 0.1, pz(STICK_X) + 0.9, { pal: WOOD, bias: 200 }));
-    // The breast beam, with the woven cloth rolled round it
-    kids.push(box(BEAM_X - 1.2, BEAM_X + 1.2, -10, 10, pz(BEAM_X) - 2, pz(BEAM_X), { pal: WOOD, bias: 350 }));
+    // The heddle rod (hnahchawi): its loops lift every other warp thread
+    kids.push(box(HEDDLE_X - 0.5, HEDDLE_X + 0.5, -10.5, 10.5, rodZ, rodZ + 1, { pal: WOOD, part: 'hnahchawi', bias: 300 }));
+    // The shed stick (thembupui): a wide flat bamboo bar through the warp
+    kids.push(box(STICK_X - 1.8, STICK_X + 1.8, -10.5, 10.5, pz(STICK_X) + 0.1, pz(STICK_X) + 0.8, { pal: BAMBOO, part: 'thembupui', bias: 200,
+      decals: { zp: [{ pts: [[STICK_X - 1.8, -10.5, pz(STICK_X) + 0.85], [STICK_X + 1.8, -10.5, pz(STICK_X) + 0.85]], stroke: BAMBOO.d, open: true, w: .3 }, { pts: [[STICK_X - 1.8, 0, pz(STICK_X) + 0.85], [STICK_X + 1.8, 0, pz(STICK_X) + 0.85]], stroke: BAMBOO.d, open: true, w: .3 }] } }));
+    // Pattern rods (themte): thin rods past the heddle, raised for the puan's design
+    if (s.pattern) kids.push(group([10, 13, 16, 19].map(x => box(x - .3, x + .3, -9.5, 9.5, pz(x) + .9, pz(x) + 1.4, { pal: WOOD })), { part: 'themte', bias: 240 }));
+    // The reed (tuirek): a comb that keeps the warp threads evenly spaced
+    const RX = -4, teeth = [];
+    for (let y = -WY - .5; y <= WY + .5; y += 1) teeth.push({ pts: [[RX + .5, y, pz(RX) - 1.2], [RX + .5, y, pz(RX) + 1.6]], stroke: CANE.d, open: true, w: .3 });
+    kids.push(box(RX - .5, RX + .5, -10, 10, pz(RX) + 1.6, pz(RX) + 2.4, { pal: CANE, part: 'tuirek', bias: 260 }));
+    kids.push(box(RX - .5, RX + .5, -10, 10, pz(RX) - 2, pz(RX) - 1.2, { pal: CANE, part: 'tuirek', bias: 90 }));
+    kids.push(group(teeth.map(t => line(t.pts, { col: CANE.d, w: .35, ink: false })), { part: 'tuirek', bias: 255 }));
+    // The breast beam (themkhawl), with the woven cloth rolled round it
+    kids.push(box(BEAM_X - 1.2, BEAM_X + 1.2, -10.5, 10.5, pz(BEAM_X) - 2, pz(BEAM_X), { pal: WOOD, part: 'themkhawl', bias: 350 }));
     const rolled = s.finish >= 0 ? 0 : Math.max(0, s.rows.length - SHOW);
     if (rolled) {
       const R = 0.8 + Math.min(2.6, rolled * 0.06), c = s.rows[rolled - 1].c, z = pz(BEAM_X) - 1;
@@ -1286,14 +1301,17 @@ const LOOM = (() => {
         kids.push(poly([[xm - hx, y, z], [xm, y + hw, z], [xm + hx, y, z], [xm, y - hw, z]], { fill: YARNS[contrast(r.c)], w: 0.25, part: 'ziarâng', bias: 450 }));
       }
     });
-    // The beating stick (vuakfung) sits in the shed and packs each row in
-    kids.push(box(M.bx, M.bx + 2.2, -10.5, 10.5, pz(M.bx) + 0.2, pz(M.bx) + 1.2, { pal: WOOD, part: 'vuakfung', bias: 500 }));
-    // The shuttle (khawhthei) with the yarn wound on it, and the yarn it lays as it crosses
+    // The beater (thempui): a long flat weaving sword, pointed at both ends, that packs each row in
+    const bz0 = pz(M.bx) + 0.2;
+    kids.push(box(M.bx, M.bx + 2.4, -12, 12, bz0, bz0 + .9, { pal: DARK, part: 'thempui', bias: 500,
+      decals: { zp: [{ pts: [[M.bx + 1.2, -12, bz0 + .95], [M.bx + 1.2, 12, bz0 + .95]], stroke: DARK.l, open: true, w: .3 }] } }));
+    kids.push(group([-1, 1].map(e => poly([[M.bx, e * 12, bz0 + .9], [M.bx + 2.4, e * 12, bz0 + .9], [M.bx + 1.2, e * 14, bz0 + .5]], { fill: DARK.m, w: .5 })), { part: 'thempui', bias: 501 }));
+    // The shuttle (khawhtlang) with the yarn wound on it, and the yarn it lays as it crosses
     const sx = M.fell + 2.4, sz = pz(sx) + 1.4;
     kids.push(group([
       box(sx - 0.6, sx + 0.6, M.sy - 5, M.sy + 5, sz, sz + 0.9, { pal: WOOD }),
       box(sx - 0.85, sx + 0.85, M.sy - 2.4, M.sy + 2.4, sz - 0.25, sz + 1.15, { pal: shade(YARNS[s.yarn]) }),
-    ], { part: 'khawhthei', bias: 600 }));
+    ], { part: 'khawhtlang', bias: 600 }));
     if (M.crossing) kids.push(line([[M.fell + 0.3, -s.side * (WY + 0.4), pz(M.fell) + 0.1], [sx, M.sy, sz + 0.4]], { col: YARNS[s.yarn], w: 0.45, ink: false, bias: 550 }));
     // The finished puan, folded, flies to the chest
     if (s.finish >= 0 && s.piece) {
@@ -1321,9 +1339,9 @@ const LOOM = (() => {
     if (s.finish >= 0) hands = [[-26, -6, 14], [-26, 6, 14]];
     const kids = person(hipAt, 0, { ...PI, pose: 'sit', lean, hands, t: s.t });
     const arms = kids.splice(-4);   // drawn after the loom, so her hands are on the cloth
-    // The belt (kâwnghrên) round her back holds the warp tight
-    const strapBack = line([[-33, -8.6, 7.6], [-37.5, -6, 7], [-40.2, 0, 7], [-37.5, 6, 7], [-33, 8.6, 7.6]], { col: STRAP, w: 2.2, bias: -50 });
-    const strapSides = [-1, 1].map(e => line([[BEAM_X, e * 10, pz(BEAM_X) - 1], [-33, e * 8.6, 7.6]], { col: STRAP, w: 2, bias: 50 }));
+    // The backstrap (kawngvawn) round her back, tied to the breast beam, holds the warp tight
+    const strapBack = line([[-33, -8.6, 7.6], [-37.5, -6, 7], [-40.2, 0, 7], [-37.5, 6, 7], [-33, 8.6, 7.6]], { col: STRAP, w: 2.4, bias: -50, part: 'kawngvawn' });
+    const strapSides = [-1, 1].map(e => line([[BEAM_X, e * 10, pz(BEAM_X) - 1], [-33, e * 8.6, 7.6]], { col: STRAP, w: 2.2, bias: 50, part: 'kawngvawn' }));
     return [group([strapBack, ...kids, ...strapSides], { part: 'pi', at: [-34, 0, 8] }), group(arms, { part: 'pi', bias: 1000, shadow: false })];
   }
 
@@ -1349,17 +1367,25 @@ const LOOM = (() => {
   const over = () => '';
 
   // ---------- labels ----------
-  const LABEL_GROUPS = ['Loom', 'Room', 'Colours'];
+  const LABEL_GROUPS = ['Loom', 'Weaving', 'Room', 'Colours'];
   function anchors(s, cam) {
     const M = moment(s), a = [], pz = plane;
     const L = (part, p, n) => a.push({ part, p, n, g: 'Loom' }), R = (part, p, n) => a.push({ part, p, n, g: 'Room' });
     if (M.vis.length) L('puan', [M.fell - 3, 0, pz(M.fell) + 0.3], [0, 0, 1]);
     if (M.vis.some(r => r.m)) L('ziarâng', [M.fell - 1.5, 4.5, pz(M.fell) + 0.3], [0, 0, 1]);
-    L('khawhthei', [M.fell + 2.4, M.sy, pz(M.fell) + 2.6]);
-    L('vuakfung', [M.bx + 1, -10, pz(M.bx) + 1.4]);
+    const W = (part, p, n) => a.push({ part, p, n, g: 'Weaving' });
+    W('khawhtlang', [M.fell + 2.4, M.sy, pz(M.fell) + 2.6]);
+    W('thempui', [M.bx + 1, -12, pz(M.bx) + 1.2]);
+    W('themkhawl', [BEAM_X, 10.5, pz(BEAM_X) - 1]);
+    W('kawngvawn', [-40, 0, 7.5]);
+    W('pi', [-33, 0, 24]);
+    L('tuirek', [-4, 10, pz(-4) + 2.4]);
+    L('hnahchawi', [HEDDLE_X, -10.5, pz(HEDDLE_X) + 5.6]);
+    if (s.pattern) L('themte', [16, 9.5, pz(16) + 1.4]);
+    L('thembupui', [STICK_X, 10.5, pz(STICK_X) + 0.8]);
+    L('kaihbu', [36, -9.5, pz(36) + .5]);
+    L('themtlang', [FAR_X, 10.5, pz(FAR_X) + 1.2]);
     L('hrui', [48, 6.5, 16.5]);
-    L('kâwnghrên', [-40, 0, 7.5]);
-    L('pi', [-33, 0, 24]);
     for (const w of WALLS) if (backWall(cam, w)) R('bang', w.key === 'xn' ? [-49, 24, 34] : w.key === 'yn' ? [50, -31, 34] : w.key === 'xp' ? [61, 0, 34] : [0, 31, 34], w.n);
     if (backWall(cam, WALLS[2])) { R('tukverh', [22, -31, 30], [0, 1, 0]); R('êng', [30, -16, 0]); }
     if (backWall(cam, WALLS[0])) R('puan chei', [-49, -6, 30], [1, 0, 0]);
@@ -1380,8 +1406,8 @@ const LOOM = (() => {
   return {
     id: 'loom', name: 'Puan tah', sub: 'weaving a Mizo puan',
     view: { yaw: 55, pitch: 30, box: '-70 -82 142 128', centre: [0, -12], ink: 0.62 },   // a closer view, so finer lines
-    words: ['puan', 'tah', 'puan chei', 'rawng', 'sen', 'dum', 'vâr', 'hring', 'dumpâwl', 'sendang', 'ziarâng', 'hrui', 'kâwnghrên',
-      'khawhthei', 'vuakfung', 'pi', 'ṭhu', 'chhuatphah', 'tukverh', 'bang', 'chhuat', 'fawng', 'thingrem', 'zawhte', 'muhil', 'êng', 'zo', 'mawi'],
+    words: ['puan', 'tah', 'puan chei', 'rawng', 'sen', 'dum', 'vâr', 'hring', 'dumpâwl', 'sendang', 'ziarâng', 'hrui', 'kawngvawn',
+      'themkhawl', 'thempui', 'thembupui', 'hnahchawi', 'themte', 'tuirek', 'khawhtlang', 'themtlang', 'kaihbu', 'pi', 'ṭhu', 'chhuatphah', 'tukverh', 'bang', 'chhuat', 'fawng', 'thingrem', 'zawhte', 'muhil', 'êng', 'zo', 'mawi'],
     init, step, tint, scene, sky, over, anchors, tap, labelGroups: LABEL_GROUPS,
     swatches: { label: 'Yarn colour', key: 'yarn', list: YARNS },
     actions: [
@@ -1781,7 +1807,8 @@ const BAZAR = (() => {
 </script>
 <script>
 (() => {
-  const WORDS = {"in": "house", "kawngkhar": "door", "tukverh": "window", "bang": "wall", "chhuat": "floor", "chungkhuh": "roof", "khawnvâr": "lamp", "zawhte": "cat", "arpui": "hen", "êm": "carrying basket", "kawng": "road", "pal": "fence", "thing": "tree", "mau": "bamboo", "pangpâr": "flower", "tlang": "hill", "ni": "sun", "thla": "moon", "arsi": "star", "chhum": "cloud", "ruah": "rain", "vân": "sky", "meikhu": "smoke", "mei": "fire", "hawng": "open", "khar": "close", "zân": "night", "zîng": "morning", "harh": "wake", "muhil": "sleep", "chhûngah": "inside", "choka": "kitchen", "bel": "pot", "khum": "bed", "puan": "cloth", "dawhkân": "table", "ṭhutthlêng": "chair", "chhuatphah": "mat", "arbawm": "chicken coop", "artui": "hen's egg", "vawk": "pig", "chhun": "daytime", "tlai": "evening", "thli": "wind", "chhimbâl": "rainbow", "nu": "mother", "pa": "father", "pi": "grandmother", "naupang": "child", "phiat": "to sweep", "hmunphiah": "broom", "su": "to wash clothes", "tui": "water", "kal": "go", "tlân": "run", "ṭhian": "friend", "tlawh": "to visit", "chibai": "hello", "infiam": "to play", "tah": "weave", "puan chei": "decorated cloth", "rawng": "colour", "sen": "red", "dum": "black", "vâr": "white", "hring": "green", "dumpâwl": "blue", "sendang": "pink", "ziarâng": "pattern", "hrui": "rope", "kâwnghrên": "belt", "khawhthei": "shuttle", "vuakfung": "beating stick", "ṭhu": "sit", "fawng": "basket", "thingrem": "wooden chest", "êng": "light", "zo": "finish", "mawi": "beautiful", "bazar": "market", "dâwr": "shop", "dâwrkai": "shopkeeper", "zuar": "sell", "pawisa": "money", "thei": "fruit", "thlai": "vegetable", "balhla": "banana", "serthlum": "orange (fruit)", "theihai": "mango", "alu": "potato", "purun": "onion", "hmarcha": "chilli pepper", "fanghma": "cucumber", "zikhlum": "cabbage", "mâi": "pumpkin", "bawkbawn": "eggplant", "sawhthing": "ginger", "kho": "basket", "sangha": "fish", "hnah": "leaf", "buhfai": "husked rice", "rit": "heavy", "zâng": "light in weight", "lawmthu": "thanks", "pakhat": "one", "pahnih": "two", "pathum": "three"};   // Mizo → English, from the Hnahsin content
+  const WORDS = {"in": "house", "kawngkhar": "door", "tukverh": "window", "bang": "wall", "chhuat": "floor", "chungkhuh": "roof", "khawnvâr": "lamp", "zawhte": "cat", "arpui": "hen", "êm": "carrying basket", "kawng": "road", "pal": "fence", "thing": "tree", "mau": "bamboo", "pangpâr": "flower", "tlang": "hill", "ni": "sun", "thla": "moon", "arsi": "star", "chhum": "cloud", "ruah": "rain", "vân": "sky", "meikhu": "smoke", "mei": "fire", "hawng": "open", "khar": "close", "zân": "night", "zîng": "morning", "harh": "wake", "muhil": "sleep", "chhûngah": "inside", "choka": "kitchen", "bel": "pot", "khum": "bed", "puan": "cloth", "dawhkân": "table", "ṭhutthlêng": "chair", "chhuatphah": "mat", "arbawm": "chicken coop", "artui": "hen's egg", "vawk": "pig", "chhun": "daytime", "tlai": "evening", "thli": "wind", "chhimbâl": "rainbow", "nu": "mother", "pa": "father", "pi": "grandmother", "naupang": "child", "phiat": "to sweep", "hmunphiah": "broom", "su": "to wash clothes", "tui": "water", "kal": "go", "tlân": "run", "ṭhian": "friend", "tlawh": "to visit", "chibai": "hello", "infiam": "to play", "tah": "weave", "puan chei": "decorated cloth", "rawng": "colour", "sen": "red", "dum": "black", "vâr": "white", "hring": "green", "dumpâwl": "blue", "sendang": "pink", "ziarâng": "pattern", "hrui": "rope", "kawngvawn": "backstrap", "themkhawl": "breast beam", "thempui": "beater (weaving sword)", "thembupui": "shed stick", "hnahchawi": "heddle rod", "themte": "pattern rods", "tuirek": "reed (spacer bar)", "khawhtlang": "shuttle", "themtlang": "warp beam", "kaihbu": "lease rods", "ṭhu": "sit", "fawng": "basket", "thingrem": "wooden chest", "êng": "light", "zo": "finish", "mawi": "beautiful", "bazar": "market", "dâwr": "shop", "dâwrkai": "shopkeeper", "zuar": "sell", "pawisa": "money", "thei": "fruit", "thlai": "vegetable", "balhla": "banana", "serthlum": "orange (fruit)", "theihai": "mango", "alu": "potato", "purun": "onion", "hmarcha": "chilli pepper", "fanghma": "cucumber", "zikhlum": "cabbage", "mâi": "pumpkin", "bawkbawn": "eggplant", "sawhthing": "ginger", "kho": "basket", "sangha": "fish", "hnah": "leaf", "buhfai": "husked rice", "rit": "heavy", "zâng": "light in weight", "lawmthu": "thanks", "pakhat": "one", "pahnih": "two", "pathum": "three"};   // Mizo → English, from the Hnahsin content
+  const NOTES = {"kawngvawn": "A strong strap of hide or cord round the weaver's back; leaning back pulls the warp tight.", "themkhawl": "The bar right in front of the weaver: the woven cloth rolls onto it, and the backstrap ties to it.", "thempui": "A long flat stick, thin and a little sharp, that beats each new row of weft tight.", "thembupui": "A wide flat bamboo bar that parts the upper and lower warp threads, opening the way for the shuttle.", "hnahchawi": "A thin straight rod tied with loops to every other warp thread; lifting it lifts them, so the threads cross.", "themte": "Thin rods added past the heddle to raise threads for the puan's design; four to seven for a fine pattern.", "tuirek": "A comb of bamboo or wood that keeps the warp threads evenly spaced.", "khawhtlang": "A slim stick with the weft wound on it, passed back and forth through the open shed.", "themtlang": "The big bar at the far end, tied to a wall or post, that holds every warp thread.", "kaihbu": "Two thin split bamboos near the warp beam that keep the warp threads from tangling."};   // what some things do (the loom's parts)
   // The things you can play with; #loom or #bazar in the address opens that one.
   const FIGS = [HOUSE, LOOM, BAZAR];
   let fig = FIGS.find(f => '#' + f.id === location.hash) || FIGS[0];
@@ -1801,7 +1828,7 @@ const BAZAR = (() => {
     const en = WORDS[m] || (fig.names && fig.names[m]) || '';
     const extra = [].concat(also || []).filter(w => WORDS[w]).map(w => `<span class="also">${w} · ${WORDS[w]}</span>`).join('');
     wordEl.className = 'word';
-    wordEl.innerHTML = `<b>${m}</b><span>${en}</span>${extra}`;
+    wordEl.innerHTML = `<b>${m}</b><span>${en}</span>${extra}${NOTES[m] ? `<small class="what">${NOTES[m]}</small>` : ''}`;
     void wordEl.offsetWidth;
     wordEl.classList.add('pop');
     if (cls) wordEl.classList.add(cls);
