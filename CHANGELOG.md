@@ -4,6 +4,20 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.17.0 (26 October 2026)
+
+### Aizawl Ride: people, zebra crossings and more lifelike vehicles
+
+- Footpaths in town, with people walking: students with school bags, women
+  in a puan, someone with an umbrella and more.
+- Zebra crossings, with a sign before them. Stop and let people cross to
+  earn zah (respect) and 5 coins; ride through and they hop back, and you
+  hear fimkhur (careful).
+- A new badge: Let people cross.
+- Cars, taxis, SUVs, buses and bikes are now drawn in detail, with shine on
+  the body, glass, mirrors, number plates, headlights and glowing brake
+  lights, and still run smoothly.
+
 ## 1.16.0 (26 October 2026)
 
 ### Aizawl Ride: a new HUD on the road
