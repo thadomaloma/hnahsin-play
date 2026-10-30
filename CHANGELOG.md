@@ -4,6 +4,17 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.21.2 (30 October 2026)
+
+### Aizawl Ride: fixes
+
+- No more houses, trees or poles standing in the road. Aizawl's roads loop
+  round the hills and come back past themselves, and something placed
+  beside one stretch could land on another (on the way to Chhinga Veng, for
+  one). Every road in the game is now checked, and nothing stands on any of
+  them.
+- Changing lanes is a little slower, about half a second, and still smooth.
+
 ## 1.21.1 (30 October 2026)
 
 ### Aizawl Ride: a smoother lane change

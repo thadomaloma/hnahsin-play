@@ -369,7 +369,7 @@
   const missionReady = m => !S.claimed.includes(m.id) && m.have() >= m.goal;
 
   // ---------- the world ----------
-  const LANE = 2.4, LANES = [-LANE, 0, LANE], LANE_T = 0.36;   // lane centres, metres from the road's middle; a lane change takes LANE_T s
+  const LANE = 2.4, LANES = [-LANE, 0, LANE], LANE_T = 0.5;   // lane centres, metres from the road's middle; a lane change takes LANE_T s
   const SEG = 4, VIEW = 50;                         // a segment per sample; how many are drawn ahead
   const PLAYER_Z = 3;                               // the scooter rides this far ahead of the camera
   const CURVE = 0.55, CURVE_MAX = 0.045, HILL = 0.8;  // real bends and hills, softened to fit the screen
@@ -1423,7 +1423,23 @@
         }
         ext[sd][k] = e;
       }
-      return { n, P, R, F, yaw, Y, ext, minY: Math.min(...Y) };
+      const grid = new Map();
+      for (let k = 0; k < n - 1; k++) { const key = Math.floor(P[k].x / 12) + ',' + Math.floor(P[k].z / 12); (grid.get(key) || grid.set(key, []).get(key)).push(k); }
+      return { n, P, R, F, yaw, Y, ext, grid, minY: Math.min(...Y) };
+    }
+    // Would a thing at (x, z), r metres round and from height y0 to y1, stand on the road anywhere along
+    // it? Aizawl's roads loop round the hills and come back past themselves, so a house beside one
+    // stretch can land on another; this keeps houses, trees and poles off every stretch (skipping
+    // the segments from kLo to kHi).
+    function onRoad(x, z, r, y0, y1, kLo = -1, kHi = -1) {
+      const { P, Y, grid } = W3, reach = HALF + 0.8 + r, R = Math.ceil((reach + 6) / 12), cx = Math.floor(x / 12), cz = Math.floor(z / 12);
+      for (let i = cx - R; i <= cx + R; i++) for (let j = cz - R; j <= cz + R; j++) for (const k of grid.get(i + ',' + j) || []) {
+        if (k >= kLo && k <= kHi) continue;
+        const a = P[k], b = P[k + 1], dx = b.x - a.x, dz = b.z - a.z, t = clamp(((x - a.x) * dx + (z - a.z) * dz) / (dx * dx + dz * dz || 1), 0, 1);
+        const qx = a.x + dx * t - x, qz = a.z + dz * t - z;
+        if (qx * qx + qz * qz < reach * reach) { const ry = Y[k] + (Y[k + 1] - Y[k]) * t; if (y1 > ry - 0.5 && y0 < ry + 4.5) return true; }
+      }
+      return false;
     }
     // A place on the road: at metres along, lat metres to the right; beyond either end it carries on straight
     function frame3(at, lat, out) {
@@ -1483,6 +1499,8 @@
         const sd = sideAt(k, -1) >= -2.5 ? -1 : sideAt(k, 1) >= -2.5 ? 1 : 0;
         if (!sd) return null;
         const lat = sd * (FOOT - 0.35);
+        const at = pt(k, lat, 0);
+        if (onRoad(at[0], at[2], 0.25, at[1], at[1] + 9)) { dropped++; return null; }
         return { sd, lat, ends: [-0.6, 0, 0.6].map(o => pt(k, lat + o, o ? 8.0 : 8.45)) };
       };
       const housesOn = (sd, k) => (sd > 0 ? route.housesR : route.housesL)[k] || 0, tallOn = (sd, k) => (route.tallL ? (sd > 0 ? route.tallR : route.tallL)[k] : 0) || 0;
@@ -1534,6 +1552,7 @@
             if (off + d / 2 > ext[sd][k]) continue;
             const gy = groundAt(k, sd, off), hh = tall ? Math.max(3, tall * (0.8 + rnd(k, j + 9) * 0.35)) : 3 + rnd(k, j + 7) * 5 + j * 2;
             const bot = gy - 1.5, top = Math.max(gy + hh, 2 + rnd(k, j + 2) * 3), p = pt(k, sd * off, 0);
+            if (onRoad(p[0], p[2], Math.hypot(w, d) / 2, Y[k] + bot, Y[k] + top)) { dropped++; continue; }
             H.push({ p: [p[0], Y[k] + bot, p[2]], yaw: yaw[k], s: [w, top - bot, d], c: HOUSE[(k + j) % HOUSE.length] });
             if (j === 0 && footpath(k)) {
               const face = off - w / 2, along = d * 0.7;
@@ -1556,7 +1575,9 @@
             const off = E + 2 + j * 9 + rnd(k, 50 + j) * 7;
             if (off > ext[sd][k] - 1) continue;
             const r = rnd(k, 60 + j), sc = 0.8 + rnd(k, j + 1) * 0.5, kind = g > 8 && r < 0.35 ? 'pine' : r < 0.45 ? 'bamboo' : r < 0.85 ? 'broad' : 'banana';
-            TW[kind].push({ p: pt(k, sd * off, groundAt(k, sd, off) - 0.2), yaw: rnd(k, j + 5) * 6.28, s: [sc, sc * (0.9 + rnd(k, j + 6) * 0.25), sc], c: TINT[(k + j) % TINT.length] });
+            const tp = pt(k, sd * off, groundAt(k, sd, off) - 0.2);
+            if (onRoad(tp[0], tp[2], 2.2 * sc, tp[1], tp[1] + 12)) { dropped++; continue; }
+            TW[kind].push({ p: tp, yaw: rnd(k, j + 5) * 6.28, s: [sc, sc * (0.9 + rnd(k, j + 6) * 0.25), sc], c: TINT[(k + j) % TINT.length] });
           }
         }
       }
@@ -1573,6 +1594,8 @@
       const pa = (at, lat, h) => { frame3(at, lat, f); return [f.x, f.y + h, f.z]; };
       for (let j = 0; j < 15; j++) {
         const a = k * SEG + dir * j * SEG, b = a + dir * SEG;
+        frame3(b, 0, f);
+        if (onRoad(f.x, f.z, 1.5, f.y - 3, f.y + 3, dir < 0 ? 0 : W3.n - 16, dir < 0 ? 15 : W3.n)) break;
         const q = (l0, l1, h0, h1, hex) => st.quad(pa(a, l0, h0), pa(a, l1, h1), pa(b, l1, h1), pa(b, l0, h0), hex);
         q(-HALF, HALF, 0, 0, j % 2 ? '#565957' : '#5b5e5c');
         for (const sd of [-1, 1]) {
@@ -1585,12 +1608,12 @@
       return grp;
     }
     const dispose = grp => grp.traverse(o => { if (o.geometry && !shared.has(o.geometry)) o.geometry.dispose(); if (o.isInstancedMesh) o.dispose(); });
-    let pieces = [], under = null;
+    let pieces = [], under = null, dropped = 0;
     function setRoute() {
       if (built === route.id) return;
       built = route.id;
       for (const g of pieces) { scene.remove(g); dispose(g); }
-      W3 = shape(); pieces = [];
+      W3 = shape(); pieces = []; dropped = 0;
       for (let k = 0; k < W3.n - 1; k += PIECE) pieces.push(piece(k, k + PIECE + 1));
       pieces.push(apron(0, -1), apron(W3.n - 1, 1));
       for (const g of pieces) scene.add(g);
@@ -2095,7 +2118,23 @@
       effects();
     }
     glc.addEventListener('webglcontextlost', e => { e.preventDefault(); R3 = null; glc.classList.remove('on'); draw(); });
-    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; } };
+    function audit() {
+      setRoute();
+      const m = new T.Matrix4(), p = new T.Vector3(), qq = new T.Quaternion(), k = new T.Vector3(), out = { houses: 0, trees: 0, poles: 0, dropped, bad: [] };
+      for (const g of pieces) g.traverse(o => {
+        if (!o.isInstancedMesh) return;
+        const kind = o.material === houseMat ? 'houses' : o.material === woodMat ? 'trees' : o.geometry === pole ? 'poles' : null;
+        if (!kind) return;
+        for (let i = 0; i < o.count; i++) {
+          o.getMatrixAt(i, m); m.decompose(p, qq, k); out[kind]++;
+          // the solid middle of it, on the road itself
+          const r = kind === 'houses' ? Math.min(k.x, k.z) * 0.4 : 0.2;
+          if (onRoad(p.x, p.z, r - 0.8, p.y, p.y + (kind === 'houses' ? k.y : 5))) out.bad.push([kind, Math.round(p.x), Math.round(p.z)]);
+        }
+      });
+      return out;
+    }
+    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit };
   }
 
   // ---------- the HUD ----------
@@ -2634,7 +2673,9 @@
 
   // For the automatic tests only (?test in the address): read the ride and steer.
   if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
-    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1) => { const c = newCar(kind, lane, s + ahead, 0, dir); c.cruise = 0; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o) };
+    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1) => { const c = newCar(kind, lane, s + ahead, 0, dir); c.cruise = 0; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o),
+    // every road in the game, built in turn: what stands on the road (nothing, we hope)
+    auditAll: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; const a = R3.audit(); out.push({ id: r.id, ...a }); } route = keep; R3.audit(); return out; } };
 
   syncSound(); syncWallet(); syncReady(); syncPause(); drawRoutes(); showParcel(); reset(); resize();
   // three.js is fetched once and kept on the phone; until then, and without WebGL, the picture is flat
