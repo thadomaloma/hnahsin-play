@@ -4,6 +4,15 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.21.5 (31 October 2026)
+
+### Aizawl Ride: people stay on the footpath
+
+- People walk only where a footpath is drawn: not where the road meets
+  another stretch of itself, where there is none. Someone walking along
+  turns back where the footpath ends.
+- Zebra crossings are only where there is a footpath on both sides.
+
 ## 1.21.4 (31 October 2026)
 
 ### Aizawl Ride: roads that meet properly

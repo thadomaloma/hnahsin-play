@@ -535,6 +535,8 @@
   // ---------- people: on the footpath, and crossing at zebra crossings ----------
   const FOOT = 6.15;                                   // the footpath runs from the kerb to here (m from the middle)
   const footpath = i => housesNear(i) > 2;            // in town, where the map has houses
+  // ...and in 3D, where the picture has one on that side (not where the road meets another stretch of itself)
+  const walkHere = (i, side) => !R3 || R3.walkable(Math.floor(i), side);
   const LOOKS = [
     { shirt: '#c0392b', lower: '#2c3e50', hair: '#1d1b22' },
     { shirt: '#f4f4f0', lower: '#1f3a68', hair: '#1d1b22', bag: '#2e6da4' },            // a student
@@ -549,7 +551,8 @@
     const out = [], spots = route.places.map(p => p[0] * SEG);
     for (let m = 400; m < route.length - 120; m += 560) spots.push(m);
     for (const m of spots.sort((a, b) => a - b)) {
-      if (m < 160 || m > route.length - 90 || !footpath(Math.floor(m / SEG)) || jams.some(j => Math.abs(j.at - m) < 110)) continue;
+      const ci = Math.floor(m / SEG);
+      if (m < 160 || m > route.length - 90 || !footpath(ci) || !walkHere(ci, -1) || !walkHere(ci, 1) || jams.some(j => Math.abs(j.at - m) < 110)) continue;
       if (!out.length || m - out[out.length - 1].at > 260) out.push({ at: m, state: 'far', minV: 99, miss: false });
     }
     return out.slice(0, 4);
@@ -561,7 +564,7 @@
       const i = Math.floor(far / SEG);
       if (far < route.length && footpath(i)) {
         const side = Math.random() < 0.5 ? -1 : 1;
-        if (sideAt(i, side) > -2.5) peds.push(newPed(far, side * (5.1 + Math.random() * 0.8), (Math.random() < 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.6), 0));
+        if (sideAt(i, side) > -2.5 && walkHere(i, side)) peds.push(newPed(far, side * (5.1 + Math.random() * 0.8), (Math.random() < 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.6), 0));
       }
       pedT = 0.6 + Math.random() * 1.2;
     }
@@ -589,6 +592,8 @@
       }
     }
     for (const p of peds) {
+      // a walker turns back where the footpath ends
+      if (!p.vx && p.va && !walkHere((p.at + p.va * 0.6) / SEG, Math.sign(p.x))) p.va = -p.va;
       p.at += p.va * dt;
       if (p.vx) {
         p.x += p.vx * dt;
@@ -2340,7 +2345,22 @@
       for (const c of crossings) sign(c.at - 32, -(footpath(Math.floor(c.at / SEG)) ? FOOT + 0.3 : 5.3));
       return out;
     }
-    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3 };
+    // For the tests: people sent along a footpath that is not there, crossings where there is no
+    // footpath or two passes meet, the camera off the road, the finish gate on another stretch
+    function audit4() {
+      setRoute();
+      const { n, P, F, Y } = W3, out = { walkGone: 0, crossBad: 0, camOff: 0, finishBad: 0 };
+      for (let i = 0; i < n - 1; i++) for (const sd of [-1, 1]) if (footpath(i) && sideAt(i, sd) > -2.5 && walkHere(i, sd) && (W3.bare[sd][i] || W3.gone[sd][i])) out.walkGone++;
+      for (const c of crossings) { const i = Math.floor(c.at / SEG); if ([-1, 1].some(sd => W3.bare[sd][i] || W3.gone[sd][i]) || W3.ride[i]) out.crossBad++; }
+      for (let k = 2; k < n; k += 2) {
+        const cx = P[k].x - F[k].x * 5.4, cz = P[k].z - F[k].z * 5.4, cy = Y[k] + W3.ride[k] + 2.3;
+        if (!onRoad(cx, cz, 0.6, cy - 6, cy)) out.camOff++;
+      }
+      for (const e of [-1, 1]) { const f = frame3(route.length, e * HALF * 1.2, {}); if (onRoad(f.x, f.z, -0.6, f.y, f.y + 4, n - 12, n)) out.finishBad++; }
+      return out;
+    }
+    const walkable = (i, sd) => { setRoute(); i = clamp(i, 0, W3.n - 1); return !W3.bare[sd][i] && !W3.gone[sd][i] && !W3.ride[i]; };
+    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, walkable };
   }
 
   // ---------- the HUD ----------
@@ -2879,10 +2899,11 @@
 
   // For the automatic tests only (?test in the address): read the ride and steer.
   if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
-    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1) => { const c = newCar(kind, lane, s + ahead, 0, dir); c.cruise = 0; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o),
+    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)) })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1) => { const c = newCar(kind, lane, s + ahead, 0, dir); c.cruise = 0; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o),
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
     auditAll: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; const a = R3.audit(); out.push({ id: r.id, ...a }); } route = keep; R3.audit(); return out; },
     audit3All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); R3.setPlan(); out.push({ id: r.id, ...R3.audit3() }); } route = keep; reset(); return out; },
+    audit4All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); out.push({ id: r.id, ...R3.audit4() }); } route = keep; reset(); return out; },
     audit2All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit2() }); } route = keep; R3.audit(); return out; } };
 
   syncSound(); syncWallet(); syncReady(); syncPause(); drawRoutes(); showParcel(); reset(); resize();
