@@ -4,6 +4,19 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.22.2 (31 October 2026)
+
+### Aizawl Ride: clean walls and a sharper picture
+
+- At the foot of a high wall beside the road there are no more green
+  peaks standing up in front of it.
+- Every house stands the same short way back from the footpath; before,
+  some stood well back and others came close.
+- A phone that was slow once (hot, or busy with something else) no longer
+  keeps the softer picture for good: on another day it tries the sharper
+  one again.
+- Checked on every road in the game.
+
 ## 1.22.1 (31 October 2026)
 
 ### Aizawl Ride: houses apart, a clear footpath

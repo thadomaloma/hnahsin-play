@@ -1136,11 +1136,14 @@
     const glc = $('gl');
     const HALF = 3.9, KERB = 4.6, PIECE = 50;
     // How sharp the picture is and how far you see. It steps down by itself when the phone is slow,
-    // and the phone remembers it. The best level also has smooth edges, sun shadows and shine
-    // on the paint and glass.
+    // and the phone remembers it, with the day; on a later day it tries one step better again (a phone
+    // that was hot or busy once is not kept at the lower level for good). The best level also has
+    // smooth edges, sun shadows and shine on the paint and glass.
     const LEVELS = [{ pr: 0.75, far: 220 }, { pr: 1, far: 300 }, { pr: 1.5, far: 380 }];
-    let level = parseInt(store.get('hn-ride-3d'), 10);
+    const today = new Date().toISOString().slice(0, 10), [lv, day] = (store.get('hn-ride-3d') || '').split(':');
+    let level = parseInt(lv, 10);
     if (!(level >= 0 && level <= 2)) level = 2;
+    else if (level < 2 && day !== today) level++;
     const renderer = new T.WebGLRenderer({ canvas: glc, antialias: level === 2, powerPreference: 'high-performance' });
     renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;   // colour like a film camera
     renderer.shadowMap.type = T.PCFShadowMap;
@@ -1614,8 +1617,8 @@
         for (let j = 0; j < 3; j++) {
           let h = null;
           if (rnd(k, 10 + j + sd * 7) <= dens * 1.15 && !(j === 2 && dens < 0.4)) {
-            const w = 3.6 + rnd(k, j * 3 + sd) * 2.2, d = 5 + rnd(k, j * 5 + sd) * 3, off = E + 1.6 + j * 7 + rnd(k, j + 4) * 1.2 + d / 2;
-            if (off + d / 2 <= ext[sd][k]) {
+            const w = 3.6 + rnd(k, j * 3 + sd) * 2.2, d = 5 + rnd(k, j * 5 + sd) * 3, off = E + 1.6 + j * 7 + rnd(k, j + 4) * 1.2 + w / 2;     // w across, d along the road
+            if (off + w / 2 <= ext[sd][k]) {
               const gy = groundAt(k, sd, off), hh = tall ? Math.max(3, tall * (0.8 + rnd(k, j + 9) * 0.35)) : 3 + rnd(k, j + 7) * 5 + j * 2;
               // its foot goes down to the lowest ground under it (across it, and along the road where it climbs):
               // on a slope an Aizawl house has a storey more on its downhill side, never a gap beneath
@@ -1842,13 +1845,23 @@
           const d = Math.hypot(A.x + dx * t - x, A.z + dz * t - z);
           if (d > 25) continue;
           const kk = t < 0.5 ? k : k + 1, side = (x - P[kk].x) * R[kk].x + (z - P[kk].z) * R[kk].z >= 0 ? 1 : -1;
-          const v = Y[k] + (Y[k + 1] - Y[k]) * t + (W3.ride ? W3.ride[k] : 0) + (d <= HALF ? 0 : groundAt(kk, side, d)) - 0.35;
+          const v = Y[k] + (Y[k + 1] - Y[k]) * t + (W3.ride ? W3.ride[k] : 0) + (d <= HALF ? 0 : groundAt(kk, side, d)) - 0.6;
           h = Math.min(h, v);
         }
         // beyond 25 m of every stretch: carry on from the nearest point already worked out
         if (h === Infinity) { for (const [a, b] of [[i - 1, j], [i, j - 1], [i - 1, j - 1], [i + 1, j - 1]]) if (a >= 0 && a < nx && b >= 0 && !Number.isNaN(H[b * nx + a])) { h = H[b * nx + a]; break; } }
         if (h < Infinity) H[j * nx + i] = h;
       }
+      // each point no higher than its neighbours: a cell from the road to the top of a cut bank would
+      // otherwise slope up across the road's edge, a green peak in front of the wall
+      const low = H.slice();
+      for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+        if (Number.isNaN(H[j * nx + i])) continue;
+        for (let b = Math.max(0, j - 1); b <= Math.min(nz - 1, j + 1); b++) for (let a = Math.max(0, i - 1); a <= Math.min(nx - 1, i + 1); a++) {
+          const v = H[b * nx + a]; if (v < low[j * nx + i]) low[j * nx + i] = v;
+        }
+      }
+      H.set(low);
       const pos = [], col = [], c = C('#5f9567');
       for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) {
         const q = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]].map(([a, b]) => [x0 + a * STEP, H[b * nx + a], z0 + b * STEP]);
@@ -2341,7 +2354,7 @@
       // A slow phone: a softer picture and a shorter view, remembered for next time
       if (mode === 'playing' && ms < 200) {
         perfMs += ms;
-        if (++perfN >= 120) { if (perfMs / perfN > 26 && level > 0) { level--; store.set('hn-ride-3d', String(level)); size(); } perfN = 0; perfMs = 0; }
+        if (++perfN >= 120) { if (perfMs / perfN > 26 && level > 0) { level--; store.set('hn-ride-3d', level + ':' + today); size(); } perfN = 0; perfMs = 0; }
       } else { perfN = 0; perfMs = 0; }
       const far = LEVELS[level].far;
       // The light: golden towards the end of the ride, and a stretch of morning haze (romei)
@@ -2518,6 +2531,18 @@
           if (!ray.intersectObjects(near, false).length) { out.holes++; if (out.at.length < 8) out.at.push([k, sd, L, W3.bare[sd][k] ? 'bare' : W3.gone[sd][k] ? 'gone' : 'short', +ext[sd][k].toFixed(1)]); }
         }
       }
+      // and the base ground showing above the hillside: a ray beside the road meets the base ground first,
+      // with the road's own ground more than 0.3 m under it
+      out.fillOver = 0;
+      if (fill) for (let k = 0; k < n - 1; k += 3) for (const sd of [-1, 1]) {
+        const near = pieces.slice(Math.max(0, Math.floor(k / PIECE) - 1), Math.floor(k / PIECE) + 2).flatMap(g => g.children).filter(o => o.material === groundMat);
+        for (const L of [KERB + 0.3, 6, 8, 11, 15]) {
+          if (L > ext[sd][k] - 0.5) continue;     // past where this side's hillside stops, the base ground is meant to show
+          const q = ptAt(k, sd * L, 0); o.set(q[0], q[1] + 60, q[2]); ray.set(o, down); ray.far = 120;
+          const a = ray.intersectObject(fill, false)[0], b = ray.intersectObjects(near, false)[0];
+          if (a && b && a.point.y > b.point.y + 0.3) { out.fillOver++; if (out.at.length < 8) out.at.push(['fill', k, sd, L, +(a.point.y - b.point.y).toFixed(1)]); }
+        }
+      }
       return out;
     }
     // For the tests: houses standing above the ground at their sides, and leaves hanging low over the road
@@ -2584,8 +2609,19 @@
       });
       return out;
     }
+    // For the tests: on the inside of the tightest bends, where the road is narrower, is there room for
+    // the lane nearest it (a car is about 1.8 m across)?
+    function audit8() {
+      setRoute();
+      const { n } = W3, out = { laneOff: 0, narrowest: HALF };
+      for (let k = 0; k < n; k++) for (const sd of [-1, 1]) {
+        const h = W3.half[sd][k]; out.narrowest = Math.min(out.narrowest, h);
+        if (h < LANE + 0.9) out.laneOff++;
+      }
+      return out;
+    }
     const walkable = (i, sd) => { setRoute(); i = clamp(i, 0, W3.n - 1); return !W3.bare[sd][i] && !W3.gone[sd][i] && !W3.ride[i]; };
-    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, walkable };
+    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, walkable };
   }
 
   // ---------- the HUD ----------
@@ -3129,6 +3165,7 @@
     auditAll: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; const a = R3.audit(); out.push({ id: r.id, ...a }); } route = keep; R3.audit(); return out; },
     audit3All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); R3.setPlan(); out.push({ id: r.id, ...R3.audit3() }); } route = keep; reset(); return out; },
     audit7All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); R3.setPlan(); out.push({ id: r.id, ...R3.audit7() }); } route = keep; reset(); return out; },
+    audit8All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit8() }); } route = keep; reset(); return out; },
     audit6All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit6() }); } route = keep; reset(); return out; },
     audit5All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit5() }); } route = keep; reset(); return out; },
     audit4All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); out.push({ id: r.id, ...R3.audit4() }); } route = keep; reset(); return out; },
