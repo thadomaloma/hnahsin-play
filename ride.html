@@ -444,6 +444,7 @@
   const KINDS = {
     car: { len: 3.8, wid: 1.7, hgt: 1.45, cols: ['#d9dde2', '#c0392b', '#2c3e50', '#f4f4f0', '#7f8c8d', '#2e6da4'] },
     taxi: { len: 3.6, wid: 1.6, hgt: 1.45, cols: ['#f2c230'] },
+    sedan: { len: 4.0, wid: 1.73, hgt: 1.5, cols: ['#f4f4f0', '#b8bec4', '#7a1f2b', '#2c3e50', '#3d4b5c'] },
     suv: { len: 4.4, wid: 1.8, hgt: 1.9, cols: ['#f4f4f0', '#b8bec4', '#3a4a3a'] },
     bus: { len: 8, wid: 2.35, hgt: 3.05, cols: ['#1f5fa8', '#b8322a', '#1d7a46'] },                     // an MST midi bus
     // the two-wheelers, the most of Aizawl's traffic: a scooter, a commuter motorbike, a Royal Enfield and a sports bike
@@ -453,7 +454,7 @@
     sport: { len: 2.0, wid: 0.8, hgt: 1.12, two: true, cols: ['#1b1b1b', '#c0392b', '#1565c0', '#f4f4f0', '#2e7d32'] },
   };
   // Aizawl's traffic: two-wheelers more than anything; the queues have no buses
-  const KIND_MIX = ['car', 'car', 'taxi', 'taxi', 'suv', 'scooter', 'scooter', 'scooter', 'bike', 'bike', 'classic', 'sport', 'bus'], JAM_MIX = KIND_MIX.filter(k => k !== 'bus');
+  const KIND_MIX = ['car', 'sedan', 'taxi', 'taxi', 'suv', 'scooter', 'scooter', 'scooter', 'bike', 'bike', 'classic', 'sport', 'bus'], JAM_MIX = KIND_MIX.filter(k => k !== 'bus');
   // (on a two-wheeler, now and then someone rides behind)
   const newCar = (kind, lane, at, v, dir) => { const K = KINDS[kind]; return { kind, lane, at, v, cruise: Math.abs(v), dir, x: LANES[lane], len: K.len, wid: K.wid, hgt: K.hgt, col: K.cols[Math.random() * K.cols.length | 0], hit: false, slowing: false, two: !!K.two, pillion: !!K.two && Math.random() < 0.3 }; };
   // Jams wait where the road is busy: at the veng and named places along it, spaced apart
@@ -1368,7 +1369,8 @@
             P.push(a.x, a.y, a.z); N.push(b.x, b.y, b.z);
             const u = uv ? uv.getX(i) : 0, v = uv ? uv.getY(i) : 0, R = o.uv || [0, 0, 1, 1];
             U.push(R[0] + u * (R[2] - R[0]), R[1] + v * (R[3] - R[1]));
-            c.set(hex); if (o.shade) c.multiplyScalar(0.62 + 0.38 * clamp((a.y - o.shade[0]) / (o.shade[1] - o.shade[0]), 0, 1));
+            if (hex === null) c.fromBufferAttribute(g.attributes.color, i); else c.set(hex);
+            if (o.shade) c.multiplyScalar(0.62 + 0.38 * clamp((a.y - o.shade[0]) / (o.shade[1] - o.shade[0]), 0, 1));
             if (o.ao && o.center) c.multiplyScalar(0.55 + 0.45 * clamp(a.distanceTo(o.center) / o.ao, 0, 1));     // darker deep inside
             K.push(c.r, c.g, c.b);
           }
@@ -1975,53 +1977,125 @@
         curve(pts, w, hex = '#ffffff', steps = 2) { b.add(side(smoothed(pts), w, 0, steps), new T.Matrix4(), hex); },   // a smooth panel
         lamp(u, v, x, r, d, hex = '#ffffff', tilt = 0) { b.add(ROD, mtx(-x, v, u, Math.PI / 2 + tilt, 0, 0, r, d, r), hex); },   // a round lamp facing forward
         ball(u, v, x, ru, rv, rx, hex = '#ffffff') { b.add(BALL, mtx(-x, v, u, 0, 0, 0, rx, rv, ru), hex); },
+        mesh(geo) { b.add(geo, new T.Matrix4(), null); },     // a mesh with its own colours
       };
     }
     const DK = '#1b1c1e', SEAM = '#111213';
-    function hatchback() {
+    // A car body lofted through cross-sections, the way a car modeller shapes one. At each station along
+    // it: the sill (lifted round each wheel: the arches), the waist (the window line), the top (bonnet,
+    // windscreen, roof, back) and the half width, rounded off towards the ends as seen from above and
+    // drawn in towards the roof (the tumblehome). It gives the paint, with a dark lower edge, and the
+    // glass: the side windows (with gaps for the pillars), the windscreen and the back window.
+    const prof = pts => u => {
+      if (u <= pts[0][0]) return pts[0][1];
+      for (let i = 1; i < pts.length; i++) if (u <= pts[i][0]) { const a = pts[i - 1], b = pts[i]; return a[1] + (b[1] - a[1]) * (u - a[0]) / (b[0] - a[0] || 1); }
+      return pts[pts.length - 1][1];
+    };
+    function loft(o) {
+      const { L, sill, wheels: AR, tumble, endF = 0.3, endR = 0.3, glass: GL } = o, waist = prof(o.waist), top = prof(o.top);
+      const us = new Set();
+      for (let u = -L / 2; u <= L / 2 + 1e-6; u += 0.08) us.add(+u.toFixed(3));
+      for (const [u] of [...o.waist, ...o.top]) us.add(u);
+      for (const [cx, , R] of AR) for (let i = -8; i <= 8; i++) us.add(+(cx + R * i / 8).toFixed(3));
+      for (const k of ['side', 'ws', 'rw']) if (GL[k]) GL[k].forEach(u => us.add(u));
+      for (const [a, b] of GL.pillars || []) us.add(a), us.add(b);
+      const U = [...us].filter(u => u >= -L / 2 - 1e-6 && u <= L / 2 + 1e-6).sort((a, b) => a - b);
+      const bottom = u => { let v = sill; for (const [cx, h, R] of AR) { const d = u - cx; if (Math.abs(d) < R) v = Math.max(v, h + Math.sqrt(R * R - d * d)); } return v; };
+      const half = u => { const d = Math.max(0, Math.abs(u) - (L / 2 - endR)) / endR; return 0.5 * (1 - endF * d * d); };
+      // each ring: from the middle underneath, up the right side, over the roof and down the left (18 points)
+      const ring = u => {
+        const vb = bottom(u), vw = Math.max(vb + 0.15, waist(u)), vt = Math.max(vw + 0.02, top(u)), W = half(u), c = vt - vw;
+        const Wt = W * (0.97 - (0.97 - tumble) * clamp(c / 0.45, 0, 1));
+        const R = [[0, vb], [W * 0.86, vb], [W * 0.97, vb + 0.05], [W, vb + (vw - vb) * 0.5], [W * 0.985, vw - 0.03], [W * 0.96, vw], [(W * 0.96 + Wt) / 2, vw + c * 0.5], [Wt, vw + c * 0.9], [Wt * 0.75, vt], [0, vt + 0.015]];
+        return [...R, ...R.slice(1, 9).reverse().map(([x, v]) => [-x, v])];
+      };
+      const rings = U.map(u => ring(u)), N = 18;
+      const strip = (from, to, idx, out, lift) => {     // a mesh over stations from..to, through ring points idx
+        const pos = [], col = [], ind = [], sel = U.map((u, i) => i).filter(i => U[i] >= from - 1e-6 && U[i] <= to + 1e-6);
+        sel.forEach(i => idx.forEach(k => { const [x, v] = rings[i][k]; pos.push(x * out, v + lift, U[i]); col.push(1, 1, 1); }));
+        for (let a = 0; a < sel.length - 1; a++) for (let j = 0; j < idx.length - 1; j++) { const p = a * idx.length + j, q = p + idx.length; ind.push(p, q, p + 1, p + 1, q, q + 1); }
+        return { pos, col, ind };
+      };
+      const geo = (parts0, capped) => {
+        const pos = [], col = [], ind = [];
+        for (const { pos: p, col: c, ind: d } of parts0) { const o0 = pos.length / 3; pos.push(...p); col.push(...c); ind.push(...d.map(i => i + o0)); }
+        if (capped) for (const i of [0, U.length - 1]) {      // the flat front and back faces
+          const o0 = pos.length / 3, r = rings[i], cv = r.reduce((t, q) => t + q[1], 0) / N;
+          pos.push(0, cv, U[i]); col.push(1, 1, 1); r.forEach(([x, v]) => { pos.push(x, v, U[i]); col.push(1, 1, 1); });
+          for (let k = 0; k < N; k++) ind.push(o0, o0 + 1 + k, o0 + 1 + (k + 1) % N);
+        }
+        const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new T.Float32BufferAttribute(col, 3)); g.setIndex(ind);
+        g.computeVertexNormals();
+        // wound the right way round: flip it if the normals point in (checked at the widest point)
+        const P0 = g.attributes.position, N0 = g.attributes.normal; let sgn = 0;
+        for (let i = 0; i < P0.count; i++) sgn += Math.sign(P0.getX(i)) * N0.getX(i);
+        if (sgn < 0) { const ix = g.index.array; for (let i = 0; i < ix.length; i += 3) { const t = ix[i + 1]; ix[i + 1] = ix[i + 2]; ix[i + 2] = t; } g.computeVertexNormals(); }
+        return g;
+      };
+      // the paint: dark underneath and along the bottom edge
+      const body = strip(U[0], U[U.length - 1], [...Array(N + 1).keys()].map(k => k % N), 1, 0);
+      const dk = C(DK); body.pos.forEach((_, i) => { if (i % 3) return; const k = (i / 3) % (N + 1) % N; if (k <= 1 || k >= 17) body.col.splice(i, 3, dk.r, dk.g, dk.b); });
+      const glass = [];
+      const [s0, s1] = GL.side, cuts = [s0, ...(GL.pillars || []).flat(), s1];
+      for (let i = 0; i < cuts.length; i += 2) { glass.push(strip(cuts[i], cuts[i + 1], [5, 6, 7], 1.012, 0.002)); glass.push(strip(cuts[i], cuts[i + 1], [11, 12, 13], 1.012, 0.002)); }
+      for (const k of ['ws', 'rw']) if (GL[k]) glass.push(strip(GL[k][0], GL[k][1], [8, 9, 10], 1.012, 0.012));
+      return { paint: geo([body], true), glass: geo(glass, false), half, top, waist };
+    }
+    function hatchback() {  // a Maruti hatchback (the taxis too): short bonnet, tall cabin, a near-upright hatch
       const P = parts(), G = parts(), H = parts();
-      P.side(arches([[-1.88, 0.3], [-1.92, 0.62], [-1.86, 0.96], [0.95, 0.97], [1.78, 0.84], [1.92, 0.68], [1.9, 0.3]], 0.3, [1.22, -1.22], 0.4), 1, 0.1);
-      P.side([[-1.7, 1.38], [0.28, 1.41], [0.24, 1.48], [-1.66, 1.47]], 0.9, 0.03);                 // roof
-      G.side([[-1.84, 0.95], [-1.68, 1.41], [0.26, 1.44], [0.97, 0.96]], 0.86, 0.05);              // the glass all round
-      P.box(-1.69, 1.44, 0, 0.14, 0.04, 0.82);                                                      // a little spoiler over the back window
+      const B = loft({ L: 3.8, sill: 0.3, wheels: [[1.22, 0.3, 0.42], [-1.22, 0.3, 0.42]], tumble: 0.8,
+        waist: [[-1.9, 0.92], [-1.0, 0.95], [0.9, 0.95], [1.5, 0.86], [1.9, 0.74]],
+        top: [[-1.9, 0.9], [-1.88, 1.18], [-1.8, 1.4], [-1.62, 1.47], [0.2, 1.49], [0.95, 0.99], [1.5, 0.88], [1.9, 0.75]],
+        glass: { side: [-1.6, 0.92], pillars: [[-0.52, -0.42]], ws: [0.24, 0.93], rw: [-1.88, -1.66] } });
+      P.mesh(B.paint); G.mesh(B.glass);
       for (const e of [-1, 1]) {
-        P.bar(0.95, 0.97, 0.27, 1.43, e * 0.43, 0.06, 0.07);         // A pillars
-        P.bar(-0.45, 0.97, -0.48, 1.43, e * 0.435, 0.05, 0.08);      // B pillars
-        P.bar(-1.8, 0.97, -1.64, 1.42, e * 0.435, 0.05, 0.26);       // broad C pillars, as on a hatchback
-        P.bar(-1.84, 0.975, 0.92, 0.975, e * 0.505, 0.02, 0.03, DK); // the window line
-        for (const u of [0.85, -0.45]) P.bar(u, 0.37, u + 0.02, 0.94, e * 0.506, 0.006, 0.012, SEAM);   // door seams
-        P.box(0.82, 1.02, e * 0.55, 0.15, 0.1, 0.08); P.box(0.82, 0.97, e * 0.5, 0.08, 0.04, 0.06, DK); // mirrors
-        for (const u of [0.45, -0.72]) H.box(u, 0.84, e * 0.507, 0.12, 0.03, 0.01);                       // door handles
+        P.box(0.82, 1.02, e * 0.55, 0.15, 0.1, 0.08); P.box(0.82, 0.97, e * 0.49, 0.08, 0.04, 0.06, DK);   // mirrors
+        for (const u of [0.45, -0.72]) H.box(u, 0.84, e * 0.497, 0.12, 0.03, 0.01);                        // door handles
       }
-      for (const u of [1.22, -1.22]) P.disc(u, 0.3, 0, 0.39, 0.96, '#0d0d0e');                            // wheel wells
-      for (const u of [1.86, -1.86]) P.box(u, 0.4, 0, 0.2, 0.2, 1.02, DK);                                // bumpers
-      P.box(0, 0.34, 0, 1.6, 0.07, 1.01, DK);                                                              // sills
-      P.box(1.915, 0.6, 0, 0.03, 0.13, 0.5, '#0e0f10'); H.box(1.93, 0.67, 0, 0.02, 0.02, 0.48);            // grille
+      for (const u of [1.22, -1.22]) P.disc(u, 0.3, 0, 0.4, 0.9, '#0d0d0e');                                // wheel wells
+      for (const u of [1.9, -1.9]) P.box(u, 0.4, 0, 0.12, 0.18, 0.74, DK);                                  // bumpers
+      P.box(1.91, 0.6, 0, 0.03, 0.1, 0.42, '#0e0f10'); H.box(1.925, 0.64, 0, 0.02, 0.02, 0.4);             // grille
+      P.box(-1.62, 1.49, 0, 0.12, 0.03, 0.62);                                                              // a little spoiler over the hatch
       return { paint: P.done(), glass: G.done(), chrome: H.done(), len: 3.8, hgt: 1.45, wheels: [[1.22, 0.3], [-1.22, 0.3]], track: 0.43, tw: 0.2,
-        head: [1.91, 0.74, 0.33, 0.24, 0.1], tail: [-1.92, 0.8, 0.38, 0.12, 0.22], plate: [-1.93, 0.5], front: [1.93, 0.42] };
+        head: [1.91, 0.72, 0.28, 0.2, 0.09], tail: [-1.91, 0.86, 0.29, 0.1, 0.18], plate: [-1.93, 0.52], front: [1.93, 0.42] };
+    }
+    function sedan() {      // a Dzire: a hatchback's front with a short boot
+      const P = parts(), G = parts(), H = parts();
+      const B = loft({ L: 4.0, sill: 0.3, wheels: [[1.3, 0.3, 0.42], [-1.25, 0.3, 0.42]], tumble: 0.78,
+        waist: [[-2.0, 0.9], [-1.6, 0.95], [0.95, 0.95], [1.55, 0.86], [2.0, 0.72]],
+        top: [[-2.0, 0.88], [-1.95, 0.97], [-1.55, 1.0], [-1.0, 1.36], [-0.7, 1.45], [0.3, 1.46], [1.0, 0.98], [1.55, 0.88], [2.0, 0.73]],
+        glass: { side: [-0.95, 0.98], pillars: [[-0.16, -0.06]], ws: [0.34, 0.98], rw: [-1.48, -0.74] } });
+      P.mesh(B.paint); G.mesh(B.glass);
+      for (const e of [-1, 1]) {
+        P.box(0.86, 1.02, e * 0.55, 0.15, 0.1, 0.08); P.box(0.86, 0.97, e * 0.49, 0.08, 0.04, 0.06, DK);
+        for (const u of [0.5, -0.6]) H.box(u, 0.84, e * 0.497, 0.12, 0.03, 0.01);
+      }
+      for (const u of [1.3, -1.25]) P.disc(u, 0.3, 0, 0.4, 0.9, '#0d0d0e');
+      for (const u of [2.0, -2.0]) P.box(u, 0.4, 0, 0.12, 0.18, 0.74, DK);
+      P.box(2.01, 0.6, 0, 0.03, 0.1, 0.44, '#0e0f10'); H.box(2.025, 0.64, 0, 0.02, 0.02, 0.42); H.box(-2.02, 0.8, 0, 0.02, 0.03, 0.4);   // grille, the chrome strip on the boot
+      return { paint: P.done(), glass: G.done(), chrome: H.done(), len: 4.0, hgt: 1.5, wheels: [[1.3, 0.3], [-1.25, 0.3]], track: 0.43, tw: 0.2,
+        head: [2.01, 0.71, 0.28, 0.22, 0.09], tail: [-2.01, 0.82, 0.3, 0.14, 0.09], plate: [-2.03, 0.58], front: [2.03, 0.42] };
     }
     function jeep() {       // a Bolero: boxy, upright, a spare wheel on the back door
       const P = parts(), G = parts(), H = parts();
-      P.side(arches([[-2.18, 0.44], [-2.2, 1.12], [-2.12, 1.16], [1.05, 1.16], [2.12, 1.1], [2.2, 0.92], [2.18, 0.44]], 0.42, [1.42, -1.35], 0.5), 1, 0.06);
-      P.side([[-2.16, 1.8], [0.92, 1.82], [0.9, 1.9], [-2.14, 1.9]], 0.92, 0.03);
-      G.side([[-2.14, 1.15], [-2.13, 1.79], [0.9, 1.81], [1.12, 1.16]], 0.89, 0.04);
+      const B = loft({ L: 4.4, sill: 0.42, wheels: [[1.42, 0.42, 0.52], [-1.35, 0.42, 0.52]], tumble: 0.93, endF: 0.15, endR: 0.22,
+        waist: [[-2.2, 1.12], [1.05, 1.16], [1.6, 1.12], [2.2, 1.0]],
+        top: [[-2.2, 1.05], [-2.18, 1.86], [-2.1, 1.9], [0.88, 1.92], [1.1, 1.17], [1.6, 1.13], [2.2, 1.02]],
+        glass: { side: [-2.04, 1.04], pillars: [[-0.32, -0.22], [-1.3, -1.2]], ws: [0.9, 1.08] } });
+      P.mesh(B.paint); G.mesh(B.glass);
+      G.box(-2.205, 1.5, 0, 0.02, 0.5, 0.7);                                                                 // the back door's window
       for (const e of [-1, 1]) {
-        P.bar(1.12, 1.15, 0.92, 1.82, e * 0.45, 0.07, 0.07);
-        for (const u of [-0.25, -1.25]) P.bar(u, 1.16, u, 1.81, e * 0.452, 0.05, 0.09);
-        P.bar(-2.15, 1.16, -2.14, 1.8, e * 0.45, 0.05, 0.1);
-        P.bar(-2.15, 1.16, 1.1, 1.16, e * 0.505, 0.02, 0.03, DK);
-        for (const u of [1.05, -0.25, -1.25]) P.bar(u, 0.5, u, 1.12, e * 0.506, 0.006, 0.012, SEAM);
-        P.box(1.0, 1.22, e * 0.56, 0.17, 0.14, 0.08); P.box(1.0, 1.16, e * 0.5, 0.08, 0.05, 0.06, DK);
-        P.bar(-2.0, 1.94, 0.7, 1.94, e * 0.4, 0.03, 0.04, DK);                                        // roof rails
-        for (const u of [0.55, -0.75]) H.box(u, 1.02, e * 0.507, 0.13, 0.03, 0.01);
+        P.box(1.0, 1.22, e * 0.56, 0.17, 0.14, 0.08); P.box(1.0, 1.16, e * 0.49, 0.08, 0.05, 0.06, DK);
+        P.bar(-2.0, 1.95, 0.7, 1.95, e * 0.4, 0.03, 0.04, DK);                                                // roof rails
+        for (const u of [0.55, -0.75]) H.box(u, 1.02, e * 0.497, 0.13, 0.03, 0.01);
       }
-      for (const u of [1.42, -1.35]) P.disc(u, 0.42, 0, 0.49, 0.96, '#0d0d0e');
-      for (const u of [2.2, -2.2]) P.box(u, 0.52, 0, 0.2, 0.28, 1.04, DK);
-      P.box(0, 0.45, 0, 1.5, 0.05, 1.12, '#202124');                                                  // the side step
-      P.box(2.215, 0.84, 0, 0.02, 0.28, 0.6, '#141516'); for (let i = 0; i < 4; i++) H.box(2.225, 0.74 + i * 0.065, 0, 0.02, 0.02, 0.58);
-      P.disc(-2.3, 1.02, 0, 0.36, 0.22, DK); P.box(-2.42, 1.02, 0, 0.02, 0.5, 0.5);                    // the spare wheel and its cover
+      for (const u of [1.42, -1.35]) P.disc(u, 0.42, 0, 0.5, 0.9, '#0d0d0e');
+      for (const u of [2.2, -2.2]) P.box(u, 0.52, 0, 0.16, 0.26, 0.86, DK);
+      P.box(0, 0.45, 0, 1.5, 0.05, 1.08, '#202124');                                                        // the side step
+      P.box(2.215, 0.84, 0, 0.02, 0.26, 0.56, '#141516'); for (let i = 0; i < 4; i++) H.box(2.225, 0.75 + i * 0.06, 0, 0.02, 0.02, 0.54);
+      P.disc(-2.3, 1.02, 0, 0.36, 0.22, DK); P.box(-2.42, 1.02, 0, 0.02, 0.5, 0.5);                          // the spare wheel and its cover
       return { paint: P.done(), glass: G.done(), chrome: H.done(), len: 4.4, hgt: 1.9, wheels: [[1.42, 0.38], [-1.35, 0.38]], track: 0.43, tw: 0.25,
-        head: [2.21, 0.92, 0.36, 0.26, 0.16], tail: [-2.21, 1.0, 0.44, 0.09, 0.32], plate: [-2.22, 0.62], front: [2.22, 0.48] };
+        head: [2.21, 0.92, 0.33, 0.24, 0.15], tail: [-2.21, 1.0, 0.38, 0.09, 0.3], plate: [-2.22, 0.66], front: [2.22, 0.5] };
     }
     // An MST midi bus, as on Aizawl's city routes: a raked windscreen with the route board over it, one
     // door at the front on the left, tinted windows in a band, a white roof with the air conditioner on
@@ -2159,7 +2233,7 @@
     };
     const paintMat = VMAT.paint[0], chromeMat = VMAT.chrome[0];
     const vpool = (geo, kind, max) => { const m = pool(geo, VMAT[kind][0], max); m.userData.vm = kind; return m; };
-    const MODELS = { car: hatchback(), suv: jeep(), bus: cityBus(), scooter: scooter(), bike: motorbike(), classic: classic(), sport: sport() };
+    const MODELS = { car: hatchback(), sedan: sedan(), suv: jeep(), bus: cityBus(), scooter: scooter(), bike: motorbike(), classic: classic(), sport: sport() };
     MODELS.taxi = MODELS.car;
     for (const M of new Set(Object.values(MODELS))) {
       const max = M === MODELS.bus ? 12 : 60;
@@ -2178,19 +2252,21 @@
       return [ey, ez, hy, hz];
     };
     // someone riding a two-wheeler, by where it says its rider sits; behind, a pillion rider with hands on the knees
-    const rideOn = (R, jk, hm, legs, behind) => {
+    const rideOn = (R, jk, hm, legs, behind, bag) => {
       const back = behind ? 0.4 : 0, [hu, hv0] = R.hip, hv = hv0 + (behind ? 0.05 : 0), L = behind ? 0.08 : R.lean;
       const u = hu - back, su = u + 0.44 * Math.sin(L), sv = hv + 0.44 * Math.cos(L);
       const ku = behind ? u + 0.36 : R.knee[0], kv = behind ? hv - 0.08 : R.knee[1], fu = behind ? u + 0.32 : R.foot[0], fv = behind ? Math.max(0.38, R.foot[1]) : R.foot[1];
       for (const e of [-1, 1]) {
-        limbTo(pLimb, e * (behind ? 0.15 : 0.12), hv, u, kv, ku, 0.15, legs);                // thigh
-        limbTo(pLimb, e * (behind ? 0.17 : 0.14), kv, ku, fv, fu, 0.115, legs);              // shin
+        limbTo(pLimb, e * (behind ? 0.15 : 0.12), hv, u, kv, ku, 0.17, legs);                // thigh
+        limbTo(pLimb, e * (behind ? 0.17 : 0.14), kv, ku, fv, fu, 0.125, legs);              // shin
         put(pBox, e * (behind ? 0.17 : 0.14), fv - 0.05, fu + 0.04, 0.1, 0.07, 0.24, '#2a2522');
         const [gu, gv, gx] = behind ? [ku - 0.02, kv + 0.06, 0.17] : R.grip, eu = (su + gu) / 2, ev = (sv + gv) / 2 - 0.1;
-        limbTo(pLimb, e * 0.22, sv - 0.04, su, ev, eu, 0.095, jk); limbTo(pLimb, e * (0.22 + gx) / 2, ev, eu, gv, gu, 0.08, jk);
+        limbTo(pLimb, e * 0.22, sv - 0.04, su, ev, eu, 0.11, jk); limbTo(pLimb, e * (0.22 + gx) / 2, ev, eu, gv, gu, 0.095, jk);
         put(pRound, e * gx, gv, gu, 0.045, 0.045, 0.045, '#2a2522');                          // gloves
       }
-      put(pTorso, 0, hv, u, 1, 1, 0.62, jk, L);
+      put(pTorso, 0, hv, u, 1.14, 1, 0.76, jk, L);                                           // a jacket has some body to it
+      put(pLimb, 0, sv + 0.09, su + 0.03, 0.09, 0.05, 0.09, '#c99068', L);                    // the neck
+      if (bag) put(pBox, 0, hv + 0.12, u - 0.19 + 0.12 * Math.sin(L), 0.3, 0.38, 0.13, bag, L);   // a backpack (a school bag)
       put(pRound, 0, sv + 0.2, su + 0.09, 0.15, 0.16, 0.17, hm);                             // helmet
       put(pRound, 0, sv + 0.19, su + 0.17, 0.125, 0.065, 0.06, '#1b2026');                  // its visor, in front
     };
@@ -2209,7 +2285,8 @@
     const vBox = pool(box, plainMat, 400), vGlow = pool(box, glowMat, 300), tyreM = vpool(tyreGeo, 'tyre', 260), rimM = vpool(rimGeo, 'chrome', 260), spokeM = vpool(spokeGeo, 'chrome', 60), plateM = pool(plateGeo, plateMat, 120);
     const coinM = pool(disc, coinMat, 60), rockM = pool(rockGeo, plainMat, 24), logM = pool(logGeo, logMats, 24), boardM = pool(box, stripeMat, 24);
     const pUp = pool(capUp, plainMat, 80), pLimb = pool(capHang, plainMat, 700), pRound = pool(ball, plainMat, 320), pPuan = pool(skirt, puanMat, 30), pTorso = pool(torsoGeo, plainMat, 110), pBox = pool(box, plainMat, 260), pCone = pool(cone, plainMat, 30);
-    const JACKETS = ['#2c3e50', '#7a3b2e', '#3b5f3a', '#1f3a68', '#5b4a3a'], HELMETS = ['#f2f2ee', '#231e16', '#c0392b', '#1565c0', '#f2c230'];
+    const JACKETS = ['#2c3e50', '#7a3b2e', '#3b5f3a', '#1f3a68', '#5b4a3a', '#8e1b3a', '#d8d4cc', '#4a4f57'], HELMETS = ['#f2f2ee', '#231e16', '#c0392b', '#1565c0', '#f2c230', '#6b6e70'];
+    const LEGS = ['#2c3e50', '#3b5b8a', '#34495e', '#1f1f1f', '#5b4a3a', '#46628f'], BAGS = ['#1f1f1f', '#2c3e50', '#7a3b2e', '#3b5f3a'];   // trousers and jeans; backpacks
 
     function placeAll(far, dt) {
       for (const m of pools) m.n = 0;
@@ -2220,7 +2297,7 @@
         put(shadows, 0, 0.03, 0, c.wid * 1.2, 1, c.len * 1.08, '#000');
         const M = MODELS[c.kind], sl = c.len / M.len, sy = c.hgt / M.hgt, sw = M.single ? 1 : c.wid, stop = c.slowing ? '#ff3b2f' : '#8e2620';
         put(M.pPaint, 0, 0, 0, sw, sy, sl, c.col); if (M.pGlass) put(M.pGlass, 0, 0, 0, sw, sy, sl, '#ffffff'); if (M.pTrim) put(M.pTrim, 0, 0, 0, sw, sy, sl, '#ffffff'); put(M.pChrome, 0, 0, 0, sw, sy, sl, '#ffffff');
-        for (const [u, r] of M.wheels) for (const e of (M.single ? [0] : [-1, 1])) { const rr = r * sy; put(tyreM, e * sw * M.track, rr, u * sl, M.tw, rr, rr, '#ffffff'); put(M.spokes ? spokeM : rimM, e * sw * M.track, rr, u * sl, M.spokes ? 0.2 : M.tw, rr, rr, '#ffffff'); }
+        for (const [u, r] of M.wheels) for (const e of (M.single ? [0] : [-1, 1])) { const rr = r * sy, spin = c.at * c.dir / rr; put(tyreM, e * sw * M.track, rr, u * sl, M.tw, rr, rr, '#ffffff'); put(M.spokes ? spokeM : rimM, e * sw * M.track, rr, u * sl, M.spokes ? 0.2 : M.tw, rr, rr, '#ffffff', spin); }   // the wheels turn as it goes
         // lights: headlights in front, tail lights that glow brighter when it slows
         const [hu, hv, hx, hw, hh] = M.head, [tu, tv, tx, tw, th] = M.tail;
         for (const e of (M.single ? [0] : [-1, 1])) {
@@ -2233,9 +2310,9 @@
         if (c.kind === 'taxi') put(vGlow, 0, 1.47 * sy, -0.4 * sl, 0.5, 0.14, 0.24, '#ffd34d');                    // the roof sign
         if (M.board) put(vGlow, 0, (M.board[1] - M.board[3] / 2) * sy, M.board[0] * sl, sw * M.board[2], M.board[3] * sy, 0.04, '#ffb300');   // the route board
         if (M.rider) {     // the rider, and now and then someone behind
-          c.jk = c.jk || JACKETS[Math.random() * JACKETS.length | 0]; c.hm = c.hm || HELMETS[Math.random() * HELMETS.length | 0];
-          rideOn(M.rider, c.jk, c.hm, '#2c3e50', false);
-          if (c.pillion) { c.jk2 = c.jk2 || JACKETS[Math.random() * JACKETS.length | 0]; c.hm2 = c.hm2 || HELMETS[Math.random() * HELMETS.length | 0]; rideOn(M.rider, c.jk2, c.hm2, '#3a3f47', true); }
+          if (!c.jk) { const pick = a => a[Math.random() * a.length | 0]; c.jk = pick(JACKETS); c.hm = pick(HELMETS); c.lg = pick(LEGS); c.bag = Math.random() < 0.3 ? pick(BAGS) : ''; c.jk2 = pick(JACKETS); c.hm2 = pick(HELMETS); c.lg2 = pick(LEGS); }
+          rideOn(M.rider, c.jk, c.hm, c.lg, false, c.pillion ? '' : c.bag);
+          if (c.pillion) rideOn(M.rider, c.jk2, c.hm2, c.lg2, true, c.bag);
         }
       }
       for (const t of things) {
@@ -2399,9 +2476,9 @@
       limb([e * 0.13, 0.85, -0.3], [e * 0.16, 0.87, 0.12], 0.08, trousers);                    // thighs
       limb([e * 0.16, 0.87, 0.12], [e * 0.17, 0.46, 0.24], 0.065, trousers);                   // shins, feet on the floorboard
       part(box, dark, e * 0.17, 0.42, 0.24, 0.11, 0.08, 0.22);                                  // shoes
-      limb([e * 0.2, 1.33, -0.26], [e * 0.31, 1.1, 0.7], 0.055, jacket);                       // arms to the grips
+      limb([e * 0.2, 1.33, -0.26], [e * 0.31, 1.1, 0.7], 0.062, jacket);                       // arms to the grips
     }
-    part(torsoGeo, jacket, 0, 0.9, -0.36, 1, 1, 0.62, 0.28);                                   // the rider, leaning forward a little
+    part(torsoGeo, jacket, 0, 0.9, -0.36, 1.12, 1, 0.74, 0.28);                                   // the rider, leaning forward a little
     part(ball, lm('#f2f2ee'), 0, 1.54, -0.2, 0.16, 0.17, 0.18);                               // helmet
     part(ball, lm('#c03a2e'), 0, 1.57, -0.2, 0.164, 0.045, 0.184);
     part(ball, new T.MeshPhongMaterial({ color: '#1b2026', shininess: 90, specular: C('#8a9aa4') }), 0, 1.52, -0.1, 0.12, 0.07, 0.1);   // its visor

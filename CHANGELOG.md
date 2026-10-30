@@ -4,6 +4,20 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.23.1 (31 October 2026)
+
+### Aizawl Ride: cars shaped like cars
+
+- Cars are shaped the way car designers shape them: rounded off at the
+  front and back, drawn in towards the roof, with proper wheel arches and
+  windows set into the body: the windscreen, the side windows between
+  their pillars and the back window.
+- A new car on the road: a Dzire-style saloon with a short boot, along
+  with the hatchbacks, the taxis and the Boleros.
+- The wheels of every car, bus and two-wheeler turn as they go.
+- Riders look more like people: fuller jackets and arms, jeans and other
+  trousers, and now and then a school bag on the back.
+
 ## 1.23.0 (31 October 2026)
 
 ### Aizawl Ride: a new delivery scooter, Aizawl's two-wheelers and a new bus
