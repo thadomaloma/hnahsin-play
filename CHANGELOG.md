@@ -4,6 +4,21 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.18.0 (30 October 2026)
+
+### Aizawl Ride in 3D
+
+- The ride is now drawn in real 3D: the roads keep their real bends and
+  hills, the hillsides rise and fall beside them, and the houses stand as
+  many and as tall as the map says, with black water tanks on their roofs.
+- The scooter, cars, buses, bikes, people, coins, signs and zebra crossings
+  are all in 3D too. The camera rides behind the scooter, round the bends.
+- The light still turns golden towards the end of a ride, with a stretch of
+  morning haze (romei).
+- On a slow phone the picture gets a little softer and the view shorter, by
+  itself, so the ride stays smooth. Phones without 3D get the flat picture,
+  as before. The game itself is the same.
+
 ## 1.17.4 (30 October 2026)
 
 ### Big and small: a fix

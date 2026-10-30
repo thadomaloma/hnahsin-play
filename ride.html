@@ -56,7 +56,9 @@
   .stage { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; background: #a9d8f5; }
   /* The whole game fits a phone screen with the header and buttons, no scrolling */
   /* The whole game fits a phone screen with the header and buttons, no scrolling */
-  #cv { display: block; width: 100%; height: clamp(300px, calc(100svh - 236px), min(140vw, 600px)); }
+  #gl { display: none; position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+  #gl.on { display: block; }
+  #cv { position: relative; display: block; width: 100%; height: clamp(300px, calc(100svh - 236px), min(140vw, 600px)); }
   .toast { position: absolute; left: 50%; top: 104px; z-index: 1; transform: translate(-50%, -8px); opacity: 0; transition: opacity .25s, transform .25s; background: #1d5c2e; color: #fff; border: 2px solid #fff; border-radius: 10px; padding: 6px 14px; font-weight: 800; font-size: 15px; max-width: calc(100% - 24px); text-align: center; line-height: 1.3; pointer-events: none; box-shadow: 0 2px 0 rgba(0,0,0,.25); }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
   .overlay { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(20, 28, 18, .38); }
@@ -144,6 +146,7 @@
 
   <section class="card" aria-label="Aizawl Ride game">
     <div class="stage" id="stage">
+      <canvas id="gl" aria-hidden="true"></canvas>
       <canvas id="cv" aria-label="The road. Steer with the arrow keys, the buttons, or by tapping the left or right side."></canvas>
       <!-- The HUD sits on the road: what is ahead along the top, how far and the coins below it,
            the speedometer and the mini-map in the bottom corners -->
@@ -416,6 +419,7 @@
     cars = []; jams = planJams(); crossings = planCrossings(); peds = []; pedT = 0; buildStrip(); prepMini(); braking = false; carT = 3; oncomingT = 5; eventWords = new Set(); brakeHint(false);
     best0 = bestOf(route.id); bestShown = false; wordsSeen = new Set(); wordT = 4;
     plan(); hud(true);
+    if (R3) R3.setPlan();
   }
 
   // The road has our two lanes (0, 1; we keep left, as in India) and the oncoming lane (2).
@@ -480,7 +484,7 @@
         // Waited in the queue, not going round it: Aizawl style
         if (!j.broke) {
           S.jams++; coins += 10; burst('#ffd34d');
-          pops.push({ text: '+10', x: W / 2, y: H * 0.84 - 120, life: 1.3 });
+          pops.push({ text: '+10', x: riderXY().x, y: riderXY().y - 120, life: 1.3 });
           say('dawhtheihna', 'patience · +10 coins');
         }
       }
@@ -574,7 +578,7 @@
       if (s > c.at + 3) {
         c.state = 'done';
         if (!c.miss && c.minV < 1.5) {   // you stopped and let them cross
-          S.crossed++; coins += 5; pops.push({ text: '+5', x: W / 2, y: H * 0.84 - 120, life: 1.3 });
+          S.crossed++; coins += 5; pops.push({ text: '+5', x: riderXY().x, y: riderXY().y - 120, life: 1.3 });
           say('zah', 'respect · you let them cross, +5 coins', true);
         }
       }
@@ -728,6 +732,7 @@
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     buildLayers();
+    if (R3) R3.size();
     draw(); dial(); mini(true);
   }
   let rq = 0;
@@ -802,7 +807,9 @@
     if (look.golden > 0.02) { ctx.fillStyle = `rgba(255,176,90,${0.12 * look.golden})`; ctx.fillRect(-10, 0, W + 20, horizon + 4); }
   }
 
-  function draw() {
+  // The picture: in 3D when the phone can, else flat
+  function draw() { if (R3) R3.draw(); else draw2d(); }
+  function draw2d() {
     const horizon = H * 0.34, F = W * 0.42;
     const camH = (H * 0.84 - horizon) * PLAYER_Z / F;     // so the scooter sits low on the screen
     const sx = shake && !reduce ? (Math.random() - .5) * shake * 8 : 0;
@@ -879,15 +886,21 @@
     }
     // The scooter
     scooter(W / 2 + (px - px * 0.82) * F / PLAYER_Z, H * 0.84);
-    for (const p of sparks) { ctx.globalAlpha = Math.max(0, p.life) * (p.a || 1); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); }
-    ctx.font = '800 18px "Plus Jakarta Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    for (const p of pops) { ctx.globalAlpha = Math.max(0, p.life); ctx.lineWidth = 3; ctx.strokeStyle = '#7a4b00'; ctx.strokeText(p.text, p.x, p.y); ctx.fillStyle = '#ffd34d'; ctx.fillText(p.text, p.x, p.y); }
-    ctx.globalAlpha = 1;
+    effects();
     // Late afternoon warms the whole picture a little
     if (look.golden > 0.02) { ctx.fillStyle = `rgba(255,170,80,${0.07 * look.golden})`; ctx.fillRect(-10, 0, W + 20, H); }
     ctx.restore();
   }
   const P = Array.from({ length: VIEW + 1 }, () => ({}));   // the projected road, reused every picture
+  // Sparks, exhaust puffs and the +1s, over the picture
+  function effects() {
+    for (const p of sparks) { ctx.globalAlpha = Math.max(0, p.life) * (p.a || 1); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); }
+    ctx.font = '800 18px "Plus Jakarta Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const p of pops) { ctx.globalAlpha = Math.max(0, p.life); ctx.lineWidth = 3; ctx.strokeStyle = '#7a4b00'; ctx.strokeText(p.text, p.x, p.y); ctx.fillStyle = '#ffd34d'; ctx.fillText(p.text, p.x, p.y); }
+    ctx.globalAlpha = 1;
+  }
+  // Where the scooter is on the screen
+  const riderXY = () => (R3 ? R3.rider : { x: W / 2 + px * 0.18 * W * 0.42 / PLAYER_Z, y: H * 0.84 });
   function post(a, side) {
     if (sideAt(a.idx, side) < -2.5) return;            // the parapet stands there instead
     const x = a.x + side * (footpath(a.idx) ? FOOT + 0.15 : 4.9) * a.k, y = a.y, w = 0.16 * a.k, h = 1.1 * a.k;
@@ -1097,6 +1110,512 @@
     ctx.restore();
   }
 
+  // ---------- the picture in 3D (three.js) ----------
+  // The ride drawn in real 3D: the road at its real bends and heights (from the map line and the
+  // heights of the route), the hillside beside it, the houses as many and as tall as the map says,
+  // and everything on the road. The world is built once per road, in pieces of 200 m so the pieces
+  // beyond the haze are skipped; what moves is placed every picture in a few batched meshes.
+  // The flat picture above is kept for phones without WebGL, until three.js is on the phone, or
+  // with ?flat in the address. The game itself is the same either way.
+  const THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.module.min.js';
+  let R3 = null;
+  function make3d(T) {
+    const glc = $('gl');
+    const renderer = new T.WebGLRenderer({ canvas: glc, antialias: false, powerPreference: 'high-performance' });
+    const HALF = 3.9, KERB = 4.6, PIECE = 50;
+    // How sharp the picture is and how far you see. It steps down by itself when the phone is slow,
+    // and the phone remembers it.
+    const LEVELS = [{ pr: 0.75, far: 220 }, { pr: 1, far: 300 }, { pr: 1.5, far: 380 }];
+    let level = parseInt(store.get('hn-ride-3d'), 10);
+    if (!(level >= 0 && level <= 2)) level = 2;
+    const scene = new T.Scene(), camera = new T.PerspectiveCamera(62, 1, 0.3, 2400);
+    scene.fog = new T.Fog('#d6e8de', 25, 300);
+    const hemi = new T.HemisphereLight('#eef6ff', '#5d7a4a', 1.7), sun = new T.DirectionalLight('#fff2dc', 1.5);
+    sun.position.set(-0.5, 1, 0.35); scene.add(hemi, sun);
+    const colors = new Map(), C = h => { let c = colors.get(h); if (!c) colors.set(h, (c = new T.Color(h))); return c; };
+    const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+
+    // The sky, haze at the horizon and blue above, and three rows of far hills; both move with the camera
+    const sky = new T.Mesh(new T.SphereGeometry(2200, 24, 12), new T.ShaderMaterial({
+      uniforms: { top: { value: new T.Color() }, low: { value: new T.Color() } },
+      vertexShader: 'varying float vy;\nvoid main() { vy = normalize(position).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'uniform vec3 top;\nuniform vec3 low;\nvarying float vy;\nvoid main() {\n  gl_FragColor = vec4(mix(low, top, pow(clamp(vy * 2.2, 0.0, 1.0), 0.7)), 1.0);\n  #include <colorspace_fragment>\n}',
+      side: T.BackSide, depthWrite: false,
+    }));
+    sky.renderOrder = -2; scene.add(sky);
+    const ridgeMat = new T.MeshBasicMaterial({ vertexColors: true, fog: false, side: T.DoubleSide });
+    const ridges = (() => {
+      const pos = [], col = [], c = new T.Color(), foot = new T.Color('#e1ece4');
+      [[2000, '#c8dbcf', 30, 120], [1600, '#aac8b7', 10, 95], [1250, '#8db59d', -15, 70]].forEach(([r, hex, lo, amp], n) => {
+        const N = 120, top = new T.Color(hex);
+        const h = a => lo + amp * (0.5 + 0.3 * Math.sin(a * 3 + n * 2) + 0.2 * Math.sin(a * 7 + n) + 0.12 * Math.sin(a * 17 + n * 5));
+        for (let i = 0; i < N; i++) {
+          const a0 = i / N * Math.PI * 2, a1 = (i + 1) / N * Math.PI * 2, P = (a, y) => [Math.cos(a) * r, y, Math.sin(a) * r];
+          for (const p of [P(a0, -160), P(a1, -160), P(a1, h(a1)), P(a0, -160), P(a1, h(a1)), P(a0, h(a0))]) {
+            pos.push(...p); c.copy(foot).lerp(top, clamp((p[1] + 160) / (lo + amp + 160), 0, 1) * 0.9 + 0.1); col.push(c.r, c.g, c.b);
+          }
+        }
+      });
+      const g = new T.BufferGeometry();
+      g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new T.Float32BufferAttribute(col, 3));
+      const m = new T.Mesh(g, ridgeMat); m.renderOrder = -1; scene.add(m); return m;
+    })();
+
+    // ---------- shapes and materials, shared ----------
+    const tex = (w, h, paint) => {
+      const c = document.createElement('canvas'); c.width = w; c.height = h; paint(c.getContext('2d'), w, h);
+      const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; t.anisotropy = 4; return t;
+    };
+    const groundMat = new T.MeshLambertMaterial({ vertexColors: true, side: T.DoubleSide });
+    const plainMat = new T.MeshLambertMaterial(), glowMat = new T.MeshBasicMaterial();
+    const shadowMat = new T.MeshBasicMaterial({ color: '#000', transparent: true, opacity: 0.22, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+    const coinMat = new T.MeshLambertMaterial({ emissive: '#6b4a00' });
+    // House walls: a window every 3 m across and every floor (3 m) up, worked out from each house's own size
+    const windowTex = tex(32, 32, g => { g.fillStyle = '#fff'; g.fillRect(0, 0, 32, 32); g.fillStyle = '#6f8ea6'; g.fillRect(7, 4, 18, 15); g.fillStyle = '#e3e0d8'; g.fillRect(0, 28, 32, 4); });
+    windowTex.wrapS = windowTex.wrapT = T.RepeatWrapping; windowTex.anisotropy = 2;
+    const houseMat = new T.MeshLambertMaterial({ map: windowTex });
+    houseMat.onBeforeCompile = sh => {
+      sh.vertexShader = sh.vertexShader.replace('#include <uv_vertex>', `#include <uv_vertex>
+        #ifdef USE_INSTANCING
+          vec3 hs = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
+        #else
+          vec3 hs = vec3(1.0);
+        #endif
+        vMapUv = abs(normal.y) > 0.5 ? vec2(0.03, 0.97) : vec2((abs(normal.x) > 0.5 ? position.z * hs.z : position.x * hs.x) / 3.0, position.y * hs.y / 3.0);`);
+    };
+    const stripeMat = new T.MeshLambertMaterial({ map: tex(64, 16, (g, w, h) => { g.fillStyle = '#f3efe4'; g.fillRect(0, 0, w, h); g.fillStyle = '#d4483b'; for (let i = 0; i < 4; i++) g.fillRect(i * 16, 0, 8, h); }) });
+    const box = new T.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);           // stands on its base
+    const hang = new T.BoxGeometry(1, 1, 1).translate(0, -0.5, 0);         // hangs from its top: legs and arms
+    const prism = (() => {                                                   // a pitched tin roof, ridge along the depth
+      const g = new T.BufferGeometry();
+      g.setAttribute('position', new T.Float32BufferAttribute([-0.5, 0, -0.5, 0.5, 0, -0.5, 0, 1, -0.5, -0.5, 0, 0.5, 0.5, 0, 0.5, 0, 1, 0.5], 3));
+      g.setIndex([0, 2, 1, 3, 4, 5, 0, 3, 5, 0, 5, 2, 1, 2, 5, 1, 5, 4]); g.computeVertexNormals(); return g.toNonIndexed();
+    })();
+    const tank = new T.CylinderGeometry(0.5, 0.5, 1, 8).translate(0, 0.5, 0);
+    const trunk = new T.CylinderGeometry(0.12, 0.2, 1, 5).translate(0, 0.5, 0);
+    const crown = new T.IcosahedronGeometry(1, 0), cone = new T.ConeGeometry(1, 1, 7).translate(0, 0.5, 0);
+    const wheel = new T.CylinderGeometry(1, 1, 1, 12).rotateZ(Math.PI / 2);   // its axle across
+    const ball = new T.SphereGeometry(1, 12, 8), disc = new T.CylinderGeometry(1, 1, 1, 18).rotateX(Math.PI / 2);
+    const blob = new T.CircleGeometry(0.5, 14).rotateX(-Math.PI / 2), plane = new T.PlaneGeometry(1, 1).translate(0, 0.5, 0);
+    const shared = new Set([box, hang, prism, tank, trunk, crown, cone, wheel, ball, disc, blob, plane]);
+
+    // ---------- the road's shape ----------
+    // From the line on the map (2 m steps), spread evenly over the samples and rounded at the corners.
+    // x is east, z south, y up, with the start at the middle.
+    let W3 = null, built = '';
+    const smooth = (a, passes) => { for (let p = 0; p < passes; p++) { const b = a.slice(); for (let i = 1; i < a.length - 1; i++) b[i] = (a[i - 1] + 2 * a[i] + a[i + 1]) / 4; a = b; } return a; };
+    function shape() {
+      const n = route.curv.length, flat = route.path || [];
+      let X = [], Z = [];
+      if (flat.length >= 4) {
+        const pts = []; let x = 0, z = 0;
+        for (let i = 0; i < flat.length; i += 2) { x += flat[i] * 2; z += flat[i + 1] * 2; pts.push([x, z]); }
+        const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+        let seg = 0;
+        for (let k = 0; k < n; k++) {
+          const at = cum[cum.length - 1] * k / Math.max(1, n - 1);
+          while (seg < pts.length - 2 && cum[seg + 1] < at) seg++;
+          const t = clamp((at - cum[seg]) / ((cum[seg + 1] - cum[seg]) || 1), 0, 1);
+          X.push(pts[seg][0] + (pts[seg + 1][0] - pts[seg][0]) * t); Z.push(pts[seg][1] + (pts[seg + 1][1] - pts[seg][1]) * t);
+        }
+        X = smooth(X, 5); Z = smooth(Z, 5);
+      } else {
+        // no line on the map: follow the bends instead (positive bends right as you ride)
+        let hd = 0, x = 0, z = 0;
+        for (let k = 0; k < n; k++) { X.push(x); Z.push(z); hd += route.curv[k] * 1e-4 * SEG; x += Math.sin(hd) * SEG; z += Math.cos(hd) * SEG; }
+      }
+      const Y = smooth(route.height.map(h => h * 0.1), 2);
+      const P = [], R = [], F = [], yaw = [];
+      for (let k = 0; k < n; k++) P.push(new T.Vector3(X[k] - X[0], Y[k], -(Z[k] - Z[0])));
+      for (let k = 0; k < n; k++) {
+        const a = P[Math.max(0, k - 1)], b = P[Math.min(n - 1, k + 1)], f = new T.Vector3(b.x - a.x, 0, b.z - a.z).normalize();
+        F.push(f); R.push(new T.Vector3(-f.z, 0, f.x)); yaw.push(Math.atan2(f.x, f.z));
+      }
+      // How tight each bend is, so the hillside on its inside does not fold over itself
+      const turn = smooth(yaw.map((y, k) => { if (!k) return 0; let d = y - yaw[k - 1]; d -= Math.round(d / (Math.PI * 2)) * Math.PI * 2; return d / SEG; }), 3);
+      const ext = { '-1': [], '1': [] };
+      for (let k = 0; k < n; k++) for (const sd of [-1, 1]) ext[sd].push(sd * turn[k] < 0 ? clamp(0.7 / Math.max(1e-4, Math.abs(turn[k])), 12, 60) : 60);
+      // Where the road comes back past itself (Aizawl's roads loop round the hills), each side's
+      // hillside stops halfway to the other stretch, so neither cuts through the other
+      for (let k = 0; k < n; k++) for (const sd of [-1, 1]) {
+        let e = ext[sd][k];
+        for (let j = 0; j < n; j += 2) {
+          if (Math.abs(j - k) < 15) continue;
+          const dx = P[j].x - P[k].x, dz = P[j].z - P[k].z, lat = (dx * R[k].x + dz * R[k].z) * sd, along = dx * F[k].x + dz * F[k].z;
+          if (lat > 0 && lat < e * 2 + 10 && Math.abs(along) < 10) e = Math.min(e, Math.max(KERB + 0.4, lat / 2 - 1));
+        }
+        ext[sd][k] = e;
+      }
+      return { n, P, R, F, yaw, Y, ext, minY: Math.min(...Y) };
+    }
+    // A place on the road: at metres along, lat metres to the right; beyond either end it carries on straight
+    function frame3(at, lat, out) {
+      const { n, P, R, yaw } = W3, i = clamp(at / SEG, 0, n - 1.001), k = Math.floor(i), t = i - k, a = P[k], b = P[k + 1];
+      const over = (at / SEG - i) * SEG, fx = b.x - a.x, fz = b.z - a.z, L = Math.hypot(fx, fz) || 1;
+      const rx = R[k].x + (R[k + 1].x - R[k].x) * t, rz = R[k].z + (R[k + 1].z - R[k].z) * t;
+      let dy = yaw[k + 1] - yaw[k]; dy -= Math.round(dy / (Math.PI * 2)) * Math.PI * 2;
+      out.x = a.x + fx * t + fx / L * over + rx * lat; out.y = a.y + (b.y - a.y) * t; out.z = a.z + fz * t + fz / L * over + rz * lat;
+      out.yaw = yaw[k] + dy * t; out.pitch = -Math.atan2(b.y - a.y, L);
+      return out;
+    }
+
+    // ---------- the world beside the road, a piece at a time ----------
+    const edge = (k, sd) => (sideAt(k, sd) < -2.5 ? KERB : footpath(k) ? FOOT : KERB);
+    // The ground o metres out, against the road: a cut bank (a wall in town) where it rises, a slope where it falls
+    function groundAt(k, sd, o) {
+      const g = sideAt(k, sd), E = edge(k, sd);
+      const base = o <= 30 ? g * o / 30 : g * (1 + (o - 30) / 30 * 0.6), bump = o > 14 ? (rnd(k * 0.37, o + sd) - 0.5) * 1.2 : 0;
+      if (g > 2.5) return o <= E ? 0.15 : Math.max(o < E + 0.05 ? 0.15 : Math.min(12, g * 0.7), base) + bump;
+      return o <= E + 0.3 ? 0.15 : base + bump;
+    }
+    function strip() {
+      const p = [], c = [];
+      return {
+        quad(a, b, cc, d, hex) { const k = C(hex); for (const v of [a, b, cc, a, cc, d]) { p.push(v[0], v[1], v[2]); c.push(k.r, k.g, k.b); } },
+        mesh() {
+          if (!p.length) return null;
+          const g = new T.BufferGeometry();
+          g.setAttribute('position', new T.Float32BufferAttribute(p, 3)); g.setAttribute('color', new T.Float32BufferAttribute(c, 3));
+          g.computeVertexNormals(); g.computeBoundingSphere(); return new T.Mesh(g, groundMat);
+        },
+      };
+    }
+    const dummy = new T.Object3D();
+    function instanced(geo, mat, list) {
+      if (!list.length) return null;
+      const m = new T.InstancedMesh(geo, mat, list.length);
+      list.forEach((it, i) => {
+        dummy.position.set(it.p[0], it.p[1], it.p[2]); dummy.rotation.set(0, it.yaw || 0, 0); dummy.scale.set(it.s[0], it.s[1], it.s[2]);
+        dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); m.setColorAt(i, C(it.c));
+      });
+      m.computeBoundingSphere(); return m;
+    }
+    function piece(k0, k1) {
+      const { n, P, R, F, Y, yaw, ext } = W3, st = strip(), grp = new T.Group();
+      const pt = (k, lat, h, along = 0) => [P[k].x + R[k].x * lat + F[k].x * along, Y[k] + h, P[k].z + R[k].z * lat + F[k].z * along];
+      const across = (k, l0, l1, h0, h1, hex) => st.quad(pt(k, l0, h0), pt(k, l1, h0), pt(k + 1, l1, h1), pt(k + 1, l0, h1), hex);
+      const upright = (k, lat, w, d, h0, h1, hex) => {     // a small box standing beside the road
+        const c = [[-w, -d], [w, -d], [w, d], [-w, d]].map(([x, z]) => [lat + x / 2, z / 2]);
+        for (let i = 0; i < 4; i++) { const [a, b] = [c[i], c[(i + 1) % 4]]; st.quad(pt(k, a[0], h0, a[1]), pt(k, b[0], h0, b[1]), pt(k, b[0], h1, b[1]), pt(k, a[0], h1, a[1]), hex); }
+        st.quad(...c.map(([x, z]) => pt(k, x, h1, z)), hex);
+      };
+      const H = [], RF = [], TK = [], TR = [], CR = [], BB = [];
+      const housesOn = (sd, k) => (sd > 0 ? route.housesR : route.housesL)[k] || 0, tallOn = (sd, k) => (route.tallL ? (sd > 0 ? route.tallR : route.tallL)[k] : 0) || 0;
+      for (let k = k0; k < Math.min(k1, n - 1); k++) {
+        const even = k % 2 === 0;
+        // the road: asphalt, white edge lines, lane dashes
+        across(k, -HALF, HALF, 0, 0, even ? '#5b5e5c' : '#565957');
+        for (const e of [-1, 1]) across(k, e * (HALF - 0.18), e * (HALF - 0.06), 0.02, 0.02, '#e9e4d0');
+        if (even) for (const m of [-LANE / 2, LANE / 2]) across(k, m - 0.12, m + 0.12, 0.02, 0.02, '#f4efd9');
+        for (const sd of [-1, 1]) {
+          const g = sideAt(k, sd), E = edge(k, sd), E1 = edge(k + 1, sd);
+          // the kerb, red and white; in town a footpath (kalkawng), where the ground falls a parapet
+          st.quad(pt(k, sd * HALF, 0), pt(k, sd * HALF, 0.15), pt(k + 1, sd * HALF, 0.15), pt(k + 1, sd * HALF, 0), '#8f8a80');
+          across(k, sd * HALF, sd * KERB, 0.15, 0.15, even ? '#c33f3f' : '#f3efe4');
+          if (E > KERB && E1 > KERB) across(k, sd * KERB, sd * FOOT, 0.15, 0.15, even ? '#d8d2c4' : '#cfc9bb');
+          if (g < -2.5) {
+            st.quad(pt(k, sd * KERB, 0.15), pt(k, sd * KERB, 0.8), pt(k + 1, sd * KERB, 0.8), pt(k + 1, sd * KERB, 0.15), k % 4 === 0 ? '#3a3a3a' : k % 2 ? '#f1ede2' : '#e6e1d4');
+            across(k, sd * KERB, sd * (KERB + 0.25), 0.8, 0.8, '#d9d4c6');
+          } else if (k % 3 === 0) {          // roadside posts slip past: you feel the speed
+            const x = sd * (E > KERB ? FOOT + 0.15 : 4.9);
+            upright(k, x, 0.16, 0.16, 0.15, 0.95, '#f6f3ea'); upright(k, x, 0.17, 0.17, 0.95, 1.2, '#2b2b2b');
+          }
+          // the hillside, in columns out to 60 m (less on the inside of a tight bend)
+          const ca = [E, E + 0.05, E + 3, 10, 18, 30, 45, 60], cb = [E1, E1 + 0.05, E1 + 3, 10, 18, 30, 45, 60];
+          for (let c = 0; c < ca.length - 1; c++) {
+            const oa0 = Math.min(ca[c], ext[sd][k]), oa1 = Math.min(ca[c + 1], ext[sd][k]), ob0 = Math.min(cb[c], ext[sd][k + 1]), ob1 = Math.min(cb[c + 1], ext[sd][k + 1]);
+            if (oa1 - oa0 < 0.01 && ob1 - ob0 < 0.01) continue;
+            const hex = c === 0 && g > 2.5 ? (footpath(k) ? (even ? '#a19c90' : '#9a958a') : (even ? '#5d9058' : '#64975d'))
+              : g < -2.5 ? (even ? '#4f8a62' : '#558f67') : c > 3 ? (even ? '#5f9a6c' : '#5a9567') : (even ? '#6aa57a' : '#62a073');
+            st.quad(pt(k, sd * oa0, groundAt(k, sd, oa0)), pt(k, sd * oa1, groundAt(k, sd, oa1)), pt(k + 1, sd * ob1, groundAt(k + 1, sd, ob1)), pt(k + 1, sd * ob0, groundAt(k + 1, sd, ob0)), hex);
+          }
+          // Houses, as many as the map has here, as tall as Open Buildings says (else a guess);
+          // where the ground falls, they stand on it and reach up to the road
+          const dens = housesOn(sd, k) / 9, tall = tallOn(sd, k);
+          for (let j = 0; j < 3; j++) {
+            if (rnd(k, 10 + j + sd * 7) > dens * 1.15 || (j === 2 && dens < 0.4)) continue;
+            const w = 3.6 + rnd(k, j * 3 + sd) * 2.2, d = 5 + rnd(k, j * 5 + sd) * 3, off = E + 1.6 + j * 7 + rnd(k, j + 4) * 1.2 + d / 2;
+            if (off + d / 2 > ext[sd][k]) continue;
+            const gy = groundAt(k, sd, off), hh = tall ? Math.max(3, tall * (0.8 + rnd(k, j + 9) * 0.35)) : 3 + rnd(k, j + 7) * 5 + j * 2;
+            const bot = gy - 1.5, top = Math.max(gy + hh, 2 + rnd(k, j + 2) * 3), p = pt(k, sd * off, 0);
+            H.push({ p: [p[0], Y[k] + bot, p[2]], yaw: yaw[k], s: [w, top - bot, d], c: HOUSE[(k + j) % HOUSE.length] });
+            if (top - gy < 9 && rnd(k, j + 21) < 0.45) RF.push({ p: [p[0], Y[k] + top, p[2]], yaw: yaw[k], s: [w * 1.08, 1.3, d * 1.05], c: ROOF[(k * 3 + j) % ROOF.length] });
+            else if (rnd(k, j + 31) < 0.5) { const q = pt(k, sd * (off + (rnd(k, j) - 0.5) * d * 0.5), 0); TK.push({ p: [q[0], Y[k] + top, q[2]], s: [1.1, 1.3, 1.1], c: '#2b2d2c' }); }   // the black water tank
+          }
+          // Bamboo (mau) and broad trees where the map has few houses
+          if (housesOn(sd, k) <= 1) for (let j = 0; j < 3; j++) {
+            if (rnd(k, 40 + j + sd) > 0.55) continue;
+            const off = E + 2 + j * 9 + rnd(k, 50 + j) * 7;
+            if (off > ext[sd][k] - 1) continue;
+            const p = pt(k, sd * off, groundAt(k, sd, off));
+            if (rnd(k, 60 + j) < 0.45) BB.push({ p, s: [1.6 + rnd(k, j) * 1.2, 8 + rnd(k, j + 1) * 6, 1.6], c: rnd(k, j + 2) < 0.5 ? '#6f9a3c' : '#7fa848' });
+            else {
+              const tr = 3 + rnd(k, j + 3) * 3, cr = 2 + rnd(k, j + 4) * 1.8;
+              TR.push({ p, s: [1, tr, 1], c: '#6b5a48' });
+              CR.push({ p: [p[0], p[1] + tr + cr * 0.6, p[2]], yaw: rnd(k, j) * 6, s: [cr, cr * 0.9, cr], c: ['#3f7a3f', '#4d8a45', '#5b9850'][j] });
+            }
+          }
+        }
+      }
+      [st.mesh(), instanced(box, houseMat, H), instanced(prism, plainMat, RF), instanced(tank, plainMat, TK),
+        instanced(trunk, plainMat, TR), instanced(crown, plainMat, CR), instanced(cone, plainMat, BB)].forEach(m => m && grp.add(m));
+      grp.userData.mid = P[Math.min(n - 1, (k0 + k1) >> 1)];
+      return grp;
+    }
+    // The road carries on straight for a little before the start and after the end, so no edge shows
+    function apron(k, dir) {
+      const st = strip(), f = {}, grp = new T.Group();
+      const pa = (at, lat, h) => { frame3(at, lat, f); return [f.x, f.y + h, f.z]; };
+      for (let j = 0; j < 15; j++) {
+        const a = k * SEG + dir * j * SEG, b = a + dir * SEG;
+        const q = (l0, l1, h0, h1, hex) => st.quad(pa(a, l0, h0), pa(a, l1, h1), pa(b, l1, h1), pa(b, l0, h0), hex);
+        q(-HALF, HALF, 0, 0, j % 2 ? '#565957' : '#5b5e5c');
+        for (const sd of [-1, 1]) {
+          q(sd * HALF, sd * KERB, 0.15, 0.15, j % 2 ? '#f3efe4' : '#c33f3f');
+          const cols = [KERB, 10, 18, 30, 45, 60];
+          for (let c = 0; c < cols.length - 1; c++) q(sd * cols[c], sd * cols[c + 1], groundAt(k, sd, cols[c]), groundAt(k, sd, cols[c + 1]), c > 2 ? '#5f9a6c' : '#6aa57a');
+        }
+      }
+      grp.add(st.mesh()); grp.userData.mid = W3.P[k];
+      return grp;
+    }
+    const dispose = grp => grp.traverse(o => { if (o.geometry && !shared.has(o.geometry)) o.geometry.dispose(); if (o.isInstancedMesh) o.dispose(); });
+    let pieces = [], under = null;
+    function setRoute() {
+      if (built === route.id) return;
+      built = route.id;
+      for (const g of pieces) { scene.remove(g); dispose(g); }
+      W3 = shape(); pieces = [];
+      for (let k = 0; k < W3.n - 1; k += PIECE) pieces.push(piece(k, k + PIECE + 1));
+      pieces.push(apron(0, -1), apron(W3.n - 1, 1));
+      for (const g of pieces) scene.add(g);
+      // the valley floor far below, so no gap in the hillside shows the sky
+      if (!under) { under = new T.Mesh(new T.PlaneGeometry(8000, 8000).rotateX(-Math.PI / 2), new T.MeshLambertMaterial({ color: '#57865f' })); scene.add(under); }
+      under.position.set(0, W3.minY - 70, 0);
+    }
+
+    // ---------- placing things: a frame on the road, then parts in it ----------
+    // x is metres to the right, y up and z forward, in the frame set by base()
+    const mB = new T.Matrix4(), mL = new T.Matrix4(), q = new T.Quaternion(), q2 = new T.Quaternion(), e3 = new T.Euler(), v3 = new T.Vector3(), one = new T.Vector3(1, 1, 1), sc = new T.Vector3();
+    const base = (f, turn = 0, flip = false) => { e3.set(flip ? -f.pitch : f.pitch, f.yaw + turn, 0, 'YXZ'); q.setFromEuler(e3); mB.compose(v3.set(f.x, f.y, f.z), q, one); };
+    const pools = [];
+    const pool = (geo, mat, max, list = pools) => {
+      const m = new T.InstancedMesh(geo, mat, max); m.frustumCulled = false; m.count = 0; m.n = 0; m.max = max;
+      m.setColorAt(0, C('#fff')); list.push(m); scene.add(m); return m;
+    };
+    function put(m, x, y, z, sx, sy, sz, hex, rx = 0, ry = 0, rz = 0) {
+      if (m.n >= m.max) return;
+      e3.set(rx, ry, rz, 'YXZ'); q2.setFromEuler(e3);
+      mL.compose(v3.set(-x, y, z), q2, sc.set(sx, sy, sz)).premultiply(mB);
+      m.setMatrixAt(m.n, mL); m.setColorAt(m.n, C(hex)); m.n++;
+    }
+    const shadows = pool(blob, shadowMat, 200);
+    const vBody = pool(box, plainMat, 90), vCab = pool(box, plainMat, 90), vWheel = pool(wheel, plainMat, 360), vRound = pool(ball, plainMat, 90), vGlow = pool(box, glowMat, 450);
+    const coinM = pool(disc, coinMat, 60), rockM = pool(crown, plainMat, 24), logM = pool(wheel, plainMat, 24), boardM = pool(box, stripeMat, 24), legM = pool(box, plainMat, 48);
+    const pBox = pool(box, plainMat, 120), pLimb = pool(hang, plainMat, 120), pRound = pool(ball, plainMat, 100), pCone = pool(cone, plainMat, 30);
+
+    function placeAll(far) {
+      for (const m of pools) m.n = 0;
+      const f = {};
+      for (const c of cars) {
+        if (c.at < s - 15 || c.at > s + far) continue;
+        frame3(c.at, c.x, f); base(f, c.dir < 0 ? Math.PI : 0, c.dir < 0);
+        put(shadows, 0, 0.03, 0, c.wid * 1.2, 1, c.len * 1.08, '#000');
+        const back = -c.len / 2 - 0.02, stop = c.slowing ? '#ff3b2f' : '#9e2a22';
+        if (c.kind === 'bike') {
+          put(vBody, 0, 0.28, 0, 0.3, 0.5, c.len * 0.85, c.col);
+          for (const z of [0.62, -0.62]) put(vWheel, 0, 0.3, z, 0.1, 0.3, 0.3, '#141615');
+          put(vCab, 0, 0.78, -0.12, 0.44, 0.6, 0.32, '#3c556e');
+          put(vRound, 0, 1.48, -0.08, 0.18, 0.19, 0.2, '#f2f2ee');
+          put(vGlow, 0, 0.55, back + 0.2, 0.16, 0.07, 0.04, stop); put(vGlow, 0, 0.7, -back - 0.2, 0.14, 0.12, 0.04, '#fff6c8');
+          continue;
+        }
+        const bus = c.kind === 'bus', r = bus ? 0.5 : 0.33;
+        put(vBody, 0, 0.22, 0, c.wid, bus ? c.hgt * 0.92 : c.hgt * 0.48, c.len, c.col);
+        if (bus) put(vCab, 0, c.hgt * 0.5, 0, c.wid * 1.02, c.hgt * 0.3, c.len * 0.94, '#3a4c5a');
+        else put(vCab, 0, 0.22 + c.hgt * 0.47, -c.len * 0.06, c.wid * 0.84, c.hgt * 0.45, c.len * 0.55, '#33434f');
+        if (c.kind === 'taxi') put(vCab, 0, 0.22 + c.hgt * 0.92, -c.len * 0.06, 0.5, 0.12, 0.25, '#ffc94a');
+        if (c.kind === 'suv') put(vCab, 0, 0.22 + c.hgt * 0.92, -c.len * 0.06, c.wid * 0.7, 0.05, c.len * 0.5, '#2b2d2c');
+        for (let w = 0; w < 4; w++) put(vWheel, (w % 2 ? 0.5 : -0.5) * c.wid * 0.92, r, (w < 2 ? 0.34 : -0.34) * c.len, 0.26, r, r, '#141615');
+        // the back: tail lights that glow when it slows, and the yellow number plate; the front: headlights
+        const ly = bus ? 0.5 : 0.22 + c.hgt * 0.3;
+        for (const e of [-1, 1]) { put(vGlow, e * c.wid * 0.38, ly, back, c.wid * 0.18, 0.12, 0.04, stop); put(vGlow, e * c.wid * 0.36, ly, -back, c.wid * 0.2, 0.12, 0.04, '#fffbe6'); }
+        put(vGlow, 0, ly - 0.16, back, 0.5, 0.13, 0.03, '#f6d54a');
+      }
+      for (const t of things) {
+        if (t.got || t.at < s - 6 || t.at > s + far) continue;
+        frame3(t.at, LANES[t.lane], f); base(f);
+        if (t.kind === 'coin') { put(coinM, 0, 0.62, 0, 0.38, 0.38, 0.09, '#ffd34d', 0, time * 5 + t.at); put(shadows, 0, 0.03, 0, 0.6, 1, 0.3, '#000'); continue; }
+        put(shadows, 0, 0.03, 0, 2.3, 1, 0.9, '#000');
+        if (t.kind === 'rock') put(rockM, 0, 0.32, 0, 1.0, 0.72, 0.8, '#8a8f86', 0, t.at);
+        else if (t.kind === 'log') put(logM, 0, 0.32, 0, 2.2, 0.32, 0.32, '#8d5939');
+        else { put(boardM, 0, 0.55, 0, 2.2, 0.45, 0.1, '#ffffff'); for (const e of [-1, 1]) put(legM, e * 0.9, 0, 0, 0.12, 0.56, 0.12, '#4b4b4b'); }
+      }
+      for (const p of peds) {
+        if (p.at < s - 6 || p.at > s + far) continue;
+        frame3(p.at, p.x, f); f.pitch = 0; f.y += Math.abs(p.x) > HALF ? 0.15 : 0;     // on the footpath, or on the road
+        base(f, p.vx ? (p.vx > 0 ? -Math.PI / 2 : Math.PI / 2) : p.va < 0 ? Math.PI : 0);
+        const L = p.look, sw = Math.sin(p.phase * Math.PI / 2) * 0.45;
+        put(shadows, 0, 0.02, 0, 0.6, 1, 0.6, '#000');
+        for (const e of [-1, 1]) { put(pLimb, e * 0.1, 0.82, 0, 0.13, 0.8, 0.14, L.lower, e * sw); put(pLimb, e * 0.29, 1.42, 0, 0.1, 0.55, 0.1, L.shirt, -e * sw * 0.8); }
+        if (L.stripes) { put(pBox, 0, 0.4, 0, 0.42, 0.52, 0.28, L.lower); for (const y of [0.57, 0.71]) put(pBox, 0, y, 0, 0.43, 0.05, 0.29, L.stripes); }
+        put(pBox, 0, 0.88, 0, 0.44, 0.56, 0.26, L.shirt);
+        put(pRound, 0, 1.58, 0, 0.13, 0.14, 0.13, '#d9a47c');
+        put(pRound, 0, 1.63, -0.015, 0.14, 0.1, 0.14, L.hair);
+        if (L.bun) put(pRound, 0, 1.65, -0.14, 0.07, 0.07, 0.07, L.hair);
+        if (L.bag) put(pBox, 0, 0.97, -0.2, 0.32, 0.36, 0.14, L.bag);
+        if (L.umbrella) { put(pBox, 0.28, 1.4, 0.05, 0.03, 0.75, 0.03, '#231e16'); put(pCone, 0.28, 2.1, 0.05, 0.62, 0.32, 0.62, L.umbrella); }
+      }
+      for (const m of pools) { m.count = m.n; m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }
+    }
+
+    // ---------- the signs, crossings and the finish, for this ride ----------
+    const signs = new Map();
+    const signTex = (key, w, h, paint) => { let t = signs.get(key); if (!t) signs.set(key, (t = tex(w, h, paint))); return t; };
+    const placeTex = name => {
+      const font = '800 56px "Plus Jakarta Sans", sans-serif', g0 = document.createElement('canvas').getContext('2d'); g0.font = font;
+      const w = Math.ceil(g0.measureText(name).width) + 60;
+      return { w, t: signTex('p:' + name, w, 96, g => {
+        g.fillStyle = '#1d6b34'; g.beginPath(); g.roundRect(0, 0, w, 96, 16); g.fill();
+        g.strokeStyle = '#fff'; g.lineWidth = 5; g.beginPath(); g.roundRect(7, 7, w - 14, 82, 11); g.stroke();
+        g.fillStyle = '#fff'; g.font = font; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(name, w / 2, 51);
+      }) };
+    };
+    const honkTex = () => signTex('honk', 128, 160, g => {
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(64, 60, 56, 0, 7); g.fill(); g.strokeStyle = '#d32f2f'; g.lineWidth = 11; g.stroke();
+      g.fillStyle = '#231e16'; g.beginPath(); g.moveTo(36, 52); g.lineTo(80, 36); g.lineTo(80, 84); g.lineTo(36, 68); g.fill();
+      g.strokeStyle = '#d32f2f'; g.beginPath(); g.moveTo(26, 22); g.lineTo(102, 98); g.stroke();
+      g.fillStyle = '#fff'; g.fillRect(0, 124, 128, 36); g.fillStyle = '#231e16'; g.font = '800 20px "Plus Jakarta Sans", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('NO HONKING', 64, 143);
+    });
+    const walkTex = () => signTex('walk', 128, 128, g => {
+      g.fillStyle = '#1565c0'; g.beginPath(); g.roundRect(0, 0, 128, 128, 14); g.fill();
+      g.fillStyle = '#fff'; g.beginPath(); g.moveTo(64, 16); g.lineTo(112, 104); g.lineTo(16, 104); g.fill();
+      g.fillStyle = '#231e16'; g.beginPath(); g.arc(64, 46, 7, 0, 7); g.fill();
+      g.strokeStyle = '#231e16'; g.lineWidth = 6; g.lineCap = 'round'; g.beginPath(); g.moveTo(64, 56); g.lineTo(59, 76); g.lineTo(48, 94); g.moveTo(59, 76); g.lineTo(74, 94); g.stroke();
+    });
+    const checkTex = signTex('finish', 128, 32, g => { for (let i = 0; i < 16; i++) for (let j = 0; j < 4; j++) { g.fillStyle = (i + j) % 2 ? '#231e16' : '#fff'; g.fillRect(i * 8, j * 8, 8, 8); } });
+    const postMat = new T.MeshLambertMaterial({ color: '#4b4b4b' }), backMat = new T.MeshLambertMaterial({ color: '#8d918f' });
+    let props = null;
+    function sign(at, lat, t, w, h, post) {
+      const f = frame3(at, lat, {}); f.pitch = 0; base(f, Math.PI);       // facing back, towards the rider
+      const g = new T.Group(); g.matrixAutoUpdate = false; g.matrix.copy(mB);
+      const add = (geo, mat, x, y, z, sx, sy, sz) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); g.add(m); };
+      add(box, postMat, 0, 0, -0.06, 0.1, post + h * 0.5, 0.1);
+      add(box, backMat, 0, post, -0.04, w, h, 0.05);
+      add(plane, new T.MeshLambertMaterial({ map: t, transparent: true }), 0, post, 0, w, h, 1);
+      props.add(g);
+    }
+    function setPlan() {
+      setRoute();
+      if (props) { scene.remove(props); props.traverse(o => { if (o.material && o.material.map && o.material !== stripeMat) o.material.dispose(); if (o.isInstancedMesh) o.dispose(); }); }
+      props = new T.Group(); scene.add(props);
+      for (const [i, name, side] of route.places) if (i > 2) { const p = placeTex(name); sign(i * SEG, (side || 1) * 5.4, p.t, 0.8 * p.w / 96, 0.8, 2.2); }
+      for (const j of jams) sign(j.at - 45, -5.4, honkTex(), 0.8, 1, 1.9);
+      const zebra = [];
+      for (const c of crossings) {
+        sign(c.at - 32, -(footpath(Math.floor(c.at / SEG)) ? FOOT + 0.3 : 5.3), walkTex(), 0.8, 0.8, 2.2);
+        zebra.push(c.at + 2);
+      }
+      if (zebra.length) {
+        const bars = pool(box, plainMat, zebra.length * 8, []); scene.remove(bars); props.add(bars);
+        const f = {};
+        for (const at of zebra) { frame3(at, 0, f); base(f); for (let k = 0; k < 8; k++) put(bars, -3.45 + k * 0.95, 0.005, 0, 0.5, 0.02, 3.6, '#f4f1e6'); }
+        bars.count = bars.n; bars.instanceMatrix.needsUpdate = true; bars.instanceColor.needsUpdate = true;
+      }
+      // the finish: two posts and a chequered banner across the road
+      const f = frame3(route.length, 0, {}); f.pitch = 0; base(f, Math.PI);
+      const g = new T.Group(); g.matrixAutoUpdate = false; g.matrix.copy(mB);
+      for (const e of [-1, 1]) { const m = new T.Mesh(box, postMat); m.position.set(e * HALF * 1.2, 0, 0); m.scale.set(0.18, 4.6, 0.18); g.add(m); }
+      const ban = new T.Mesh(plane, new T.MeshLambertMaterial({ map: checkTex, side: T.DoubleSide })); ban.position.set(0, 3.8, 0); ban.scale.set(HALF * 2.4, 0.8, 1); g.add(ban);
+      props.add(g);
+    }
+
+    // ---------- the scooter: its colours from the garage ----------
+    const scoot = new T.Group(), lm = h => new T.MeshLambertMaterial({ color: h });
+    const bodyMats = [lm('#e2f58a'), lm('#b9db4a'), lm('#86a82e')], tailMat = new T.MeshBasicMaterial({ color: '#b8352a' });
+    const jacket = lm('#3b78bf'), dark = lm('#2a2622'), tyre = lm('#141615'), skin = lm('#e8b48a');
+    const part = (geo, mat, x, y, z, sx, sy, sz, rx = 0) => { const m = new T.Mesh(geo, mat); m.position.set(-x, y, z); m.scale.set(sx, sy, sz); m.rotation.x = rx; scoot.add(m); return m; };
+    part(box, bodyMats[1], 0, 0.22, -0.2, 0.46, 0.38, 1.0);       // the rear body
+    part(box, bodyMats[2], 0, 0.14, 0.35, 0.32, 0.14, 0.62);       // the floorboard
+    part(box, bodyMats[0], 0, 0.2, 0.66, 0.38, 0.9, 0.16, -0.15);  // the front shield
+    part(box, dark, 0, 0.6, -0.28, 0.38, 0.1, 0.7);                // seat
+    const tail = part(box, tailMat, 0, 0.44, -0.71, 0.24, 0.07, 0.03);
+    part(box, lm('#f6d54a'), 0, 0.27, -0.71, 0.2, 0.1, 0.02);      // number plate
+    const wheels = [part(wheel, tyre, 0, 0.26, 0.62, 0.12, 0.26, 0.26), part(wheel, tyre, 0, 0.26, -0.55, 0.12, 0.26, 0.26)];
+    part(box, dark, 0, 1.08, 0.64, 0.68, 0.04, 0.04);              // handlebar
+    for (const e of [-1, 1]) {
+      part(box, lm('#2c3e50'), e * 0.14, 0.6, 0.0, 0.15, 0.15, 0.48);   // thighs
+      part(box, lm('#2c3e50'), e * 0.15, 0.2, 0.26, 0.13, 0.42, 0.13);  // shins
+      part(box, jacket, e * 0.25, 1.06, 0.2, 0.1, 0.1, 0.72, 0.12);     // arms to the handlebar
+      part(ball, skin, e * 0.31, 1.09, 0.58, 0.06, 0.06, 0.06);
+    }
+    part(box, jacket, 0, 0.66, -0.2, 0.44, 0.56, 0.28, 0.2);       // the rider, leaning forward a little
+    part(ball, lm('#f2f2ee'), 0, 1.38, -0.08, 0.17, 0.18, 0.19);   // helmet
+    part(ball, lm('#c03a2e'), 0, 1.4, -0.08, 0.174, 0.05, 0.194);
+    part(box, lm('#d9a45a'), 0, 0.66, -0.66, 0.44, 0.4, 0.38);     // the parcel box on the rack
+    part(box, lm('#a8742c'), 0, 0.66, -0.66, 0.07, 0.405, 0.385);
+    const riderShadow = new T.Mesh(blob, shadowMat); riderShadow.scale.set(0.8, 1, 1.9); scene.add(riderShadow);
+    scene.add(scoot);
+    let painted = '';
+
+    // ---------- the picture ----------
+    let lastT = 0, perfN = 0, perfMs = 0;
+    const cam = new T.Vector3(), aim = new T.Vector3(), want = new T.Vector3(), fogCol = new T.Color();
+    const HZ = HAZES.map(c => new T.Color(`rgb(${c})`)), MIST = C('#ecf2ee'), SKY0 = C('#8ccaf0'), SKY1 = C('#9db7d6'), SUN0 = C('#fff2dc'), SUN1 = C('#ffb070'), WARM = C('#ffe2c0'), WHITE = C('#ffffff');
+    const rider = { x: 0, y: 0 }, fA = {}, fB = {}, fS = {};
+    function size() {
+      renderer.setPixelRatio(Math.min(devicePixelRatio || 1, LEVELS[level].pr)); renderer.setSize(W, H, false);
+      camera.aspect = W / H; camera.fov = W / H < 1 ? 64 : 52; camera.updateProjectionMatrix();
+    }
+    function draw3() {
+      setRoute();
+      const now = performance.now(), ms = lastT ? now - lastT : 16; lastT = now;
+      // A slow phone: a softer picture and a shorter view, remembered for next time
+      if (mode === 'playing' && ms < 200) {
+        perfMs += ms;
+        if (++perfN >= 120) { if (perfMs / perfN > 26 && level > 0) { level--; store.set('hn-ride-3d', String(level)); size(); } perfN = 0; perfMs = 0; }
+      } else { perfN = 0; perfMs = 0; }
+      const far = LEVELS[level].far;
+      // The light: golden towards the end of the ride, and a stretch of morning haze (romei)
+      look = lookAt(s); hazeStep = Math.round(look.golden * 4);
+      const gi = look.golden * 4, g0 = Math.floor(gi), g1 = Math.min(4, g0 + 1);
+      fogCol.copy(HZ[g0]).lerp(HZ[g1], gi - g0).lerp(MIST, look.mist * 0.5);
+      scene.fog.color.copy(fogCol); scene.fog.near = 25 * (1 - 0.5 * look.mist); scene.fog.far = far * (1 - 0.5 * look.mist);
+      sky.material.uniforms.low.value.copy(fogCol); sky.material.uniforms.top.value.copy(SKY0).lerp(SKY1, look.golden);
+      sun.color.copy(SUN0).lerp(SUN1, look.golden); sun.position.set(-0.5, 1 - 0.65 * look.golden, 0.35);
+      ridgeMat.color.copy(WHITE).lerp(WARM, look.golden * 0.5);
+      // The scooter: it leans, bobs on the road, and tips over in a crash
+      const my = myScooter();
+      if (painted !== my.id) { painted = my.id; my.body.forEach((h, i) => bodyMats[i].color.set(h)); }
+      frame3(s, px, fS);
+      const fall = mode === 'crashing' ? Math.min(1, crashT / 0.45) : 0, bob = mode === 'playing' && !reduce ? Math.sin(time * 31) * 0.006 + Math.sin(time * 7.3) * 0.004 : 0;
+      scoot.position.set(fS.x, fS.y + bob - fall * 0.15, fS.z); scoot.rotation.set(fS.pitch, fS.yaw, lean + crashDir * fall * 1.25, 'YXZ');
+      riderShadow.position.set(fS.x, fS.y + 0.03, fS.z); riderShadow.rotation.y = fS.yaw;
+      for (const w of wheels) w.rotation.x = s / 0.26;
+      const brake = braking || mode === 'crashing' ? 1 : Math.max(0, Math.min(1, roadAt(route.grade, s, 1e-3) * 8));
+      tailMat.color.set(brake > 0.05 ? '#ff4a3a' : '#b8352a');
+      placeAll(far);
+      // The camera rides behind the scooter and above, the way it is heading, looking down the road
+      // (in a tight bend it swings round a moment later, so the scooter stays in the picture)
+      frame3(s, px * 0.7, fB); frame3(s + 9, px * 0.45, fA);
+      want.set(fB.x - Math.sin(fB.yaw) * 5.4, fB.y + 2.3 + Math.sin(fB.pitch) * 5.4, fB.z - Math.cos(fB.yaw) * 5.4); aim.set(fA.x, fA.y + 0.9, fA.z);
+      if (mode === 'playing' || mode === 'crashing') cam.lerp(want, 1 - Math.exp(-Math.min(0.1, ms / 1000) * 9)); else cam.copy(want);
+      camera.position.copy(cam);
+      if (shake > 0 && !reduce) camera.position.add(v3.set((Math.random() - 0.5) * shake * 0.3, (Math.random() - 0.5) * shake * 0.2, 0));
+      camera.lookAt(aim);
+      sky.position.copy(camera.position); ridges.position.copy(camera.position);
+      for (const g of pieces) g.visible = g.userData.mid.distanceTo(camera.position) < far + PIECE * SEG * 0.7;
+      renderer.render(scene, camera);
+      // where the scooter is on the screen, for the sparks and the +1s drawn over the picture
+      v3.set(fS.x, fS.y + 0.35, fS.z).project(camera);
+      rider.x = (v3.x + 1) / 2 * W; rider.y = (1 - v3.y) / 2 * H;
+      ctx.clearRect(-20, -20, W + 40, H + 40);
+      effects();
+    }
+    glc.addEventListener('webglcontextlost', e => { e.preventDefault(); R3 = null; glc.classList.remove('on'); draw(); });
+    return { draw: draw3, size, setPlan, rider, level: () => level };
+  }
+
   // ---------- the HUD ----------
   let hudLast = 0;
   function hud(force) {
@@ -1222,7 +1741,7 @@
     // Lean with the lane change, and into the bend
     const want = Math.max(-0.4, Math.min(0.4, (px - was) / dt * 0.045 + curvAt(s) * v * v * 0.012));
     lean += (want - lean) * Math.min(1, dt * 8);
-    if (!reduce && Math.random() < dt * 9) sparks.push({ x: W / 2 + px * 0.18 * W * 0.42 / PLAYER_Z + 9, y: H * 0.84 - 8, vx: (Math.random() - .5) * 20, vy: 30 + Math.random() * 20, r: 2.5, life: 0.6, c: '#9aa39b', a: 0.5, puff: true });
+    if (!reduce && Math.random() < dt * 9) sparks.push({ x: riderXY().x + 9, y: riderXY().y - 8, vx: (Math.random() - .5) * 20, vy: 30 + Math.random() * 20, r: 2.5, life: 0.6, c: '#9aa39b', a: 0.5, puff: true });
     bgX += curvAt(s) * v * dt * W * 0.9;
     shake = Math.max(0, shake - dt * 3);
     plan();
@@ -1241,7 +1760,7 @@
       if (Math.abs(LANES[t.lane] - px) > 1.15) continue;
       if (t.kind === 'coin') {
         t.got = true; coins++; beep(880, 0.06); burst('#ffd34d');
-        pops.push({ text: '+1', x: W / 2 + (Math.random() - .5) * 30, y: H * 0.84 - 110, life: 1 });
+        pops.push({ text: '+1', x: riderXY().x + (Math.random() - .5) * 30, y: riderXY().y - 110, life: 1 });
         const b = $('coins'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump');
         if (coins % 10 === 0) toast(`${coins} coins!`);
       } else {
@@ -1276,7 +1795,7 @@
   }
   function burst(c) {
     if (reduce) return;
-    const x = W / 2 + (px * 0.18) * (W * 0.42) / PLAYER_Z, y = H * 0.84 - 40;
+    const { x, y: ry } = riderXY(), y = ry - 40;
     for (let i = 0; i < 14; i++) sparks.push({ x, y, vx: (Math.random() - .5) * 260, vy: -Math.random() * 220, r: 2 + Math.random() * 3, life: 1, c });
   }
   function end(delivered) {
@@ -1588,9 +2107,14 @@
 
   // For the automatic tests only (?test in the address): read the ride and steer.
   if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
-    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross })), crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)) }), steer, brake: on => setBrake(on) };
+    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); } };
 
   syncSound(); syncWallet(); syncReady(); syncPause(); drawRoutes(); showParcel(); reset(); resize();
+  // three.js is fetched once and kept on the phone; until then, and without WebGL, the picture is flat
+  if (!/[?&]flat\b/.test(location.search)) import(THREE_URL).then(T => {
+    try { R3 = make3d(T); } catch (e) { R3 = null; return; }
+    $('gl').classList.add('on'); R3.setPlan(); resize();
+  }).catch(() => {});
   hnStat('ride', 'Aizawl Ride');
 })();
 </script>

@@ -31,8 +31,8 @@ Learn Mizo words by playing. Free, on any phone, no sign-up.
   in Mizo numbers.
 - **Aizawl Ride.** Ride a scooter along real Aizawl roads to deliver a parcel:
   from Millennium Centre to Civil Hospital, or down past Vanapa Hall and the
-  Assembly House to Chawnga Road. The bends, hills, hillsides and houses come
-  from OpenStreetMap and Copernicus elevation data. Mizo words come up for what
+  Assembly House to Chawnga Road, in 3D. The bends, hills, hillsides and houses
+  come from OpenStreetMap and Copernicus elevation data. Mizo words come up for what
   you ride past. Coins go into a wallet for scooters named by Mizo colours,
   and there are missions and badges to earn. On the Aizawl map you deliver
   between 18 veng along real roads, past houses at their real heights. Share
