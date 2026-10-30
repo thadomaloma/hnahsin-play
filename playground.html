@@ -2079,9 +2079,15 @@ function opNew() {
     const drawn = p > 0 && DRAWN_OF[emoji(thing)];
     return `<button class="opt" data-side="${s}" aria-label="${s === 0 ? 'First' : 'Second'} picture">${drawn ? `<canvas data-what="${drawn}" data-k="${s === 0 ? 1 : 0}"></canvas>` : sizePic(thing, sx, sy)}</button>`;
   }).join('');
-  $('op-board').querySelectorAll('canvas').forEach(c => paintCanvas(c, 200, 200, ctx => drawSizeThing(ctx, c.dataset.what, +c.dataset.k)));
+  opDraw();
   $('op-feedback').textContent = ''; $('op-feedback').className = 'feedback';
 }
+// A hidden canvas has no size to paint at, so the drawn things are painted again once the game shows.
+function opDraw() {
+  $('op-board').querySelectorAll('canvas').forEach(c => paintCanvas(c, 200, 200, ctx => drawSizeThing(ctx, c.dataset.what, +c.dataset.k)));
+}
+addEventListener('resize', () => { if (!$('size').hidden) opDraw(); });
+document.addEventListener('showgame', e => { if (e.detail === 'size') opDraw(); });
 $('op-board').addEventListener('click', e => {
   const b = e.target.closest('.opt'); if (!b || op.done) return;
   op.done = true; op.total++;
