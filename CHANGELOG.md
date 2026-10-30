@@ -4,6 +4,22 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.23.0 (31 October 2026)
+
+### Aizawl Ride: a new delivery scooter, Aizawl's two-wheelers and a new bus
+
+- Your scooter is new: smooth curved panels, a chrome V on the front, a
+  grab rail, and a big yellow delivery box with Hnahsin on its back and
+  sides. Its lights show clearly now.
+- Four kinds of two-wheeler share the road: scooters, commuter
+  motorbikes, Royal Enfields (round chrome lamp, deep mudguards, spoked
+  wheels) and sports bikes. Like on Aizawl's roads, they are now most of
+  the traffic, and now and then someone rides behind.
+- Every rider wears a helmet with a visor.
+- The bus is now a city midi bus: a raked windscreen with the route
+  board over it, a band of dark windows, a white roof with the air
+  conditioner, stripes along the side and the door at the front.
+
 ## 1.22.2 (31 October 2026)
 
 ### Aizawl Ride: clean walls and a sharper picture
