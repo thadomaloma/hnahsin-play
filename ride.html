@@ -166,7 +166,6 @@
         <div class="sheet">
           <h2>Deliver the parcel</h2>
           <p class="parcel" id="parcel"></p>
-          <div class="routes" id="routes"></div>
           <button class="route citybtn" id="mapBtn" type="button"><b>🗺️ The Aizawl map</b><span id="mapSub">Deliver between 18 veng</span></button>
           <button class="go" id="startBtn" type="button">Start riding</button>
           <div class="row2">
@@ -192,6 +191,8 @@
           <canvas class="citymap" id="cityMap" aria-label="A map of Aizawl's roads, with the veng you can ride to"></canvas>
           <div class="list" id="jobs"></div>
           <p class="fine" id="mapNote"></p>
+          <h3>Long rides</h3>
+          <div class="routes" id="routes"></div>
           <button class="go" type="button" data-close>Back</button>
         </div>
       </div>
@@ -222,7 +223,7 @@
           <div class="news" id="endNews"></div>
           <button class="go" id="nextBtn" type="button" hidden>Next delivery</button>
           <button class="go" id="againBtn" type="button">Ride again</button>
-          <button class="route" id="otherBtn" type="button" style="text-align:center"><b>Choose a road</b></button>
+          <button class="route" id="otherBtn" type="button" style="text-align:center"><b>Back</b></button>
         </div>
       </div>
     </div>
@@ -2196,12 +2197,18 @@
   $('routes').addEventListener('click', e => {
     const b = e.target.closest('.route'); if (!b) return;
     route = DATA.routes.find(r => r.id === b.dataset.id); S.route = route.id; writeSave();
-    drawRoutes(); reset(); draw();
+    $('mapView').hidden = true; panel = null; jobPick = null;
+    start();
   });
   route = DATA.routes.find(r => r.id === S.route) || DATA.routes[0];
 
   // ---------- controls ----------
-  $('startBtn').onclick = start;
+  // Start riding: the next delivery from the veng you are in, the nearest one open (without the map yet, the first long ride)
+  $('startBtn').onclick = () => loadCity().then(() => {
+    if (!CITY.veng.some(v => v.id === S.at)) S.at = CITY.veng[0].id;
+    const j = jobsFrom(S.at).find(x => isOpen(x.b));
+    j ? startJob(j, true) : start();
+  }).catch(() => start());
   $('againBtn').onclick = () => { parcel = PARCELS[Math.random() * PARCELS.length | 0]; showParcel(); start(); };
   $('resumeBtn').onclick = resume;
   $('otherBtn').onclick = () => { if (route.id.startsWith('city:')) route = DATA.routes.find(r => r.id === S.route) || DATA.routes[0]; mode = 'ready'; $('endView').hidden = true; $('startView').hidden = false; drawRoutes(); syncReady(); reset(); draw(); };
@@ -2416,10 +2423,10 @@
     else if (j) { jobPick = j; drawMap(); }
     else $('mapNote').textContent = best.id === S.at ? `You are in ${best.name}.` : `${best.name}: ride there from a veng nearer to it.`;
   });
-  function startJob(j) {
+  function startJob(j, sameParcel) {
     route = routeOf(j); jobPick = null;
     $('mapView').hidden = true; panel = null;
-    parcel = PARCELS[Math.random() * PARCELS.length | 0]; showParcel();
+    if (!sameParcel) { parcel = PARCELS[Math.random() * PARCELS.length | 0]; showParcel(); }
     start();
   }
   $('nextBtn').onclick = () => { $('endView').hidden = true; mode = 'ready'; openMap(); };
@@ -2465,7 +2472,7 @@
     $('gl').classList.add('on'); R3.setPlan(); resize();
   }).catch(() => {});
   hnStat('ride', 'Aizawl Ride');
-  loadCity().catch(() => {});     // so the end of any ride can say which veng opened
+  loadCity().then(() => { $('mapSub').textContent = `${openVeng().length} of ${CITY.veng.length} veng open`; }).catch(() => {});     // and so the end of any ride can say which veng opened
 })();
 </script>
 

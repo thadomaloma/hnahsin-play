@@ -4,6 +4,18 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.20.1 (30 October 2026)
+
+### Aizawl Ride: a simpler start
+
+- The start screen no longer lists the two long rides. Start riding takes
+  the next parcel from the veng you are in, to the nearest veng that is
+  open.
+- The rides to Civil Hospital and Chawnga Road are now under Long rides on
+  the Aizawl map, so their missions can still be done.
+- The Aizawl map button shows how many veng are open as soon as the page
+  opens.
+
 ## 1.20.0 (30 October 2026)
 
 ### Aizawl Ride: a cleaner road and real-looking trees
