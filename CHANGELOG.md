@@ -4,6 +4,14 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.17.4 (30 October 2026)
+
+### Big and small: a fix
+
+- The first round of long and short, tall and low, or thick and thin now
+  shows its two pictures. Before, the two cards were empty until the next
+  round.
+
 ## 1.17.3 (27 October 2026)
 
 ### Behind the scenes
