@@ -536,7 +536,10 @@
   const FOOT = 6.15;                                   // the footpath runs from the kerb to here (m from the middle)
   const footpath = i => housesNear(i) > 2;            // in town, where the map has houses
   // ...and in 3D, where the picture has one on that side (not where the road meets another stretch of itself)
-  const walkHere = (i, side) => !R3 || R3.walkable(Math.floor(i), side);
+  // (only on a footpath, on a side where the ground does not fall away to a parapet)
+  const walkHere = (i, side) => { i = Math.floor(i); return footpath(i) && sideAt(i, side) > -2.5 && (!R3 || R3.walkable(i, side)); };
+  // a footpath here or right beside, where nothing should stand in the way of people
+  const footNear = i => footpath(i - 1) || footpath(i) || footpath(i + 1);
   const LOOKS = [
     { shirt: '#c0392b', lower: '#2c3e50', hair: '#1d1b22' },
     { shirt: '#f4f4f0', lower: '#1f3a68', hair: '#1d1b22', bag: '#2e6da4' },            // a student
@@ -1593,6 +1596,17 @@
     // The houses of the whole road, worked out before anything else is placed: as many as the map has
     // at each place, as tall as Open Buildings says (else a guess), none on the road. Each is kept with
     // its footprint, so the trees and the wires can keep out of every house, on any stretch.
+    // how deep two houses are inside each other, across their footprints (0 if they are apart or one is above the other)
+    function homeDepth(a, b) {
+      if (Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0) < 0.3) return 0;
+      const corners = h => [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([i, j]) => [h.x + (i * h.w / 2) * h.c + (j * h.d / 2) * h.s, h.z - (i * h.w / 2) * h.s + (j * h.d / 2) * h.c]);
+      const A = corners(a), B = corners(b); let least = Infinity;
+      for (const h of [a, b]) for (const [ux, uz] of [[h.c, -h.s], [h.s, h.c]]) {
+        const pa = A.map(([x, z]) => x * ux + z * uz), pb = B.map(([x, z]) => x * ux + z * uz);
+        least = Math.min(least, Math.min(Math.max(...pa), Math.max(...pb)) - Math.max(Math.min(...pa), Math.min(...pb)));
+      }
+      return Math.max(0, least);
+    }
     function planHomes() {
       const { n, Y, yaw, ext } = W3, list = W3.home = [], grid = W3.homes = new Map();
       for (let k = 0; k < n - 1; k++) for (const sd of [-1, 1]) {
@@ -1610,8 +1624,14 @@
               const bot = low - 1, top = Math.max(gy + hh, 2 + rnd(k, j + 2) * 3), p = ptAt(k, sd * off, 0);
               if (onRoad(p[0], p[2], Math.hypot(w, d) / 2, Y[k] + bot, Y[k] + top) || onRoad(p[0], p[2], Math.hypot(w, d) / 2 + FOOT + 0.3 - HALF - 0.8, Y[k] + bot, Y[k] + top, k - 6, k + 6)) dropped++;
               else {
-                h = { w, d, off, gy, bot, top, p, x: p[0], z: p[2], y0: Y[k] + bot, y1: Y[k] + top, c: Math.cos(yaw[k]), s: Math.sin(yaw[k]) };
-                const key = Math.floor(p[0] / 10) + ',' + Math.floor(p[2] / 10); (grid.get(key) || grid.set(key, []).get(key)).push(h);
+                const c = { w, d, off, gy, bot, top, p, x: p[0], z: p[2], y0: Y[k] + bot, y1: Y[k] + top, c: Math.cos(yaw[k]), s: Math.sin(yaw[k]), k };
+                // not inside a house already there: houses beside each other may touch, as in a row, but on the
+                // inside of a bend (or by another stretch of the road) one would stand half in another
+                const cx = Math.floor(p[0] / 10), cz = Math.floor(p[2] / 10);
+                let clash = false;
+                for (let a = cx - 1; a <= cx + 1 && !clash; a++) for (let b = cz - 1; b <= cz + 1 && !clash; b++) for (const o of grid.get(a + ',' + b) || []) if (homeDepth(c, o) > (Math.abs(o.k - k) > 6 ? 0.3 : 2)) { clash = true; break; }
+                if (clash) dropped++;
+                else { h = c; const key = cx + ',' + cz; (grid.get(key) || grid.set(key, []).get(key)).push(h); }
               }
             }
           }
@@ -1750,10 +1770,10 @@
           // low ferns and grass on the bank beside the road (fewer in town)
           for (let j = 0; j < 2; j++) {
             if (rnd(k, 80 + j + sd * 3) > (housesOn(sd, k) <= 1 ? 0.6 : 0.2)) continue;
-            const off = E + 0.5 + j * 2.5 + rnd(k, 90 + j) * 2;
+            const off = (!bareSide && [k - 1, k, k + 1].some(kk => footpath(kk) && sideAt(kk, sd) > -2.5) ? FOOT + 0.9 : E + 0.5) + j * 2.5 + rnd(k, 90 + j) * 2;
             if (off > Math.max(HALF, ext[sd][k]) - 0.3) continue;
             const sp = pt(k, sd * off, gAt(k, off) - 0.05), s2 = 0.7 + rnd(k, 95 + j) * 0.6;
-            if (onRoad(sp[0], sp[2], 0.5, sp[1], sp[1] + 1) || inHome(sp[0], sp[1], sp[1] + 1, sp[2], 0.4)) continue;
+            if (onRoad(sp[0], sp[2], 0.5, sp[1], sp[1] + 1) || onRoad(sp[0], sp[2], FOOT + 0.9 - HALF - 0.8, sp[1], sp[1] + 1, k - 6, k + 6) || inHome(sp[0], sp[1], sp[1] + 1, sp[2], 0.4)) continue;
             TW.shrub.push({ p: sp, yaw: rnd(k, j + 7) * 6.28, s: [s2, s2, s2], c: TINT[(k + j) % TINT.length] });
           }
         }
@@ -2178,8 +2198,12 @@
     const signMats = new Map(), signMat = t => signMats.get(t) || signMats.set(t, new T.MeshLambertMaterial({ map: t, transparent: true })).get(t);
     const finishMat = new T.MeshLambertMaterial({ map: checkTex, side: T.DoubleSide });
     function sign(at, lat, t, w, h, post) {
-      const f = frame3(at, lat, {}); f.pitch = 0;
-      if (onRoad(f.x, f.z, -0.5, f.y, f.y + post) || inHome(f.x, f.y + 0.5, f.y + post + h, f.z, 0.3)) return;   // not on a road, not in a house
+      const k = Math.floor(at / SEG);
+      let f = frame3(at, lat, {});
+      // beside a footpath, out past it: on a bend a little further out, so people walk by
+      if (Math.abs(lat) > FOOT) for (let o = 0; o <= 1 && onRoad(f.x, f.z, FOOT + 0.2 - HALF - 0.8, f.y - 1, f.y + post); o += 0.25) frame3(at, lat + Math.sign(lat) * o, f);
+      f.pitch = 0;
+      if (onRoad(f.x, f.z, -0.5, f.y, f.y + post) || onRoad(f.x, f.z, FOOT + 0.2 - HALF - 0.8, f.y - 1, f.y + post, k - 6, k + 6) || inHome(f.x, f.y + 0.5, f.y + post + h, f.z, 0.3)) return;   // not on a road or another stretch's footpath, not in a house
       base(f, Math.PI);       // facing back, towards the rider
       const g = new T.Group(); g.matrixAutoUpdate = false; g.matrix.copy(mB); g.userData.sign = true;
       const add = (geo, mat, x, y, z, sx, sy, sz) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); g.add(m); };
@@ -2192,11 +2216,11 @@
       setRoute();
       if (props) { scene.remove(props); props.traverse(o => { if (o.isInstancedMesh) o.dispose(); }); }
       props = new T.Group(); scene.add(props);
-      for (const [i, name, side] of route.places) if (i > 2) { const p = placeTex(name); sign(i * SEG, (side || 1) * 5.4, p.t, 0.8 * p.w / 96, 0.8, 2.2); }
-      for (const j of jams) sign(j.at - 45, -5.4, honkTex(), 0.8, 1, 1.9);
+      for (const [i, name, side] of route.places) if (i > 2) { const p = placeTex(name); sign(i * SEG, (side || 1) * (footNear(i) ? FOOT + 0.3 : 5.3), p.t, 0.8 * p.w / 96, 0.8, 2.2); }
+      for (const j of jams) sign(j.at - 45, -(footNear(Math.floor((j.at - 45) / SEG)) ? FOOT + 0.3 : 5.3), honkTex(), 0.8, 1, 1.9);
       const zebra = [];
       for (const c of crossings) {
-        sign(c.at - 32, -(footpath(Math.floor(c.at / SEG)) ? FOOT + 0.3 : 5.3), walkTex(), 0.8, 0.8, 2.2);
+        sign(c.at - 32, -(footNear(Math.floor(c.at / SEG)) ? FOOT + 0.3 : 5.3), walkTex(), 0.8, 0.8, 2.2);
         zebra.push(c.at + 2);
       }
       if (zebra.length) {
@@ -2462,9 +2486,9 @@
       const v = new T.Vector3();
       for (const g of signs) { v.setFromMatrixPosition(g.matrix); if (onRoad(v.x, v.z, -0.5, v.y, v.y + 2) || inHome(v.x, v.y + 0.5, v.y + 2.5, v.z, 0.3)) out.signBad++; }
       const sign = () => {};
-      for (const [i, , side] of route.places) if (i > 2) sign(i * SEG, (side || 1) * 5.4);
-      for (const j of jams) sign(j.at - 45, -5.4);
-      for (const c of crossings) sign(c.at - 32, -(footpath(Math.floor(c.at / SEG)) ? FOOT + 0.3 : 5.3));
+      for (const [i, , side] of route.places) if (i > 2) sign(i * SEG, (side || 1) * (footNear(i) ? FOOT + 0.3 : 5.3));
+      for (const j of jams) sign(j.at - 45, -(footNear(Math.floor((j.at - 45) / SEG)) ? FOOT + 0.3 : 5.3));
+      for (const c of crossings) sign(c.at - 32, -(footNear(Math.floor(c.at / SEG)) ? FOOT + 0.3 : 5.3));
       return out;
     }
     // For the tests: people sent along a footpath that is not there, crossings where there is no
@@ -2496,11 +2520,10 @@
       }
       return out;
     }
-    // For the tests: houses standing above the ground at their road side, trees standing above the
-    // ground on a slope, and leaves hanging low over the road
+    // For the tests: houses standing above the ground at their sides, and leaves hanging low over the road
     function audit6() {
       setRoute();
-      const { n, Y, ext } = W3, out = { houseFloat: 0, treeFloat: 0, crownLow: 0, worstGap: 0 };
+      const { n, Y, ext } = W3, out = { houseFloat: 0, crownLow: 0, worstGap: 0 };
       for (let k = 0; k < n - 1; k++) for (const sd of [-1, 1]) for (let j = 0; j < 3; j++) {
         const h = W3.home[(k * 2 + (sd > 0 ? 1 : 0)) * 3 + j];
         if (!h) continue;
@@ -2522,8 +2545,47 @@
       });
       return out;
     }
+    // For the tests: houses of two stretches of road inside each other, and things standing where people
+    // walk on a footpath (5.1 to 5.9 m out, a body 0.4 m across): signs, trees and ferns
+    function audit7() {
+      setRoute();
+      const { P, R, Y, grid } = W3, out = { houseCross: 0, houseNear: 0, signOnWalk: 0, treeOnWalk: 0, shrubOnWalk: 0, at: [] };
+      const order = new Map();
+      W3.home.forEach((h, i) => { if (h) order.set(h, i); });
+      for (const [a, ia] of order) {
+        const cx = Math.floor(a.x / 10), cz = Math.floor(a.z / 10);
+        for (let gi = cx - 1; gi <= cx + 1; gi++) for (let gj = cz - 1; gj <= cz + 1; gj++) for (const b of W3.homes.get(gi + ',' + gj) || []) {
+          if (order.get(b) <= ia) continue;
+          const d = homeDepth(a, b), ka = a.k, kb = b.k;
+          if (d > 0.5) { if (Math.abs(ka - kb) > 6) { out.houseCross++; if (out.at.length < 8) out.at.push(['house', ka, kb, +d.toFixed(1)]); } else if (d > 2.1) out.houseNear++; }
+        }
+      }
+      // is (x, z) where people walk beside some stretch of road, on a footpath they use?
+      const onWalk = (x, z, y, r) => {
+        const cx = Math.floor(x / 12), cz = Math.floor(z / 12);
+        for (let i = cx - 1; i <= cx + 1; i++) for (let j = cz - 1; j <= cz + 1; j++) for (const k of grid.get(i + ',' + j) || []) {
+          const a = P[k], b = P[k + 1], dx = b.x - a.x, dz = b.z - a.z, t = clamp(((x - a.x) * dx + (z - a.z) * dz) / (dx * dx + dz * dz || 1), 0, 1);
+          const kk = t < 0.5 ? k : k + 1, lat = (x - P[kk].x) * R[kk].x + (z - P[kk].z) * R[kk].z, sd = lat >= 0 ? 1 : -1;
+          const d = Math.hypot(a.x + dx * t - x, a.z + dz * t - z), ry = Y[k] + (Y[k + 1] - Y[k]) * t;
+          if (d > 4.9 - r && d < 6.1 + r && Math.abs(y - ry) < 1.5 && footpath(kk) && sideAt(kk, sd) > -2.5 && walkHere(kk, sd)) return true;
+        }
+        return false;
+      };
+      const v = new T.Vector3();
+      for (const g of props ? props.children.filter(g => g.userData.sign) : []) { v.setFromMatrixPosition(g.matrix); if (onWalk(v.x, v.z, v.y, 0.05)) { out.signOnWalk++; let bk = 0, bd = 1e9; for (let k = 0; k < W3.n; k++) { const d = (P[k].x - v.x) ** 2 + (P[k].z - v.z) ** 2; if (d < bd) { bd = d; bk = k; } } out.at.push(['sign', bk, +Math.sqrt(bd).toFixed(2), footpath(bk)]); } }
+      const m = new T.Matrix4(), p = new T.Vector3(), qq = new T.Quaternion(), sc = new T.Vector3();
+      for (const g of pieces) g.traverse(o => {
+        if (!o.isInstancedMesh || o.material !== leafMat) return;
+        const shrub = o.geometry === TREES.shrub.leaves;
+        for (let i = 0; i < o.count; i++) {
+          o.getMatrixAt(i, m); m.decompose(p, qq, sc);
+          if (onWalk(p.x, p.z, p.y, shrub ? 0.5 * sc.x : 0.3)) { out[shrub ? 'shrubOnWalk' : 'treeOnWalk']++; if (out.at.length < 8) out.at.push([shrub ? 'shrub' : 'tree', Math.round(p.x), Math.round(p.z)]); }
+        }
+      });
+      return out;
+    }
     const walkable = (i, sd) => { setRoute(); i = clamp(i, 0, W3.n - 1); return !W3.bare[sd][i] && !W3.gone[sd][i] && !W3.ride[i]; };
-    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, walkable };
+    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, walkable };
   }
 
   // ---------- the HUD ----------
@@ -3066,6 +3128,7 @@
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
     auditAll: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; const a = R3.audit(); out.push({ id: r.id, ...a }); } route = keep; R3.audit(); return out; },
     audit3All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); R3.setPlan(); out.push({ id: r.id, ...R3.audit3() }); } route = keep; reset(); return out; },
+    audit7All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); R3.setPlan(); out.push({ id: r.id, ...R3.audit7() }); } route = keep; reset(); return out; },
     audit6All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit6() }); } route = keep; reset(); return out; },
     audit5All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit5() }); } route = keep; reset(); return out; },
     audit4All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); out.push({ id: r.id, ...R3.audit4() }); } route = keep; reset(); return out; },

@@ -4,6 +4,20 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.22.1 (31 October 2026)
+
+### Aizawl Ride: houses apart, a clear footpath
+
+- No house stands half inside another any more: on the inside of a bend,
+  or where two stretches of road come close, a house that would is left
+  out. Houses side by side in a row still touch, as in town.
+- The place-name signs and the traffic signs stand out past the footpath,
+  not in the middle of it, so people walk by them.
+- Ferns and small bushes keep off the footpaths.
+- People walking along turn back where the footpath ends, instead of
+  walking on beside the road.
+- Checked on every road in the game.
+
 ## 1.22.0 (31 October 2026)
 
 ### Aizawl Ride: trees that look like trees
