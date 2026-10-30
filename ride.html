@@ -411,12 +411,12 @@
   let crashBy = '';
   let cars = [], jams = [], braking = false, carT = 0, oncomingT = 0, eventWords = new Set();
   let peds = [], crossings = [], pedT = 0;
-  let s, v, px, lane, coins, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
+  let s, v, px, pvx, lane, coins, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
   let soundOn = S.sound;
 
   function reset() {
     prepRoute();
-    s = 0; v = 0; lane = 1; px = 0; coins = 0; time = 0; bgX = 0; shake = 0; lean = 0; crashT = 0; crashDir = 1;
+    s = 0; v = 0; lane = 1; px = 0; pvx = 0; coins = 0; time = 0; bgX = 0; shake = 0; lean = 0; crashT = 0; crashDir = 1;
     things = []; sparks = []; pops = []; nextRow = 70; lastOpen = 1; passed = new Set();
     cars = []; jams = planJams(); crossings = planCrossings(); peds = []; pedT = 0; buildStrip(); prepMini(); braking = false; carT = 3; oncomingT = 5; eventWords = new Set(); brakeHint(false);
     best0 = bestOf(route.id); bestShown = false; wordsSeen = new Set(); wordT = 4;
@@ -522,7 +522,7 @@
         c.v = Math.max(0, c.v);
       }
       c.at += c.v * dt;
-      c.x += (LANES[c.lane] - c.x) * Math.min(1, dt * 3);
+      c.vx = (c.vx || 0) + ((LANES[c.lane] - c.x) * 6.8 - 5.2 * (c.vx || 0)) * dt; c.x += c.vx * dt;   // to a new lane on a spring
     }
     cars = cars.filter(c => c.at > s - 12 && c.at < s + VIEW * SEG + 40);
     // Hints and words: a car for the first time, and the brake when a queue is ahead
@@ -1123,17 +1123,24 @@
   let R3 = null;
   function make3d(T) {
     const glc = $('gl');
-    const renderer = new T.WebGLRenderer({ canvas: glc, antialias: false, powerPreference: 'high-performance' });
     const HALF = 3.9, KERB = 4.6, PIECE = 50;
     // How sharp the picture is and how far you see. It steps down by itself when the phone is slow,
-    // and the phone remembers it.
+    // and the phone remembers it. The best level also has smooth edges, sun shadows and shine
+    // on the paint and glass.
     const LEVELS = [{ pr: 0.75, far: 220 }, { pr: 1, far: 300 }, { pr: 1.5, far: 380 }];
     let level = parseInt(store.get('hn-ride-3d'), 10);
     if (!(level >= 0 && level <= 2)) level = 2;
+    const renderer = new T.WebGLRenderer({ canvas: glc, antialias: level === 2, powerPreference: 'high-performance' });
+    renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;   // colour like a film camera
+    renderer.shadowMap.type = T.PCFShadowMap;
     const scene = new T.Scene(), camera = new T.PerspectiveCamera(62, 1, 0.3, 2400);
     scene.fog = new T.Fog('#d6e8de', 25, 300);
-    const hemi = new T.HemisphereLight('#eef6ff', '#5d7a4a', 1.7), sun = new T.DirectionalLight('#fff2dc', 1.5);
-    sun.position.set(-0.5, 1, 0.35); scene.add(hemi, sun);
+    const hemi = new T.HemisphereLight('#f2f8ff', '#5d7a4a', 2.1), sun = new T.DirectionalLight('#fff2dc', 2.6);
+    const sunDir = new T.Vector3(-0.5, 1, 0.35);
+    // the sun's shadows cover about 64 m around the scooter, and move with it
+    sun.shadow.mapSize.set(1024, 1024); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.04;
+    Object.assign(sun.shadow.camera, { left: -32, right: 32, top: 32, bottom: -32, near: 1, far: 300 });
+    scene.add(hemi, sun, sun.target);
     const colors = new Map(), C = h => { let c = colors.get(h); if (!c) colors.set(h, (c = new T.Color(h))); return c; };
     const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 
@@ -1141,7 +1148,7 @@
     const sky = new T.Mesh(new T.SphereGeometry(2200, 24, 12), new T.ShaderMaterial({
       uniforms: { top: { value: new T.Color() }, low: { value: new T.Color() } },
       vertexShader: 'varying float vy;\nvoid main() { vy = normalize(position).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-      fragmentShader: 'uniform vec3 top;\nuniform vec3 low;\nvarying float vy;\nvoid main() {\n  gl_FragColor = vec4(mix(low, top, pow(clamp(vy * 2.2, 0.0, 1.0), 0.7)), 1.0);\n  #include <colorspace_fragment>\n}',
+      fragmentShader: 'uniform vec3 top;\nuniform vec3 low;\nvarying float vy;\nvoid main() {\n  gl_FragColor = vec4(mix(low, top, pow(clamp(vy * 2.2, 0.0, 1.0), 0.7)), 1.0);\n  #include <tonemapping_fragment>\n  #include <colorspace_fragment>\n}',
       side: T.BackSide, depthWrite: false,
     }));
     sky.renderOrder = -2; scene.add(sky);
@@ -1168,22 +1175,70 @@
       const c = document.createElement('canvas'); c.width = w; c.height = h; paint(c.getContext('2d'), w, h);
       const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; t.anisotropy = 4; return t;
     };
+    // Grain: a tiling noise in four sizes, laid over the road, the ground and the walls by where they
+    // are in the world, so nothing needs its own texture coordinates
+    const detailTex = tex(128, 128, (g, w, h) => {
+      const img = g.createImageData(w, h), at = (n, x, y) => rnd(((x % n) + n) % n, ((y % n) + n) % n + n * 7);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        let v = 0, amp = 0.5;
+        for (const n of [8, 16, 32, 64]) {
+          const fx = x / w * n, fy = y / h * n, ix = Math.floor(fx), iy = Math.floor(fy), tx = fx - ix, ty = fy - iy, sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+          const a = at(n, ix, iy), b = at(n, ix + 1, iy), c = at(n, ix, iy + 1), d = at(n, ix + 1, iy + 1);
+          v += amp * (a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy); amp *= 0.5;
+        }
+        const i = (y * w + x) * 4; img.data[i] = img.data[i + 1] = img.data[i + 2] = Math.round(v / 0.9375 * 255); img.data[i + 3] = 255;
+      }
+      g.putImageData(img, 0, 0);
+    });
+    detailTex.wrapS = detailTex.wrapT = T.RepeatWrapping; detailTex.colorSpace = T.NoColorSpace;
+    const GRAIN_V = `varying vec3 vW;\nvarying vec3 vNW;\n`, GRAIN_F = `uniform sampler2D detail;\nvarying vec3 vW;\nvarying vec3 vNW;\n`;
+    const GRAIN_POS = `
+      vec4 wp = vec4(transformed, 1.0); vec3 wn = objectNormal;
+      #ifdef USE_INSTANCING
+        wp = instanceMatrix * wp; wn = mat3(instanceMatrix) * wn;
+      #endif
+      vW = (modelMatrix * wp).xyz; vNW = normalize(mat3(modelMatrix) * wn);`;
+    const GRAIN_MIX = `
+      vec2 duv = abs(vNW.y) > 0.6 ? vW.xz : vec2(vW.x + vW.z, vW.y);
+      float dn = texture2D(detail, duv * 0.31).r * 0.55 + texture2D(detail, duv * 0.045).r * 0.45;
+      diffuseColor.rgb *= 0.74 + dn * 0.5;`;
+    const grain = (sh, vtx = '', frag = '#include <map_fragment>') => {
+      sh.uniforms.detail = { value: detailTex };
+      sh.vertexShader = GRAIN_V + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>' + GRAIN_POS + vtx);
+      sh.fragmentShader = GRAIN_F + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>' + GRAIN_MIX).replace('#include <map_fragment>', frag);
+    };
     const groundMat = new T.MeshLambertMaterial({ vertexColors: true, side: T.DoubleSide });
-    const plainMat = new T.MeshLambertMaterial(), glowMat = new T.MeshBasicMaterial();
+    groundMat.onBeforeCompile = sh => grain(sh);
+    const plainMat = new T.MeshLambertMaterial(), glowMat = new T.MeshBasicMaterial({ toneMapped: false });
     const shadowMat = new T.MeshBasicMaterial({ color: '#000', transparent: true, opacity: 0.22, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
     const coinMat = new T.MeshLambertMaterial({ emissive: '#6b4a00' });
     // House walls: a window every 3 m across and every floor (3 m) up, worked out from each house's own size
-    const windowTex = tex(32, 32, g => { g.fillStyle = '#fff'; g.fillRect(0, 0, 32, 32); g.fillStyle = '#6f8ea6'; g.fillRect(7, 4, 18, 15); g.fillStyle = '#e3e0d8'; g.fillRect(0, 28, 32, 4); });
-    windowTex.wrapS = windowTex.wrapT = T.RepeatWrapping; windowTex.anisotropy = 2;
+    // House walls: a window every 3 m across and every floor (3 m) up, worked out from each house's own
+    // size; each house has one of four kinds (glass in a white frame, Aizawl iron grills, a pair of
+    // small windows, a wide one with a sill), with a slab line at every floor
+    const windowTex = tex(128, 32, g => {
+      g.fillStyle = '#fff'; g.fillRect(0, 0, 128, 32);
+      const glass = (x, y, w, h) => { const q = g.createLinearGradient(0, y, 0, y + h); q.addColorStop(0, '#9fbad0'); q.addColorStop(1, '#5d7d96'); g.fillStyle = q; g.fillRect(x, y, w, h); };
+      g.fillStyle = '#e9e6de'; g.fillRect(6, 3, 20, 17); glass(8, 5, 16, 13); g.fillStyle = '#e9e6de'; g.fillRect(15, 5, 2, 13);
+      glass(38, 5, 20, 14); g.fillStyle = '#3a3a3a'; for (let x = 40; x < 58; x += 3) g.fillRect(x, 4, 1, 16); g.fillRect(37, 4, 22, 1); g.fillRect(37, 19, 22, 1);
+      glass(68, 6, 9, 13); glass(83, 6, 9, 13);
+      glass(98, 6, 28, 12); g.fillStyle = '#d8d3c8'; g.fillRect(97, 18, 30, 2);
+      g.fillStyle = '#d8d3c8'; g.fillRect(0, 28, 128, 4);
+    });
+    windowTex.anisotropy = 2;
     const houseMat = new T.MeshLambertMaterial({ map: windowTex });
     houseMat.onBeforeCompile = sh => {
-      sh.vertexShader = sh.vertexShader.replace('#include <uv_vertex>', `#include <uv_vertex>
+      sh.vertexShader = 'varying vec2 vWall;\nvarying float vStyle;\n' + sh.vertexShader;
+      sh.fragmentShader = 'varying vec2 vWall;\nvarying float vStyle;\n' + sh.fragmentShader;
+      grain(sh, `
+        vec3 hs = vec3(1.0); vStyle = 0.0;
         #ifdef USE_INSTANCING
-          vec3 hs = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
-        #else
-          vec3 hs = vec3(1.0);
+          hs = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
+          vStyle = floor(fract(sin(dot(instanceMatrix[3].xz, vec2(12.9898, 78.233))) * 43758.5453) * 4.0);
         #endif
-        vMapUv = abs(normal.y) > 0.5 ? vec2(0.03, 0.97) : vec2((abs(normal.x) > 0.5 ? position.z * hs.z : position.x * hs.x) / 3.0, position.y * hs.y / 3.0);`);
+        vWall = abs(normal.y) > 0.5 ? vec2(0.03, 0.97) : vec2((abs(normal.x) > 0.5 ? position.z * hs.z : position.x * hs.x) / 3.0, position.y * hs.y / 3.0);`, `
+        vec2 gw = vWall * vec2(0.25, 1.0);
+        diffuseColor *= textureGrad(map, vec2((fract(vWall.x) + vStyle) * 0.25, fract(vWall.y)), dFdx(gw), dFdy(gw));`);
     };
     const stripeMat = new T.MeshLambertMaterial({ map: tex(64, 16, (g, w, h) => { g.fillStyle = '#f3efe4'; g.fillRect(0, 0, w, h); g.fillStyle = '#d4483b'; for (let i = 0; i < 4; i++) g.fillRect(i * 16, 0, 8, h); }) });
     const box = new T.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);           // stands on its base
@@ -1282,7 +1337,7 @@
           if (!p.length) return null;
           const g = new T.BufferGeometry();
           g.setAttribute('position', new T.Float32BufferAttribute(p, 3)); g.setAttribute('color', new T.Float32BufferAttribute(c, 3));
-          g.computeVertexNormals(); g.computeBoundingSphere(); return new T.Mesh(g, groundMat);
+          g.computeVertexNormals(); g.computeBoundingSphere(); const m = new T.Mesh(g, groundMat); m.receiveShadow = true; return m;
         },
       };
     }
@@ -1294,7 +1349,7 @@
         dummy.position.set(it.p[0], it.p[1], it.p[2]); dummy.rotation.set(0, it.yaw || 0, 0); dummy.scale.set(it.s[0], it.s[1], it.s[2]);
         dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); m.setColorAt(i, C(it.c));
       });
-      m.computeBoundingSphere(); return m;
+      m.computeBoundingSphere(); m.castShadow = m.receiveShadow = true; return m;
     }
     function piece(k0, k1) {
       const { n, P, R, F, Y, yaw, ext } = W3, st = strip(), grp = new T.Group();
@@ -1440,6 +1495,7 @@
     const pools = [];
     const pool = (geo, mat, max, list = pools) => {
       const m = new T.InstancedMesh(geo, mat, max); m.frustumCulled = false; m.count = 0; m.n = 0; m.max = max;
+      m.castShadow = mat !== shadowMat && mat !== glowMat && mat !== plateMat; m.receiveShadow = true;
       m.setColorAt(0, C('#fff')); list.push(m); scene.add(m); return m;
     };
     function put(m, x, y, z, sx, sy, sz, hex, rx = 0, ry = 0, rz = 0) {
@@ -1491,6 +1547,14 @@
     const paintMat = new T.MeshPhongMaterial({ shininess: 60, specular: C('#555555') });
     const glassMat = new T.MeshPhongMaterial({ color: '#25313a', shininess: 90, specular: C('#8a9aa4') });
     const chromeMat = new T.MeshPhongMaterial({ color: '#c9cdd0', shininess: 80, specular: C('#ffffff') });
+    const envTex = tex(256, 128, (g, w, h) => {
+      const q = g.createLinearGradient(0, 0, 0, h); q.addColorStop(0, '#6fa8d8'); q.addColorStop(0.47, '#e2ece6'); q.addColorStop(0.53, '#7d8f78'); q.addColorStop(1, '#3d4a3a');
+      g.fillStyle = q; g.fillRect(0, 0, w, h);
+      g.fillStyle = '#8fae9a'; g.beginPath(); g.moveTo(0, h / 2);
+      for (let x = 0; x <= w; x += 8) g.lineTo(x, h / 2 - 6 - 6 * Math.sin(x / w * Math.PI * 6) - 3 * Math.sin(x / w * Math.PI * 17));
+      g.lineTo(w, h / 2); g.fill();
+    });
+    envTex.mapping = T.EquirectangularReflectionMapping;
     const plateMat = new T.MeshLambertMaterial({ map: tex(64, 20, g => { g.fillStyle = '#fff'; g.fillRect(0, 0, 64, 20); g.strokeStyle = '#231e16'; g.lineWidth = 2; g.strokeRect(1, 1, 62, 18); g.fillStyle = '#231e16'; g.font = '800 13px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('MZ 01', 32, 11); }) });
     const logMats = [new T.MeshLambertMaterial({ color: '#7a4b2f' }), ...Array(2).fill(new T.MeshLambertMaterial({ map: tex(32, 32, g => { g.fillStyle = '#d6a46c'; g.fillRect(0, 0, 32, 32); g.strokeStyle = '#a8743f'; g.lineWidth = 1.5; for (const r of [4, 8, 12]) { g.beginPath(); g.arc(16, 16, r, 0, 7); g.stroke(); } }) }))];
     const shadows = pool(blob, shadowMat, 200);
@@ -1502,13 +1566,13 @@
     const CARS = { car: [pCar, gCar, 1.45, 3.8], taxi: [pCar, gCar, 1.45, 3.8], suv: [pSuv, gSuv, 1.9, 4.4] };
     const JACKETS = ['#2c3e50', '#7a3b2e', '#3b5f3a', '#1f3a68', '#5b4a3a'], HELMETS = ['#f2f2ee', '#231e16', '#c0392b', '#1565c0', '#f2c230'];
 
-    function placeAll(far) {
+    function placeAll(far, dt) {
       for (const m of pools) m.n = 0;
       const f = {};
       const wheelPair = (x, r, z, w) => { put(tyre, x, r, z, w, r, r, '#1b1d1c'); put(rim, x, r, z, w, r, r, '#ffffff'); };
       for (const c of cars) {
         if (c.at < s - 15 || c.at > s + far) continue;
-        frame3(c.at, c.x, f); base(f, c.dir < 0 ? Math.PI : 0, c.dir < 0);
+        frame3(c.at, c.x, f); base(f, -Math.atan2(c.vx || 0, c.dir * Math.max(3, Math.abs(c.v))), c.dir < 0);   // heading the way it moves, also across
         put(shadows, 0, 0.03, 0, c.wid * 1.2, 1, c.len * 1.08, '#000');
         const back = -c.len / 2 - 0.02, stop = c.slowing ? '#ff3b2f' : '#9e2a22', K = CARS[c.kind];
         if (K) {
@@ -1567,7 +1631,11 @@
       for (const p of peds) {
         if (p.at < s - 6 || p.at > s + far) continue;
         frame3(p.at, p.x, f); f.pitch = 0; f.y += Math.abs(p.x) > HALF ? 0.15 : 0;     // on the footpath, or on the road
-        base(f, p.vx ? (p.vx > 0 ? -Math.PI / 2 : Math.PI / 2) : p.va < 0 ? Math.PI : 0);
+        const face = p.vx ? (p.vx > 0 ? -Math.PI / 2 : Math.PI / 2) : p.va < 0 ? Math.PI : 0;
+        if (p.face === undefined) p.face = face;
+        let turn = face - p.face; turn -= Math.round(turn / (Math.PI * 2)) * Math.PI * 2;
+        p.face += turn * Math.min(1, dt * 7);                 // turning round takes a moment
+        base(f, p.face);
         const L = p.look, sw = Math.sin(p.phase * Math.PI / 2) * 0.45;
         put(shadows, 0, 0.02, 0, 0.6, 1, 0.6, '#000');
         for (const e of [-1, 1]) {
@@ -1644,11 +1712,13 @@
       for (const e of [-1, 1]) { const m = new T.Mesh(box, postMat); m.position.set(e * HALF * 1.2, 0, 0); m.scale.set(0.18, 4.6, 0.18); g.add(m); }
       const ban = new T.Mesh(plane, new T.MeshLambertMaterial({ map: checkTex, side: T.DoubleSide })); ban.position.set(0, 3.8, 0); ban.scale.set(HALF * 2.4, 0.8, 1); g.add(ban);
       props.add(g);
+      // every shader ready now, so nothing stutters the first time a new thing comes into view
+      if (camera.aspect) { for (const m of pools) m.count = Math.max(m.count, 1); renderer.compile(scene, camera); }
     }
 
     // ---------- the scooter: its colours from the garage ----------
     const scoot = new T.Group(), lm = h => new T.MeshLambertMaterial({ color: h });
-    const bodyMats = [0, 1, 2].map(() => new T.MeshPhongMaterial({ shininess: 70, specular: C('#666666') })), tailMat = new T.MeshBasicMaterial({ color: '#b8352a' });
+    const bodyMats = [0, 1, 2].map(() => new T.MeshPhongMaterial({ shininess: 70, specular: C('#666666') })), tailMat = new T.MeshBasicMaterial({ color: '#b8352a', toneMapped: false });
     const jacket = lm('#3b78bf'), trousers = lm('#2c3e50'), dark = lm('#2a2622'), tyreMat = lm('#1b1d1c'), skin = lm('#e8b48a');
     const part = (geo, mat, x, y, z, sx = 1, sy = 1, sz = 1, rx = 0) => { const m = new T.Mesh(geo, mat); m.position.set(-x, y, z); m.scale.set(sx, sy, sz); m.rotation.x = rx; scoot.add(m); return m; };
     const up = new T.Vector3(0, -1, 0);
@@ -1664,7 +1734,7 @@
     part(box, bodyMats[2], 0, 0.5, 0.58, 0.36, 0.42, 0.06, -0.25);                                           // inner panel
     const tail = part(box, tailMat, 0, 0.5, -0.875, 0.26, 0.08, 0.03);
     part(plateGeo, plateMat, 0, 0.4, -0.885, 0.24, 0.1, 1);
-    part(box, new T.MeshBasicMaterial({ color: '#fffbe6' }), 0, 0.98, 0.84, 0.16, 0.08, 0.03);              // headlight
+    part(box, new T.MeshBasicMaterial({ color: '#fffbe6', toneMapped: false }), 0, 0.98, 0.84, 0.16, 0.08, 0.03);              // headlight
     for (const z of [0.6, -0.56]) { part(wheel, tyreMat, 0, 0.25, z, 0.12, 0.25, 0.25); part(rimGeo, chromeMat, 0, 0.25, z, 0.12, 0.25, 0.25); }
     const wheels = scoot.children.filter(m => m.geometry === wheel);
     part(box, chromeMat, 0, 0.72, -0.62, 0.36, 0.03, 0.3);                                                    // the rack
@@ -1684,17 +1754,26 @@
     part(box, lm('#a8742c'), 0, 0.74, -0.66, 0.07, 0.405, 0.365);
     part(plane, new T.MeshLambertMaterial({ map: tex(64, 32, g => { g.fillStyle = '#fff7e6'; g.fillRect(0, 0, 64, 32); g.fillStyle = '#1d6b34'; g.font = '800 13px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('Hnahsin', 32, 17); }) }), 0, 0.84, -0.845, 0.2, 0.1, 1).rotation.y = Math.PI;
     const riderShadow = new T.Mesh(blob, shadowMat); riderShadow.scale.set(0.8, 1, 1.9); scene.add(riderShadow);
+    scoot.traverse(m => { m.castShadow = !!m.isMesh; });
     scene.add(scoot);
     let painted = '';
 
     // ---------- the picture ----------
     let lastT = 0, perfN = 0, perfMs = 0;
     const cam = new T.Vector3(), aim = new T.Vector3(), want = new T.Vector3(), fogCol = new T.Color();
-    const HZ = HAZES.map(c => new T.Color(`rgb(${c})`)), MIST = C('#ecf2ee'), SKY0 = C('#8ccaf0'), SKY1 = C('#9db7d6'), SUN0 = C('#fff2dc'), SUN1 = C('#ffb070'), WARM = C('#ffe2c0'), WHITE = C('#ffffff');
+    const HZ = HAZES.map(c => new T.Color(`rgb(${c})`)), MIST = C('#ecf2ee'), SKY0 = C('#4f9be0'), SKY1 = C('#7f9fcf'), SUN0 = C('#fff2dc'), SUN1 = C('#ffb070'), WARM = C('#ffe2c0'), WHITE = C('#ffffff');
     const rider = { x: 0, y: 0 }, fA = {}, fB = {}, fS = {};
+    let extras = null;
     function size() {
       renderer.setPixelRatio(Math.min(devicePixelRatio || 1, LEVELS[level].pr)); renderer.setSize(W, H, false);
       camera.aspect = W / H; camera.fov = W / H < 1 ? 64 : 52; camera.updateProjectionMatrix();
+      // the best level: sun shadows (the blob shadows grow fainter) and shine on paint, glass and chrome
+      const hi = level === 2;
+      if (extras === hi) return;
+      extras = hi; renderer.shadowMap.enabled = hi; sun.castShadow = hi; shadowMat.opacity = hi ? 0.12 : 0.22;
+      for (const [m, r] of [[paintMat, 0.16], [glassMat, 0.45], [chromeMat, 0.6], ...bodyMats.map(b => [b, 0.16])]) {
+        m.envMap = hi ? envTex : null; m.combine = T.MixOperation; m.reflectivity = r; m.needsUpdate = true;
+      }
     }
     function draw3() {
       setRoute();
@@ -1711,19 +1790,21 @@
       fogCol.copy(HZ[g0]).lerp(HZ[g1], gi - g0).lerp(MIST, look.mist * 0.5);
       scene.fog.color.copy(fogCol); scene.fog.near = 25 * (1 - 0.5 * look.mist); scene.fog.far = far * (1 - 0.5 * look.mist);
       sky.material.uniforms.low.value.copy(fogCol); sky.material.uniforms.top.value.copy(SKY0).lerp(SKY1, look.golden);
-      sun.color.copy(SUN0).lerp(SUN1, look.golden); sun.position.set(-0.5, 1 - 0.65 * look.golden, 0.35);
+      sun.color.copy(SUN0).lerp(SUN1, look.golden); sunDir.set(-0.5, 1 - 0.65 * look.golden, 0.35).normalize();
       ridgeMat.color.copy(WHITE).lerp(WARM, look.golden * 0.5);
       // The scooter: it leans, bobs on the road, and tips over in a crash
       const my = myScooter();
       if (painted !== my.id) { painted = my.id; my.body.forEach((h, i) => bodyMats[i].color.set(h)); }
       frame3(s, px, fS);
       const fall = mode === 'crashing' ? Math.min(1, crashT / 0.45) : 0, bob = mode === 'playing' && !reduce ? Math.sin(time * 31) * 0.006 + Math.sin(time * 7.3) * 0.004 : 0;
-      scoot.position.set(fS.x, fS.y + bob - fall * 0.15, fS.z); scoot.rotation.set(fS.pitch, fS.yaw, lean + crashDir * fall * 1.25, 'YXZ');
+      scoot.position.set(fS.x, fS.y + bob - fall * 0.15, fS.z); scoot.rotation.set(fS.pitch, fS.yaw - (mode === 'crashing' ? 0 : Math.atan2(pvx, Math.max(4, v))), lean + crashDir * fall * 1.25, 'YXZ');
       riderShadow.position.set(fS.x, fS.y + 0.03, fS.z); riderShadow.rotation.y = fS.yaw;
+      // the sun follows a little ahead of the scooter, so its shadows cover what you see near you
+      frame3(s + 14, 0, fA); sun.target.position.set(fA.x, fA.y, fA.z); sun.position.copy(sun.target.position).addScaledVector(sunDir, 150);
       for (const w of wheels) w.rotation.x = s / 0.26;
       const brake = braking || mode === 'crashing' ? 1 : Math.max(0, Math.min(1, roadAt(route.grade, s, 1e-3) * 8));
       tailMat.color.set(brake > 0.05 ? '#ff4a3a' : '#b8352a');
-      placeAll(far);
+      placeAll(far, Math.min(0.1, ms / 1000));
       // The camera rides behind the scooter and above, the way it is heading, looking down the road
       // (in a tight bend it swings round a moment later, so the scooter stays in the picture)
       frame3(s, px * 0.7, fB); frame3(s + 9, px * 0.45, fA);
@@ -1866,7 +1947,8 @@
     else v += ((top - Math.max(0, climb) * 12) - v) * Math.min(1, dt * 0.9);
     s += v * dt;
     const was = px;
-    px += (LANES[lane] - px) * Math.min(1, dt * 12);
+    // to the new lane on a spring (critically damped): it starts and ends gently, in about a quarter second
+    pvx += ((LANES[lane] - px) * 225 - 30 * pvx) * dt; px += pvx * dt;
     // Lean with the lane change, and into the bend
     const want = Math.max(-0.4, Math.min(0.4, (px - was) / dt * 0.045 + curvAt(s) * v * v * 0.012));
     lean += (want - lean) * Math.min(1, dt * 8);
@@ -2266,7 +2348,7 @@
 
   // For the automatic tests only (?test in the address): read the ride and steer.
   if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
-    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); } };
+    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); } };
 
   syncSound(); syncWallet(); syncReady(); syncPause(); drawRoutes(); showParcel(); reset(); resize();
   // three.js is fetched once and kept on the phone; until then, and without WebGL, the picture is flat

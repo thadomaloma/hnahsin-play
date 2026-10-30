@@ -4,6 +4,22 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.19.0 (30 October 2026)
+
+### Aizawl Ride: smoother and more lifelike
+
+- Changing lanes is smooth now: the scooter eases into the new lane and
+  turns a little the way it is going. Cars, buses and bikes change lanes the
+  same way, and people turn round gently instead of all at once.
+- Colours look like a film camera's, and the road, the ground and the walls
+  have a fine grain instead of flat colour.
+- Houses have four kinds of windows, among them the iron grills seen all
+  over Aizawl, and a line at every floor.
+- On phones that can manage it: real shadows from the sun under the
+  scooter, the cars and the houses, smoother edges, and the sky shining in
+  the paint, the glass and the wheels. A slower phone leaves these out by
+  itself, so the ride stays smooth.
+
 ## 1.18.0 (30 October 2026)
 
 ### Aizawl Ride in 3D
