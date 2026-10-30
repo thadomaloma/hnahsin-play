@@ -17,6 +17,9 @@ Hnahsin Games is developed by Maloma Thado.
 - **Emoji pictures** come from Microsoft's
   [Fluent Emoji](https://github.com/microsoft/fluentui-emoji) (MIT licence).
 - Rova, Mami, his family and the game scenes are drawn for Hnahsin.
+- **The people in Aizawl Ride** are made from Quaternius's
+  [Universal Base Characters](https://quaternius.com/packs/universalbasecharacters.html)
+  (CC0), dressed and given their walk for Hnahsin.
 
 ## Maps
 
@@ -30,6 +33,7 @@ Hnahsin Games is developed by Maloma Thado.
 ## Tools
 
 - [Phaser](https://phaser.io/) runs Rova's Journey (MIT licence).
+- [three.js](https://threejs.org/) draws Aizawl Ride in 3D (MIT licence).
 - [GoatCounter](https://www.goatcounter.com/) counts which games are played.
 - Fonts: Plus Jakarta Sans, Baloo 2 and Caveat from Google Fonts (SIL Open
   Font License).

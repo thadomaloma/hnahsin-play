@@ -4,6 +4,23 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.24.0 (31 October 2026)
+
+### Aizawl Ride: real people on the footpaths
+
+- The people walking by are real bodies now, with real proportions, faces
+  and hair, and a proper walk. They are made from Quaternius's Universal
+  Base Characters (CC0).
+- Each one is dressed in their own clothes: a shirt and trousers, a
+  long-sleeved shirt for the elders, and for the women a blouse and a Mizo
+  puan with its stripes, their hair long or in a bun. The elders' hair is
+  grey, and some carry a school bag, an umbrella or a walking stick.
+- They walk as fast as they go and stand still when they stop. Women in a
+  puan take shorter steps.
+- On a slow phone, and until the people have been fetched, the simpler
+  people are drawn as before. Once fetched they are kept for playing
+  offline.
+
 ## 1.23.2 (31 October 2026)
 
 ### Aizawl Ride: true sizes and a smoother lane change

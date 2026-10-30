@@ -1,6 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#f3efe6"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Hnahsin"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="icon" href="favicon.png" type="image/png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js'));</script></head><body>
 <title>Aizawl Ride · Hnahsin</title>
 <meta name="description" content="Ride a scooter along real Aizawl roads, dodge the roadblocks and deliver the parcel.">
+<script type="importmap">{"imports":{"three":"https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.module.min.js"}}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap">
 <style>
@@ -2291,6 +2292,92 @@
     const JACKETS = ['#2c3e50', '#7a3b2e', '#3b5f3a', '#1f3a68', '#5b4a3a', '#8e1b3a', '#d8d4cc', '#4a4f57'], HELMETS = ['#f2f2ee', '#231e16', '#c0392b', '#1565c0', '#f2c230', '#6b6e70'];
     const LEGS = ['#2c3e50', '#3b5b8a', '#34495e', '#1f1f1f', '#5b4a3a', '#46628f'], BAGS = ['#1f1f1f', '#2c3e50', '#7a3b2e', '#3b5f3a'];   // trousers and jeans; backpacks
 
+    // ---------- people: real bodies, walking ----------
+    // Quaternius's Universal Base Characters (CC0), a man and a woman with real proportions, a skeleton
+    // and a walk, made ready by people/make_people.py into ride/people.glb. They come in underwear; the
+    // file marks where the shirt, the trousers or the puan, the shoes and the hair go, and each person
+    // here is coloured in from those marks: their own clothes, skin and hair, the skin's detail (the
+    // face, the lips) kept from the picture. Until the file is here (or on a slow phone) the people are
+    // the simple ones drawn below.
+    const ADDONS = 'https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/';
+    let PEOPLE = null;
+    const personMat = (map, female) => {
+      const m = new T.MeshLambertMaterial({ map, side: T.DoubleSide });
+      const u = m.userData.u = { uSkin: { value: new T.Color() }, uShirt: { value: new T.Color() }, uPants: { value: new T.Color() }, uStripe: { value: new T.Color() }, uShoe: { value: new T.Color() }, uHair: { value: new T.Color() }, uLong: { value: 0 } };
+      m.onBeforeCompile = sh => {
+        Object.assign(sh.uniforms, u);
+        sh.vertexShader = 'attribute vec4 mask;\nvarying vec4 vMask;\nvarying float vY;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvMask = mask; vY = position.y;');
+        sh.fragmentShader = 'uniform vec3 uSkin, uShirt, uPants, uStripe, uShoe, uHair;\nuniform float uLong;\nvarying vec4 vMask;\nvarying float vY;\n' + sh.fragmentShader.replace('#include <map_fragment>', `
+          vec3 det = texture2D(map, vMapUv).rgb * 2.0;                       // the skin's own detail, 1 on average
+          vec3 col = uSkin * det;
+          float shirt = step(0.75, vMask.r) + uLong * step(0.25, vMask.r) * step(vMask.r, 0.75);
+          col = mix(col, uShirt, clamp(shirt, 0.0, 1.0));
+          float band = fract(vY * 7.0), puan = step(0.25, vMask.a) * step(vMask.a, 0.75);
+          col = mix(col, mix(uPants, uStripe, puan * step(0.66, band) * step(band, 0.84)), step(0.5, vMask.g));   // trousers, or a puan and its stripes
+          col = mix(col, uShoe, step(0.75, vMask.a));
+          col = mix(col, uHair, step(0.5, vMask.b));
+          diffuseColor.rgb *= col;`);
+      };
+      m.customProgramCacheKey = () => 'person';
+      return m;
+    };
+    (async () => {
+      const [{ GLTFLoader }, SK] = await Promise.all([import(ADDONS + 'loaders/GLTFLoader.js'), import(ADDONS + 'utils/SkeletonUtils.js')]);
+      const g = await new GLTFLoader().loadAsync('ride/people.glb');
+      const kind = (name, female, scale) => {
+        const rig = g.scene.getObjectByName(name + 'Rig'), clips = { walk: g.animations.find(a => a.name === name + 'Walk'), idle: g.animations.find(a => a.name === name + 'Idle') };
+        let map = null;
+        rig.traverse(o => { if (o.isSkinnedMesh) { const a = o.geometry.attributes; o.geometry.setAttribute('mask', a.color_1 || a.color); if (o.material.map) map = o.material.map; } });
+        map.colorSpace = T.NoColorSpace; map.needsUpdate = true;
+        const free = [];
+        const make = () => {      // one person: their own skeleton, material and animations
+          const root = SK.clone(rig), mat = personMat(map, female), meshes = [];
+          root.traverse(o => { if (o.isSkinnedMesh) { o.material = mat; o.frustumCulled = false; o.castShadow = true; meshes.push(o); } });
+          root.matrixAutoUpdate = false;
+          const mixer = new T.AnimationMixer(root), walk = mixer.clipAction(clips.walk), idle = mixer.clipAction(clips.idle);
+          walk.play(); idle.play(); idle.weight = 0;
+          scene.add(root);
+          return { root, mat, mixer, walk, idle, meshes, hairs: meshes.filter(o => o.name.includes('Hair')), scale };
+        };
+        for (let i = 0; i < 9; i++) { const p = make(); p.root.visible = false; free.push(p); }
+        return { free, make, female };
+      };
+      PEOPLE = { man: kind('Man', false, 0.91), woman: kind('Woman', true, 0.88), live: new Map() };
+      if (camera.aspect) renderer.compile(scene, camera);
+    })().catch(() => { PEOPLE = null; });
+    const SHOES = ['#231e16', '#2a2522', '#4a3426', '#6b4a33'], GREY = '#cfcac2';
+    // someone walking, standing or crossing, at the frame set by base(): the next free body of their kind,
+    // dressed in their look, walking as fast as they go
+    function person(p, dt) {
+      const L = p.look, kind = L.stripes ? PEOPLE.woman : PEOPLE.man;
+      let it = PEOPLE.live.get(p);
+      if (!it) {
+        it = kind.free.pop() || kind.make(); PEOPLE.live.set(p, it); it.root.visible = true;
+        const u = it.mat.userData.u, skin = SKIN[LOOKS.indexOf(L) % SKIN.length];
+        u.uSkin.value.set(skin).multiplyScalar(1.05); u.uShirt.value.set(L.shirt); u.uPants.value.set(L.lower); u.uStripe.value.set(L.stripes || L.lower);
+        u.uShoe.value.set(SHOES[(Math.random() * SHOES.length) | 0]); u.uHair.value.set(L.elder ? GREY : L.hair); u.uLong.value = L.jacket || L.elder ? 1 : 0;
+        const pick = kind.female ? (L.bun ? 'Buns' : L.long ? 'Long' : Math.random() < 0.5 ? 'Buns' : 'Long') : (Math.random() < 0.6 ? 'SimpleParted' : 'Buzzed');
+        it.hairs.forEach(h => (h.visible = h.name.includes(pick)));
+        it.mixer.setTime(Math.random() * 2);
+      }
+      it.used = true;
+      it.root.matrix.copy(mB).multiply(mS.makeScale(it.scale, it.scale, it.scale)); it.root.matrixWorldNeedsUpdate = true;
+      // walking as fast as they go (about 1.3 m a second at the clip's own pace, a woman in a puan 0.95); still, they stand
+      const speed = Math.hypot(p.va || 0, p.vx || 0), w = Math.min(1, speed / 0.4);
+      it.walk.weight += (w - it.walk.weight) * Math.min(1, dt * 6); it.idle.weight = 1 - it.walk.weight;
+      it.walk.timeScale = Math.max(0.4, speed / (kind.female ? 0.95 : 1.3)) * (L.elder ? 0.85 : 1);     // (shorter steps in a puan)
+      it.mixer.update(dt);
+    }
+    const mS = new T.Matrix4();
+    // after every person is placed: the bodies no one is using any more go back to be used again
+    function peopleDone() {
+      if (!PEOPLE) return;
+      for (const [p, it] of PEOPLE.live) {
+        if (it.used) { it.used = false; continue; }
+        it.root.visible = false; PEOPLE.live.delete(p); (p.look.stripes ? PEOPLE.woman : PEOPLE.man).free.push(it);
+      }
+    }
+
     function placeAll(far, dt) {
       for (const m of pools) m.n = 0;
       const f = {};
@@ -2338,11 +2425,19 @@
         let turn = face - p.face; turn -= Math.round(turn / (Math.PI * 2)) * Math.PI * 2;
         p.face += turn * Math.min(1, dt * 7);                 // turning round takes a moment
         base(f, p.face, false, p.sc);
+        put(shadows, 0, 0.02, 0, 0.6, 1, 0.6, '#000');
+        if (PEOPLE && level > 0) {        // a real body; what they carry is drawn with it
+          person(p, dt);
+          const L = p.look;
+          if (L.bag) put(pBox, 0, 0.98, -0.16, 0.3, 0.36, 0.13, L.bag);                                     // a school bag on the back
+          if (L.umbrella) { put(pBox, 0.2, 1.05, 0.22, 0.025, 0.95, 0.025, '#231e16'); put(pCone, 0.2, 1.95, 0.22, 0.62, 0.3, 0.62, L.umbrella); }
+          if (L.stick) limbTo(pLimb, 0.26, 0.86, 0.2, 0.02, 0.32, 0.03, '#6b4a2f');                        // the walking stick
+          continue;
+        }
         // A walk: each leg swings from the hip and bends at the knee as it comes forward; the arms
         // swing against the legs. An elder stoops a little and takes shorter steps.
         const L = p.look, ph = p.phase * Math.PI / 2, old = L.elder ? 1 : 0, stoop = old * 0.22, skin = SKIN[LOOKS.indexOf(L) % SKIN.length];
         const H = 0.86 + Math.abs(Math.cos(ph)) * 0.025, sh = H + 0.55 - stoop * 0.08, fw = stoop * 0.6;
-        put(shadows, 0, 0.02, 0, 0.6, 1, 0.6, '#000');
         for (const e of [-1, 1]) {
           const lp = ph + (e > 0 ? 0 : Math.PI), th = Math.sin(lp) * (old ? 0.26 : 0.42), kn = 0.08 + Math.max(0, Math.cos(lp)) * (old ? 0.35 : 0.6);
           const ky = H - 0.43 * Math.cos(th), kz = 0.43 * Math.sin(th), ay = ky - 0.41 * Math.cos(th - kn), az = kz + 0.41 * Math.sin(th - kn);
@@ -2367,6 +2462,7 @@
         if (L.long) put(pBox, 0, hy - 0.3, hz - 0.085, 0.2, 0.32, 0.05, L.hair);
         if (L.bag) put(pBox, 0, H + 0.12, -0.17, 0.3, 0.36, 0.13, L.bag);                                    // a school bag on the back
       }
+      peopleDone();
       for (const m of pools) { m.count = m.n; m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }
     }
 
@@ -2570,7 +2666,7 @@
       frame3(s, px * 0.55, fB); frame3(s + 9, px * 0.35, fA);
       want.set(fB.x - Math.sin(fB.yaw) * 5.4, fB.y + 2.3 + Math.sin(fB.pitch) * 5.4, fB.z - Math.cos(fB.yaw) * 5.4); aim.set(fA.x, fA.y + 0.9, fA.z);
       if (orbit) {      // for the tests only: look at the road ahead from anywhere round it
-        frame3(s + orbit.ahead, 0, fA); aim.set(fA.x, fA.y + 0.8, fA.z);
+        frame3(s + orbit.ahead, orbit.lat || 0, fA); aim.set(fA.x, fA.y + (orbit.aimY ?? 0.8), fA.z);
         want.set(fA.x + Math.sin(fA.yaw + orbit.angle) * orbit.dist, fA.y + orbit.height, fA.z + Math.cos(fA.yaw + orbit.angle) * orbit.dist); cam.copy(want);
       } else if (mode === 'playing' || mode === 'crashing') cam.lerp(want, 1 - Math.exp(-Math.min(0.1, ms / 1000) * 9)); else cam.copy(want);
       camera.position.copy(cam);
@@ -3351,7 +3447,7 @@
 
   // For the automatic tests only (?test in the address): read the ride and steer.
   if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
-    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)) })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1) => { const c = newCar(kind, lane, s + ahead, 0, dir); c.cruise = 0; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), sizes: () => R3 && R3.sizes(),
+    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)) })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1) => { const c = newCar(kind, lane, s + ahead, 0, dir); c.cruise = 0; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), sizes: () => R3 && R3.sizes(), walker: (ahead, x, va = 1, vx = 0, look) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; peds.push(p); return peds.length; },
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
     auditAll: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; const a = R3.audit(); out.push({ id: r.id, ...a }); } route = keep; R3.audit(); return out; },
     audit3All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); R3.setPlan(); out.push({ id: r.id, ...R3.audit3() }); } route = keep; reset(); return out; },
