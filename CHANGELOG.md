@@ -4,6 +4,21 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.23.2 (31 October 2026)
+
+### Aizawl Ride: true sizes and a smoother lane change
+
+- Cars are their real sizes now: the hatchbacks as long as a WagonR, the
+  taxis as an Alto, the saloons as a Dzire and the Boleros 4 m. Before,
+  they were too long, the Bolero by almost a metre. The two-wheelers, the
+  bus and your own scooter were measured too, and were right.
+- The red and white kerb is as narrow as a real one, with a concrete
+  side drain between it and the road, as on Aizawl's roads.
+- Changing lanes is quicker and smoother: it takes 0.4 s, eases in and
+  settles without a jolt, and a second tap in the middle of a move carries
+  on smoothly. The scooter leans with it more closely.
+- Checked on every road in the game.
+
 ## 1.23.1 (31 October 2026)
 
 ### Aizawl Ride: cars shaped like cars

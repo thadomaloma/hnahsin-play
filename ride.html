@@ -369,7 +369,7 @@
   const missionReady = m => !S.claimed.includes(m.id) && m.have() >= m.goal;
 
   // ---------- the world ----------
-  const LANE = 2.4, LANES = [-LANE, 0, LANE], LANE_T = 0.5;   // lane centres, metres from the road's middle; a lane change takes LANE_T s
+  const LANE = 2.4, LANES = [-LANE, 0, LANE], LANE_T = 0.4;   // lane centres, metres from the road's middle; a lane change takes LANE_T s
   const SEG = 4, VIEW = 50;                         // a segment per sample; how many are drawn ahead
   const PLAYER_Z = 3;                               // the scooter rides this far ahead of the camera
   const CURVE = 0.55, CURVE_MAX = 0.045, HILL = 0.8;  // real bends and hills, softened to fit the screen
@@ -412,12 +412,12 @@
   let crashBy = '';
   let cars = [], jams = [], braking = false, carT = 0, oncomingT = 0, eventWords = new Set();
   let peds = [], crossings = [], pedT = 0;
-  let s, v, px, pvx, laneFrom, laneV, laneTo, laneT, lane, coins, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
+  let s, v, px, pvx, pax, laneFrom, laneV, laneA, laneTo, laneT, lane, coins, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
   let soundOn = S.sound;
 
   function reset() {
     prepRoute();
-    s = 0; v = 0; lane = 1; px = 0; pvx = 0; laneFrom = laneV = laneTo = 0; laneT = LANE_T; coins = 0; time = 0; bgX = 0; shake = 0; lean = 0; crashT = 0; crashDir = 1;
+    s = 0; v = 0; lane = 1; px = 0; pvx = 0; pax = 0; laneFrom = laneV = laneA = laneTo = 0; laneT = LANE_T; coins = 0; time = 0; bgX = 0; shake = 0; lean = 0; crashT = 0; crashDir = 1;
     things = []; sparks = []; pops = []; nextRow = 70; lastOpen = 1; passed = new Set();
     cars = []; jams = planJams(); crossings = planCrossings(); peds = []; pedT = 0; buildStrip(); prepMini(); braking = false; carT = 3; oncomingT = 5; eventWords = new Set(); brakeHint(false);
     best0 = bestOf(route.id); bestShown = false; wordsSeen = new Set(); wordT = 4;
@@ -442,15 +442,16 @@
 
   // ---------- traffic: cars, bikes, buses and Aizawl's queues ----------
   const KINDS = {
-    car: { len: 3.8, wid: 1.7, hgt: 1.45, cols: ['#d9dde2', '#c0392b', '#2c3e50', '#f4f4f0', '#7f8c8d', '#2e6da4'] },
-    taxi: { len: 3.6, wid: 1.6, hgt: 1.45, cols: ['#f2c230'] },
-    sedan: { len: 4.0, wid: 1.73, hgt: 1.5, cols: ['#f4f4f0', '#b8bec4', '#7a1f2b', '#2c3e50', '#3d4b5c'] },
-    suv: { len: 4.4, wid: 1.8, hgt: 1.9, cols: ['#f4f4f0', '#b8bec4', '#3a4a3a'] },
+    // sizes as drawn match the real ones: a WagonR 3.66 m long and 1.62 m wide, an Alto 3.45 m, a Dzire 4.0 m, a Bolero 4.0 m
+    car: { len: 3.55, wid: 1.62, hgt: 1.5, cols: ['#d9dde2', '#c0392b', '#2c3e50', '#f4f4f0', '#7f8c8d', '#2e6da4'] },
+    taxi: { len: 3.35, wid: 1.5, hgt: 1.42, cols: ['#f2c230'] },
+    sedan: { len: 3.88, wid: 1.73, hgt: 1.5, cols: ['#f4f4f0', '#b8bec4', '#7a1f2b', '#2c3e50', '#3d4b5c'] },
+    suv: { len: 3.6, wid: 1.75, hgt: 1.88, cols: ['#f4f4f0', '#b8bec4', '#3a4a3a'] },
     bus: { len: 8, wid: 2.35, hgt: 3.05, cols: ['#1f5fa8', '#b8322a', '#1d7a46'] },                     // an MST midi bus
     // the two-wheelers, the most of Aizawl's traffic: a scooter, a commuter motorbike, a Royal Enfield and a sports bike
     scooter: { len: 1.8, wid: 0.75, hgt: 1.16, two: true, cols: ['#f4f4f0', '#c0392b', '#2c3e50', '#7f8c8d', '#1565c0', '#e67e22', '#8e1b3a', '#16a085'] },
     bike: { len: 1.95, wid: 0.8, hgt: 1.1, two: true, cols: ['#e74c3c', '#2c3e50', '#1b1b1b', '#1565c0', '#8e44ad'] },
-    classic: { len: 2.15, wid: 0.85, hgt: 1.12, two: true, cols: ['#1b1b1b', '#5a1f1f', '#2f4a3a', '#6b6e70', '#c9b48a'] },
+    classic: { len: 2.05, wid: 0.85, hgt: 1.12, two: true, cols: ['#1b1b1b', '#5a1f1f', '#2f4a3a', '#6b6e70', '#c9b48a'] },
     sport: { len: 2.0, wid: 0.8, hgt: 1.12, two: true, cols: ['#1b1b1b', '#c0392b', '#1565c0', '#f4f4f0', '#2e7d32'] },
   };
   // Aizawl's traffic: two-wheelers more than anything; the queues have no buses
@@ -1141,7 +1142,7 @@
   let R3 = null;
   function make3d(T) {
     const glc = $('gl');
-    const HALF = 3.9, KERB = 4.6, PIECE = 50;
+    const HALF = 3.9, KERB = 4.6, GUT = KERB - 0.3, PIECE = 50;     // the road's half width; the kerb's outer edge; the drain inside it
     // How sharp the picture is and how far you see. It steps down by itself when the phone is slow,
     // and the phone remembers it, with the day; on a later day it tries one step better again (a phone
     // that was hot or busy once is not kept at the lower level for good). The best level also has
@@ -1722,9 +1723,11 @@
           const g = sideAt(k, sd), E = bareSide ? HALF : edge(k, sd), E1 = bareSide ? HALF : edge(k + 1, sd);
           st.kind = 'kerb';
           if (!bareSide) {
-            st.quad(pt(k, sd * HALF, 0), pt(k, sd * HALF, 0.15), pt(k + 1, sd * HALF, 0.15), pt(k + 1, sd * HALF, 0), '#8f8a80');
-            // the kerb, red and white; in town a footpath (kalkawng), where the ground falls a parapet
-            across(k, sd * HALF, sd * KERB, 0.15, 0.15, even ? '#c33f3f' : '#f3efe4');
+            // the concrete side drain along the road's edge, then the kerb, red and white and a real kerb's
+            // width; in town a footpath (kalkawng), where the ground falls a parapet
+            across(k, sd * HALF, sd * GUT, 0.01, 0.01, even ? '#9c9890' : '#97938b');
+            st.quad(pt(k, sd * GUT, 0), pt(k, sd * GUT, 0.15), pt(k + 1, sd * GUT, 0.15), pt(k + 1, sd * GUT, 0), '#8f8a80');
+            across(k, sd * GUT, sd * KERB, 0.15, 0.15, even ? '#c33f3f' : '#f3efe4');
             if (E > KERB && E1 > KERB) across(k, sd * KERB, sd * FOOT, 0.15, 0.15, even ? '#d8d2c4' : '#cfc9bb');
             if (g < -2.5) {
               st.quad(pt(k, sd * KERB, 0.15), pt(k, sd * KERB, 0.8), pt(k + 1, sd * KERB, 0.8), pt(k + 1, sd * KERB, 0.15), k % 4 === 0 ? '#3a3a3a' : k % 2 ? '#f1ede2' : '#e6e1d4');
@@ -1813,7 +1816,7 @@
         };
         q(-HALF, HALF, 0, 0, j % 2 ? '#565957' : '#5b5e5c');
         for (const sd of [-1, 1]) {
-          q(sd * HALF, sd * KERB, 0.15, 0.15, j % 2 ? '#f3efe4' : '#c33f3f');
+          q(sd * HALF, sd * GUT, 0.01, 0.01, '#9a968e'); q(sd * GUT, sd * KERB, 0.15, 0.15, j % 2 ? '#f3efe4' : '#c33f3f');
           const cols = [KERB, 10, 18, 30, 45, 60];
           for (let c = 0; c < cols.length - 1; c++) q(sd * cols[c], sd * cols[c + 1], groundAt(k, sd, cols[c]), groundAt(k, sd, cols[c + 1]), c > 2 ? '#5f9a6c' : '#6aa57a');
         }
@@ -2804,7 +2807,9 @@
       return out;
     }
     const walkable = (i, sd) => { setRoute(); i = clamp(i, 0, W3.n - 1); return !W3.bare[sd][i] && !W3.gone[sd][i] && !W3.ride[i]; };
-    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, walkable };
+    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, walkable,
+      // for the tests: each vehicle's size as drawn (length, width with the mirrors, height in metres), and our scooter's
+      sizes: () => Object.fromEntries([...Object.keys(KINDS).map(k => { const M = MODELS[k], K = KINDS[k], b = new T.Box3().setFromBufferAttribute(M.paint.attributes.position); return [k, { len: +((b.max.z - b.min.z) * K.len / M.len).toFixed(2), wid: +((M.single ? b.max.x - b.min.x : (b.max.x - b.min.x) * K.wid)).toFixed(2), hgt: +(b.max.y * K.hgt / M.hgt).toFixed(2), wheel: +(M.wheels[0][1] * K.hgt / M.hgt * 2).toFixed(2) }]; }), ['me', (() => { const p0 = scoot.position.clone(), r0 = scoot.rotation.clone(); scoot.position.set(0, 0, 0); scoot.rotation.set(0, 0, 0); scoot.updateMatrixWorld(true); const b = new T.Box3().setFromObject(scoot); scoot.position.copy(p0); scoot.rotation.copy(r0); scoot.updateMatrixWorld(true); return { len: +(b.max.z - b.min.z).toFixed(2), wid: +(b.max.x - b.min.x).toFixed(2), hgt: +(b.max.y - b.min.y).toFixed(2) }; })()]]) };
   }
 
   // ---------- the HUD ----------
@@ -2928,19 +2933,22 @@
     else v += ((top - Math.max(0, climb) * 12) - v) * Math.min(1, dt * 0.9);
     s += v * dt;
     const was = px;
-    // To the new lane on a smooth curve, as lane games do: it starts and ends gently and arrives in
-    // LANE_T seconds, with no creeping at the end. A tap in the middle of a move carries on from
-    // the speed it has (a cubic Hermite curve from where it is, at the speed it has, to the lane).
-    if (LANES[lane] !== laneTo) { laneFrom = px; laneV = pvx; laneTo = LANES[lane]; laneT = 0; }
+    // To the new lane on a smooth curve, as lane games do: it arrives in LANE_T seconds, with no
+    // creeping at the end. A quintic curve (smootherstep): its speed and its acceleration both start
+    // and end at nothing, so the move eases in and settles without a jolt, and can be quicker for it.
+    // A tap in the middle of a move carries on from the speed and the acceleration it has.
+    if (LANES[lane] !== laneTo) { laneFrom = px; laneV = pvx; laneA = pax; laneTo = LANES[lane]; laneT = 0; }
     if (laneT < LANE_T) {
       laneT = Math.min(LANE_T, laneT + dt);
-      const u = laneT / LANE_T, u2 = u * u, u3 = u2 * u;
-      px = (2 * u3 - 3 * u2 + 1) * laneFrom + (u3 - 2 * u2 + u) * LANE_T * laneV + (3 * u2 - 2 * u3) * laneTo;
-      pvx = ((6 * u2 - 6 * u) * laneFrom + (3 * u2 - 4 * u + 1) * LANE_T * laneV + (6 * u - 6 * u2) * laneTo) / LANE_T;
-    } else { px = laneTo; pvx = 0; }
-    // Lean with the lane change, and into the bend
-    const want = Math.max(-0.4, Math.min(0.4, pvx * 0.034 + curvAt(s) * v * v * 0.012));
-    lean += (want - lean) * Math.min(1, dt * 8);
+      const T = LANE_T, u = laneT / T, u2 = u * u, u3 = u2 * u, u4 = u3 * u, u5 = u4 * u, p0 = laneFrom, v0 = laneV * T, a0 = laneA * T * T, p1 = laneTo;
+      px = (1 - 10 * u3 + 15 * u4 - 6 * u5) * p0 + (u - 6 * u3 + 8 * u4 - 3 * u5) * v0 + (0.5 * u2 - 1.5 * u3 + 1.5 * u4 - 0.5 * u5) * a0 + (10 * u3 - 15 * u4 + 6 * u5) * p1;
+      pvx = ((-30 * u2 + 60 * u3 - 30 * u4) * (p0 - p1) + (1 - 18 * u2 + 32 * u3 - 15 * u4) * v0 + (u - 4.5 * u2 + 6 * u3 - 2.5 * u4) * a0) / T;
+      pax = ((-60 * u + 180 * u2 - 120 * u3) * (p0 - p1) + (-36 * u + 96 * u2 - 60 * u3) * v0 + (1 - 9 * u + 18 * u2 - 10 * u3) * a0) / (T * T);
+      px = Math.max(-LANE - 0.5, Math.min(LANE + 0.5, px));
+    } else { px = laneTo; pvx = 0; pax = 0; }
+    // Lean with the lane change, and into the bend (the curve is smooth already, so it follows closely)
+    const want = Math.max(-0.4, Math.min(0.4, pvx * 0.024 + curvAt(s) * v * v * 0.012));
+    lean += (want - lean) * Math.min(1, dt * 14);
     if (!reduce && Math.random() < dt * 9) sparks.push({ x: riderXY().x + 9, y: riderXY().y - 8, vx: (Math.random() - .5) * 20, vy: 30 + Math.random() * 20, r: 2.5, life: 0.6, c: '#9aa39b', a: 0.5, puff: true });
     bgX += curvAt(s) * v * dt * W * 0.9;
     shake = Math.max(0, shake - dt * 3);
@@ -3343,7 +3351,7 @@
 
   // For the automatic tests only (?test in the address): read the ride and steer.
   if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
-    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)) })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1) => { const c = newCar(kind, lane, s + ahead, 0, dir); c.cruise = 0; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o),
+    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)) })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1) => { const c = newCar(kind, lane, s + ahead, 0, dir); c.cruise = 0; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), sizes: () => R3 && R3.sizes(),
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
     auditAll: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; const a = R3.audit(); out.push({ id: r.id, ...a }); } route = keep; R3.audit(); return out; },
     audit3All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); R3.setPlan(); out.push({ id: r.id, ...R3.audit3() }); } route = keep; reset(); return out; },
