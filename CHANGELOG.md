@@ -15,9 +15,30 @@ minor version, a fix is a new patch version.
   are all in 3D too. The camera rides behind the scooter, round the bends.
 - The light still turns golden towards the end of a ride, with a stretch of
   morning haze (romei).
+- Cars, SUVs and buses have real shapes now: rounded bodies with shiny
+  paint, glass, tyres with silver rims, bumpers, mirrors, headlights and
+  number plates. Taxis carry their roof sign, buses their route board and a
+  door on the left. Bikes are motorbikes with a rider in a helmet.
+- The scooter looks like an Activa, with mirrors and the parcel box on the
+  rack, and the rider sits on it properly.
+- In town: electric poles with sagging wires, shops with shutters and
+  signboards at street level, and balconies on the tall houses.
+- People walk with rounded arms and legs; women wear a striped puan.
 - On a slow phone the picture gets a little softer and the view shorter, by
   itself, so the ride stays smooth. Phones without 3D get the flat picture,
-  as before. The game itself is the same.
+  as before.
+
+### Aizawl Ride: veng open as your points grow
+
+- Your points are your best scores on every road, added up. Dawrpui and the
+  four veng nearest it are open from the start; the others open one by one
+  as your points grow, from 2,000 points for Chanmari to 46,000 for the
+  last one. A veng you have been to stays open.
+- The Aizawl map shows your points and the next veng to open, with a lock
+  on the ones still closed. The end of a ride tells you the points you
+  gained and any veng that opened.
+- Luangmual, Dinthar and Tuikual North can now be reached: a new delivery
+  goes from Zarkawt to Luangmual. Before, no delivery went there.
 
 ## 1.17.4 (30 October 2026)
 

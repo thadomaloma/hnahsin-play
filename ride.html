@@ -127,6 +127,8 @@
   #mapView .item { padding: 6px 10px; }
   .citymap { display: block; width: 100%; border-radius: 14px; border: 1.5px solid var(--ink); background: #eef3e6; touch-action: manipulation; }
   .item.job[aria-pressed="true"] { background: #e3f4dd; }
+  .item.job.locked { opacity: .7; box-shadow: none; }
+  .item.job.locked b { color: var(--muted); }
   .controls { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; padding: 10px 14px; border-top: 1.5px solid var(--ink); }
   .steer { min-height: 56px; border-radius: 16px; border: 1.5px solid var(--ink); background: var(--panel); box-shadow: 0 2px 0 var(--ink); font-size: 26px; font-weight: 800; touch-action: manipulation; }
   .steer:active { transform: translateY(2px); box-shadow: none; }
@@ -1197,7 +1199,11 @@
     const wheel = new T.CylinderGeometry(1, 1, 1, 12).rotateZ(Math.PI / 2);   // its axle across
     const ball = new T.SphereGeometry(1, 12, 8), disc = new T.CylinderGeometry(1, 1, 1, 18).rotateX(Math.PI / 2);
     const blob = new T.CircleGeometry(0.5, 14).rotateX(-Math.PI / 2), plane = new T.PlaneGeometry(1, 1).translate(0, 0.5, 0);
-    const shared = new Set([box, hang, prism, tank, trunk, crown, cone, wheel, ball, disc, blob, plane]);
+    const pole = new T.CylinderGeometry(0.09, 0.13, 1, 6).translate(0, 0.5, 0);
+    const shutterMat = new T.MeshLambertMaterial({ map: tex(16, 32, g => { g.fillStyle = '#ececec'; g.fillRect(0, 0, 16, 32); g.fillStyle = '#b4b4b4'; for (let y = 2; y < 32; y += 4) g.fillRect(0, y, 16, 1); }) });
+    const wireMat = new T.LineBasicMaterial({ color: '#2b2b2b' });
+    const SHOP = ['#5f7f9c', '#8a9096', '#a3524a', '#4f7f5f', '#b98a2e', '#6b5f8a'], SIGNBAND = ['#c0392b', '#1565c0', '#2e7d32', '#f2c230', '#e67e22', '#ffffff'];
+    const shared = new Set([box, hang, prism, tank, trunk, crown, cone, wheel, ball, disc, blob, plane, pole]);
 
     // ---------- the road's shape ----------
     // From the line on the map (2 m steps), spread evenly over the samples and rounded at the corners.
@@ -1299,10 +1305,29 @@
         for (let i = 0; i < 4; i++) { const [a, b] = [c[i], c[(i + 1) % 4]]; st.quad(pt(k, a[0], h0, a[1]), pt(k, b[0], h0, b[1]), pt(k, b[0], h1, b[1]), pt(k, a[0], h1, a[1]), hex); }
         st.quad(...c.map(([x, z]) => pt(k, x, h1, z)), hex);
       };
-      const H = [], RF = [], TK = [], TR = [], CR = [], BB = [];
+      const H = [], RF = [], TK = [], TR = [], CR = [], BB = [], BAL = [], RAIL = [], SHUT = [], BAND = [], POLE = [], ARM = [], WIRE = [];
+      // An electric pole every 36 m in town, on the near side, and the ends of its crossarm for the wires
+      const poleAt = k => {
+        if (k < 0 || k >= n || k % 9 || !footpath(k)) return null;
+        const sd = sideAt(k, -1) >= -2.5 ? -1 : sideAt(k, 1) >= -2.5 ? 1 : 0;
+        if (!sd) return null;
+        const lat = sd * (FOOT - 0.35);
+        return { sd, lat, ends: [-0.6, 0, 0.6].map(o => pt(k, lat + o, o ? 8.0 : 8.45)) };
+      };
       const housesOn = (sd, k) => (sd > 0 ? route.housesR : route.housesL)[k] || 0, tallOn = (sd, k) => (route.tallL ? (sd > 0 ? route.tallR : route.tallL)[k] : 0) || 0;
       for (let k = k0; k < Math.min(k1, n - 1); k++) {
-        const even = k % 2 === 0;
+        const even = k % 2 === 0, pl = poleAt(k);
+        if (pl) {
+          POLE.push({ p: pt(k, pl.lat, 0.15), s: [1, 8.6, 1], c: '#a9a9a1' });
+          ARM.push({ p: pt(k, pl.lat, 7.95), yaw: yaw[k], s: [1.5, 0.1, 0.1], c: '#8d8d86' });
+          if (k % 36 === 0) ARM.push({ p: pt(k, pl.lat - pl.sd * 0.4, 5.6), yaw: yaw[k], s: [0.5, 0.7, 0.5], c: '#7d8288' });   // a transformer
+          // the wires from the pole before, sagging between
+          const before = poleAt(k - 9);
+          if (before && before.sd === pl.sd) before.ends.forEach((a, i) => {
+            const b = pl.ends[i], at = t => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - 2.8 * t * (1 - t), a[2] + (b[2] - a[2]) * t];
+            for (let t = 0; t < 6; t++) WIRE.push(...at(t / 6), ...at((t + 1) / 6));
+          });
+        }
         // the road: asphalt, white edge lines, lane dashes
         across(k, -HALF, HALF, 0, 0, even ? '#5b5e5c' : '#565957');
         for (const e of [-1, 1]) across(k, e * (HALF - 0.18), e * (HALF - 0.06), 0.02, 0.02, '#e9e4d0');
@@ -1339,6 +1364,18 @@
             const gy = groundAt(k, sd, off), hh = tall ? Math.max(3, tall * (0.8 + rnd(k, j + 9) * 0.35)) : 3 + rnd(k, j + 7) * 5 + j * 2;
             const bot = gy - 1.5, top = Math.max(gy + hh, 2 + rnd(k, j + 2) * 3), p = pt(k, sd * off, 0);
             H.push({ p: [p[0], Y[k] + bot, p[2]], yaw: yaw[k], s: [w, top - bot, d], c: HOUSE[(k + j) % HOUSE.length] });
+            if (j === 0 && footpath(k)) {
+              const face = off - w / 2, along = d * 0.7;
+              if (Math.abs(g) < 2.5) {     // a shop at street level: its shutter and its signboard
+                SHUT.push({ p: pt(k, sd * (face - 0.03), gy), yaw: yaw[k], s: [0.06, 2.5, along], c: SHOP[(k * 7 + j) % SHOP.length] });
+                BAND.push({ p: pt(k, sd * (face - 0.05), gy + 2.6), yaw: yaw[k], s: [0.1, 0.55, along * 1.05], c: SIGNBAND[(k * 5) % SIGNBAND.length] });
+              }
+              // balconies on the floors above, with railings
+              if (top - gy > 6.5 && rnd(k, 70 + sd) < 0.7) for (let fl = 1; fl <= Math.min(5, Math.floor((top - gy) / 3) - 1); fl++) {
+                BAL.push({ p: pt(k, sd * (face - 0.45), gy + fl * 3 - 0.12), yaw: yaw[k], s: [0.9, 0.12, along * 0.8], c: '#d9d4c8' });
+                RAIL.push({ p: pt(k, sd * (face - 0.88), gy + fl * 3), yaw: yaw[k], s: [0.05, 0.85, along * 0.8], c: rnd(k, fl) < 0.5 ? '#3a3a3a' : '#efece4' });
+              }
+            }
             if (top - gy < 9 && rnd(k, j + 21) < 0.45) RF.push({ p: [p[0], Y[k] + top, p[2]], yaw: yaw[k], s: [w * 1.08, 1.3, d * 1.05], c: ROOF[(k * 3 + j) % ROOF.length] });
             else if (rnd(k, j + 31) < 0.5) { const q = pt(k, sd * (off + (rnd(k, j) - 0.5) * d * 0.5), 0); TK.push({ p: [q[0], Y[k] + top, q[2]], s: [1.1, 1.3, 1.1], c: '#2b2d2c' }); }   // the black water tank
           }
@@ -1357,6 +1394,8 @@
           }
         }
       }
+      if (WIRE.length) { const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(WIRE, 3)); grp.add(new T.LineSegments(g, wireMat)); }
+      [instanced(box, plainMat, BAL), instanced(box, plainMat, RAIL), instanced(box, shutterMat, SHUT), instanced(box, plainMat, BAND), instanced(pole, plainMat, POLE), instanced(box, plainMat, ARM)].forEach(m => m && grp.add(m));
       [st.mesh(), instanced(box, houseMat, H), instanced(prism, plainMat, RF), instanced(tank, plainMat, TK),
         instanced(trunk, plainMat, TR), instanced(crown, plainMat, CR), instanced(cone, plainMat, BB)].forEach(m => m && grp.add(m));
       grp.userData.mid = P[Math.min(n - 1, (k0 + k1) >> 1)];
@@ -1409,47 +1448,121 @@
       mL.compose(v3.set(-x, y, z), q2, sc.set(sx, sy, sz)).premultiply(mB);
       m.setMatrixAt(m.n, mL); m.setColorAt(m.n, C(hex)); m.n++;
     }
+    // ---------- vehicles, people and things on the road ----------
+    // Bodies are side views pushed out sideways, with rounded corners: a car, an SUV, a bus, a
+    // motorbike and the scooter each have their own, scaled to each vehicle's size. Paint and glass shine.
+    function rounded(pts, r) {
+      const out = [];
+      pts.forEach((p, i) => {
+        const a = pts[(i + pts.length - 1) % pts.length], b = pts[(i + 1) % pts.length];
+        const ta = Math.min(0.5, r / Math.hypot(a[0] - p[0], a[1] - p[1])), tb = Math.min(0.5, r / Math.hypot(b[0] - p[0], b[1] - p[1]));
+        const A = [p[0] + (a[0] - p[0]) * ta, p[1] + (a[1] - p[1]) * ta], B = [p[0] + (b[0] - p[0]) * tb, p[1] + (b[1] - p[1]) * tb];
+        out.push(A, [(A[0] + 2 * p[0] + B[0]) / 4, (A[1] + 2 * p[1] + B[1]) / 4], B);
+      });
+      return out;
+    }
+    function side(pts, w, r = 0.08) {
+      const sh = new T.Shape(); rounded(pts, r).forEach(([u, v], i) => (i ? sh.lineTo(u, v) : sh.moveTo(u, v)));
+      const b = Math.min(0.04, w * 0.1), g = new T.ExtrudeGeometry(sh, { depth: w - 2 * b, bevelEnabled: true, bevelThickness: b, bevelSize: b * 0.6, bevelSegments: 1, curveSegments: 1 });
+      g.rotateY(-Math.PI / 2); g.translate((w - 2 * b) / 2, 0, 0); g.deleteAttribute('uv');
+      return g;
+    }
+    function merge(...geos) {
+      const pos = [], nor = [];
+      for (const g0 of geos) { const g = g0.index ? g0.toNonIndexed() : g0; pos.push(...g.attributes.position.array); nor.push(...g.attributes.normal.array); }
+      const m = new T.BufferGeometry(); m.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); m.setAttribute('normal', new T.Float32BufferAttribute(nor, 3)); return m;
+    }
+    // a car is 3.8 m long and 1.45 m high, an SUV 4.4 by 1.9, a bus 9 by 3, all 1 m wide before scaling
+    const carPaint = merge(side([[-1.9, 0.26], [-1.93, 0.68], [-1.8, 0.86], [-1.05, 0.9], [1.0, 0.93], [1.8, 0.8], [1.93, 0.6], [1.9, 0.26]], 1, 0.14), side([[-0.66, 1.34], [0.42, 1.36], [0.4, 1.45], [-0.62, 1.44]], 0.88, 0.04));
+    const carGlass = side([[-1.08, 0.88], [-0.62, 1.37], [0.38, 1.39], [1.04, 0.91]], 0.86, 0.06);
+    const suvPaint = merge(side([[-2.2, 0.32], [-2.23, 1.0], [-2.12, 1.1], [1.15, 1.12], [2.05, 1.0], [2.22, 0.75], [2.2, 0.32]], 1, 0.14), side([[-2.12, 1.72], [0.6, 1.74], [0.56, 1.86], [-2.08, 1.85]], 0.9, 0.04));
+    const suvGlass = side([[-2.14, 1.08], [-2.08, 1.76], [0.55, 1.78], [1.2, 1.1]], 0.88, 0.06);
+    const busPaint = side([[-4.5, 0.38], [-4.5, 2.95], [4.5, 2.95], [4.5, 0.38]], 1, 0.3);
+    const bikePaint = side([[-0.85, 0.55], [-0.9, 0.66], [-0.25, 0.74], [0.05, 0.86], [0.42, 0.84], [0.5, 0.62], [0.15, 0.42], [-0.4, 0.42]], 0.3, 0.06);
+    const rimGeo = new T.CylinderGeometry(0.62, 0.62, 1.06, 12).rotateZ(Math.PI / 2), plateGeo = new T.PlaneGeometry(1, 1).rotateY(Math.PI);
+    const capUp = new T.CapsuleGeometry(0.5, 1, 3, 8).translate(0, 1, 0), capHang = new T.CapsuleGeometry(0.5, 1, 3, 8).translate(0, -1, 0);
+    const skirt = new T.CylinderGeometry(0.85, 1, 1, 10).translate(0, 0.5, 0);
+    const rockGeo = (() => {     // a rough stone: the same jitter for a corner shared by faces, so it stays closed
+      const g = new T.DodecahedronGeometry(1, 1), p = g.attributes.position;
+      for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), k = 0.8 + rnd(Math.round(x * 50) + Math.round(z * 31), Math.round(y * 70)) * 0.4; p.setXYZ(i, x * k, y * k, z * k); }
+      g.computeVertexNormals(); return g;
+    })();
+    const logGeo = new T.CylinderGeometry(1, 1, 1, 10).rotateZ(Math.PI / 2);
+    const paintMat = new T.MeshPhongMaterial({ shininess: 60, specular: C('#555555') });
+    const glassMat = new T.MeshPhongMaterial({ color: '#25313a', shininess: 90, specular: C('#8a9aa4') });
+    const chromeMat = new T.MeshPhongMaterial({ color: '#c9cdd0', shininess: 80, specular: C('#ffffff') });
+    const plateMat = new T.MeshLambertMaterial({ map: tex(64, 20, g => { g.fillStyle = '#fff'; g.fillRect(0, 0, 64, 20); g.strokeStyle = '#231e16'; g.lineWidth = 2; g.strokeRect(1, 1, 62, 18); g.fillStyle = '#231e16'; g.font = '800 13px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('MZ 01', 32, 11); }) });
+    const logMats = [new T.MeshLambertMaterial({ color: '#7a4b2f' }), ...Array(2).fill(new T.MeshLambertMaterial({ map: tex(32, 32, g => { g.fillStyle = '#d6a46c'; g.fillRect(0, 0, 32, 32); g.strokeStyle = '#a8743f'; g.lineWidth = 1.5; for (const r of [4, 8, 12]) { g.beginPath(); g.arc(16, 16, r, 0, 7); g.stroke(); } }) }))];
     const shadows = pool(blob, shadowMat, 200);
-    const vBody = pool(box, plainMat, 90), vCab = pool(box, plainMat, 90), vWheel = pool(wheel, plainMat, 360), vRound = pool(ball, plainMat, 90), vGlow = pool(box, glowMat, 450);
-    const coinM = pool(disc, coinMat, 60), rockM = pool(crown, plainMat, 24), logM = pool(wheel, plainMat, 24), boardM = pool(box, stripeMat, 24), legM = pool(box, plainMat, 48);
-    const pBox = pool(box, plainMat, 120), pLimb = pool(hang, plainMat, 120), pRound = pool(ball, plainMat, 100), pCone = pool(cone, plainMat, 30);
+    const pCar = pool(carPaint, paintMat, 60), gCar = pool(carGlass, glassMat, 60), pSuv = pool(suvPaint, paintMat, 30), gSuv = pool(suvGlass, glassMat, 30);
+    const pBus = pool(busPaint, paintMat, 12), pBike = pool(bikePaint, paintMat, 30), gBox = pool(box, glassMat, 40);
+    const vBox = pool(box, plainMat, 700), vGlow = pool(box, glowMat, 300), vRound = pool(ball, paintMat, 60), tyre = pool(wheel, plainMat, 220), rim = pool(rimGeo, chromeMat, 220), plateM = pool(plateGeo, plateMat, 80);
+    const coinM = pool(disc, coinMat, 60), rockM = pool(rockGeo, plainMat, 24), logM = pool(logGeo, logMats, 24), boardM = pool(box, stripeMat, 24);
+    const pUp = pool(capUp, plainMat, 80), pLimb = pool(capHang, plainMat, 160), pRound = pool(ball, plainMat, 100), pSkirt = pool(skirt, plainMat, 60), pBox = pool(box, plainMat, 60), pCone = pool(cone, plainMat, 30);
+    const CARS = { car: [pCar, gCar, 1.45, 3.8], taxi: [pCar, gCar, 1.45, 3.8], suv: [pSuv, gSuv, 1.9, 4.4] };
+    const JACKETS = ['#2c3e50', '#7a3b2e', '#3b5f3a', '#1f3a68', '#5b4a3a'], HELMETS = ['#f2f2ee', '#231e16', '#c0392b', '#1565c0', '#f2c230'];
 
     function placeAll(far) {
       for (const m of pools) m.n = 0;
       const f = {};
+      const wheelPair = (x, r, z, w) => { put(tyre, x, r, z, w, r, r, '#1b1d1c'); put(rim, x, r, z, w, r, r, '#ffffff'); };
       for (const c of cars) {
         if (c.at < s - 15 || c.at > s + far) continue;
         frame3(c.at, c.x, f); base(f, c.dir < 0 ? Math.PI : 0, c.dir < 0);
         put(shadows, 0, 0.03, 0, c.wid * 1.2, 1, c.len * 1.08, '#000');
-        const back = -c.len / 2 - 0.02, stop = c.slowing ? '#ff3b2f' : '#9e2a22';
-        if (c.kind === 'bike') {
-          put(vBody, 0, 0.28, 0, 0.3, 0.5, c.len * 0.85, c.col);
-          for (const z of [0.62, -0.62]) put(vWheel, 0, 0.3, z, 0.1, 0.3, 0.3, '#141615');
-          put(vCab, 0, 0.78, -0.12, 0.44, 0.6, 0.32, '#3c556e');
-          put(vRound, 0, 1.48, -0.08, 0.18, 0.19, 0.2, '#f2f2ee');
-          put(vGlow, 0, 0.55, back + 0.2, 0.16, 0.07, 0.04, stop); put(vGlow, 0, 0.7, -back - 0.2, 0.14, 0.12, 0.04, '#fff6c8');
-          continue;
+        const back = -c.len / 2 - 0.02, stop = c.slowing ? '#ff3b2f' : '#9e2a22', K = CARS[c.kind];
+        if (K) {
+          const sy = c.hgt / K[2], sl = c.len / K[3], r = 0.31 * Math.max(1, sy * 0.95);
+          put(K[0], 0, 0, 0, c.wid, sy, sl, c.col); put(K[1], 0, 0, 0, c.wid, sy, sl, '#ffffff');
+          for (const z of [0.34, -0.33]) for (const e of [-1, 1]) wheelPair(e * c.wid * 0.43, r, z * c.len, 0.22);
+          for (const e of [-1, 1]) {
+            put(vGlow, e * c.wid * 0.36, 0.7 * sy, back, c.wid * 0.2, 0.1 * sy, 0.04, stop);          // tail lights
+            put(vGlow, e * c.wid * 0.34, 0.64 * sy, -back, c.wid * 0.2, 0.09 * sy, 0.04, '#fffbe6');  // headlights
+            put(vBox, e * c.wid * 0.53, 0.9 * sy, 0.2 * c.len, 0.1, 0.09, 0.14, c.col);               // mirrors
+          }
+          for (const z of [back + 0.05, -back - 0.05]) put(vBox, 0, 0.24 * sy, z, c.wid * 1.02, 0.2 * sy, 0.14, '#2b2d2c');   // bumpers
+          put(vBox, 0, 0.5 * sy, -back + 0.01, c.wid * 0.42, 0.13 * sy, 0.03, '#1d1f1e');            // grille
+          put(plateM, 0, 0.56 * sy, back - 0.03, 0.5, 0.13, 1, c.kind === 'taxi' ? '#ffd34d' : '#ffffff');
+          if (c.kind === 'taxi') put(vGlow, 0, 1.45 * sy, -0.05 * c.len, 0.5, 0.14, 0.24, '#ffd34d');
+          if (c.kind === 'suv') for (const e of [-1, 1]) put(vBox, e * c.wid * 0.36, 1.86 * sy, -0.4, 0.05, 0.06, c.len * 0.5, '#2b2d2c');
+        } else if (c.kind === 'bus') {
+          const sy = c.hgt / 3, sl = c.len / 9;
+          put(pBus, 0, 0, 0, c.wid, sy, sl, c.col);
+          put(vBox, 0, 0.95 * sy, 0, c.wid * 1.012, 0.16, c.len * 0.97, '#f4f4f0');                 // a white band
+          put(gBox, 0, 1.4 * sy, -0.2, c.wid * 1.014, 1.0 * sy, c.len * 0.84, '#ffffff');           // the side windows
+          put(gBox, 0, 1.2 * sy, -back - 0.03, c.wid * 0.9, 1.45 * sy, 0.06, '#ffffff');            // windscreen
+          put(gBox, 0, 1.65 * sy, back + 0.03, c.wid * 0.8, 0.8 * sy, 0.06, '#ffffff');             // rear window
+          put(vGlow, 0, 2.62 * sy, -back - 0.04, c.wid * 0.7, 0.26, 0.04, '#ffb300');               // the route board
+          put(vBox, -c.wid / 2 - 0.01, 0.42, c.len * 0.3, 0.03, 2.0 * sy, 1.0, '#2a2e33');          // the door, on the left
+          for (const z of [0.32, -0.3]) for (const e of [-1, 1]) wheelPair(e * c.wid * 0.42, 0.5, z * c.len, 0.3);
+          for (const e of [-1, 1]) { put(vGlow, e * c.wid * 0.4, 0.62, back, 0.3, 0.16, 0.04, stop); put(vGlow, e * c.wid * 0.38, 0.62, -back, 0.3, 0.16, 0.04, '#fffbe6'); }
+          for (const z of [back + 0.06, -back - 0.06]) put(vBox, 0, 0.3, z, c.wid * 1.01, 0.26, 0.16, '#2b2d2c');
+          put(plateM, 0, 0.75, back - 0.03, 0.5, 0.13, 1, '#ffd34d');
+        } else {        // a motorbike and its rider
+          c.jk = c.jk || JACKETS[Math.random() * JACKETS.length | 0]; c.hm = c.hm || HELMETS[Math.random() * HELMETS.length | 0];
+          put(pBike, 0, 0, 0, 1, 1, 1, c.col);
+          put(vBox, 0, 0.2, 0.02, 0.26, 0.26, 0.5, '#3a3c3b');                     // engine
+          put(vBox, 0, 0.32, 0.66, 0.06, 0.62, 0.06, '#9a9e9c', -0.3);             // the front fork
+          put(vBox, 0, 0.98, 0.5, 0.66, 0.035, 0.035, '#231e16');                  // handlebar
+          for (const z of [0.62, -0.62]) wheelPair(0, 0.3, z, 0.1);
+          for (const e of [-1, 1]) { put(vBox, e * 0.15, 0.6, -0.12, 0.12, 0.12, 0.5, '#2c3e50'); put(vBox, e * 0.17, 0.22, 0.12, 0.11, 0.4, 0.11, '#2c3e50'); put(pLimb, e * 0.2, 1.22, -0.08, 0.08, 0.3, 0.08, c.jk, -1.05); }
+          put(pUp, 0, 0.74, -0.25, 0.36, 0.3, 0.24, c.jk, 0.3);
+          put(vRound, 0, 1.42, -0.02, 0.15, 0.16, 0.17, c.hm);
+          put(vGlow, 0, 0.62, back + 0.15, 0.14, 0.07, 0.04, stop); put(vGlow, 0, 0.9, -back - 0.2, 0.14, 0.12, 0.04, '#fff6c8');
+          put(plateM, 0, 0.45, back + 0.1, 0.24, 0.1, 1, '#ffffff');
         }
-        const bus = c.kind === 'bus', r = bus ? 0.5 : 0.33;
-        put(vBody, 0, 0.22, 0, c.wid, bus ? c.hgt * 0.92 : c.hgt * 0.48, c.len, c.col);
-        if (bus) put(vCab, 0, c.hgt * 0.5, 0, c.wid * 1.02, c.hgt * 0.3, c.len * 0.94, '#3a4c5a');
-        else put(vCab, 0, 0.22 + c.hgt * 0.47, -c.len * 0.06, c.wid * 0.84, c.hgt * 0.45, c.len * 0.55, '#33434f');
-        if (c.kind === 'taxi') put(vCab, 0, 0.22 + c.hgt * 0.92, -c.len * 0.06, 0.5, 0.12, 0.25, '#ffc94a');
-        if (c.kind === 'suv') put(vCab, 0, 0.22 + c.hgt * 0.92, -c.len * 0.06, c.wid * 0.7, 0.05, c.len * 0.5, '#2b2d2c');
-        for (let w = 0; w < 4; w++) put(vWheel, (w % 2 ? 0.5 : -0.5) * c.wid * 0.92, r, (w < 2 ? 0.34 : -0.34) * c.len, 0.26, r, r, '#141615');
-        // the back: tail lights that glow when it slows, and the yellow number plate; the front: headlights
-        const ly = bus ? 0.5 : 0.22 + c.hgt * 0.3;
-        for (const e of [-1, 1]) { put(vGlow, e * c.wid * 0.38, ly, back, c.wid * 0.18, 0.12, 0.04, stop); put(vGlow, e * c.wid * 0.36, ly, -back, c.wid * 0.2, 0.12, 0.04, '#fffbe6'); }
-        put(vGlow, 0, ly - 0.16, back, 0.5, 0.13, 0.03, '#f6d54a');
       }
       for (const t of things) {
         if (t.got || t.at < s - 6 || t.at > s + far) continue;
         frame3(t.at, LANES[t.lane], f); base(f);
         if (t.kind === 'coin') { put(coinM, 0, 0.62, 0, 0.38, 0.38, 0.09, '#ffd34d', 0, time * 5 + t.at); put(shadows, 0, 0.03, 0, 0.6, 1, 0.3, '#000'); continue; }
         put(shadows, 0, 0.03, 0, 2.3, 1, 0.9, '#000');
-        if (t.kind === 'rock') put(rockM, 0, 0.32, 0, 1.0, 0.72, 0.8, '#8a8f86', 0, t.at);
-        else if (t.kind === 'log') put(logM, 0, 0.32, 0, 2.2, 0.32, 0.32, '#8d5939');
-        else { put(boardM, 0, 0.55, 0, 2.2, 0.45, 0.1, '#ffffff'); for (const e of [-1, 1]) put(legM, e * 0.9, 0, 0, 0.12, 0.56, 0.12, '#4b4b4b'); }
+        if (t.kind === 'rock') { put(rockM, -0.25, 0.28, 0, 0.75, 0.55, 0.65, '#8a8f86', 0, t.at); put(rockM, 0.45, 0.18, 0.2, 0.45, 0.38, 0.4, '#9a9f95', 0, t.at * 3); }
+        else if (t.kind === 'log') put(logM, 0, 0.32, 0, 2.2, 0.32, 0.32, '#ffffff', 0, 0.12);
+        else {
+          put(boardM, 0, 0.55, 0, 2.2, 0.45, 0.1, '#ffffff');
+          for (const e of [-1, 1]) { put(vBox, e * 0.9, 0, 0, 0.1, 0.56, 0.1, '#4b4b4b'); put(vBox, e * 0.9, 0, 0, 0.5, 0.06, 0.4, '#4b4b4b'); put(vGlow, e * 0.95, 0.85, -0.06, 0.12, 0.12, 0.02, '#ff8a3d'); }
+        }
       }
       for (const p of peds) {
         if (p.at < s - 6 || p.at > s + far) continue;
@@ -1457,14 +1570,17 @@
         base(f, p.vx ? (p.vx > 0 ? -Math.PI / 2 : Math.PI / 2) : p.va < 0 ? Math.PI : 0);
         const L = p.look, sw = Math.sin(p.phase * Math.PI / 2) * 0.45;
         put(shadows, 0, 0.02, 0, 0.6, 1, 0.6, '#000');
-        for (const e of [-1, 1]) { put(pLimb, e * 0.1, 0.82, 0, 0.13, 0.8, 0.14, L.lower, e * sw); put(pLimb, e * 0.29, 1.42, 0, 0.1, 0.55, 0.1, L.shirt, -e * sw * 0.8); }
-        if (L.stripes) { put(pBox, 0, 0.4, 0, 0.42, 0.52, 0.28, L.lower); for (const y of [0.57, 0.71]) put(pBox, 0, y, 0, 0.43, 0.05, 0.29, L.stripes); }
-        put(pBox, 0, 0.88, 0, 0.44, 0.56, 0.26, L.shirt);
-        put(pRound, 0, 1.58, 0, 0.13, 0.14, 0.13, '#d9a47c');
-        put(pRound, 0, 1.63, -0.015, 0.14, 0.1, 0.14, L.hair);
-        if (L.bun) put(pRound, 0, 1.65, -0.14, 0.07, 0.07, 0.07, L.hair);
-        if (L.bag) put(pBox, 0, 0.97, -0.2, 0.32, 0.36, 0.14, L.bag);
-        if (L.umbrella) { put(pBox, 0.28, 1.4, 0.05, 0.03, 0.75, 0.03, '#231e16'); put(pCone, 0.28, 2.1, 0.05, 0.62, 0.32, 0.62, L.umbrella); }
+        for (const e of [-1, 1]) {
+          put(pLimb, e * 0.1, 0.84, 0, 0.13, 0.41, 0.14, L.lower, e * sw);                  // legs
+          put(pLimb, e * 0.27, 1.4, 0, 0.09, 0.27, 0.09, L.shirt, -e * sw * 0.8);           // arms
+        }
+        if (L.stripes) { put(pSkirt, 0, 0.1, 0, 0.24, 0.82, 0.17, L.lower); for (const y of [0.34, 0.56]) put(pSkirt, 0, y, 0, 0.243, 0.05, 0.173, L.stripes); }
+        put(pUp, 0, 0.84, 0, 0.42, 0.3, 0.26, L.shirt);
+        put(pRound, 0, 1.57, 0, 0.12, 0.135, 0.125, '#d9a47c');
+        put(pRound, 0, 1.62, -0.015, 0.13, 0.095, 0.135, L.hair);
+        if (L.bun) put(pRound, 0, 1.64, -0.13, 0.065, 0.065, 0.065, L.hair);
+        if (L.bag) put(pBox, 0, 0.96, -0.2, 0.32, 0.36, 0.14, L.bag);
+        if (L.umbrella) { put(pBox, 0.28, 1.4, 0.05, 0.025, 0.75, 0.025, '#231e16'); put(pCone, 0.28, 2.1, 0.05, 0.62, 0.32, 0.62, L.umbrella); }
       }
       for (const m of pools) { m.count = m.n; m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }
     }
@@ -1532,28 +1648,41 @@
 
     // ---------- the scooter: its colours from the garage ----------
     const scoot = new T.Group(), lm = h => new T.MeshLambertMaterial({ color: h });
-    const bodyMats = [lm('#e2f58a'), lm('#b9db4a'), lm('#86a82e')], tailMat = new T.MeshBasicMaterial({ color: '#b8352a' });
-    const jacket = lm('#3b78bf'), dark = lm('#2a2622'), tyre = lm('#141615'), skin = lm('#e8b48a');
-    const part = (geo, mat, x, y, z, sx, sy, sz, rx = 0) => { const m = new T.Mesh(geo, mat); m.position.set(-x, y, z); m.scale.set(sx, sy, sz); m.rotation.x = rx; scoot.add(m); return m; };
-    part(box, bodyMats[1], 0, 0.22, -0.2, 0.46, 0.38, 1.0);       // the rear body
-    part(box, bodyMats[2], 0, 0.14, 0.35, 0.32, 0.14, 0.62);       // the floorboard
-    part(box, bodyMats[0], 0, 0.2, 0.66, 0.38, 0.9, 0.16, -0.15);  // the front shield
-    part(box, dark, 0, 0.6, -0.28, 0.38, 0.1, 0.7);                // seat
-    const tail = part(box, tailMat, 0, 0.44, -0.71, 0.24, 0.07, 0.03);
-    part(box, lm('#f6d54a'), 0, 0.27, -0.71, 0.2, 0.1, 0.02);      // number plate
-    const wheels = [part(wheel, tyre, 0, 0.26, 0.62, 0.12, 0.26, 0.26), part(wheel, tyre, 0, 0.26, -0.55, 0.12, 0.26, 0.26)];
-    part(box, dark, 0, 1.08, 0.64, 0.68, 0.04, 0.04);              // handlebar
+    const bodyMats = [0, 1, 2].map(() => new T.MeshPhongMaterial({ shininess: 70, specular: C('#666666') })), tailMat = new T.MeshBasicMaterial({ color: '#b8352a' });
+    const jacket = lm('#3b78bf'), trousers = lm('#2c3e50'), dark = lm('#2a2622'), tyreMat = lm('#1b1d1c'), skin = lm('#e8b48a');
+    const part = (geo, mat, x, y, z, sx = 1, sy = 1, sz = 1, rx = 0) => { const m = new T.Mesh(geo, mat); m.position.set(-x, y, z); m.scale.set(sx, sy, sz); m.rotation.x = rx; scoot.add(m); return m; };
+    const up = new T.Vector3(0, -1, 0);
+    const limb = (a, b, r, mat) => {      // a capsule from a to b ([x, y, z], x to the right)
+      const d = new T.Vector3(-(b[0] - a[0]), b[1] - a[1], b[2] - a[2]), L = d.length(), m = new T.Mesh(capHang, mat);
+      m.position.set(-a[0], a[1], a[2]); m.quaternion.setFromUnitVectors(up, d.normalize()); m.scale.set(r * 2, L / 2, r * 2); scoot.add(m);
+    };
+    // an Activa-style body: the rear cowl, the floorboard, the front shield up to the handlebar
+    part(side([[-0.82, 0.3], [-0.88, 0.5], [-0.72, 0.68], [-0.08, 0.66], [0.06, 0.42], [0.42, 0.4], [0.52, 0.56], [0.6, 1.0], [0.74, 1.04], [0.8, 0.62], [0.72, 0.3], [0.5, 0.2], [-0.2, 0.22], [-0.6, 0.24]], 0.42, 0.06), bodyMats[1], 0, 0, 0);
+    part(side([[0.5, 1.0], [0.55, 1.12], [0.8, 1.15], [0.86, 1.04]], 0.52, 0.04), bodyMats[0], 0, 0, 0);       // the handlebar cover
+    part(side([[-0.8, 0.66], [-0.76, 0.79], [-0.12, 0.79], [0.0, 0.7], [-0.1, 0.65]], 0.36, 0.05), dark, 0, 0, 0);   // seat
+    part(box, lm('#3a3c3b'), 0, 0.38, 0.24, 0.34, 0.04, 0.4);                                                   // the floor mat
+    part(box, bodyMats[2], 0, 0.5, 0.58, 0.36, 0.42, 0.06, -0.25);                                           // inner panel
+    const tail = part(box, tailMat, 0, 0.5, -0.875, 0.26, 0.08, 0.03);
+    part(plateGeo, plateMat, 0, 0.4, -0.885, 0.24, 0.1, 1);
+    part(box, new T.MeshBasicMaterial({ color: '#fffbe6' }), 0, 0.98, 0.84, 0.16, 0.08, 0.03);              // headlight
+    for (const z of [0.6, -0.56]) { part(wheel, tyreMat, 0, 0.25, z, 0.12, 0.25, 0.25); part(rimGeo, chromeMat, 0, 0.25, z, 0.12, 0.25, 0.25); }
+    const wheels = scoot.children.filter(m => m.geometry === wheel);
+    part(box, chromeMat, 0, 0.72, -0.62, 0.36, 0.03, 0.3);                                                    // the rack
     for (const e of [-1, 1]) {
-      part(box, lm('#2c3e50'), e * 0.14, 0.6, 0.0, 0.15, 0.15, 0.48);   // thighs
-      part(box, lm('#2c3e50'), e * 0.15, 0.2, 0.26, 0.13, 0.42, 0.13);  // shins
-      part(box, jacket, e * 0.25, 1.06, 0.2, 0.1, 0.1, 0.72, 0.12);     // arms to the handlebar
-      part(ball, skin, e * 0.31, 1.09, 0.58, 0.06, 0.06, 0.06);
+      part(box, dark, e * 0.27, 1.12, 0.68, 0.02, 0.18, 0.02);                                                // mirror stalks
+      part(ball, dark, e * 0.29, 1.27, 0.68, 0.06, 0.045, 0.02);
+      part(box, dark, e * 0.3, 1.08, 0.66, 0.12, 0.04, 0.04);                                                 // grips
+      limb([e * 0.13, 0.84, -0.3], [e * 0.16, 0.86, 0.12], 0.08, trousers);                                   // thighs
+      limb([e * 0.16, 0.86, 0.12], [e * 0.17, 0.44, 0.22], 0.065, trousers);                                  // shins
+      part(box, dark, e * 0.17, 0.4, 0.22, 0.11, 0.08, 0.22);                                                 // shoes
+      limb([e * 0.2, 1.32, -0.26], [e * 0.29, 1.08, 0.6], 0.055, jacket);                                     // arms to the grips
     }
-    part(box, jacket, 0, 0.66, -0.2, 0.44, 0.56, 0.28, 0.2);       // the rider, leaning forward a little
-    part(ball, lm('#f2f2ee'), 0, 1.38, -0.08, 0.17, 0.18, 0.19);   // helmet
-    part(ball, lm('#c03a2e'), 0, 1.4, -0.08, 0.174, 0.05, 0.194);
-    part(box, lm('#d9a45a'), 0, 0.66, -0.66, 0.44, 0.4, 0.38);     // the parcel box on the rack
-    part(box, lm('#a8742c'), 0, 0.66, -0.66, 0.07, 0.405, 0.385);
+    part(capUp, jacket, 0, 0.8, -0.36, 0.4, 0.3, 0.26, 0.28);                                               // the rider, leaning forward a little
+    part(ball, lm('#f2f2ee'), 0, 1.53, -0.2, 0.16, 0.17, 0.18);                                              // helmet
+    part(ball, lm('#c03a2e'), 0, 1.56, -0.2, 0.164, 0.045, 0.184);
+    part(box, lm('#d9a45a'), 0, 0.74, -0.66, 0.44, 0.4, 0.36);                                              // the parcel box on the rack
+    part(box, lm('#a8742c'), 0, 0.74, -0.66, 0.07, 0.405, 0.365);
+    part(plane, new T.MeshLambertMaterial({ map: tex(64, 32, g => { g.fillStyle = '#fff7e6'; g.fillRect(0, 0, 64, 32); g.fillStyle = '#1d6b34'; g.font = '800 13px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('Hnahsin', 32, 17); }) }), 0, 0.84, -0.845, 0.2, 0.1, 1).rotation.y = Math.PI;
     const riderShadow = new T.Mesh(blob, shadowMat); riderShadow.scale.set(0.8, 1, 1.9); scene.add(riderShadow);
     scene.add(scoot);
     let painted = '';
@@ -1803,7 +1932,7 @@
     banked = true; mode = delivered ? 'done' : 'over';
     const score = Math.floor(s) + coins * 25 + (delivered ? 500 : 0), best = bestOf(route.id);
     // Bank the ride, once: coins into the wallet, records, deliveries, badges
-    const readyBefore = MISSIONS.filter(missionReady).length;
+    const readyBefore = MISSIONS.filter(missionReady).length, openBefore = CITY ? openVeng() : null, ptsBefore = points();
     S.rides++; S.wallet += coins; S.lifetime += coins; S.metres += Math.floor(s);
     S.bestCoins = Math.max(S.bestCoins, coins); S.bestMetres = Math.max(S.bestMetres, Math.floor(s)); S.bestTime = Math.max(S.bestTime, Math.floor(time));
     const city = route.id.startsWith('city:');
@@ -1823,6 +1952,8 @@
       coins ? `<span><i class="coin"></i> +${coins} into your wallet (now ${S.wallet})</span>` : '',
       ...newBadges.map(x => `<span>${x.icon} New badge: ${x.name}</span>`),
       readyNow > readyBefore ? `<span>🎯 A mission is done: claim it in Missions</span>` : '',
+      points() > ptsBefore ? `<span>⭐ +${fmt(points() - ptsBefore)} points (now ${fmt(points())})</span>` : '',
+      ...(openBefore ? CITY.veng.filter(v => isOpen(v.id) && !openBefore.includes(v.id)).map(v => `<span>🔓 ${v.name} is open on the Aizawl map</span>`) : []),
     ].join('');
     syncWallet(true); syncPause();
     $('endTitle').textContent = delivered ? 'Delivered!' : 'Crash!';
@@ -1964,14 +2095,35 @@
     };
   }
   const jobsFrom = id => CITY.jobs.filter(j => j.a === id).sort((p, q) => p.length - q.length);
+  // Veng open as your points grow. Your points are your best scores on every road, added up.
+  // Dawrpui and the four veng nearest it are open from the start; the others open one by one,
+  // nearer ones first (by the shortest ride from Dawrpui). A veng you have been to stays open.
+  const UNLOCK = [0, 0, 0, 0, 0, 2000, 4000, 6500, 9000, 12000, 15000, 18500, 22000, 26000, 30000, 35000, 40000, 46000];
+  let vengNeed = null;
+  function needs() {
+    if (vengNeed) return vengNeed;
+    const dist = { dawrpui: 0 }, todo = ['dawrpui'];
+    while (todo.length) {
+      todo.sort((p, q) => dist[q] - dist[p]);
+      const v = todo.pop();
+      for (const j of CITY.jobs) if (j.a === v && dist[v] + j.length < (dist[j.b] ?? Infinity)) { dist[j.b] = dist[v] + j.length; todo.push(j.b); }
+    }
+    const order = CITY.veng.map(v => v.id).sort((p, q) => (dist[p] ?? 1e9) - (dist[q] ?? 1e9));
+    vengNeed = Object.fromEntries(order.map((id, i) => [id, UNLOCK[Math.min(i, UNLOCK.length - 1)]]));
+    return vengNeed;
+  }
+  const points = () => [...Object.values(S.best), ...Object.values(S.cityBest)].reduce((a, b) => a + (b || 0), 0);
+  const isOpen = id => S.visited.includes(id) || id === S.at || points() >= needs()[id];
+  const openVeng = () => CITY.veng.filter(v => isOpen(v.id)).map(v => v.id);
+  const fmt = n => n.toLocaleString('en');
 
   function openMap() {
     $('mapSub').textContent = 'Opening the map…';
     loadCity().then(() => {
-      $('mapSub').textContent = `Deliver between ${CITY.veng.length} veng`;
+      $('mapSub').textContent = `${openVeng().length} of ${CITY.veng.length} veng open`;
       if (!CITY.veng.some(v => v.id === S.at)) S.at = CITY.veng[0].id;
       if (!S.visited.includes(S.at)) { S.visited.push(S.at); writeSave(); }
-      jobPick = jobsFrom(S.at)[0] || null;
+      jobPick = jobsFrom(S.at).find(j => isOpen(j.b)) || null;
       openPanel('mapView');
     }).catch(() => { $('mapSub').textContent = 'The map needs the internet the first time. Try again.'; });
   }
@@ -1979,13 +2131,16 @@
 
   function drawMap() {
     const here = vengOf(S.at);
-    $('mapHere').innerHTML = `You are in <b>${here.name}</b>. Pick where to take the next parcel.`;
-    // The jobs from here, nearest first
+    const pts = points(), next = CITY.veng.filter(v => !isOpen(v.id)).sort((p, q) => needs()[p.id] - needs()[q.id])[0];
+    $('mapHere').innerHTML = `You are in <b>${here.name}</b>. Pick where to take the next parcel.<br>Your points: <b>${fmt(pts)}</b>` +
+      (next ? ` · ${next.name} opens at ${fmt(needs()[next.id])}` : ' · every veng is open');
+    // The jobs from here, nearest first; a veng not open yet says how many points it needs
     $('jobs').innerHTML = jobsFrom(S.at).map(j => {
-      const best = S.cityBest[j.id], been = S.visited.includes(j.b);
-      return `<button class="item job" type="button" data-id="${j.id}" aria-pressed="${jobPick === j}"><span aria-hidden="true">${been ? '📍' : '✨'}</span><span><b>${vengOf(j.b).name}</b><small>${(j.length / 1000).toFixed(1)} km${best ? ` · best ${best}` : been ? '' : ' · a new veng'}</small></span><span class="tag">${jobPick === j ? 'Ride ▸' : ''}</span></button>`;
+      const best = S.cityBest[j.id], been = S.visited.includes(j.b), open = isOpen(j.b), name = vengOf(j.b).name;
+      if (!open) return `<button class="item job locked" type="button" data-id="${j.id}" aria-disabled="true" aria-label="${name}, opens at ${fmt(needs()[j.b])} points"><span aria-hidden="true">🔒</span><span><b>${name}</b><small>${(j.length / 1000).toFixed(1)} km · opens at ${fmt(needs()[j.b])} points</small></span><span class="tag"></span></button>`;
+      return `<button class="item job" type="button" data-id="${j.id}" aria-pressed="${jobPick === j}"><span aria-hidden="true">${been ? '📍' : '✨'}</span><span><b>${name}</b><small>${(j.length / 1000).toFixed(1)} km${best ? ` · best ${fmt(best)}` : been ? '' : ' · a new veng'}</small></span><span class="tag">${jobPick === j ? 'Ride ▸' : ''}</span></button>`;
     }).join('');
-    $('mapNote').textContent = `${S.visited.length} of ${CITY.veng.length} veng visited. Map data © OpenStreetMap contributors.`;
+    $('mapNote').textContent = `${S.visited.length} of ${CITY.veng.length} veng visited, ${openVeng().length} open. Beat your best scores to open more. Map data © OpenStreetMap contributors.`;
     paintMap();
   }
   // The map picture: the roads (main roads wider), the veng, where you are and the way you would go
@@ -2026,9 +2181,11 @@
     const targets = new Set(jobsFrom(S.at).map(j => j.b));
     for (const v of CITY.veng) {
       const x = X(v.x), y = Y(v.z), here = v.id === S.at, pick = jobPick && jobPick.b === v.id, t = targets.has(v.id);
-      g.fillStyle = here ? '#1565c0' : pick ? '#2e7d32' : t ? '#ffffff' : S.visited.includes(v.id) ? '#8fb89a' : '#b9b3a6';
-      g.strokeStyle = '#231e16'; g.lineWidth = 1.5;
+      const open = isOpen(v.id);
+      g.fillStyle = here ? '#1565c0' : pick ? '#2e7d32' : !open ? '#e4ded2' : t ? '#ffffff' : S.visited.includes(v.id) ? '#8fb89a' : '#b9b3a6';
+      g.strokeStyle = open ? '#231e16' : '#8d8576'; g.lineWidth = 1.5;
       g.beginPath(); g.arc(x, y, here || pick ? 7 : t ? 6 : 4, 0, 7); g.fill(); g.stroke();
+      if (!open && t) { g.font = '11px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🔒', x, y - 12); g.textAlign = 'left'; }
     }
     // Names: where you are and where you would go, each in a free spot beside its dot
     g.font = '800 14px "Plus Jakarta Sans", sans-serif'; g.textBaseline = 'middle';
@@ -2052,6 +2209,7 @@
   $('jobs').addEventListener('click', e => {
     const b = e.target.closest('.job'); if (!b) return;
     const j = CITY.jobs.find(x => x.id === b.dataset.id);
+    if (!isOpen(j.b)) { $('mapNote').textContent = `${vengOf(j.b).name} opens at ${fmt(needs()[j.b])} points. You have ${fmt(points())}: beat your best scores to get there.`; return; }
     if (jobPick === j) return startJob(j);
     jobPick = j; drawMap();
     const again = $('jobs').querySelector(`[data-id="${j.id}"]`); if (again) again.focus();
@@ -2064,7 +2222,8 @@
     for (const v of CITY.veng) { const d = Math.hypot(mapBox.X(v.x) - mx, mapBox.Y(v.z) - my); if (d < bd) { bd = d; best = v; } }
     if (!best) return;
     const j = jobsFrom(S.at).find(x => x.b === best.id);
-    if (j) { jobPick = j; drawMap(); }
+    if (!isOpen(best.id)) $('mapNote').textContent = `${best.name} opens at ${fmt(needs()[best.id])} points. You have ${fmt(points())}.`;
+    else if (j) { jobPick = j; drawMap(); }
     else $('mapNote').textContent = best.id === S.at ? `You are in ${best.name}.` : `${best.name}: ride there from a veng nearer to it.`;
   });
   function startJob(j) {
@@ -2116,6 +2275,7 @@
     $('gl').classList.add('on'); R3.setPlan(); resize();
   }).catch(() => {});
   hnStat('ride', 'Aizawl Ride');
+  loadCity().catch(() => {});     // so the end of any ride can say which veng opened
 })();
 </script>
 
