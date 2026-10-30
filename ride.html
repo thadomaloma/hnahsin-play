@@ -369,7 +369,7 @@
   const missionReady = m => !S.claimed.includes(m.id) && m.have() >= m.goal;
 
   // ---------- the world ----------
-  const LANE = 2.4, LANES = [-LANE, 0, LANE];      // lane centres, metres from the road's middle
+  const LANE = 2.4, LANES = [-LANE, 0, LANE], LANE_T = 0.36;   // lane centres, metres from the road's middle; a lane change takes LANE_T s
   const SEG = 4, VIEW = 50;                         // a segment per sample; how many are drawn ahead
   const PLAYER_Z = 3;                               // the scooter rides this far ahead of the camera
   const CURVE = 0.55, CURVE_MAX = 0.045, HILL = 0.8;  // real bends and hills, softened to fit the screen
@@ -412,12 +412,12 @@
   let crashBy = '';
   let cars = [], jams = [], braking = false, carT = 0, oncomingT = 0, eventWords = new Set();
   let peds = [], crossings = [], pedT = 0;
-  let s, v, px, pvx, lane, coins, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
+  let s, v, px, pvx, laneFrom, laneV, laneTo, laneT, lane, coins, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
   let soundOn = S.sound;
 
   function reset() {
     prepRoute();
-    s = 0; v = 0; lane = 1; px = 0; pvx = 0; coins = 0; time = 0; bgX = 0; shake = 0; lean = 0; crashT = 0; crashDir = 1;
+    s = 0; v = 0; lane = 1; px = 0; pvx = 0; laneFrom = laneV = laneTo = 0; laneT = LANE_T; coins = 0; time = 0; bgX = 0; shake = 0; lean = 0; crashT = 0; crashDir = 1;
     things = []; sparks = []; pops = []; nextRow = 70; lastOpen = 1; passed = new Set();
     cars = []; jams = planJams(); crossings = planCrossings(); peds = []; pedT = 0; buildStrip(); prepMini(); braking = false; carT = 3; oncomingT = 5; eventWords = new Set(); brakeHint(false);
     best0 = bestOf(route.id); bestShown = false; wordsSeen = new Set(); wordT = 4;
@@ -2066,7 +2066,7 @@
       if (extras && envStep !== hazeStep) makeEnv();     // the sky in the paint follows the light of the day
       frame3(s, px, fS);
       const fall = mode === 'crashing' ? Math.min(1, crashT / 0.45) : 0, bob = mode === 'playing' && !reduce ? Math.sin(time * 31) * 0.006 + Math.sin(time * 7.3) * 0.004 : 0;
-      scoot.position.set(fS.x, fS.y + bob - fall * 0.15, fS.z); scoot.rotation.set(fS.pitch, fS.yaw - (mode === 'crashing' ? 0 : Math.atan2(pvx, Math.max(4, v))), lean + crashDir * fall * 1.25, 'YXZ');
+      scoot.position.set(fS.x, fS.y + bob - fall * 0.15, fS.z); scoot.rotation.set(fS.pitch, fS.yaw - (mode === 'crashing' ? 0 : Math.max(-0.2, Math.min(0.2, Math.atan2(pvx, Math.max(6, v)) * 0.45))), lean + crashDir * fall * 1.25, 'YXZ');
       riderShadow.position.set(fS.x, fS.y + 0.03, fS.z); riderShadow.rotation.y = fS.yaw;
       // the sun follows a little ahead of the scooter, so its shadows cover what you see near you
       frame3(s + 14, 0, fA); sun.target.position.set(fA.x, fA.y, fA.z); sun.position.copy(sun.target.position).addScaledVector(sunDir, 150);
@@ -2076,7 +2076,7 @@
       placeAll(far, Math.min(0.1, ms / 1000));
       // The camera rides behind the scooter and above, the way it is heading, looking down the road
       // (in a tight bend it swings round a moment later, so the scooter stays in the picture)
-      frame3(s, px * 0.7, fB); frame3(s + 9, px * 0.45, fA);
+      frame3(s, px * 0.55, fB); frame3(s + 9, px * 0.35, fA);
       want.set(fB.x - Math.sin(fB.yaw) * 5.4, fB.y + 2.3 + Math.sin(fB.pitch) * 5.4, fB.z - Math.cos(fB.yaw) * 5.4); aim.set(fA.x, fA.y + 0.9, fA.z);
       if (orbit) {      // for the tests only: look at the road ahead from anywhere round it
         frame3(s + orbit.ahead, 0, fA); aim.set(fA.x, fA.y + 0.8, fA.z);
@@ -2219,10 +2219,18 @@
     else v += ((top - Math.max(0, climb) * 12) - v) * Math.min(1, dt * 0.9);
     s += v * dt;
     const was = px;
-    // to the new lane on a spring (critically damped): it starts and ends gently, in about a quarter second
-    pvx += ((LANES[lane] - px) * 225 - 30 * pvx) * dt; px += pvx * dt;
+    // To the new lane on a smooth curve, as lane games do: it starts and ends gently and arrives in
+    // LANE_T seconds, with no creeping at the end. A tap in the middle of a move carries on from
+    // the speed it has (a cubic Hermite curve from where it is, at the speed it has, to the lane).
+    if (LANES[lane] !== laneTo) { laneFrom = px; laneV = pvx; laneTo = LANES[lane]; laneT = 0; }
+    if (laneT < LANE_T) {
+      laneT = Math.min(LANE_T, laneT + dt);
+      const u = laneT / LANE_T, u2 = u * u, u3 = u2 * u;
+      px = (2 * u3 - 3 * u2 + 1) * laneFrom + (u3 - 2 * u2 + u) * LANE_T * laneV + (3 * u2 - 2 * u3) * laneTo;
+      pvx = ((6 * u2 - 6 * u) * laneFrom + (3 * u2 - 4 * u + 1) * LANE_T * laneV + (6 * u - 6 * u2) * laneTo) / LANE_T;
+    } else { px = laneTo; pvx = 0; }
     // Lean with the lane change, and into the bend
-    const want = Math.max(-0.4, Math.min(0.4, (px - was) / dt * 0.045 + curvAt(s) * v * v * 0.012));
+    const want = Math.max(-0.4, Math.min(0.4, pvx * 0.034 + curvAt(s) * v * v * 0.012));
     lean += (want - lean) * Math.min(1, dt * 8);
     if (!reduce && Math.random() < dt * 9) sparks.push({ x: riderXY().x + 9, y: riderXY().y - 8, vx: (Math.random() - .5) * 20, vy: 30 + Math.random() * 20, r: 2.5, life: 0.6, c: '#9aa39b', a: 0.5, puff: true });
     bgX += curvAt(s) * v * dt * W * 0.9;
