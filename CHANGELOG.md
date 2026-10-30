@@ -4,6 +4,19 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.21.3 (30 October 2026)
+
+### Aizawl Ride: trees, poles and wires in their places
+
+- No more trees growing inside houses: the houses along a road are now
+  worked out first, and the trees keep out of them.
+- The electric poles stand at the kerb, as they do in Aizawl, out of the
+  way of people walking on the footpath, and never on a road, even inside a
+  tight bend.
+- Wires no longer pass through houses or hang low over a road; a span that
+  would is left out.
+- Checked on every road in the game.
+
 ## 1.21.2 (30 October 2026)
 
 ### Aizawl Ride: fixes

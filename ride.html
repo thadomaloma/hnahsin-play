@@ -1483,6 +1483,42 @@
       });
       m.computeBoundingSphere(); m.castShadow = m.receiveShadow = true; return m;
     }
+    const housesOn = (sd, k) => (sd > 0 ? route.housesR : route.housesL)[k] || 0, tallOn = (sd, k) => (route.tallL ? (sd > 0 ? route.tallR : route.tallL)[k] : 0) || 0;
+    const ptAt = (k, lat, h, along = 0) => { const { P, R, F, Y } = W3; return [P[k].x + R[k].x * lat + F[k].x * along, Y[k] + h, P[k].z + R[k].z * lat + F[k].z * along]; };
+    // The houses of the whole road, worked out before anything else is placed: as many as the map has
+    // at each place, as tall as Open Buildings says (else a guess), none on the road. Each is kept with
+    // its footprint, so the trees and the wires can keep out of every house, on any stretch.
+    function planHomes() {
+      const { n, Y, yaw, ext } = W3, list = W3.home = [], grid = W3.homes = new Map();
+      for (let k = 0; k < n - 1; k++) for (const sd of [-1, 1]) {
+        const E = edge(k, sd), dens = housesOn(sd, k) / 9, tall = tallOn(sd, k);
+        for (let j = 0; j < 3; j++) {
+          let h = null;
+          if (rnd(k, 10 + j + sd * 7) <= dens * 1.15 && !(j === 2 && dens < 0.4)) {
+            const w = 3.6 + rnd(k, j * 3 + sd) * 2.2, d = 5 + rnd(k, j * 5 + sd) * 3, off = E + 1.6 + j * 7 + rnd(k, j + 4) * 1.2 + d / 2;
+            if (off + d / 2 <= ext[sd][k]) {
+              const gy = groundAt(k, sd, off), hh = tall ? Math.max(3, tall * (0.8 + rnd(k, j + 9) * 0.35)) : 3 + rnd(k, j + 7) * 5 + j * 2;
+              const bot = gy - 1.5, top = Math.max(gy + hh, 2 + rnd(k, j + 2) * 3), p = ptAt(k, sd * off, 0);
+              if (onRoad(p[0], p[2], Math.hypot(w, d) / 2, Y[k] + bot, Y[k] + top)) dropped++;
+              else {
+                h = { w, d, off, gy, bot, top, p, x: p[0], z: p[2], y0: Y[k] + bot, y1: Y[k] + top, c: Math.cos(yaw[k]), s: Math.sin(yaw[k]) };
+                const key = Math.floor(p[0] / 10) + ',' + Math.floor(p[2] / 10); (grid.get(key) || grid.set(key, []).get(key)).push(h);
+              }
+            }
+          }
+          list[(k * 2 + (sd > 0 ? 1 : 0)) * 3 + j] = h;
+        }
+      }
+    }
+    // is a thing at (x, z), r round and from y0 to y1, inside a house?
+    function inHome(x, y0, y1, z, r) {
+      const cx = Math.floor(x / 10), cz = Math.floor(z / 10);
+      for (let i = cx - 1; i <= cx + 1; i++) for (let j = cz - 1; j <= cz + 1; j++) for (const h of W3.homes.get(i + ',' + j) || []) {
+        const dx = x - h.x, dz = z - h.z;
+        if (Math.abs(dx * h.c - dz * h.s) < h.w / 2 + r && Math.abs(dx * h.s + dz * h.c) < h.d / 2 + r && y1 > h.y0 && y0 < h.y1) return true;
+      }
+      return false;
+    }
     function piece(k0, k1) {
       const { n, P, R, F, Y, yaw, ext } = W3, st = strip(), grp = new T.Group();
       const pt = (k, lat, h, along = 0) => [P[k].x + R[k].x * lat + F[k].x * along, Y[k] + h, P[k].z + R[k].z * lat + F[k].z * along];
@@ -1498,24 +1534,24 @@
         if (k < 0 || k >= n || k % 9 || !footpath(k)) return null;
         const sd = sideAt(k, -1) >= -2.5 ? -1 : sideAt(k, 1) >= -2.5 ? 1 : 0;
         if (!sd) return null;
-        const lat = sd * (FOOT - 0.35);
+        const lat = sd * (KERB + 0.15);
         const at = pt(k, lat, 0);
-        if (onRoad(at[0], at[2], 0.25, at[1], at[1] + 9)) { dropped++; return null; }
+        if (onRoad(at[0], at[2], -0.1, at[1], at[1] + 9) || inHome(at[0], at[1], at[1] + 9, at[2], 0.2)) { dropped++; return null; }   // behind every kerb, also inside a tight bend
         return { sd, lat, ends: [-0.6, 0, 0.6].map(o => pt(k, lat + o, o ? 8.0 : 8.45)) };
       };
-      const housesOn = (sd, k) => (sd > 0 ? route.housesR : route.housesL)[k] || 0, tallOn = (sd, k) => (route.tallL ? (sd > 0 ? route.tallR : route.tallL)[k] : 0) || 0;
       for (let k = k0; k < Math.min(k1, n - 1); k++) {
         const even = k % 2 === 0, pl = poleAt(k);
         if (pl) {
           POLE.push({ p: pt(k, pl.lat, 0.15), s: [1, 8.6, 1], c: '#a9a9a1' });
           ARM.push({ p: pt(k, pl.lat, 7.95), yaw: yaw[k], s: [1.5, 0.1, 0.1], c: '#8d8d86' });
-          if (k % 36 === 0) ARM.push({ p: pt(k, pl.lat - pl.sd * 0.4, 5.6), yaw: yaw[k], s: [0.5, 0.7, 0.5], c: '#7d8288' });   // a transformer
+          if (k % 36 === 0) ARM.push({ p: pt(k, pl.lat + pl.sd * 0.4, 5.6), yaw: yaw[k], s: [0.5, 0.7, 0.5], c: '#7d8288' });   // a transformer, on the far side of its pole
           // the wires from the pole before, sagging between
           const before = poleAt(k - 9);
-          if (before && before.sd === pl.sd) before.ends.forEach((a, i) => {
-            const b = pl.ends[i], at = t => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - 2.8 * t * (1 - t), a[2] + (b[2] - a[2]) * t];
-            for (let t = 0; t < 6; t++) WIRE.push(...at(t / 6), ...at((t + 1) / 6));
-          });
+          if (before && before.sd === pl.sd) {
+            const sag = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - 2.8 * t * (1 - t), a[2] + (b[2] - a[2]) * t];
+            const clear = before.ends.every((a, i) => [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].every(u => { const q = sag(a, pl.ends[i], u / 12); return !inHome(q[0], q[1], q[1], q[2], 0.15) && !onRoad(q[0], q[2], -0.8, q[1], q[1]); }));
+            if (clear) before.ends.forEach((a, i) => { for (let t = 0; t < 6; t++) WIRE.push(...sag(a, pl.ends[i], t / 6), ...sag(a, pl.ends[i], (t + 1) / 6)); });
+          }
         }
         // the road: asphalt, white edge lines, lane dashes
         across(k, -HALF, HALF, 0, 0, even ? '#5b5e5c' : '#565957');
@@ -1543,16 +1579,11 @@
               : g < -2.5 ? (even ? '#4f8a62' : '#558f67') : c > 3 ? (even ? '#5f9a6c' : '#5a9567') : (even ? '#6aa57a' : '#62a073');
             st.quad(pt(k, sd * oa0, groundAt(k, sd, oa0)), pt(k, sd * oa1, groundAt(k, sd, oa1)), pt(k + 1, sd * ob1, groundAt(k + 1, sd, ob1)), pt(k + 1, sd * ob0, groundAt(k + 1, sd, ob0)), hex);
           }
-          // Houses, as many as the map has here, as tall as Open Buildings says (else a guess);
-          // where the ground falls, they stand on it and reach up to the road
-          const dens = housesOn(sd, k) / 9, tall = tallOn(sd, k);
+          // Houses, from the plan; where the ground falls, they stand on it and reach up to the road
           for (let j = 0; j < 3; j++) {
-            if (rnd(k, 10 + j + sd * 7) > dens * 1.15 || (j === 2 && dens < 0.4)) continue;
-            const w = 3.6 + rnd(k, j * 3 + sd) * 2.2, d = 5 + rnd(k, j * 5 + sd) * 3, off = E + 1.6 + j * 7 + rnd(k, j + 4) * 1.2 + d / 2;
-            if (off + d / 2 > ext[sd][k]) continue;
-            const gy = groundAt(k, sd, off), hh = tall ? Math.max(3, tall * (0.8 + rnd(k, j + 9) * 0.35)) : 3 + rnd(k, j + 7) * 5 + j * 2;
-            const bot = gy - 1.5, top = Math.max(gy + hh, 2 + rnd(k, j + 2) * 3), p = pt(k, sd * off, 0);
-            if (onRoad(p[0], p[2], Math.hypot(w, d) / 2, Y[k] + bot, Y[k] + top)) { dropped++; continue; }
+            const hm = W3.home[(k * 2 + (sd > 0 ? 1 : 0)) * 3 + j];
+            if (!hm) continue;
+            const { w, d, off, gy, bot, top, p } = hm;
             H.push({ p: [p[0], Y[k] + bot, p[2]], yaw: yaw[k], s: [w, top - bot, d], c: HOUSE[(k + j) % HOUSE.length] });
             if (j === 0 && footpath(k)) {
               const face = off - w / 2, along = d * 0.7;
@@ -1576,7 +1607,7 @@
             if (off > ext[sd][k] - 1) continue;
             const r = rnd(k, 60 + j), sc = 0.8 + rnd(k, j + 1) * 0.5, kind = g > 8 && r < 0.35 ? 'pine' : r < 0.45 ? 'bamboo' : r < 0.85 ? 'broad' : 'banana';
             const tp = pt(k, sd * off, groundAt(k, sd, off) - 0.2);
-            if (onRoad(tp[0], tp[2], 2.2 * sc, tp[1], tp[1] + 12)) { dropped++; continue; }
+            if (onRoad(tp[0], tp[2], 2.2 * sc, tp[1], tp[1] + 12) || inHome(tp[0], tp[1], tp[1] + 12, tp[2], 1.8 * sc)) { dropped++; continue; }
             TW[kind].push({ p: tp, yaw: rnd(k, j + 5) * 6.28, s: [sc, sc * (0.9 + rnd(k, j + 6) * 0.25), sc], c: TINT[(k + j) % TINT.length] });
           }
         }
@@ -1613,7 +1644,7 @@
       if (built === route.id) return;
       built = route.id;
       for (const g of pieces) { scene.remove(g); dispose(g); }
-      W3 = shape(); pieces = []; dropped = 0;
+      W3 = shape(); pieces = []; dropped = 0; planHomes();
       for (let k = 0; k < W3.n - 1; k += PIECE) pieces.push(piece(k, k + PIECE + 1));
       pieces.push(apron(0, -1), apron(W3.n - 1, 1));
       for (const g of pieces) scene.add(g);
@@ -2134,7 +2165,46 @@
       });
       return out;
     }
-    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit };
+    // For the tests: trees and poles against the houses, the wires against the houses and the road
+    function audit2() {
+      setRoute();
+      const m = new T.Matrix4(), p = new T.Vector3(), qq = new T.Quaternion(), k = new T.Vector3(), e = new T.Euler();
+      const houses = [], grid = new Map(), things = [], wires = [], out = { treeInHouse: 0, poleInHouse: 0, wireInHouse: 0, wireLow: 0, poleOnWalk: 0, at: [] };
+      for (const g of pieces) g.traverse(o => {
+        if (o.isLineSegments) { const a = o.geometry.attributes.position; for (let i = 0; i < a.count; i++) wires.push([a.getX(i), a.getY(i), a.getZ(i)]); }
+        if (!o.isInstancedMesh) return;
+        const kind = o.material === houseMat ? 'house' : o.material === woodMat ? 'tree' : o.geometry === pole ? 'pole' : null;
+        if (!kind) return;
+        for (let i = 0; i < o.count; i++) {
+          o.getMatrixAt(i, m); m.decompose(p, qq, k); e.setFromQuaternion(qq, 'YXZ');
+          if (kind === 'house') { const h = { x: p.x, z: p.z, y0: p.y, y1: p.y + k.y, hw: k.x / 2, hd: k.z / 2, c: Math.cos(e.y), s: Math.sin(e.y) }; houses.push(h); const key = Math.floor(p.x / 10) + ',' + Math.floor(p.z / 10); (grid.get(key) || grid.set(key, []).get(key)).push(h); }
+          else things.push([kind, p.x, p.y, p.z]);
+        }
+      });
+      // is the point inside a house (a little inside its walls)?
+      const inHouse = (x, y, z, pad = 0.3) => {
+        const cx = Math.floor(x / 10), cz = Math.floor(z / 10);
+        for (let i = cx - 1; i <= cx + 1; i++) for (let j = cz - 1; j <= cz + 1; j++) for (const h of grid.get(i + ',' + j) || []) {
+          const dx = x - h.x, dz = z - h.z, lx = dx * h.c - dz * h.s, lz = dx * h.s + dz * h.c;
+          if (Math.abs(lx) < h.hw - pad && Math.abs(lz) < h.hd - pad && y > h.y0 && y < h.y1) return true;
+        }
+        return false;
+      };
+      for (const [kind, x, y, z] of things) {
+        if (inHouse(x, y + 1, z) || inHouse(x, y + 4, z)) { out[kind === 'tree' ? 'treeInHouse' : 'poleInHouse']++; out.at.push([kind, Math.round(x), Math.round(z)]); }
+        if (kind === 'pole') {     // where people walk: 5.1 to 5.9 m from the middle of the road, and a body is 0.4 m across
+          let best = 1e9, lat = 0;
+          for (let i = 0; i < W3.n; i++) { const d = (W3.P[i].x - x) ** 2 + (W3.P[i].z - z) ** 2; if (d < best) { best = d; lat = Math.abs((x - W3.P[i].x) * W3.R[i].x + (z - W3.P[i].z) * W3.R[i].z); } }
+          if (lat > 4.85 && lat < 6.15) out.poleOnWalk++;
+        }
+      }
+      for (const [x, y, z] of wires) {
+        if (inHouse(x, y, z, 0.1)) out.wireInHouse++;
+        if (onRoad(x, z, -0.8, y, y)) out.wireLow++;     // less than about 4.5 m over a road
+      }
+      return out;
+    }
+    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2 };
   }
 
   // ---------- the HUD ----------
@@ -2675,7 +2745,8 @@
   if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
     peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1) => { const c = newCar(kind, lane, s + ahead, 0, dir); c.cruise = 0; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o),
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
-    auditAll: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; const a = R3.audit(); out.push({ id: r.id, ...a }); } route = keep; R3.audit(); return out; } };
+    auditAll: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; const a = R3.audit(); out.push({ id: r.id, ...a }); } route = keep; R3.audit(); return out; },
+    audit2All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit2() }); } route = keep; R3.audit(); return out; } };
 
   syncSound(); syncWallet(); syncReady(); syncPause(); drawRoutes(); showParcel(); reset(); resize();
   // three.js is fetched once and kept on the phone; until then, and without WebGL, the picture is flat
