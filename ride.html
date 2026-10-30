@@ -35,7 +35,7 @@
   /* The HUD on the road: light glass pills, always dark text (the road is drawn in daylight) */
   .hud { position: absolute; inset: 0; pointer-events: none; color: #231e16; }
   .pill { position: absolute; top: 22px; display: grid; background: rgba(255, 253, 248, .86); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); border: 1.5px solid rgba(35, 30, 22, .7); border-radius: 14px; padding: 4px 10px; box-shadow: 0 2px 0 rgba(35, 30, 22, .35); }
-  .pill.to { left: 10px; max-width: 66%; }
+  .pill.to { left: 10px; max-width: 66%; padding: 2px 10px; }
   .pill.coinp { right: 10px; display: flex; align-items: center; gap: 4px; font-size: 18px; }
   .hud small { font-size: 13px; font-weight: 700; color: #5d5547; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .hud b { display: inline-block; transform-origin: left center; font-size: 20px; font-variant-numeric: tabular-nums; line-height: 1.15; }
@@ -47,8 +47,8 @@
   .strip .mk.cross { background: #1565c0; box-shadow: 0 0 0 1.5px #fff; }
   .strip .mk.past { opacity: .45; }
   .strip .me { position: absolute; top: 50%; left: 0; width: 13px; height: 13px; transform: translate(-50%, -50%); border-radius: 50%; background: #1565c0; box-shadow: 0 0 0 2px #fff, 0 0 0 3px #231e16; }
-  .dial { position: absolute; left: 8px; bottom: 8px; width: 104px; height: 66px; }
-  .mini { position: absolute; right: 8px; bottom: 60px; width: 84px; height: 84px; border-radius: 14px; }
+  .dial { position: absolute; left: 6px; bottom: 6px; width: 84px; height: 53px; }
+  .mini { position: absolute; right: 8px; bottom: 58px; width: 70px; height: 70px; border-radius: 12px; opacity: .92; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .hud b.bump { animation: bump .3s cubic-bezier(.2, .8, .2, 1.4); }
   @keyframes bump { 40% { transform: scale(1.25); color: #e39b00; } }
@@ -154,7 +154,7 @@
            the speedometer and the mini-map in the bottom corners -->
       <div class="hud" id="hud">
         <div class="strip" id="strip" aria-hidden="true"><i id="bar"></i><span class="me" id="me"></span></div>
-        <div class="pill to"><small id="toLabel">To Civil Hospital</small><b id="left">1.4 km</b><span class="warn" id="warn" hidden></span></div>
+        <div class="pill to"><span class="sr" id="toLabel">To Civil Hospital</span><b><span aria-hidden="true">🏁 </span><span id="left">1.4 km</span></b><span class="warn" id="warn" hidden></span></div>
         <div class="pill coinp" aria-label="Coins this ride"><i class="coin"></i> <b id="coins">0</b></div>
         <canvas class="dial" id="dial" aria-hidden="true"></canvas>
         <span class="sr" id="speed" aria-live="off">0 km/h</span>
@@ -1258,7 +1258,120 @@
     const shutterMat = new T.MeshLambertMaterial({ map: tex(16, 32, g => { g.fillStyle = '#ececec'; g.fillRect(0, 0, 16, 32); g.fillStyle = '#b4b4b4'; for (let y = 2; y < 32; y += 4) g.fillRect(0, y, 16, 1); }) });
     const wireMat = new T.LineBasicMaterial({ color: '#2b2b2b' });
     const SHOP = ['#5f7f9c', '#8a9096', '#a3524a', '#4f7f5f', '#b98a2e', '#6b5f8a'], SIGNBAND = ['#c0392b', '#1565c0', '#2e7d32', '#f2c230', '#e67e22', '#ffffff'];
-    const shared = new Set([box, hang, prism, tank, trunk, crown, cone, wheel, ball, disc, blob, plane, pole]);
+    // ---------- trees: bark and wood, and leaves drawn on cards with gaps you can see through ----------
+    // Four kinds, each built once and then placed many times: broad-leaved trees, bamboo (mau) clumps,
+    // banana plants, and Khasi pines on the high ground. The leaves sway a little in the wind.
+    const REG = { broad: [0, 0.5, 0.5, 1], bamboo: [0.5, 0.5, 1, 1], banana: [0, 0, 0.5, 0.5], pine: [0.5, 0, 1, 0.5] };
+    const leafTex = tex(256, 256, g => {
+      let n = 0; const r = () => rnd(n++, 3.7);
+      const leaf = (x, y, len, wid, ang, col) => { g.save(); g.translate(x, y); g.rotate(ang); g.fillStyle = col; g.beginPath(); g.ellipse(0, len / 2, wid / 2, len / 2, 0, 0, 7); g.fill(); g.restore(); };
+      // a cluster of broad leaves (top left)
+      for (let i = 0; i < 120; i++) { const a = r() * 7, d = Math.sqrt(r()) * 52; leaf(64 + Math.cos(a) * d, 64 + Math.sin(a) * d * 0.9, 9 + r() * 7, 5 + r() * 3, r() * 7, ['#2f6a30', '#3f7d38', '#4d8f40', '#5c9c48', '#6aa850'][r() * 5 | 0]); }
+      // a bamboo spray (top right): thin twigs with narrow leaves hanging off them
+      g.lineCap = 'round';
+      for (let i = 0; i < 7; i++) {
+        const x0 = 192 + (r() - 0.5) * 24, ang = (r() - 0.5) * 1.4, x1 = x0 + Math.sin(ang) * 56, y1 = 6 + Math.cos(ang) * 100;
+        g.strokeStyle = '#6d7f3a'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x0, 6); g.lineTo(x1, y1); g.stroke();
+        for (let t = 0.12; t < 1; t += 0.08) leaf(x0 + (x1 - x0) * t, 6 + (y1 - 6) * t, 18 + r() * 10, 3 + r() * 2, ang + (r() < 0.5 ? 0.55 : -0.55) + (r() - 0.5) * 0.4, ['#6f9a3c', '#7fa848', '#5f8a34', '#8ab552'][r() * 4 | 0]);
+      }
+      // a banana leaf (bottom left): long and broad, a pale midrib, torn at the edges
+      g.save(); g.translate(64, 192);
+      const q = g.createLinearGradient(-30, 0, 30, 0); q.addColorStop(0, '#4f8f30'); q.addColorStop(0.5, '#7cbb48'); q.addColorStop(1, '#4f8f30');
+      g.fillStyle = q; g.beginPath(); g.ellipse(0, 0, 30, 62, 0, 0, 7); g.fill();
+      g.strokeStyle = '#c8dc8a'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(0, -62); g.lineTo(0, 62); g.stroke();
+      g.globalCompositeOperation = 'destination-out'; g.lineWidth = 2;
+      for (let y = -50; y < 56; y += 7 + r() * 8) { const e = r() < 0.5 ? -1 : 1; g.beginPath(); g.moveTo(e * 32, y + 4); g.lineTo(e * (6 + r() * 12), y); g.stroke(); }
+      g.restore();
+      // pine needles (bottom right): short dark strokes round each twig
+      g.lineWidth = 1.2;
+      for (let i = 0; i < 12; i++) { const cx = 146 + r() * 92, cy = 146 + r() * 92; for (let k = 0; k < 26; k++) { const a = r() * 7; g.strokeStyle = ['#244f2c', '#2f5f34', '#3a6c3a'][r() * 3 | 0]; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * 12, cy + Math.sin(a) * 12); g.stroke(); } }
+    });
+    const woodMat = new T.MeshLambertMaterial({ vertexColors: true });
+    woodMat.onBeforeCompile = sh => grain(sh);
+    const windT = { value: 0 };
+    const leafMat = new T.MeshLambertMaterial({ map: leafTex, vertexColors: true, alphaTest: 0.45, side: T.DoubleSide });
+    leafMat.onBeforeCompile = sh => {
+      sh.uniforms.windT = windT;
+      sh.vertexShader = 'uniform float windT;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+        { float hh = max(0.0, position.y - 1.2); vec2 q = vec2(0.0);
+          #ifdef USE_INSTANCING
+            q = instanceMatrix[3].xz;
+          #endif
+          transformed.x += sin(windT * 1.6 + q.x * 0.21 + position.y * 0.4) * 0.018 * hh;
+          transformed.z += cos(windT * 1.2 + q.y * 0.17 + position.x) * 0.014 * hh; }`);
+    };
+    // A geometry put together from parts, each placed by a matrix and coloured, darker lower down
+    // (shade), its texture coordinates in one part of the leaf picture (uv), lit as one rounded crown (center)
+    function build() {
+      const P = [], N = [], U = [], K = [], a = new T.Vector3(), b = new T.Vector3(), c = new T.Color();
+      return {
+        add(g0, m, hex, o = {}) {
+          const g = (g0.index ? g0.toNonIndexed() : g0.clone()).applyMatrix4(m), p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
+          for (let i = 0; i < p.count; i++) {
+            a.fromBufferAttribute(p, i); b.fromBufferAttribute(n, i);
+            if (o.center) b.lerp(a.clone().sub(o.center).normalize(), 0.7).normalize();
+            P.push(a.x, a.y, a.z); N.push(b.x, b.y, b.z);
+            const u = uv ? uv.getX(i) : 0, v = uv ? uv.getY(i) : 0, R = o.uv || [0, 0, 1, 1];
+            U.push(R[0] + u * (R[2] - R[0]), R[1] + v * (R[3] - R[1]));
+            c.set(hex); if (o.shade) c.multiplyScalar(0.62 + 0.38 * clamp((a.y - o.shade[0]) / (o.shade[1] - o.shade[0]), 0, 1));
+            K.push(c.r, c.g, c.b);
+          }
+        },
+        done() {
+          const g = new T.BufferGeometry();
+          g.setAttribute('position', new T.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new T.Float32BufferAttribute(N, 3));
+          g.setAttribute('uv', new T.Float32BufferAttribute(U, 2)); g.setAttribute('color', new T.Float32BufferAttribute(K, 3));
+          return g;
+        },
+      };
+    }
+    const mtx = (x, y, z, rx, ry, rz, sx, sy, sz) => new T.Matrix4().compose(new T.Vector3(x, y, z), new T.Quaternion().setFromEuler(new T.Euler(rx, ry, rz, 'YXZ')), new T.Vector3(sx, sy, sz));
+    const stick = new T.CylinderGeometry(0.7, 1, 1, 5, 1, true).translate(0, 0.5, 0), cardG = new T.PlaneGeometry(1, 1);
+    const lump = (() => { const g = new T.IcosahedronGeometry(1, 0), p = g.attributes.position; for (let i = 0; i < p.count; i++) { const k = 0.8 + rnd(Math.round(p.getX(i) * 40) + Math.round(p.getZ(i) * 23), Math.round(p.getY(i) * 60)) * 0.4; p.setXYZ(i, p.getX(i) * k, p.getY(i) * k, p.getZ(i) * k); } g.computeVertexNormals(); return g; })();
+    function makeTree(kind) {
+      const wood = build(), leaves = build(); let n = kind.length * 17; const r = () => rnd(n++, 9.1);
+      if (kind === 'broad') {
+        wood.add(stick, mtx(0, 0, 0, 0, 0, 0, 0.24, 3.6, 0.24), '#5e4a38');
+        for (let i = 0; i < 3; i++) wood.add(stick, mtx(0, 2.3 + i * 0.45, 0, 0.85, i * 2.1 + r(), 0, 0.08, 1.7, 0.08), '#5e4a38');
+        const ctr = new T.Vector3(0, 4.4, 0);
+        for (let i = 0; i < 3; i++) wood.add(lump, mtx((r() - 0.5) * 1.2, 4.0 + r() * 0.8, (r() - 0.5) * 1.2, 0, r() * 6, 0, 1.3 + r() * 0.4, 1.0 + r() * 0.3, 1.3 + r() * 0.4), '#2c5a2b', { shade: [3, 5.6], center: ctr });
+        for (let i = 0; i < 16; i++) {
+          const a = r() * 6.28, e = (r() - 0.35) * 1.3, R = 1.4 + r() * 0.6;
+          leaves.add(cardG, mtx(Math.cos(a) * Math.cos(e) * R, 4.4 + Math.sin(e) * R * 0.85, Math.sin(a) * Math.cos(e) * R, (r() - 0.5) * 1.2, Math.PI / 2 - a, (r() - 0.5) * 0.8, 2.3, 2.3, 1), '#ffffff', { uv: REG.broad, center: ctr, shade: [2.8, 6.2] });
+        }
+      } else if (kind === 'bamboo') {
+        for (let i = 0; i < 12; i++) {
+          const a = r() * 6.28, lean = 0.08 + r() * 0.26, L = (8 + r() * 5) / 3, w = 0.07, col = ['#7f9a3e', '#93a84a', '#6f8a36'][i % 3];
+          let x = Math.cos(a) * r() * 0.5, y = 0, z = Math.sin(a) * r() * 0.5;
+          for (let sg = 0; sg < 3; sg++) {      // each cane in three pieces, leaning further out higher up
+            const tilt = lean * (1 + sg * 0.8), nx = x + Math.cos(a) * Math.sin(tilt) * L, ny = y + Math.cos(tilt) * L, nz = z + Math.sin(a) * Math.sin(tilt) * L;
+            wood.add(stick, mtx(x, y, z, tilt, Math.PI / 2 - a, 0, w - sg * 0.015, L, w - sg * 0.015), col);
+            if (sg) for (let k = 0; k < 3; k++) {
+              const t = r(), lx = x + (nx - x) * t, ly = y + (ny - y) * t, lz = z + (nz - z) * t;
+              leaves.add(cardG, mtx(lx + Math.cos(a) * 0.45, ly - 0.55, lz + Math.sin(a) * 0.45, 0.25, Math.PI / 2 - a + (r() - 0.5) * 1.4, 0, 1.8, 1.9, 1), '#ffffff', { uv: REG.bamboo, center: new T.Vector3(0, ly, 0), shade: [2, 12] });
+            }
+            x = nx; y = ny; z = nz;
+          }
+        }
+      } else if (kind === 'banana') {
+        wood.add(stick, mtx(0, 0, 0, 0, 0, 0, 0.16, 2.3, 0.16), '#7d8f4c');
+        for (let i = 0; i < 7; i++) {      // big leaves arching out from the top
+          const a = i * 0.9 + r() * 0.4, t = 0.9 + r() * 0.45, len = 2.2 + r() * 0.5, d = [Math.cos(a) * Math.sin(t), Math.cos(t), Math.sin(a) * Math.sin(t)];
+          leaves.add(cardG, mtx(d[0] * len / 2, 2.3 + d[1] * len / 2, d[2] * len / 2, t, Math.PI / 2 - a, 0, 0.75, len, 1), '#ffffff', { uv: REG.banana, center: new T.Vector3(0, 2.0, 0), shade: [1.5, 3.6] });
+        }
+      } else {     // a Khasi pine: a tall straight trunk and tiers of needles
+        wood.add(stick, mtx(0, 0, 0, 0, 0, 0, 0.2, 9.5, 0.2), '#5a4636');
+        for (let i = 0; i < 6; i++) {
+          const y = 3 + i * 1.15, rad = 2.2 - i * 0.32;
+          wood.add(cone, mtx((r() - 0.5) * 0.2, y, (r() - 0.5) * 0.2, 0, r() * 6, 0, rad, 1.8, rad), ['#2d5a32', '#335f36', '#2a5430'][i % 3], { shade: [3, 10.5] });
+          for (let k = 0; k < 3; k++) { const a = r() * 6.28; leaves.add(cardG, mtx(Math.cos(a) * rad * 0.7, y + 0.6, Math.sin(a) * rad * 0.7, 0.3, Math.PI / 2 - a, 0, rad * 1.1, 1.3, 1), '#ffffff', { uv: REG.pine, center: new T.Vector3(0, y + 0.5, 0), shade: [3, 10.5] }); }
+        }
+      }
+      return { wood: wood.done(), leaves: leaves.done() };
+    }
+    const TREES = Object.fromEntries(['broad', 'bamboo', 'banana', 'pine'].map(k => [k, makeTree(k)]));
+    const TINT = ['#ffffff', '#e9f2da', '#f4fde6', '#dfe9c9'];
+    const shared = new Set([box, hang, prism, tank, trunk, crown, cone, wheel, ball, disc, blob, plane, pole, ...Object.values(TREES).flatMap(t => [t.wood, t.leaves])]);
 
     // ---------- the road's shape ----------
     // From the line on the map (2 m steps), spread evenly over the samples and rounded at the corners.
@@ -1360,7 +1473,7 @@
         for (let i = 0; i < 4; i++) { const [a, b] = [c[i], c[(i + 1) % 4]]; st.quad(pt(k, a[0], h0, a[1]), pt(k, b[0], h0, b[1]), pt(k, b[0], h1, b[1]), pt(k, a[0], h1, a[1]), hex); }
         st.quad(...c.map(([x, z]) => pt(k, x, h1, z)), hex);
       };
-      const H = [], RF = [], TK = [], TR = [], CR = [], BB = [], BAL = [], RAIL = [], SHUT = [], BAND = [], POLE = [], ARM = [], WIRE = [];
+      const H = [], RF = [], TK = [], TW = { broad: [], bamboo: [], banana: [], pine: [] }, BAL = [], RAIL = [], SHUT = [], BAND = [], POLE = [], ARM = [], WIRE = [];
       // An electric pole every 36 m in town, on the near side, and the ends of its crossarm for the wires
       const poleAt = k => {
         if (k < 0 || k >= n || k % 9 || !footpath(k)) return null;
@@ -1434,25 +1547,20 @@
             if (top - gy < 9 && rnd(k, j + 21) < 0.45) RF.push({ p: [p[0], Y[k] + top, p[2]], yaw: yaw[k], s: [w * 1.08, 1.3, d * 1.05], c: ROOF[(k * 3 + j) % ROOF.length] });
             else if (rnd(k, j + 31) < 0.5) { const q = pt(k, sd * (off + (rnd(k, j) - 0.5) * d * 0.5), 0); TK.push({ p: [q[0], Y[k] + top, q[2]], s: [1.1, 1.3, 1.1], c: '#2b2d2c' }); }   // the black water tank
           }
-          // Bamboo (mau) and broad trees where the map has few houses
+          // Bamboo (mau), broad-leaved trees and banana plants where the map has few houses; pines on high ground
           if (housesOn(sd, k) <= 1) for (let j = 0; j < 3; j++) {
             if (rnd(k, 40 + j + sd) > 0.55) continue;
             const off = E + 2 + j * 9 + rnd(k, 50 + j) * 7;
             if (off > ext[sd][k] - 1) continue;
-            const p = pt(k, sd * off, groundAt(k, sd, off));
-            if (rnd(k, 60 + j) < 0.45) BB.push({ p, s: [1.6 + rnd(k, j) * 1.2, 8 + rnd(k, j + 1) * 6, 1.6], c: rnd(k, j + 2) < 0.5 ? '#6f9a3c' : '#7fa848' });
-            else {
-              const tr = 3 + rnd(k, j + 3) * 3, cr = 2 + rnd(k, j + 4) * 1.8;
-              TR.push({ p, s: [1, tr, 1], c: '#6b5a48' });
-              CR.push({ p: [p[0], p[1] + tr + cr * 0.6, p[2]], yaw: rnd(k, j) * 6, s: [cr, cr * 0.9, cr], c: ['#3f7a3f', '#4d8a45', '#5b9850'][j] });
-            }
+            const r = rnd(k, 60 + j), sc = 0.8 + rnd(k, j + 1) * 0.5, kind = g > 8 && r < 0.35 ? 'pine' : r < 0.45 ? 'bamboo' : r < 0.85 ? 'broad' : 'banana';
+            TW[kind].push({ p: pt(k, sd * off, groundAt(k, sd, off) - 0.2), yaw: rnd(k, j + 5) * 6.28, s: [sc, sc * (0.9 + rnd(k, j + 6) * 0.25), sc], c: TINT[(k + j) % TINT.length] });
           }
         }
       }
       if (WIRE.length) { const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(WIRE, 3)); grp.add(new T.LineSegments(g, wireMat)); }
       [instanced(box, plainMat, BAL), instanced(box, plainMat, RAIL), instanced(box, shutterMat, SHUT), instanced(box, plainMat, BAND), instanced(pole, plainMat, POLE), instanced(box, plainMat, ARM)].forEach(m => m && grp.add(m));
       [st.mesh(), instanced(box, houseMat, H), instanced(prism, plainMat, RF), instanced(tank, plainMat, TK),
-        instanced(trunk, plainMat, TR), instanced(crown, plainMat, CR), instanced(cone, plainMat, BB)].forEach(m => m && grp.add(m));
+        ...Object.entries(TW).flatMap(([kind, list]) => [instanced(TREES[kind].wood, woodMat, list), instanced(TREES[kind].leaves, leafMat, list)])].forEach(m => m && grp.add(m));
       grp.userData.mid = P[Math.min(n - 1, (k0 + k1) >> 1)];
       return grp;
     }
@@ -1785,7 +1893,7 @@
       } else { perfN = 0; perfMs = 0; }
       const far = LEVELS[level].far;
       // The light: golden towards the end of the ride, and a stretch of morning haze (romei)
-      look = lookAt(s); hazeStep = Math.round(look.golden * 4);
+      look = lookAt(s); hazeStep = Math.round(look.golden * 4); windT.value = reduce ? 0 : now / 1000;
       const gi = look.golden * 4, g0 = Math.floor(gi), g1 = Math.min(4, g0 + 1);
       fogCol.copy(HZ[g0]).lerp(HZ[g1], gi - g0).lerp(MIST, look.mist * 0.5);
       scene.fog.color.copy(fogCol); scene.fog.near = 25 * (1 - 0.5 * look.mist); scene.fog.far = far * (1 - 0.5 * look.mist);

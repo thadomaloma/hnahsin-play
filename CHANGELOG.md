@@ -4,6 +4,19 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.20.0 (30 October 2026)
+
+### Aizawl Ride: a cleaner road and real-looking trees
+
+- Less on the screen while you ride: the top shows only how far there is
+  to go (🏁 1.4 km), and the speedometer and the little map are smaller.
+  Where you are going shows when the ride starts and at the end of the
+  strip along the top.
+- Trees look real now, with leaves you can see between: broad-leaved
+  trees with full crowns, bamboo (mau) clumps with leaning canes and
+  hanging leaves, banana plants with big torn leaves, and Khasi pines on
+  the high ground. The leaves move a little in the wind.
+
 ## 1.19.0 (30 October 2026)
 
 ### Aizawl Ride: smoother and more lifelike
