@@ -4,6 +4,29 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.21.0 (30 October 2026)
+
+### Aizawl Ride: vehicles and people made like the real ones
+
+- The cars are modelled on Aizawl's own: Maruti-style hatchbacks (the taxis
+  yellow, with a roof sign), Bolero-style jeeps with the spare wheel on the
+  back door, the city bus with its door on the left, and Splendor-style
+  motorbikes. They have pillars round the windows, door seams and handles,
+  mirrors, bumpers, grilles and alloy wheels with spokes.
+- The scooter is an Activa, with a front mudguard, a chrome exhaust and
+  indicators.
+- On phones that can manage it, the paint shines under a clear coat, and
+  the glass and chrome mirror the sky and the hills, changing with the
+  light of the day.
+- People walk properly now: legs swing from the hip and bend at the knee,
+  arms swing and bend at the elbow. They have shaped bodies, necks, hands
+  and shoes, and short hair, long hair or a bun.
+- Women wear a striped puan and a blouse. New people on the footpaths: a
+  schoolgirl in her puan with a school bag, a man in a jacket, and an elder
+  who stoops a little and walks with a stick.
+- The motorbike riders and the scooter rider sit properly, hands on the
+  grips.
+
 ## 1.20.1 (30 October 2026)
 
 ### Aizawl Ride: a simpler start

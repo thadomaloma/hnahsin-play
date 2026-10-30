@@ -541,7 +541,9 @@
     { shirt: '#e0457b', lower: '#2a2522', stripes: '#c8323d', hair: '#1d1b22', bun: 1 },  // a woman in a puan
     { shirt: '#2e7d32', lower: '#3a3a3a', hair: '#3a2a1a', umbrella: '#1565c0' },
     { shirt: '#f2c230', lower: '#2a2522', stripes: '#2f8a4a', hair: '#1d1b22', bun: 1 },
-    { shirt: '#5a7f9c', lower: '#6b5a48', hair: '#cfcac2' },                             // an elder
+    { shirt: '#5a7f9c', lower: '#6b5a48', hair: '#cfcac2', elder: 1, stick: 1, jacket: 1 },  // an elder with a stick
+    { shirt: '#ffffff', lower: '#1f3a68', stripes: '#c8323d', hair: '#1d1b22', long: 1, bag: '#8e2b2b' },   // a schoolgirl in her puan
+    { shirt: '#4a4f57', lower: '#2b2b2b', hair: '#1d1b22', jacket: 1 },                  // a man in a jacket
   ];
   function planCrossings() {
     const out = [], spots = route.places.map(p => p[0] * SEG);
@@ -1600,7 +1602,7 @@
     // ---------- placing things: a frame on the road, then parts in it ----------
     // x is metres to the right, y up and z forward, in the frame set by base()
     const mB = new T.Matrix4(), mL = new T.Matrix4(), q = new T.Quaternion(), q2 = new T.Quaternion(), e3 = new T.Euler(), v3 = new T.Vector3(), one = new T.Vector3(1, 1, 1), sc = new T.Vector3();
-    const base = (f, turn = 0, flip = false) => { e3.set(flip ? -f.pitch : f.pitch, f.yaw + turn, 0, 'YXZ'); q.setFromEuler(e3); mB.compose(v3.set(f.x, f.y, f.z), q, one); };
+    const base = (f, turn = 0, flip = false, k = 1) => { e3.set(flip ? -f.pitch : f.pitch, f.yaw + turn, 0, 'YXZ'); q.setFromEuler(e3); mB.compose(v3.set(f.x, f.y, f.z), q, sc.set(k, k, k)); };
     const pools = [];
     const pool = (geo, mat, max, list = pools) => {
       const m = new T.InstancedMesh(geo, mat, max); m.frustumCulled = false; m.count = 0; m.n = 0; m.max = max;
@@ -1637,92 +1639,197 @@
       for (const g0 of geos) { const g = g0.index ? g0.toNonIndexed() : g0; pos.push(...g.attributes.position.array); nor.push(...g.attributes.normal.array); }
       const m = new T.BufferGeometry(); m.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); m.setAttribute('normal', new T.Float32BufferAttribute(nor, 3)); return m;
     }
-    // a car is 3.8 m long and 1.45 m high, an SUV 4.4 by 1.9, a bus 9 by 3, all 1 m wide before scaling
-    const carPaint = merge(side([[-1.9, 0.26], [-1.93, 0.68], [-1.8, 0.86], [-1.05, 0.9], [1.0, 0.93], [1.8, 0.8], [1.93, 0.6], [1.9, 0.26]], 1, 0.14), side([[-0.66, 1.34], [0.42, 1.36], [0.4, 1.45], [-0.62, 1.44]], 0.88, 0.04));
-    const carGlass = side([[-1.08, 0.88], [-0.62, 1.37], [0.38, 1.39], [1.04, 0.91]], 0.86, 0.06);
-    const suvPaint = merge(side([[-2.2, 0.32], [-2.23, 1.0], [-2.12, 1.1], [1.15, 1.12], [2.05, 1.0], [2.22, 0.75], [2.2, 0.32]], 1, 0.14), side([[-2.12, 1.72], [0.6, 1.74], [0.56, 1.86], [-2.08, 1.85]], 0.9, 0.04));
-    const suvGlass = side([[-2.14, 1.08], [-2.08, 1.76], [0.55, 1.78], [1.2, 1.1]], 0.88, 0.06);
-    const busPaint = side([[-4.5, 0.38], [-4.5, 2.95], [4.5, 2.95], [4.5, 0.38]], 1, 0.3);
-    const bikePaint = side([[-0.85, 0.55], [-0.9, 0.66], [-0.25, 0.74], [0.05, 0.86], [0.42, 0.84], [0.5, 0.62], [0.15, 0.42], [-0.4, 0.42]], 0.3, 0.06);
-    const rimGeo = new T.CylinderGeometry(0.62, 0.62, 1.06, 12).rotateZ(Math.PI / 2), plateGeo = new T.PlaneGeometry(1, 1).rotateY(Math.PI);
+    // ---------- the vehicles, modelled on Aizawl's own ----------
+    // A Maruti-style hatchback (the taxis too), a Bolero-style jeep with its spare wheel on the back
+    // door, the city bus, a Splendor-style motorbike. Each is built once from side views and parts:
+    // its paint (dark trim and bumpers in the same mesh), its glass and its chrome. On the best level
+    // the materials are physically based, like the three.js car showcase: paint under a clear coat,
+    // glass and chrome that mirror the sky and the hills around.
+    const plateMat = new T.MeshLambertMaterial({ map: tex(64, 20, g => { g.fillStyle = '#fff'; g.fillRect(0, 0, 64, 20); g.strokeStyle = '#231e16'; g.lineWidth = 2; g.strokeRect(1, 1, 62, 18); g.fillStyle = '#231e16'; g.font = '800 13px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('MZ 01', 32, 11); }) });
+    const SQ = new T.BoxGeometry(1, 1, 1), ROD = new T.CylinderGeometry(1, 1, 1, 10);
+    // the bottom edge of a body cut round each wheel: arches centred at height h, radius R
+    const arches = (top, h, wheels, R) => {
+      const pts = top.slice();
+      for (const cx of wheels.slice().sort((a, b) => b - a)) for (let i = 0; i <= 8; i++) { const a = i / 8 * Math.PI; pts.push([cx + R * Math.cos(a), h + R * Math.sin(a)]); }
+      return pts;
+    };
+    // parts of a vehicle: u forward, v up, x to the right (metres)
+    function parts() {
+      const b = build();
+      return {
+        done: () => b.done(),
+        side(pts, w, r, hex = '#ffffff') { b.add(side(pts, w, r), new T.Matrix4(), hex); },
+        box(u, v, x, su, sv, sx, hex = '#ffffff', rx = 0) { b.add(SQ, mtx(-x, v, u, rx, 0, 0, sx, sv, su), hex); },
+        bar(u0, v0, u1, v1, x, w, d, hex = '#ffffff') { const du = u1 - u0, dv = v1 - v0; b.add(SQ, mtx(-x, (v0 + v1) / 2, (u0 + u1) / 2, Math.atan2(du, dv), 0, 0, w, Math.hypot(du, dv), d), hex); },
+        rod(u0, v0, x0, u1, v1, x1, r, hex = '#ffffff') {        // a round rod between two points
+          const a = new T.Vector3(-x0, v0, u0), c = new T.Vector3(-x1, v1, u1), d = c.clone().sub(a), L = d.length();
+          b.add(ROD, new T.Matrix4().compose(a.add(c).multiplyScalar(0.5), new T.Quaternion().setFromUnitVectors(new T.Vector3(0, 1, 0), d.normalize()), new T.Vector3(r, L, r)), hex);
+        },
+        disc(u, v, x, r, w, hex = '#ffffff') { b.add(ROD, mtx(-x, v, u, 0, 0, Math.PI / 2, r, w, r), hex); },   // axle across
+      };
+    }
+    const DK = '#1b1c1e', SEAM = '#111213';
+    function hatchback() {
+      const P = parts(), G = parts(), H = parts();
+      P.side(arches([[-1.88, 0.3], [-1.92, 0.62], [-1.86, 0.96], [0.95, 0.97], [1.78, 0.84], [1.92, 0.68], [1.9, 0.3]], 0.3, [1.22, -1.22], 0.4), 1, 0.1);
+      P.side([[-1.7, 1.38], [0.28, 1.41], [0.24, 1.48], [-1.66, 1.47]], 0.9, 0.03);                 // roof
+      G.side([[-1.84, 0.95], [-1.68, 1.41], [0.26, 1.44], [0.97, 0.96]], 0.86, 0.05);              // the glass all round
+      P.box(-1.69, 1.44, 0, 0.14, 0.04, 0.82);                                                      // a little spoiler over the back window
+      for (const e of [-1, 1]) {
+        P.bar(0.95, 0.97, 0.27, 1.43, e * 0.43, 0.06, 0.07);         // A pillars
+        P.bar(-0.45, 0.97, -0.48, 1.43, e * 0.435, 0.05, 0.08);      // B pillars
+        P.bar(-1.8, 0.97, -1.64, 1.42, e * 0.435, 0.05, 0.26);       // broad C pillars, as on a hatchback
+        P.bar(-1.84, 0.975, 0.92, 0.975, e * 0.505, 0.02, 0.03, DK); // the window line
+        for (const u of [0.85, -0.45]) P.bar(u, 0.37, u + 0.02, 0.94, e * 0.506, 0.006, 0.012, SEAM);   // door seams
+        P.box(0.82, 1.02, e * 0.55, 0.15, 0.1, 0.08); P.box(0.82, 0.97, e * 0.5, 0.08, 0.04, 0.06, DK); // mirrors
+        for (const u of [0.45, -0.72]) H.box(u, 0.84, e * 0.507, 0.12, 0.03, 0.01);                       // door handles
+      }
+      for (const u of [1.22, -1.22]) P.disc(u, 0.3, 0, 0.39, 0.96, '#0d0d0e');                            // wheel wells
+      for (const u of [1.86, -1.86]) P.box(u, 0.4, 0, 0.2, 0.2, 1.02, DK);                                // bumpers
+      P.box(0, 0.34, 0, 1.6, 0.07, 1.01, DK);                                                              // sills
+      P.box(1.915, 0.6, 0, 0.03, 0.13, 0.5, '#0e0f10'); H.box(1.93, 0.67, 0, 0.02, 0.02, 0.48);            // grille
+      return { paint: P.done(), glass: G.done(), chrome: H.done(), len: 3.8, hgt: 1.45, wheels: [[1.22, 0.3], [-1.22, 0.3]], track: 0.43, tw: 0.2,
+        head: [1.91, 0.74, 0.33, 0.24, 0.1], tail: [-1.92, 0.8, 0.38, 0.12, 0.22], plate: [-1.93, 0.5], front: [1.93, 0.42] };
+    }
+    function jeep() {       // a Bolero: boxy, upright, a spare wheel on the back door
+      const P = parts(), G = parts(), H = parts();
+      P.side(arches([[-2.18, 0.44], [-2.2, 1.12], [-2.12, 1.16], [1.05, 1.16], [2.12, 1.1], [2.2, 0.92], [2.18, 0.44]], 0.42, [1.42, -1.35], 0.5), 1, 0.06);
+      P.side([[-2.16, 1.8], [0.92, 1.82], [0.9, 1.9], [-2.14, 1.9]], 0.92, 0.03);
+      G.side([[-2.14, 1.15], [-2.13, 1.79], [0.9, 1.81], [1.12, 1.16]], 0.89, 0.04);
+      for (const e of [-1, 1]) {
+        P.bar(1.12, 1.15, 0.92, 1.82, e * 0.45, 0.07, 0.07);
+        for (const u of [-0.25, -1.25]) P.bar(u, 1.16, u, 1.81, e * 0.452, 0.05, 0.09);
+        P.bar(-2.15, 1.16, -2.14, 1.8, e * 0.45, 0.05, 0.1);
+        P.bar(-2.15, 1.16, 1.1, 1.16, e * 0.505, 0.02, 0.03, DK);
+        for (const u of [1.05, -0.25, -1.25]) P.bar(u, 0.5, u, 1.12, e * 0.506, 0.006, 0.012, SEAM);
+        P.box(1.0, 1.22, e * 0.56, 0.17, 0.14, 0.08); P.box(1.0, 1.16, e * 0.5, 0.08, 0.05, 0.06, DK);
+        P.bar(-2.0, 1.94, 0.7, 1.94, e * 0.4, 0.03, 0.04, DK);                                        // roof rails
+        for (const u of [0.55, -0.75]) H.box(u, 1.02, e * 0.507, 0.13, 0.03, 0.01);
+      }
+      for (const u of [1.42, -1.35]) P.disc(u, 0.42, 0, 0.49, 0.96, '#0d0d0e');
+      for (const u of [2.2, -2.2]) P.box(u, 0.52, 0, 0.2, 0.28, 1.04, DK);
+      P.box(0, 0.45, 0, 1.5, 0.05, 1.12, '#202124');                                                  // the side step
+      P.box(2.215, 0.84, 0, 0.02, 0.28, 0.6, '#141516'); for (let i = 0; i < 4; i++) H.box(2.225, 0.74 + i * 0.065, 0, 0.02, 0.02, 0.58);
+      P.disc(-2.3, 1.02, 0, 0.36, 0.22, DK); P.box(-2.42, 1.02, 0, 0.02, 0.5, 0.5);                    // the spare wheel and its cover
+      return { paint: P.done(), glass: G.done(), chrome: H.done(), len: 4.4, hgt: 1.9, wheels: [[1.42, 0.38], [-1.35, 0.38]], track: 0.43, tw: 0.25,
+        head: [2.21, 0.92, 0.36, 0.26, 0.16], tail: [-2.21, 1.0, 0.44, 0.09, 0.32], plate: [-2.22, 0.62], front: [2.22, 0.48] };
+    }
+    function cityBus() {
+      const P = parts(), G = parts(), H = parts();
+      P.side(arches([[-4.5, 0.42], [-4.52, 2.9], [-4.4, 3.0], [4.4, 3.0], [4.52, 2.9], [4.5, 0.42]], 0.45, [3.0, -2.7], 0.62), 1, 0.15);
+      G.box(-0.3, 1.95, 0, 7.6, 1.0, 1.014);                                                        // the side windows
+      G.box(4.5, 1.85, 0, 0.06, 1.5, 0.92); G.box(-4.5, 2.1, 0, 0.06, 0.8, 0.8);                    // windscreen, back window
+      G.box(2.9, 1.42, -0.507, 0.95, 1.8, 0.02);                                                    // the door glass, on the left
+      for (const e of [-1, 1]) for (let u = -3.95; u < 3.6; u += 1.15) P.bar(u, 1.45, u, 2.45, e * 0.508, 0.03, 0.1);   // window pillars
+      P.bar(2.42, 0.5, 2.42, 2.45, -0.508, 0.03, 0.08, DK); P.bar(3.38, 0.5, 3.38, 2.45, -0.508, 0.03, 0.08, DK);     // the door frame
+      for (const u of [3.0, -2.7]) P.disc(u, 0.45, 0, 0.62, 0.96, '#0d0d0e');
+      for (const u of [4.5, -4.5]) P.box(u, 0.45, 0, 0.18, 0.3, 1.02, DK);
+      for (const e of [-1, 1]) { P.bar(4.45, 2.3, 4.75, 2.3, e * 0.55, 0.03, 0.03, DK); P.box(4.78, 2.05, e * 0.6, 0.06, 0.32, 0.1, DK); }   // mirrors on their arms
+      return { paint: P.done(), glass: G.done(), chrome: H.done(), len: 9, hgt: 3, wheels: [[3.0, 0.5], [-2.7, 0.5]], track: 0.41, tw: 0.3,
+        head: [4.53, 0.72, 0.4, 0.3, 0.16], tail: [-4.53, 0.8, 0.42, 0.14, 0.3], plate: [-4.53, 0.6], front: [4.53, 0.45] };
+    }
+    function motorbike() {  // a Splendor
+      const P = parts(), H = parts();
+      P.side([[-0.15, 0.78], [0.1, 0.93], [0.38, 0.9], [0.46, 0.78], [0.1, 0.72]], 0.26, 0.05);       // tank
+      P.side([[-0.45, 0.55], [-0.4, 0.73], [-0.1, 0.75], [-0.05, 0.55]], 0.2, 0.03);                 // side panel
+      P.side([[-0.92, 0.64], [-0.94, 0.72], [-0.45, 0.82], [-0.4, 0.74]], 0.14, 0.03);               // tail
+      P.side([[-0.72, 0.78], [-0.66, 0.87], [-0.12, 0.87], [-0.08, 0.78]], 0.24, 0.04, '#1c1c1d');   // seat
+      const arc = (r0, r1) => { const o = []; for (let i = 0; i <= 8; i++) { const a = (0.15 + i / 8 * 0.6) * Math.PI; o.push([0.62 + r1 * Math.cos(a), 0.3 + r1 * Math.sin(a)]); } for (let i = 8; i >= 0; i--) { const a = (0.15 + i / 8 * 0.6) * Math.PI; o.push([0.62 + r0 * Math.cos(a), 0.3 + r0 * Math.sin(a)]); } return o; };
+      P.side(arc(0.33, 0.37), 0.12, 0.01);                                                            // front mudguard
+      P.box(0, 0.38, 0, 0.45, 0.3, 0.24, '#3a3b3d');                                                  // engine
+      P.box(0.64, 0.98, 0, 0.14, 0.17, 0.2);                                                           // headlight cowl
+      for (const e of [-1, 1]) H.rod(0.64, 0.3, e * 0.07, 0.56, 1.0, e * 0.07, 0.024);                // fork
+      H.rod(0.5, 1.03, -0.33, 0.5, 1.03, 0.33, 0.016);                                                // handlebar
+      H.rod(-0.75, 0.3, 0.15, 0.05, 0.28, 0.13, 0.045);                                               // exhaust, on the right
+      return { paint: P.done(), glass: null, chrome: H.done(), len: 1.8, hgt: 1.5, wheels: [[0.62, 0.3], [-0.62, 0.3]], track: 0, tw: 0.09, single: true,
+        head: [0.72, 0.98, 0, 0.12, 0.1], tail: [-0.95, 0.72, 0, 0.1, 0.06], plate: [-0.95, 0.56] };
+    }
+    // wheels: a rubber tyre with a rounded sidewall, and an alloy rim with five spokes (1 m across, axle along x)
+    const tyreGeo = new T.LatheGeometry([[0.66, -0.42], [0.88, -0.5], [0.97, -0.4], [1.0, -0.15], [1.0, 0.15], [0.97, 0.4], [0.88, 0.5], [0.66, 0.42]].map(([r, y]) => new T.Vector2(r, y)), 20).rotateZ(Math.PI / 2);
+    const rimGeo = (() => {
+      const b = build();
+      b.add(new T.LatheGeometry([[0.001, 0.44], [0.6, 0.44], [0.67, 0.34], [0.67, -0.34], [0.6, -0.44], [0.001, -0.44]].map(([r, y]) => new T.Vector2(r, y)), 20).rotateZ(Math.PI / 2), new T.Matrix4(), '#ffffff');
+      for (const x of [-0.46, 0.46]) for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; b.add(SQ, mtx(x, Math.cos(a) * 0.36, Math.sin(a) * 0.36, a, 0, 0, 0.05, 0.5, 0.11), '#ffffff'); }
+      return b.done();
+    })();
+    const plateGeo = new T.PlaneGeometry(1, 1).rotateY(Math.PI);
+    const VMAT = {
+      paint: [new T.MeshPhongMaterial({ vertexColors: true, shininess: 60, specular: C('#555555') }), new T.MeshPhysicalMaterial({ vertexColors: true, metalness: 0.3, roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.06 })],
+      glass: [new T.MeshPhongMaterial({ color: '#25313a', shininess: 90, specular: C('#8a9aa4') }), new T.MeshPhysicalMaterial({ color: '#141c24', metalness: 0, roughness: 0.03, clearcoat: 1, envMapIntensity: 1.6 })],
+      chrome: [new T.MeshPhongMaterial({ color: '#d8dbde', shininess: 80, specular: C('#ffffff') }), new T.MeshStandardMaterial({ color: '#e8ebee', metalness: 1, roughness: 0.22 })],
+      tyre: [new T.MeshLambertMaterial({ color: '#1b1d1c' }), new T.MeshStandardMaterial({ color: '#1a1b1b', metalness: 0, roughness: 0.9 })],
+    };
+    const paintMat = VMAT.paint[0], chromeMat = VMAT.chrome[0];
+    const vpool = (geo, kind, max) => { const m = pool(geo, VMAT[kind][0], max); m.userData.vm = kind; return m; };
+    const MODELS = { car: hatchback(), suv: jeep(), bus: cityBus(), bike: motorbike() };
+    MODELS.taxi = MODELS.car;
+    for (const M of new Set(Object.values(MODELS))) {
+      M.pPaint = vpool(M.paint, 'paint', M === MODELS.bus ? 12 : 60);
+      if (M.glass) M.pGlass = vpool(M.glass, 'glass', M === MODELS.bus ? 12 : 60);
+      M.pChrome = vpool(M.chrome, 'chrome', M === MODELS.bus ? 12 : 60);
+    }
+    const shadows = pool(blob, shadowMat, 200);
+    // a limb from (y0, z0) to (y1, z1) at x; an arm from the shoulder, its upper arm and forearm at
+    // angles forward of straight down; it gives back the elbow and the hand
+    const limbTo = (m, x, y0, z0, y1, z1, w, col) => put(m, x, y0, z0, w, Math.hypot(y1 - y0, z1 - z0) / 2, w, col, Math.atan2(-(z1 - z0), -(y1 - y0)));
+    const armTo = (x, y, z, ua, fa, top, low) => {
+      const ey = y - 0.29 * Math.cos(ua), ez = z + 0.29 * Math.sin(ua), hy = ey - 0.26 * Math.cos(fa), hz = ez + 0.26 * Math.sin(fa);
+      limbTo(pLimb, x, y, z, ey, ez, 0.095, top); limbTo(pLimb, x * 1.05, ey, ez, hy, hz, 0.08, low);
+      return [ey, ez, hy, hz];
+    };
     const capUp = new T.CapsuleGeometry(0.5, 1, 3, 8).translate(0, 1, 0), capHang = new T.CapsuleGeometry(0.5, 1, 3, 8).translate(0, -1, 0);
-    const skirt = new T.CylinderGeometry(0.85, 1, 1, 10).translate(0, 0.5, 0);
+    const skirt = new T.CylinderGeometry(0.85, 1, 1, 12).translate(0, 0.5, 0);
+    const torsoGeo = new T.LatheGeometry([[0.001, -0.14], [0.15, -0.14], [0.165, -0.04], [0.145, 0.1], [0.155, 0.28], [0.19, 0.42], [0.185, 0.5], [0.1, 0.56], [0.001, 0.57]].map(([r, y]) => new T.Vector2(r, y)), 12);
+    const puanMat = new T.MeshLambertMaterial({ map: tex(16, 64, g => { g.fillStyle = '#1b1b1b'; g.fillRect(0, 0, 16, 64); g.fillStyle = '#ffffff'; for (const [y, h] of [[5, 6], [16, 2], [24, 9], [38, 2], [46, 6], [57, 2]]) g.fillRect(0, y, 16, h); }) });
+    const SKIN = ['#d9a47c', '#c99068', '#e3b28c'];
     const rockGeo = (() => {     // a rough stone: the same jitter for a corner shared by faces, so it stays closed
       const g = new T.DodecahedronGeometry(1, 1), p = g.attributes.position;
       for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), k = 0.8 + rnd(Math.round(x * 50) + Math.round(z * 31), Math.round(y * 70)) * 0.4; p.setXYZ(i, x * k, y * k, z * k); }
       g.computeVertexNormals(); return g;
     })();
     const logGeo = new T.CylinderGeometry(1, 1, 1, 10).rotateZ(Math.PI / 2);
-    const paintMat = new T.MeshPhongMaterial({ shininess: 60, specular: C('#555555') });
-    const glassMat = new T.MeshPhongMaterial({ color: '#25313a', shininess: 90, specular: C('#8a9aa4') });
-    const chromeMat = new T.MeshPhongMaterial({ color: '#c9cdd0', shininess: 80, specular: C('#ffffff') });
-    const envTex = tex(256, 128, (g, w, h) => {
-      const q = g.createLinearGradient(0, 0, 0, h); q.addColorStop(0, '#6fa8d8'); q.addColorStop(0.47, '#e2ece6'); q.addColorStop(0.53, '#7d8f78'); q.addColorStop(1, '#3d4a3a');
-      g.fillStyle = q; g.fillRect(0, 0, w, h);
-      g.fillStyle = '#8fae9a'; g.beginPath(); g.moveTo(0, h / 2);
-      for (let x = 0; x <= w; x += 8) g.lineTo(x, h / 2 - 6 - 6 * Math.sin(x / w * Math.PI * 6) - 3 * Math.sin(x / w * Math.PI * 17));
-      g.lineTo(w, h / 2); g.fill();
-    });
-    envTex.mapping = T.EquirectangularReflectionMapping;
-    const plateMat = new T.MeshLambertMaterial({ map: tex(64, 20, g => { g.fillStyle = '#fff'; g.fillRect(0, 0, 64, 20); g.strokeStyle = '#231e16'; g.lineWidth = 2; g.strokeRect(1, 1, 62, 18); g.fillStyle = '#231e16'; g.font = '800 13px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('MZ 01', 32, 11); }) });
     const logMats = [new T.MeshLambertMaterial({ color: '#7a4b2f' }), ...Array(2).fill(new T.MeshLambertMaterial({ map: tex(32, 32, g => { g.fillStyle = '#d6a46c'; g.fillRect(0, 0, 32, 32); g.strokeStyle = '#a8743f'; g.lineWidth = 1.5; for (const r of [4, 8, 12]) { g.beginPath(); g.arc(16, 16, r, 0, 7); g.stroke(); } }) }))];
-    const shadows = pool(blob, shadowMat, 200);
-    const pCar = pool(carPaint, paintMat, 60), gCar = pool(carGlass, glassMat, 60), pSuv = pool(suvPaint, paintMat, 30), gSuv = pool(suvGlass, glassMat, 30);
-    const pBus = pool(busPaint, paintMat, 12), pBike = pool(bikePaint, paintMat, 30), gBox = pool(box, glassMat, 40);
-    const vBox = pool(box, plainMat, 700), vGlow = pool(box, glowMat, 300), vRound = pool(ball, paintMat, 60), tyre = pool(wheel, plainMat, 220), rim = pool(rimGeo, chromeMat, 220), plateM = pool(plateGeo, plateMat, 80);
+    const vBox = pool(box, plainMat, 400), vGlow = pool(box, glowMat, 300), tyreM = vpool(tyreGeo, 'tyre', 260), rimM = vpool(rimGeo, 'chrome', 260), plateM = pool(plateGeo, plateMat, 120);
     const coinM = pool(disc, coinMat, 60), rockM = pool(rockGeo, plainMat, 24), logM = pool(logGeo, logMats, 24), boardM = pool(box, stripeMat, 24);
-    const pUp = pool(capUp, plainMat, 80), pLimb = pool(capHang, plainMat, 160), pRound = pool(ball, plainMat, 100), pSkirt = pool(skirt, plainMat, 60), pBox = pool(box, plainMat, 60), pCone = pool(cone, plainMat, 30);
-    const CARS = { car: [pCar, gCar, 1.45, 3.8], taxi: [pCar, gCar, 1.45, 3.8], suv: [pSuv, gSuv, 1.9, 4.4] };
+    const pUp = pool(capUp, plainMat, 80), pLimb = pool(capHang, plainMat, 300), pRound = pool(ball, plainMat, 200), pPuan = pool(skirt, puanMat, 30), pTorso = pool(torsoGeo, plainMat, 60), pBox = pool(box, plainMat, 120), pCone = pool(cone, plainMat, 30);
     const JACKETS = ['#2c3e50', '#7a3b2e', '#3b5f3a', '#1f3a68', '#5b4a3a'], HELMETS = ['#f2f2ee', '#231e16', '#c0392b', '#1565c0', '#f2c230'];
 
     function placeAll(far, dt) {
       for (const m of pools) m.n = 0;
       const f = {};
-      const wheelPair = (x, r, z, w) => { put(tyre, x, r, z, w, r, r, '#1b1d1c'); put(rim, x, r, z, w, r, r, '#ffffff'); };
       for (const c of cars) {
         if (c.at < s - 15 || c.at > s + far) continue;
         frame3(c.at, c.x, f); base(f, -Math.atan2(c.vx || 0, c.dir * Math.max(3, Math.abs(c.v))), c.dir < 0);   // heading the way it moves, also across
         put(shadows, 0, 0.03, 0, c.wid * 1.2, 1, c.len * 1.08, '#000');
-        const back = -c.len / 2 - 0.02, stop = c.slowing ? '#ff3b2f' : '#9e2a22', K = CARS[c.kind];
-        if (K) {
-          const sy = c.hgt / K[2], sl = c.len / K[3], r = 0.31 * Math.max(1, sy * 0.95);
-          put(K[0], 0, 0, 0, c.wid, sy, sl, c.col); put(K[1], 0, 0, 0, c.wid, sy, sl, '#ffffff');
-          for (const z of [0.34, -0.33]) for (const e of [-1, 1]) wheelPair(e * c.wid * 0.43, r, z * c.len, 0.22);
-          for (const e of [-1, 1]) {
-            put(vGlow, e * c.wid * 0.36, 0.7 * sy, back, c.wid * 0.2, 0.1 * sy, 0.04, stop);          // tail lights
-            put(vGlow, e * c.wid * 0.34, 0.64 * sy, -back, c.wid * 0.2, 0.09 * sy, 0.04, '#fffbe6');  // headlights
-            put(vBox, e * c.wid * 0.53, 0.9 * sy, 0.2 * c.len, 0.1, 0.09, 0.14, c.col);               // mirrors
-          }
-          for (const z of [back + 0.05, -back - 0.05]) put(vBox, 0, 0.24 * sy, z, c.wid * 1.02, 0.2 * sy, 0.14, '#2b2d2c');   // bumpers
-          put(vBox, 0, 0.5 * sy, -back + 0.01, c.wid * 0.42, 0.13 * sy, 0.03, '#1d1f1e');            // grille
-          put(plateM, 0, 0.56 * sy, back - 0.03, 0.5, 0.13, 1, c.kind === 'taxi' ? '#ffd34d' : '#ffffff');
-          if (c.kind === 'taxi') put(vGlow, 0, 1.45 * sy, -0.05 * c.len, 0.5, 0.14, 0.24, '#ffd34d');
-          if (c.kind === 'suv') for (const e of [-1, 1]) put(vBox, e * c.wid * 0.36, 1.86 * sy, -0.4, 0.05, 0.06, c.len * 0.5, '#2b2d2c');
-        } else if (c.kind === 'bus') {
-          const sy = c.hgt / 3, sl = c.len / 9;
-          put(pBus, 0, 0, 0, c.wid, sy, sl, c.col);
-          put(vBox, 0, 0.95 * sy, 0, c.wid * 1.012, 0.16, c.len * 0.97, '#f4f4f0');                 // a white band
-          put(gBox, 0, 1.4 * sy, -0.2, c.wid * 1.014, 1.0 * sy, c.len * 0.84, '#ffffff');           // the side windows
-          put(gBox, 0, 1.2 * sy, -back - 0.03, c.wid * 0.9, 1.45 * sy, 0.06, '#ffffff');            // windscreen
-          put(gBox, 0, 1.65 * sy, back + 0.03, c.wid * 0.8, 0.8 * sy, 0.06, '#ffffff');             // rear window
-          put(vGlow, 0, 2.62 * sy, -back - 0.04, c.wid * 0.7, 0.26, 0.04, '#ffb300');               // the route board
-          put(vBox, -c.wid / 2 - 0.01, 0.42, c.len * 0.3, 0.03, 2.0 * sy, 1.0, '#2a2e33');          // the door, on the left
-          for (const z of [0.32, -0.3]) for (const e of [-1, 1]) wheelPair(e * c.wid * 0.42, 0.5, z * c.len, 0.3);
-          for (const e of [-1, 1]) { put(vGlow, e * c.wid * 0.4, 0.62, back, 0.3, 0.16, 0.04, stop); put(vGlow, e * c.wid * 0.38, 0.62, -back, 0.3, 0.16, 0.04, '#fffbe6'); }
-          for (const z of [back + 0.06, -back - 0.06]) put(vBox, 0, 0.3, z, c.wid * 1.01, 0.26, 0.16, '#2b2d2c');
-          put(plateM, 0, 0.75, back - 0.03, 0.5, 0.13, 1, '#ffd34d');
-        } else {        // a motorbike and its rider
+        const M = MODELS[c.kind], sl = c.len / M.len, sy = c.hgt / M.hgt, sw = M.single ? 1 : c.wid, stop = c.slowing ? '#ff3b2f' : '#8e2620';
+        put(M.pPaint, 0, 0, 0, sw, sy, sl, c.col); if (M.pGlass) put(M.pGlass, 0, 0, 0, sw, sy, sl, '#ffffff'); put(M.pChrome, 0, 0, 0, sw, sy, sl, '#ffffff');
+        for (const [u, r] of M.wheels) for (const e of (M.single ? [0] : [-1, 1])) { const rr = r * sy; put(tyreM, e * sw * M.track, rr, u * sl, M.tw, rr, rr, '#ffffff'); put(rimM, e * sw * M.track, rr, u * sl, M.tw, rr, rr, '#ffffff'); }
+        // lights: headlights in front, tail lights that glow brighter when it slows
+        const [hu, hv, hx, hw, hh] = M.head, [tu, tv, tx, tw, th] = M.tail;
+        for (const e of (M.single ? [0] : [-1, 1])) {
+          put(vGlow, e * sw * hx, (hv - hh / 2) * sy, hu * sl, sw * hw, hh * sy, 0.04, '#fffbe6');
+          put(vGlow, e * sw * tx, (tv - th / 2) * sy, tu * sl, sw * tw, th * sy, 0.04, stop);
+        }
+        const yellow = c.kind === 'taxi' || c.kind === 'bus' ? '#ffd34d' : '#ffffff';
+        put(plateM, 0, M.plate[1] * sy, M.plate[0] * sl - 0.02, M.single ? 0.24 : 0.5, M.single ? 0.1 : 0.13, 1, yellow);
+        if (M.front) put(plateM, 0, M.front[1] * sy, M.front[0] * sl + 0.02, 0.5, 0.13, 1, yellow, 0, Math.PI);
+        if (c.kind === 'taxi') put(vGlow, 0, 1.47 * sy, -0.4 * sl, 0.5, 0.14, 0.24, '#ffd34d');                    // the roof sign
+        if (c.kind === 'bus') {
+          put(vBox, 0, 0.95 * sy, 0, c.wid * 1.012, 0.16, c.len * 0.97, '#f4f4f0');                                // a white band
+          put(vBox, 0, 3.0 * sy, -0.5, c.wid * 0.6, 0.25, 2.2, '#d8d8d4');                                          // the air conditioner
+          put(vGlow, 0, 2.5 * sy, 4.54 * sl, c.wid * 0.7, 0.26, 0.04, '#ffb300');                                   // the route board
+        }
+        if (c.kind === 'bike') {     // the rider
           c.jk = c.jk || JACKETS[Math.random() * JACKETS.length | 0]; c.hm = c.hm || HELMETS[Math.random() * HELMETS.length | 0];
-          put(pBike, 0, 0, 0, 1, 1, 1, c.col);
-          put(vBox, 0, 0.2, 0.02, 0.26, 0.26, 0.5, '#3a3c3b');                     // engine
-          put(vBox, 0, 0.32, 0.66, 0.06, 0.62, 0.06, '#9a9e9c', -0.3);             // the front fork
-          put(vBox, 0, 0.98, 0.5, 0.66, 0.035, 0.035, '#231e16');                  // handlebar
-          for (const z of [0.62, -0.62]) wheelPair(0, 0.3, z, 0.1);
-          for (const e of [-1, 1]) { put(vBox, e * 0.15, 0.6, -0.12, 0.12, 0.12, 0.5, '#2c3e50'); put(vBox, e * 0.17, 0.22, 0.12, 0.11, 0.4, 0.11, '#2c3e50'); put(pLimb, e * 0.2, 1.22, -0.08, 0.08, 0.3, 0.08, c.jk, -1.05); }
-          put(pUp, 0, 0.74, -0.25, 0.36, 0.3, 0.24, c.jk, 0.3);
-          put(vRound, 0, 1.42, -0.02, 0.15, 0.16, 0.17, c.hm);
-          put(vGlow, 0, 0.62, back + 0.15, 0.14, 0.07, 0.04, stop); put(vGlow, 0, 0.9, -back - 0.2, 0.14, 0.12, 0.04, '#fff6c8');
-          put(plateM, 0, 0.45, back + 0.1, 0.24, 0.1, 1, '#ffffff');
+          for (const e of [-1, 1]) {
+            limbTo(pLimb, e * 0.12, 0.92, -0.3, 0.86, 0.12, 0.15, '#2c3e50');          // thighs to the knees
+            limbTo(pLimb, e * 0.14, 0.86, 0.12, 0.42, 0.18, 0.115, '#2c3e50');         // shins to the footpegs
+            put(pBox, e * 0.14, 0.37, 0.22, 0.1, 0.07, 0.24, '#2a2522');
+            limbTo(pLimb, e * 0.22, 1.4, -0.14, 1.12, 0.2, 0.095, c.jk); limbTo(pLimb, e * 0.27, 1.12, 0.2, 1.03, 0.5, 0.08, c.jk);   // arms to the grips
+            put(pRound, e * 0.3, 1.0, 0.5, 0.045, 0.045, 0.045, '#2a2522');               // gloves
+          }
+          put(pTorso, 0, 0.98, -0.28, 1, 1, 0.62, c.jk, 0.35);
+          put(pRound, 0, 1.6, -0.05, 0.15, 0.16, 0.17, c.hm);                             // helmet
         }
       }
       for (const t of things) {
@@ -1741,23 +1848,38 @@
         if (p.at < s - 6 || p.at > s + far) continue;
         frame3(p.at, p.x, f); f.pitch = 0; f.y += Math.abs(p.x) > HALF ? 0.15 : 0;     // on the footpath, or on the road
         const face = p.vx ? (p.vx > 0 ? -Math.PI / 2 : Math.PI / 2) : p.va < 0 ? Math.PI : 0;
-        if (p.face === undefined) p.face = face;
+        if (p.face === undefined) { p.face = face; p.sc = 0.93 + Math.random() * 0.12; }
         let turn = face - p.face; turn -= Math.round(turn / (Math.PI * 2)) * Math.PI * 2;
         p.face += turn * Math.min(1, dt * 7);                 // turning round takes a moment
-        base(f, p.face);
-        const L = p.look, sw = Math.sin(p.phase * Math.PI / 2) * 0.45;
+        base(f, p.face, false, p.sc);
+        // A walk: each leg swings from the hip and bends at the knee as it comes forward; the arms
+        // swing against the legs. An elder stoops a little and takes shorter steps.
+        const L = p.look, ph = p.phase * Math.PI / 2, old = L.elder ? 1 : 0, stoop = old * 0.22, skin = SKIN[LOOKS.indexOf(L) % SKIN.length];
+        const H = 0.86 + Math.abs(Math.cos(ph)) * 0.025, sh = H + 0.55 - stoop * 0.08, fw = stoop * 0.6;
         put(shadows, 0, 0.02, 0, 0.6, 1, 0.6, '#000');
         for (const e of [-1, 1]) {
-          put(pLimb, e * 0.1, 0.84, 0, 0.13, 0.41, 0.14, L.lower, e * sw);                  // legs
-          put(pLimb, e * 0.27, 1.4, 0, 0.09, 0.27, 0.09, L.shirt, -e * sw * 0.8);           // arms
+          const lp = ph + (e > 0 ? 0 : Math.PI), th = Math.sin(lp) * (old ? 0.26 : 0.42), kn = 0.08 + Math.max(0, Math.cos(lp)) * (old ? 0.35 : 0.6);
+          const ky = H - 0.43 * Math.cos(th), kz = 0.43 * Math.sin(th), ay = ky - 0.41 * Math.cos(th - kn), az = kz + 0.41 * Math.sin(th - kn);
+          const legs = L.stripes ? skin : L.lower;
+          limbTo(pLimb, e * 0.09, H, 0, ky, kz, 0.15, legs); limbTo(pLimb, e * 0.09, ky, kz, ay, az, 0.115, legs);
+          put(pBox, e * 0.09, ay - 0.05, az + 0.05, 0.1, 0.07, 0.24, L.stripes ? '#6b4a33' : '#2a2522');      // shoes; sandals under a puan
+          const ua = -Math.sin(lp) * (old ? 0.16 : 0.32), sleeve = L.jacket || old ? L.shirt : skin;
+          const [ey, ez, hy, hz] = e > 0 && L.umbrella ? armTo(e * 0.2, sh, fw, 0.35, 2.2, L.shirt, sleeve)
+            : e > 0 && L.stick ? armTo(e * 0.2, sh, fw, 0.3, 0.9, L.shirt, sleeve)
+            : armTo(e * 0.2, sh, fw, ua, ua + 0.25 + Math.max(0, -Math.sin(lp)) * 0.25, L.shirt, sleeve);
+          put(pRound, e * 0.215, hy, hz, 0.045, 0.05, 0.045, skin);                                             // hands
+          if (e > 0 && L.umbrella) { put(pBox, 0.215, hy, hz, 0.025, 2.0 - hy, 0.025, '#231e16'); put(pCone, 0.215, 1.95, hz, 0.62, 0.3, 0.62, L.umbrella); }
+          if (e > 0 && L.stick) limbTo(pLimb, 0.23, hy, hz, 0.02, hz + 0.14, 0.03, '#6b4a2f');                 // the walking stick
         }
-        if (L.stripes) { put(pSkirt, 0, 0.1, 0, 0.24, 0.82, 0.17, L.lower); for (const y of [0.34, 0.56]) put(pSkirt, 0, y, 0, 0.243, 0.05, 0.173, L.stripes); }
-        put(pUp, 0, 0.84, 0, 0.42, 0.3, 0.26, L.shirt);
-        put(pRound, 0, 1.57, 0, 0.12, 0.135, 0.125, '#d9a47c');
-        put(pRound, 0, 1.62, -0.015, 0.13, 0.095, 0.135, L.hair);
-        if (L.bun) put(pRound, 0, 1.64, -0.13, 0.065, 0.065, 0.065, L.hair);
-        if (L.bag) put(pBox, 0, 0.96, -0.2, 0.32, 0.36, 0.14, L.bag);
-        if (L.umbrella) { put(pBox, 0.28, 1.4, 0.05, 0.025, 0.75, 0.025, '#231e16'); put(pCone, 0.28, 2.1, 0.05, 0.62, 0.32, 0.62, L.umbrella); }
+        if (L.stripes) put(pPuan, 0, 0.26, 0, 0.21, 0.74, 0.15, L.stripes);                                  // the puan, its stripes in her colour
+        put(pTorso, 0, H + 0.1, 0, 1, 1, 0.62, L.shirt, stoop);
+        put(pUp, 0, H + 0.62 - stoop * 0.06, fw * 0.2, 0.09, 0.05, 0.09, skin);                              // neck
+        const hy = H + 0.8 - stoop * 0.08, hz = fw * 0.25;
+        put(pRound, 0, hy, hz, 0.105, 0.125, 0.115, skin);                                                   // head
+        put(pRound, 0, hy + 0.04, hz - 0.012, 0.112, 0.09, 0.122, L.hair);                                   // hair
+        if (L.bun) put(pRound, 0, hy + 0.06, hz - 0.12, 0.055, 0.055, 0.055, L.hair);
+        if (L.long) put(pBox, 0, hy - 0.3, hz - 0.085, 0.2, 0.32, 0.05, L.hair);
+        if (L.bag) put(pBox, 0, H + 0.12, -0.17, 0.3, 0.36, 0.13, L.bag);                                    // a school bag on the back
       }
       for (const m of pools) { m.count = m.n; m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }
     }
@@ -1825,64 +1947,101 @@
       if (camera.aspect) { for (const m of pools) m.count = Math.max(m.count, 1); renderer.compile(scene, camera); }
     }
 
-    // ---------- the scooter: its colours from the garage ----------
+    // ---------- the scooter: an Activa, its colours from the garage ----------
     const scoot = new T.Group(), lm = h => new T.MeshLambertMaterial({ color: h });
-    const bodyMats = [0, 1, 2].map(() => new T.MeshPhongMaterial({ shininess: 70, specular: C('#666666') })), tailMat = new T.MeshBasicMaterial({ color: '#b8352a', toneMapped: false });
-    const jacket = lm('#3b78bf'), trousers = lm('#2c3e50'), dark = lm('#2a2622'), tyreMat = lm('#1b1d1c'), skin = lm('#e8b48a');
-    const part = (geo, mat, x, y, z, sx = 1, sy = 1, sz = 1, rx = 0) => { const m = new T.Mesh(geo, mat); m.position.set(-x, y, z); m.scale.set(sx, sy, sz); m.rotation.x = rx; scoot.add(m); return m; };
+    // the body's three colours, each in a plain and a physically based material (the best level)
+    const bodyMats = [0, 1, 2].map(() => [new T.MeshPhongMaterial({ vertexColors: true, shininess: 70, specular: C('#666666') }), new T.MeshPhysicalMaterial({ vertexColors: true, metalness: 0.3, roughness: 0.38, clearcoat: 1, clearcoatRoughness: 0.05 })]);
+    const tailMat = new T.MeshBasicMaterial({ color: '#b8352a', toneMapped: false }), amber = new T.MeshBasicMaterial({ color: '#ffae1a', toneMapped: false });
+    const jacket = lm('#3b78bf'), trousers = lm('#2c3e50'), dark = lm('#2a2622'), skin = lm('#e8b48a');
+    const part = (geo, mat, x, y, z, sx = 1, sy = 1, sz = 1, rx = 0) => {
+      const pair = Array.isArray(mat) ? mat : null, m = new T.Mesh(geo, pair ? pair[0] : mat);
+      if (pair) m.userData.sw = pair;
+      m.position.set(-x, y, z); m.scale.set(sx, sy, sz); m.rotation.x = rx; scoot.add(m); return m;
+    };
     const up = new T.Vector3(0, -1, 0);
     const limb = (a, b, r, mat) => {      // a capsule from a to b ([x, y, z], x to the right)
       const d = new T.Vector3(-(b[0] - a[0]), b[1] - a[1], b[2] - a[2]), L = d.length(), m = new T.Mesh(capHang, mat);
       m.position.set(-a[0], a[1], a[2]); m.quaternion.setFromUnitVectors(up, d.normalize()); m.scale.set(r * 2, L / 2, r * 2); scoot.add(m);
     };
-    // an Activa-style body: the rear cowl, the floorboard, the front shield up to the handlebar
-    part(side([[-0.82, 0.3], [-0.88, 0.5], [-0.72, 0.68], [-0.08, 0.66], [0.06, 0.42], [0.42, 0.4], [0.52, 0.56], [0.6, 1.0], [0.74, 1.04], [0.8, 0.62], [0.72, 0.3], [0.5, 0.2], [-0.2, 0.22], [-0.6, 0.24]], 0.42, 0.06), bodyMats[1], 0, 0, 0);
-    part(side([[0.5, 1.0], [0.55, 1.12], [0.8, 1.15], [0.86, 1.04]], 0.52, 0.04), bodyMats[0], 0, 0, 0);       // the handlebar cover
-    part(side([[-0.8, 0.66], [-0.76, 0.79], [-0.12, 0.79], [0.0, 0.7], [-0.1, 0.65]], 0.36, 0.05), dark, 0, 0, 0);   // seat
-    part(box, lm('#3a3c3b'), 0, 0.38, 0.24, 0.34, 0.04, 0.4);                                                   // the floor mat
-    part(box, bodyMats[2], 0, 0.5, 0.58, 0.36, 0.42, 0.06, -0.25);                                           // inner panel
-    const tail = part(box, tailMat, 0, 0.5, -0.875, 0.26, 0.08, 0.03);
-    part(plateGeo, plateMat, 0, 0.4, -0.885, 0.24, 0.1, 1);
-    part(box, new T.MeshBasicMaterial({ color: '#fffbe6', toneMapped: false }), 0, 0.98, 0.84, 0.16, 0.08, 0.03);              // headlight
-    for (const z of [0.6, -0.56]) { part(wheel, tyreMat, 0, 0.25, z, 0.12, 0.25, 0.25); part(rimGeo, chromeMat, 0, 0.25, z, 0.12, 0.25, 0.25); }
-    const wheels = scoot.children.filter(m => m.geometry === wheel);
-    part(box, chromeMat, 0, 0.72, -0.62, 0.36, 0.03, 0.3);                                                    // the rack
-    for (const e of [-1, 1]) {
-      part(box, dark, e * 0.27, 1.12, 0.68, 0.02, 0.18, 0.02);                                                // mirror stalks
-      part(ball, dark, e * 0.29, 1.27, 0.68, 0.06, 0.045, 0.02);
-      part(box, dark, e * 0.3, 1.08, 0.66, 0.12, 0.04, 0.04);                                                 // grips
-      limb([e * 0.13, 0.84, -0.3], [e * 0.16, 0.86, 0.12], 0.08, trousers);                                   // thighs
-      limb([e * 0.16, 0.86, 0.12], [e * 0.17, 0.44, 0.22], 0.065, trousers);                                  // shins
-      part(box, dark, e * 0.17, 0.4, 0.22, 0.11, 0.08, 0.22);                                                 // shoes
-      limb([e * 0.2, 1.32, -0.26], [e * 0.29, 1.08, 0.6], 0.055, jacket);                                     // arms to the grips
+    {
+      // the body: rear cowl, the floorboard, the front apron up to the handlebar; dark trim in the same mesh
+      const B = parts(), A = parts(), N = parts(), S = parts(), H = parts();
+      B.side([[-0.84, 0.3], [-0.9, 0.48], [-0.86, 0.6], [-0.74, 0.7], [-0.1, 0.68], [0.04, 0.44], [0.42, 0.42], [0.5, 0.58], [0.57, 0.96], [0.66, 1.06], [0.76, 1.06], [0.82, 0.9], [0.8, 0.62], [0.74, 0.42], [0.6, 0.3], [0.5, 0.22], [-0.2, 0.22], [-0.62, 0.24]], 0.42, 0.05);
+      B.box(0.24, 0.42, 0, 0.42, 0.03, 0.36, '#3a3c3b');                                       // the floor mat
+      B.box(-0.3, 0.26, 0, 0.9, 0.06, 0.44, DK);                                               // the dark skirt along the bottom
+      B.box(-0.87, 0.47, 0, 0.04, 0.16, 0.3, DK);                                              // the tail lamp housing
+      const arc = (r0, r1) => { const o = []; for (let i = 0; i <= 8; i++) { const a = (0.12 + i / 8 * 0.62) * Math.PI; o.push([0.6 + r1 * Math.cos(a), 0.25 + r1 * Math.sin(a)]); } for (let i = 8; i >= 0; i--) { const a = (0.12 + i / 8 * 0.62) * Math.PI; o.push([0.6 + r0 * Math.cos(a), 0.25 + r0 * Math.sin(a)]); } return o; };
+      A.side(arc(0.29, 0.34), 0.16, 0.01);                                                      // front mudguard
+      A.side([[0.5, 1.0], [0.55, 1.12], [0.8, 1.16], [0.88, 1.04]], 0.54, 0.04);              // the handlebar cover
+      N.box(0.56, 0.6, 0, 0.05, 0.42, 0.36, '#ffffff', -0.25);                                 // inner panel
+      S.side([[-0.82, 0.66], [-0.78, 0.8], [-0.12, 0.8], [0.0, 0.71], [-0.1, 0.65]], 0.36, 0.05, '#ffffff');   // seat
+      H.rod(-0.7, 0.3, 0.18, -0.15, 0.27, 0.17, 0.045);                                         // exhaust, on the right
+      H.box(-0.62, 0.74, 0, 0.3, 0.03, 0.38);                                                   // the rack
+      for (const e of [-1, 1]) { H.rod(0.68, 1.08, e * 0.27, 0.66, 1.24, e * 0.28, 0.01); H.rod(0.6, 0.25, e * 0.06, 0.62, 0.95, e * 0.06, 0.022); }   // mirror stalks, fork
+      part(B.done(), bodyMats[1], 0, 0, 0); part(A.done(), bodyMats[0], 0, 0, 0); part(N.done(), bodyMats[2], 0, 0, 0);
+      part(S.done(), dark, 0, 0, 0); part(H.done(), VMAT.chrome, 0, 0, 0);
     }
-    part(capUp, jacket, 0, 0.8, -0.36, 0.4, 0.3, 0.26, 0.28);                                               // the rider, leaning forward a little
-    part(ball, lm('#f2f2ee'), 0, 1.53, -0.2, 0.16, 0.17, 0.18);                                              // helmet
-    part(ball, lm('#c03a2e'), 0, 1.56, -0.2, 0.164, 0.045, 0.184);
-    part(box, lm('#d9a45a'), 0, 0.74, -0.66, 0.44, 0.4, 0.36);                                              // the parcel box on the rack
-    part(box, lm('#a8742c'), 0, 0.74, -0.66, 0.07, 0.405, 0.365);
-    part(plane, new T.MeshLambertMaterial({ map: tex(64, 32, g => { g.fillStyle = '#fff7e6'; g.fillRect(0, 0, 64, 32); g.fillStyle = '#1d6b34'; g.font = '800 13px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('Hnahsin', 32, 17); }) }), 0, 0.84, -0.845, 0.2, 0.1, 1).rotation.y = Math.PI;
+    const tail = part(box, tailMat, 0, 0.42, -0.895, 0.24, 0.08, 0.02);
+    for (const e of [-1, 1]) { part(box, amber, e * 0.16, 0.5, -0.9, 0.06, 0.05, 0.02); part(box, amber, e * 0.2, 0.9, 0.79, 0.06, 0.05, 0.02); }   // indicators
+    part(plateGeo, plateMat, 0, 0.32, -0.9, 0.24, 0.1, 1);
+    part(box, new T.MeshBasicMaterial({ color: '#fffbe6', toneMapped: false }), 0, 1.06, 0.865, 0.18, 0.08, 0.02);       // headlight
+    const wheels = [];
+    for (const z of [0.6, -0.56]) { wheels.push(part(tyreGeo, VMAT.tyre, 0, 0.25, z, 0.13, 0.25, 0.25)); part(rimGeo, VMAT.chrome, 0, 0.25, z, 0.13, 0.25, 0.25); }
+    for (const e of [-1, 1]) {
+      part(ball, dark, e * 0.29, 1.27, 0.66, 0.06, 0.045, 0.02);                                // mirrors
+      part(box, dark, e * 0.3, 1.08, 0.66, 0.12, 0.04, 0.04);                                   // grips
+      limb([e * 0.13, 0.85, -0.3], [e * 0.16, 0.87, 0.12], 0.08, trousers);                    // thighs
+      limb([e * 0.16, 0.87, 0.12], [e * 0.17, 0.46, 0.22], 0.065, trousers);                   // shins
+      part(box, dark, e * 0.17, 0.42, 0.22, 0.11, 0.08, 0.22);                                  // shoes
+      limb([e * 0.2, 1.33, -0.26], [e * 0.29, 1.09, 0.6], 0.055, jacket);                      // arms to the grips
+    }
+    part(torsoGeo, jacket, 0, 0.9, -0.36, 1, 1, 0.62, 0.28);                                   // the rider, leaning forward a little
+    part(ball, lm('#f2f2ee'), 0, 1.54, -0.2, 0.16, 0.17, 0.18);                               // helmet
+    part(ball, lm('#c03a2e'), 0, 1.57, -0.2, 0.164, 0.045, 0.184);
+    part(box, lm('#d9a45a'), 0, 0.76, -0.66, 0.44, 0.4, 0.36);                               // the parcel box on the rack
+    part(box, lm('#a8742c'), 0, 0.76, -0.66, 0.07, 0.405, 0.365);
+    part(plane, new T.MeshLambertMaterial({ map: tex(64, 32, g => { g.fillStyle = '#fff7e6'; g.fillRect(0, 0, 64, 32); g.fillStyle = '#1d6b34'; g.font = '800 13px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('Hnahsin', 32, 17); }) }), 0, 0.86, -0.845, 0.2, 0.1, 1).rotation.y = Math.PI;
     const riderShadow = new T.Mesh(blob, shadowMat); riderShadow.scale.set(0.8, 1, 1.9); scene.add(riderShadow);
     scoot.traverse(m => { m.castShadow = !!m.isMesh; });
     scene.add(scoot);
     let painted = '';
+
+    // ---------- what the shiny things mirror: our own sky, the hills and the sun, made once ----------
+    const pmrem = new T.PMREMGenerator(renderer), envScene = new T.Scene();
+    const envSky = new T.Mesh(new T.SphereGeometry(50, 32, 16), new T.ShaderMaterial({
+      uniforms: { top: { value: new T.Color() }, low: { value: new T.Color() }, ground: { value: new T.Color('#46603f') } },
+      vertexShader: 'varying float vy;\nvoid main() { vy = normalize(position).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'uniform vec3 top;\nuniform vec3 low;\nuniform vec3 ground;\nvarying float vy;\nvoid main() { gl_FragColor = vec4(vy < 0.0 ? mix(low, ground, clamp(-vy * 5.0, 0.0, 1.0)) : mix(low, top, pow(clamp(vy * 2.2, 0.0, 1.0), 0.7)), 1.0); }',
+      side: T.BackSide, depthWrite: false,
+    }));
+    const envHills = new T.Mesh(new T.CylinderGeometry(45, 45, 7, 48, 1, true), new T.MeshBasicMaterial({ color: '#6f8f78', side: T.BackSide }));
+    envHills.position.y = 1; const envSun = new T.Mesh(new T.SphereGeometry(3, 12, 8), new T.MeshBasicMaterial({ color: new T.Color(7, 6.6, 5.8) }));
+    envScene.add(envSky, envHills, envSun);
+    let envRT = null, envStep = -1;
+    function makeEnv() {
+      envStep = hazeStep;
+      envSky.material.uniforms.top.value.copy(sky.material.uniforms.top.value); envSky.material.uniforms.low.value.copy(scene.fog.color);
+      envSun.position.copy(sunDir).multiplyScalar(40); envSun.material.color.copy(sun.color).multiplyScalar(7);
+      if (envRT) envRT.dispose();
+      envRT = pmrem.fromScene(envScene, 0.02); scene.environment = envRT.texture;
+    }
 
     // ---------- the picture ----------
     let lastT = 0, perfN = 0, perfMs = 0;
     const cam = new T.Vector3(), aim = new T.Vector3(), want = new T.Vector3(), fogCol = new T.Color();
     const HZ = HAZES.map(c => new T.Color(`rgb(${c})`)), MIST = C('#ecf2ee'), SKY0 = C('#4f9be0'), SKY1 = C('#7f9fcf'), SUN0 = C('#fff2dc'), SUN1 = C('#ffb070'), WARM = C('#ffe2c0'), WHITE = C('#ffffff');
     const rider = { x: 0, y: 0 }, fA = {}, fB = {}, fS = {};
-    let extras = null;
+    let extras = null, orbit = null;
     function size() {
       renderer.setPixelRatio(Math.min(devicePixelRatio || 1, LEVELS[level].pr)); renderer.setSize(W, H, false);
       camera.aspect = W / H; camera.fov = W / H < 1 ? 64 : 52; camera.updateProjectionMatrix();
-      // the best level: sun shadows (the blob shadows grow fainter) and shine on paint, glass and chrome
+      // the best level: sun shadows (the blob shadows grow fainter), and paint, glass and chrome that are physically based
       const hi = level === 2;
       if (extras === hi) return;
       extras = hi; renderer.shadowMap.enabled = hi; sun.castShadow = hi; shadowMat.opacity = hi ? 0.12 : 0.22;
-      for (const [m, r] of [[paintMat, 0.16], [glassMat, 0.45], [chromeMat, 0.6], ...bodyMats.map(b => [b, 0.16])]) {
-        m.envMap = hi ? envTex : null; m.combine = T.MixOperation; m.reflectivity = r; m.needsUpdate = true;
-      }
+      for (const m of pools) if (m.userData.vm) m.material = VMAT[m.userData.vm][hi ? 1 : 0];
+      scoot.traverse(m => { if (m.userData.sw) m.material = m.userData.sw[hi ? 1 : 0]; });
+      envStep = -1; if (!hi) scene.environment = null;
     }
     function draw3() {
       setRoute();
@@ -1903,7 +2062,8 @@
       ridgeMat.color.copy(WHITE).lerp(WARM, look.golden * 0.5);
       // The scooter: it leans, bobs on the road, and tips over in a crash
       const my = myScooter();
-      if (painted !== my.id) { painted = my.id; my.body.forEach((h, i) => bodyMats[i].color.set(h)); }
+      if (painted !== my.id) { painted = my.id; my.body.forEach((h, i) => bodyMats[i].forEach(m => m.color.set(h))); }
+      if (extras && envStep !== hazeStep) makeEnv();     // the sky in the paint follows the light of the day
       frame3(s, px, fS);
       const fall = mode === 'crashing' ? Math.min(1, crashT / 0.45) : 0, bob = mode === 'playing' && !reduce ? Math.sin(time * 31) * 0.006 + Math.sin(time * 7.3) * 0.004 : 0;
       scoot.position.set(fS.x, fS.y + bob - fall * 0.15, fS.z); scoot.rotation.set(fS.pitch, fS.yaw - (mode === 'crashing' ? 0 : Math.atan2(pvx, Math.max(4, v))), lean + crashDir * fall * 1.25, 'YXZ');
@@ -1918,7 +2078,10 @@
       // (in a tight bend it swings round a moment later, so the scooter stays in the picture)
       frame3(s, px * 0.7, fB); frame3(s + 9, px * 0.45, fA);
       want.set(fB.x - Math.sin(fB.yaw) * 5.4, fB.y + 2.3 + Math.sin(fB.pitch) * 5.4, fB.z - Math.cos(fB.yaw) * 5.4); aim.set(fA.x, fA.y + 0.9, fA.z);
-      if (mode === 'playing' || mode === 'crashing') cam.lerp(want, 1 - Math.exp(-Math.min(0.1, ms / 1000) * 9)); else cam.copy(want);
+      if (orbit) {      // for the tests only: look at the road ahead from anywhere round it
+        frame3(s + orbit.ahead, 0, fA); aim.set(fA.x, fA.y + 0.8, fA.z);
+        want.set(fA.x + Math.sin(fA.yaw + orbit.angle) * orbit.dist, fA.y + orbit.height, fA.z + Math.cos(fA.yaw + orbit.angle) * orbit.dist); cam.copy(want);
+      } else if (mode === 'playing' || mode === 'crashing') cam.lerp(want, 1 - Math.exp(-Math.min(0.1, ms / 1000) * 9)); else cam.copy(want);
       camera.position.copy(cam);
       if (shake > 0 && !reduce) camera.position.add(v3.set((Math.random() - 0.5) * shake * 0.3, (Math.random() - 0.5) * shake * 0.2, 0));
       camera.lookAt(aim);
@@ -1932,7 +2095,7 @@
       effects();
     }
     glc.addEventListener('webglcontextlost', e => { e.preventDefault(); R3 = null; glc.classList.remove('on'); draw(); });
-    return { draw: draw3, size, setPlan, rider, level: () => level };
+    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; } };
   }
 
   // ---------- the HUD ----------
@@ -2463,7 +2626,7 @@
 
   // For the automatic tests only (?test in the address): read the ride and steer.
   if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
-    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); } };
+    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1) => { const c = newCar(kind, lane, s + ahead, 0, dir); c.cruise = 0; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o) };
 
   syncSound(); syncWallet(); syncReady(); syncPause(); drawRoutes(); showParcel(); reset(); resize();
   // three.js is fetched once and kept on the phone; until then, and without WebGL, the picture is flat
