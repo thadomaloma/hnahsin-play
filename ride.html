@@ -1723,7 +1723,56 @@
       return grp;
     }
     const dispose = grp => grp.traverse(o => { if (o.geometry && !shared.has(o.geometry)) o.geometry.dispose(); if (o.isInstancedMesh) o.dispose(); });
-    let pieces = [], under = null, dropped = 0;
+    let pieces = [], under = null, fill = null, dropped = 0;
+    function baseGround() {
+      const { n, P, R, Y, grid } = W3, STEP = 5;
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (const q of P) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); z0 = Math.min(z0, q.z); z1 = Math.max(z1, q.z); }
+      x0 -= 45; z0 -= 45; x1 += 45; z1 += 45;
+      const nx = Math.ceil((x1 - x0) / STEP) + 1, nz = Math.ceil((z1 - z0) / STEP) + 1, H = new Float32Array(nx * nz).fill(NaN);
+      // first the points within 40 m of the road (from each piece of road, the points round it)
+      const keep = new Uint8Array(nx * nz);
+      for (let k = 0; k < n - 1; k++) {
+        const A = P[k], B = P[k + 1];
+        const i0 = Math.max(0, Math.floor((Math.min(A.x, B.x) - 40 - x0) / STEP)), i1 = Math.min(nx - 1, Math.ceil((Math.max(A.x, B.x) + 40 - x0) / STEP));
+        const j0 = Math.max(0, Math.floor((Math.min(A.z, B.z) - 40 - z0) / STEP)), j1 = Math.min(nz - 1, Math.ceil((Math.max(A.z, B.z) + 40 - z0) / STEP));
+        const dx = B.x - A.x, dz = B.z - A.z, L2 = dx * dx + dz * dz || 1;
+        for (let jj = j0; jj <= j1; jj++) for (let ii = i0; ii <= i1; ii++) {
+          if (keep[jj * nx + ii]) continue;
+          const x = x0 + ii * STEP, z = z0 + jj * STEP, t = clamp(((x - A.x) * dx + (z - A.z) * dz) / L2, 0, 1);
+          if ((A.x + dx * t - x) ** 2 + (A.z + dz * t - z) ** 2 <= 1600) keep[jj * nx + ii] = 1;
+        }
+      }
+      // then their height: from each stretch of road within 25 m, its own height and its hillside that far
+      // out, a little lower; where two stretches are near, the lowest, so it stays under both
+      for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+        if (!keep[j * nx + i]) continue;
+        const x = x0 + i * STEP, z = z0 + j * STEP, cx = Math.floor(x / 12), cz = Math.floor(z / 12);
+        let h = Infinity, best = Infinity, bh = 0;
+        for (let a = cx - 3; a <= cx + 3; a++) for (let b = cz - 3; b <= cz + 3; b++) for (const k of grid.get(a + ',' + b) || []) {
+          const A = P[k], B = P[k + 1], dx = B.x - A.x, dz = B.z - A.z, t = clamp(((x - A.x) * dx + (z - A.z) * dz) / (dx * dx + dz * dz || 1), 0, 1);
+          const d = Math.hypot(A.x + dx * t - x, A.z + dz * t - z);
+          if (d > 25) continue;
+          const kk = t < 0.5 ? k : k + 1, side = (x - P[kk].x) * R[kk].x + (z - P[kk].z) * R[kk].z >= 0 ? 1 : -1;
+          const v = Y[k] + (Y[k + 1] - Y[k]) * t + (W3.ride ? W3.ride[k] : 0) + (d <= HALF ? 0 : groundAt(kk, side, d)) - 0.35;
+          h = Math.min(h, v);
+        }
+        // beyond 25 m of every stretch: carry on from the nearest point already worked out
+        if (h === Infinity) { for (const [a, b] of [[i - 1, j], [i, j - 1], [i - 1, j - 1], [i + 1, j - 1]]) if (a >= 0 && a < nx && b >= 0 && !Number.isNaN(H[b * nx + a])) { h = H[b * nx + a]; break; } }
+        if (h < Infinity) H[j * nx + i] = h;
+      }
+      const pos = [], col = [], c = C('#5f9567');
+      for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) {
+        const q = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]].map(([a, b]) => [x0 + a * STEP, H[b * nx + a], z0 + b * STEP]);
+        if (q.some(v => Number.isNaN(v[1]))) continue;
+        for (const v of [q[0], q[2], q[1], q[0], q[3], q[2]]) { pos.push(v[0], v[1], v[2]); col.push(c.r, c.g, c.b); }
+      }
+      const g = new T.BufferGeometry();
+      g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new T.Float32BufferAttribute(col, 3));
+      g.computeVertexNormals(); g.computeBoundingSphere();
+      const m = new T.Mesh(g, groundMat); m.receiveShadow = true; m.userData.fill = true;
+      return m;
+    }
     function setRoute() {
       if (built === route.id) return;
       built = route.id;
@@ -1735,6 +1784,11 @@
       for (let k = 0; k < W3.n - 1; k += PIECE) pieces.push(piece(k, k + PIECE + 1));
       pieces.push(apron(0, -1), apron(W3.n - 1, 1));
       for (const g of pieces) scene.add(g);
+      // A base ground under it all, within 40 m of the road, a little below the hillside and the road so
+      // it never shows through them: wherever they leave a gap (inside a tight bend, between two
+      // stretches), you see ground there, not the valley floor far below
+      if (fill) { scene.remove(fill); fill.geometry.dispose(); }
+      fill = baseGround(); scene.add(fill);
       // the valley floor far below, so no gap in the hillside shows the sky
       if (!under) { under = new T.Mesh(new T.PlaneGeometry(8000, 8000).rotateX(-Math.PI / 2), new T.MeshLambertMaterial({ color: '#57865f' })); scene.add(under); }
       under.position.set(0, W3.minY - 70, 0);
@@ -2312,11 +2366,11 @@
         }
         return low > 0.2 && low < 4.5;
       };
-      for (const g of pieces) g.traverse(o => {
+      for (const g of [...pieces, fill].filter(Boolean)) g.traverse(o => {
         if (o.material !== groundMat) return;
-        const a = o.geometry.attributes.position, src = o.userData.apron ? 'apron' : 'piece', by = o.geometry.userData.by;
-        for (let i = 0; i < a.count; i++) if (overRoad(a.getX(i), a.getY(i), a.getZ(i), HALF - 0.3, by[i], o.geometry.userData.what[i] === 'road')) {
-          out.groundOnRoad++; out[src] = (out[src] || 0) + 1; const w = o.geometry.userData.what[i]; out.kinds = out.kinds || {}; out.kinds[w] = (out.kinds[w] || 0) + 1;
+        const a = o.geometry.attributes.position, src = o.userData.apron ? 'apron' : o.userData.fill ? 'fill' : 'piece', by = o.geometry.userData.by || [];
+        for (let i = 0; i < a.count; i++) if (overRoad(a.getX(i), a.getY(i), a.getZ(i), HALF - 0.3, by[i] ?? -99, !o.userData.fill && o.geometry.userData.what[i] === 'road')) {
+          out.groundOnRoad++; out[src] = (out[src] || 0) + 1; const w = o.userData.fill ? 'fill' : o.geometry.userData.what[i]; out.kinds = out.kinds || {}; out.kinds[w] = (out.kinds[w] || 0) + 1;
           // which sample of the road is it nearest, how far across, how high, and which sample built it
           const x = a.getX(i), z = a.getZ(i); let bk = 0, bd = 1e9; for (let k = 0; k < n; k++) { const d = (P[k].x - x) ** 2 + (P[k].z - z) ** 2; if (d < bd) { bd = d; bk = k; } }
           (out.near = out.near || {})[bk] = (out.near[bk] || 0) + 1;
@@ -2359,8 +2413,23 @@
       for (const e of [-1, 1]) { const f = frame3(route.length, e * HALF * 1.2, {}); if (onRoad(f.x, f.z, -0.6, f.y, f.y + 4, n - 12, n)) out.finishBad++; }
       return out;
     }
+    // For the tests: holes near the road, where you would look straight down to the valley floor far
+    // below. Rays from above, beside the road where the hillside is cut short.
+    function audit5() {
+      setRoute();
+      const { n, ext } = W3, ray = new T.Raycaster(), down = new T.Vector3(0, -1, 0), o = new T.Vector3(), out = { rays: 0, holes: 0, at: [] };
+      for (let k = 0; k < n - 1; k += 2) for (const sd of [-1, 1]) {
+        if (!(W3.bare[sd][k] || W3.gone[sd][k] || ext[sd][k] < 25)) continue;
+        const near = pieces.slice(Math.max(0, Math.floor(k / PIECE) - 1), Math.floor(k / PIECE) + 2).concat(pieces.slice(-2)).flatMap(g => g.children).concat(fill ? [fill] : []);
+        for (const L of [HALF + 0.5, 6, 9, 12]) {
+          const q = ptAt(k, sd * L, 0); o.set(q[0], q[1] + 40, q[2]); ray.set(o, down); ray.far = 75; out.rays++;
+          if (!ray.intersectObjects(near, false).length) { out.holes++; if (out.at.length < 8) out.at.push([k, sd, L, W3.bare[sd][k] ? 'bare' : W3.gone[sd][k] ? 'gone' : 'short', +ext[sd][k].toFixed(1)]); }
+        }
+      }
+      return out;
+    }
     const walkable = (i, sd) => { setRoute(); i = clamp(i, 0, W3.n - 1); return !W3.bare[sd][i] && !W3.gone[sd][i] && !W3.ride[i]; };
-    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, walkable };
+    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, walkable };
   }
 
   // ---------- the HUD ----------
@@ -2903,6 +2972,7 @@
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
     auditAll: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; const a = R3.audit(); out.push({ id: r.id, ...a }); } route = keep; R3.audit(); return out; },
     audit3All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); R3.setPlan(); out.push({ id: r.id, ...R3.audit3() }); } route = keep; reset(); return out; },
+    audit5All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit5() }); } route = keep; reset(); return out; },
     audit4All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); out.push({ id: r.id, ...R3.audit4() }); } route = keep; reset(); return out; },
     audit2All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit2() }); } route = keep; R3.audit(); return out; } };
 

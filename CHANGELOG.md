@@ -4,6 +4,15 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.21.6 (31 October 2026)
+
+### Aizawl Ride: no holes beside the road
+
+- There is ground under it all now, within 40 m of the road. Inside a tight
+  bend, or between two stretches of road close together, you no longer
+  look down through a gap to the valley floor far below.
+- Checked on every road in the game.
+
 ## 1.21.5 (31 October 2026)
 
 ### Aizawl Ride: people stay on the footpath
