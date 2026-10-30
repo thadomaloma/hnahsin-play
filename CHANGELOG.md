@@ -4,6 +4,22 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.21.4 (31 October 2026)
+
+### Aizawl Ride: roads that meet properly
+
+- Where the road comes back past itself (hairpins, and the places where a
+  delivery turns back along the same street), the hillside, kerbs,
+  footpaths and walls of one stretch no longer lie on the other. The road
+  is drawn once where two passes overlap, and they meet without a step;
+  the scooter and the traffic ride right on it.
+- On the inside of the tightest bends the road no longer folds over itself.
+- Houses keep off the footpaths of other stretches, and a sign is never left
+  standing on a road or inside a house.
+- The straight bits of road before the start and after the end stop where
+  they would meet the road.
+- Every road in the game has been checked.
+
 ## 1.21.3 (30 October 2026)
 
 ### Aizawl Ride: trees, poles and wires in their places

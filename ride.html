@@ -1402,6 +1402,21 @@
         for (let k = 0; k < n; k++) { X.push(x); Z.push(z); hd += route.curv[k] * 1e-4 * SEG; x += Math.sin(hd) * SEG; z += Math.cos(hd) * SEG; }
       }
       const Y = smooth(route.height.map(h => h * 0.1), 2);
+      // Where the route comes back along the same street (at the tip of a hairpin), the two passes lie
+      // on top of each other: give both the same height there, easing back over about 40 m either
+      // side, so neither road shows through the other. Only those places change.
+      {
+        const sum = new Float64Array(n), cnt = new Float64Array(n);
+        for (let k = 0; k < n; k++) for (let j = k + 7; j < n; j++) if (Math.hypot(X[j] - X[k], Z[j] - Z[k]) < HALF * 2) {
+          const m = (Y[k] + Y[j]) / 2; sum[k] += m - Y[k]; cnt[k]++; sum[j] += m - Y[j]; cnt[j]++;
+        }
+        const set = []; for (let k = 0; k < n; k++) if (cnt[k]) set.push([k, sum[k] / cnt[k]]);
+        if (set.length) {
+          const add = new Float64Array(n);
+          for (let k = 0; k < n; k++) { let num = 0, den = 0; for (const [i, d] of set) { const w = Math.max(0, 1 - Math.abs(k - i) / 10); num += d * w; den += w; } add[k] = den ? num / Math.max(1, den) : 0; }
+          for (let k = 0; k < n; k++) Y[k] += add[k];
+        }
+      }
       const P = [], R = [], F = [], yaw = [];
       for (let k = 0; k < n; k++) P.push(new T.Vector3(X[k] - X[0], Y[k], -(Z[k] - Z[0])));
       for (let k = 0; k < n; k++) {
@@ -1411,21 +1426,35 @@
       // How tight each bend is, so the hillside on its inside does not fold over itself
       const turn = smooth(yaw.map((y, k) => { if (!k) return 0; let d = y - yaw[k - 1]; d -= Math.round(d / (Math.PI * 2)) * Math.PI * 2; return d / SEG; }), 3);
       const ext = { '-1': [], '1': [] };
-      for (let k = 0; k < n; k++) for (const sd of [-1, 1]) ext[sd].push(sd * turn[k] < 0 ? clamp(0.7 / Math.max(1e-4, Math.abs(turn[k])), 12, 60) : 60);
+      for (let k = 0; k < n; k++) for (const sd of [-1, 1]) ext[sd].push(sd * turn[k] < 0 ? clamp(0.9 / Math.max(1e-4, Math.abs(turn[k])), 0, 60) : 60);   // no further than the middle of the bend
       // Where the road comes back past itself (Aizawl's roads loop round the hills), each side's
       // hillside stops halfway to the other stretch, so neither cuts through the other
+      const S = [0]; for (let k = 1; k < n; k++) S.push(S[k - 1] + Math.hypot(P[k].x - P[k - 1].x, P[k].z - P[k - 1].z));
+      const bare = { '-1': [], '1': [] }, gone = { '-1': [], '1': [] }, half = { '-1': [], '1': [] };
+      for (let k = 0; k < n; k++) for (const sd of [-1, 1]) {
+        const inner = sd * turn[k] < 0, R = 1 / Math.max(1e-6, Math.abs(turn[k]));
+        bare[sd][k] = inner && R < FOOT + 0.5;
+        half[sd][k] = inner ? Math.min(HALF, Math.max(1.2, R * 0.9)) : HALF;
+      }
       for (let k = 0; k < n; k++) for (const sd of [-1, 1]) {
         let e = ext[sd][k];
-        for (let j = 0; j < n; j += 2) {
-          if (Math.abs(j - k) < 15) continue;
+        for (let j = 0; j < n; j++) {
+          if (Math.abs(S[j] - S[k]) < 8) continue;     // the same part of the road (in metres along it: samples bunch up on bends)
           const dx = P[j].x - P[k].x, dz = P[j].z - P[k].z, lat = (dx * R[k].x + dz * R[k].z) * sd, along = dx * F[k].x + dz * F[k].z;
-          if (lat > 0 && lat < e * 2 + 10 && Math.abs(along) < 10) e = Math.min(e, Math.max(KERB + 0.4, lat / 2 - 1));
+          if (lat > 0 && lat < e * 2 + 10 && Math.abs(along) < 10) e = Math.min(e, Math.max(lat < HALF + FOOT + 0.5 ? 0 : KERB + 0.4, lat / 2 - 0.5));   // halfway to it
+          // another part of the road on this side; or one that came this way before, right on top of this
+          // one (that first pass draws the kerbs and all, this pass leaves them out)
+          if (Math.abs(along) < 6) {
+            if (lat > 0 && lat < HALF + FOOT + 0.5) bare[sd][k] = true;
+            if (Math.abs(lat) < 1.5 && S[j] < S[k]) gone[sd][k] = bare[sd][k] = true;
+          }
         }
         ext[sd][k] = e;
       }
       const grid = new Map();
       for (let k = 0; k < n - 1; k++) { const key = Math.floor(P[k].x / 12) + ',' + Math.floor(P[k].z / 12); (grid.get(key) || grid.set(key, []).get(key)).push(k); }
-      return { n, P, R, F, yaw, Y, ext, grid, minY: Math.min(...Y) };
+      for (const sd of [-1, 1]) for (let k = 0; k < n; k++) if (gone[sd][k]) ext[sd][k] = 0;
+      return { n, P, R, F, yaw, Y, ext, grid, bare, gone, half, minY: Math.min(...Y) };
     }
     // Would a thing at (x, z), r metres round and from height y0 to y1, stand on the road anywhere along
     // it? Aizawl's roads loop round the hills and come back past themselves, so a house beside one
@@ -1441,13 +1470,27 @@
       }
       return false;
     }
+    // The height of an earlier pass of the road (segments before kMax) right under (x, z), if one lies
+    // there within 2 m of height y; else null
+    function earlierY(x, z, y, kMax) {
+      const { P, Y, grid } = W3, cx = Math.floor(x / 12), cz = Math.floor(z / 12);
+      let best = null, bd = (HALF + 0.05) ** 2;
+      for (let i = cx - 1; i <= cx + 1; i++) for (let j = cz - 1; j <= cz + 1; j++) for (const k of grid.get(i + ',' + j) || []) {
+        if (k >= kMax) continue;
+        const a = P[k], b = P[k + 1], dx = b.x - a.x, dz = b.z - a.z, t = clamp(((x - a.x) * dx + (z - a.z) * dz) / (dx * dx + dz * dz || 1), 0, 1);
+        const d = (a.x + dx * t - x) ** 2 + (a.z + dz * t - z) ** 2, ry = Y[k] + (Y[k + 1] - Y[k]) * t;
+        if (d < bd && Math.abs(ry - y) < 2) { bd = d; best = ry; }
+      }
+      return best;
+    }
     // A place on the road: at metres along, lat metres to the right; beyond either end it carries on straight
     function frame3(at, lat, out) {
       const { n, P, R, yaw } = W3, i = clamp(at / SEG, 0, n - 1.001), k = Math.floor(i), t = i - k, a = P[k], b = P[k + 1];
       const over = (at / SEG - i) * SEG, fx = b.x - a.x, fz = b.z - a.z, L = Math.hypot(fx, fz) || 1;
       const rx = R[k].x + (R[k + 1].x - R[k].x) * t, rz = R[k].z + (R[k + 1].z - R[k].z) * t;
       let dy = yaw[k + 1] - yaw[k]; dy -= Math.round(dy / (Math.PI * 2)) * Math.PI * 2;
-      out.x = a.x + fx * t + fx / L * over + rx * lat; out.y = a.y + (b.y - a.y) * t; out.z = a.z + fz * t + fz / L * over + rz * lat;
+      const rd = W3.ride ? W3.ride[k] + (W3.ride[k + 1] - W3.ride[k]) * t : 0;
+      out.x = a.x + fx * t + fx / L * over + rx * lat; out.y = a.y + (b.y - a.y) * t + rd; out.z = a.z + fz * t + fz / L * over + rz * lat;
       out.yaw = yaw[k] + dy * t; out.pitch = -Math.atan2(b.y - a.y, L);
       return out;
     }
@@ -1462,14 +1505,16 @@
       return o <= E + 0.3 ? 0.15 : base + bump;
     }
     function strip() {
-      const p = [], c = [];
+      const p = [], c = [], by = [], what = [];      // by: the sample that built each corner, and what it is (kept for the tests, not drawn)
       return {
-        quad(a, b, cc, d, hex) { const k = C(hex); for (const v of [a, b, cc, a, cc, d]) { p.push(v[0], v[1], v[2]); c.push(k.r, k.g, k.b); } },
+        at: 0,
+        kind: 'ground',
+        quad(a, b, cc, d, hex) { const k = C(hex); for (const v of [a, b, cc, a, cc, d]) { p.push(v[0], v[1], v[2]); c.push(k.r, k.g, k.b); by.push(this.at); what.push(this.kind); } },
         mesh() {
           if (!p.length) return null;
           const g = new T.BufferGeometry();
           g.setAttribute('position', new T.Float32BufferAttribute(p, 3)); g.setAttribute('color', new T.Float32BufferAttribute(c, 3));
-          g.computeVertexNormals(); g.computeBoundingSphere(); const m = new T.Mesh(g, groundMat); m.receiveShadow = true; return m;
+          g.computeVertexNormals(); g.computeBoundingSphere(); g.userData.by = by; g.userData.what = what; const m = new T.Mesh(g, groundMat); m.receiveShadow = true; return m;
         },
       };
     }
@@ -1499,7 +1544,7 @@
             if (off + d / 2 <= ext[sd][k]) {
               const gy = groundAt(k, sd, off), hh = tall ? Math.max(3, tall * (0.8 + rnd(k, j + 9) * 0.35)) : 3 + rnd(k, j + 7) * 5 + j * 2;
               const bot = gy - 1.5, top = Math.max(gy + hh, 2 + rnd(k, j + 2) * 3), p = ptAt(k, sd * off, 0);
-              if (onRoad(p[0], p[2], Math.hypot(w, d) / 2, Y[k] + bot, Y[k] + top)) dropped++;
+              if (onRoad(p[0], p[2], Math.hypot(w, d) / 2, Y[k] + bot, Y[k] + top) || onRoad(p[0], p[2], Math.hypot(w, d) / 2 + FOOT + 0.3 - HALF - 0.8, Y[k] + bot, Y[k] + top, k - 6, k + 6)) dropped++;
               else {
                 h = { w, d, off, gy, bot, top, p, x: p[0], z: p[2], y0: Y[k] + bot, y1: Y[k] + top, c: Math.cos(yaw[k]), s: Math.sin(yaw[k]) };
                 const key = Math.floor(p[0] / 10) + ',' + Math.floor(p[2] / 10); (grid.get(key) || grid.set(key, []).get(key)).push(h);
@@ -1533,13 +1578,14 @@
       const poleAt = k => {
         if (k < 0 || k >= n || k % 9 || !footpath(k)) return null;
         const sd = sideAt(k, -1) >= -2.5 ? -1 : sideAt(k, 1) >= -2.5 ? 1 : 0;
-        if (!sd) return null;
+        if (!sd || W3.bare[sd][k]) return null;
         const lat = sd * (KERB + 0.15);
         const at = pt(k, lat, 0);
         if (onRoad(at[0], at[2], -0.1, at[1], at[1] + 9) || inHome(at[0], at[1], at[1] + 9, at[2], 0.2)) { dropped++; return null; }   // behind every kerb, also inside a tight bend
         return { sd, lat, ends: [-0.6, 0, 0.6].map(o => pt(k, lat + o, o ? 8.0 : 8.45)) };
       };
       for (let k = k0; k < Math.min(k1, n - 1); k++) {
+        st.at = k;
         const even = k % 2 === 0, pl = poleAt(k);
         if (pl) {
           POLE.push({ p: pt(k, pl.lat, 0.15), s: [1, 8.6, 1], c: '#a9a9a1' });
@@ -1554,30 +1600,57 @@
           }
         }
         // the road: asphalt, white edge lines, lane dashes
-        across(k, -HALF, HALF, 0, 0, even ? '#5b5e5c' : '#565957');
-        for (const e of [-1, 1]) across(k, e * (HALF - 0.18), e * (HALF - 0.06), 0.02, 0.02, '#e9e4d0');
-        if (even) for (const m of [-LANE / 2, LANE / 2]) across(k, m - 0.12, m + 0.12, 0.02, 0.02, '#f4efd9');
+        // (on the tightest bends the inner half is narrower, and the lines there are left out)
+        const hw = (sd, kk) => W3.half[sd][kk], full = sd => hw(sd, k) === HALF && hw(sd, k + 1) === HALF;
+        st.kind = 'road';
+        // Where the route comes back over a stretch it has already been along, the road is drawn once,
+        // by the first pass: a strip of this pass that lies on an earlier one is left out
+        // (only where the earlier road is within 2 m of it or higher: a road well above it always stays whole)
+        const over = (l0, l1) => { const a = pt(k, (l0 + l1) / 2, 0), b = pt(k + 1, (l0 + l1) / 2, 0), t = (a[1] + b[1]) / 2 + 2.5; return onRoad((a[0] + b[0]) / 2, (a[2] + b[2]) / 2, -1.1, t, t, k - 6, n); };
+        const cut = [-2.6, -1.3, 0, 1.3, 2.6], strips = [];
+        for (let i = 0; i <= cut.length; i++) {
+          const a0 = i ? cut[i - 1] : -hw(-1, k), b0 = i ? cut[i - 1] : -hw(-1, k + 1), a1 = i < cut.length ? cut[i] : hw(1, k), b1 = i < cut.length ? cut[i] : hw(1, k + 1);
+          if (a1 > a0 && b1 > b0) strips.push([a0, a1, b0, b1]);
+        }
+        // where its corners lie over an earlier pass, they take that road's height, so the two meet without a step
+        const on = (kk, lat, h) => { const q = pt(kk, lat, 0), ey = earlierY(q[0], q[2], q[1], k - 6); if (ey !== null) q[1] = ey; q[1] += h; return q; };
+        const roadQ = (l0, l1, m0, m1, h, hex) => st.quad(on(k, l0, h), on(k, l1, h), on(k + 1, m1, h), on(k + 1, m0, h), hex);
+        for (const [a0, a1, b0, b1] of strips) if (!over((a0 + b0) / 2, (a1 + b1) / 2)) roadQ(a0, a1, b0, b1, 0, even ? '#5b5e5c' : '#565957');
+        for (const e of [-1, 1]) if (full(e) && !over(e * (HALF - 0.18), e * (HALF - 0.06))) roadQ(e * (HALF - 0.18), e * (HALF - 0.06), e * (HALF - 0.18), e * (HALF - 0.06), 0.02, '#e9e4d0');
+        if (even) for (const m of [-LANE / 2, LANE / 2]) if (Math.min(hw(Math.sign(m), k), hw(Math.sign(m), k + 1)) > Math.abs(m) + 0.2 && !over(m - 0.12, m + 0.12)) roadQ(m - 0.12, m + 0.12, m - 0.12, m + 0.12, 0.02, '#f4efd9');
         for (const sd of [-1, 1]) {
-          const g = sideAt(k, sd), E = edge(k, sd), E1 = edge(k + 1, sd);
-          // the kerb, red and white; in town a footpath (kalkawng), where the ground falls a parapet
-          st.quad(pt(k, sd * HALF, 0), pt(k, sd * HALF, 0.15), pt(k + 1, sd * HALF, 0.15), pt(k + 1, sd * HALF, 0), '#8f8a80');
-          across(k, sd * HALF, sd * KERB, 0.15, 0.15, even ? '#c33f3f' : '#f3efe4');
-          if (E > KERB && E1 > KERB) across(k, sd * KERB, sd * FOOT, 0.15, 0.15, even ? '#d8d2c4' : '#cfc9bb');
-          if (g < -2.5) {
-            st.quad(pt(k, sd * KERB, 0.15), pt(k, sd * KERB, 0.8), pt(k + 1, sd * KERB, 0.8), pt(k + 1, sd * KERB, 0.15), k % 4 === 0 ? '#3a3a3a' : k % 2 ? '#f1ede2' : '#e6e1d4');
-            across(k, sd * KERB, sd * (KERB + 0.25), 0.8, 0.8, '#d9d4c6');
-          } else if (k % 3 === 0) {          // roadside posts slip past: you feel the speed
-            const x = sd * (E > KERB ? FOOT + 0.15 : 4.9);
-            upright(k, x, 0.16, 0.16, 0.15, 0.95, '#f6f3ea'); upright(k, x, 0.17, 0.17, 0.95, 1.2, '#2b2b2b');
+          // another part of the road right beside, or the inside of a tight bend: this side stays bare
+          // a pass right on top of an earlier one leaves this side to it; another part of the road close
+          // by, or the inside of a tight bend, leaves out the kerb, footpath, parapet and posts
+          if (W3.gone[sd][k] || W3.gone[sd][k + 1]) continue;
+          const bareSide = W3.bare[sd][k] || W3.bare[sd][k + 1];
+          const g = sideAt(k, sd), E = bareSide ? HALF : edge(k, sd), E1 = bareSide ? HALF : edge(k + 1, sd);
+          st.kind = 'kerb';
+          if (!bareSide) {
+            st.quad(pt(k, sd * HALF, 0), pt(k, sd * HALF, 0.15), pt(k + 1, sd * HALF, 0.15), pt(k + 1, sd * HALF, 0), '#8f8a80');
+            // the kerb, red and white; in town a footpath (kalkawng), where the ground falls a parapet
+            across(k, sd * HALF, sd * KERB, 0.15, 0.15, even ? '#c33f3f' : '#f3efe4');
+            if (E > KERB && E1 > KERB) across(k, sd * KERB, sd * FOOT, 0.15, 0.15, even ? '#d8d2c4' : '#cfc9bb');
+            if (g < -2.5) {
+              st.quad(pt(k, sd * KERB, 0.15), pt(k, sd * KERB, 0.8), pt(k + 1, sd * KERB, 0.8), pt(k + 1, sd * KERB, 0.15), k % 4 === 0 ? '#3a3a3a' : k % 2 ? '#f1ede2' : '#e6e1d4');
+              across(k, sd * KERB, sd * (KERB + 0.25), 0.8, 0.8, '#d9d4c6');
+            } else if (k % 3 === 0) {          // roadside posts slip past: you feel the speed
+              const x = sd * (E > KERB ? FOOT + 0.15 : 4.9);
+              st.kind = 'post'; upright(k, x, 0.16, 0.16, 0.15, 0.95, '#f6f3ea'); upright(k, x, 0.17, 0.17, 0.95, 1.2, '#2b2b2b');
+            }
           }
+          st.kind = 'ground';
+          // (on a bare side the ground starts level with the road, at its edge)
+          const gAt = (kk, o) => (bareSide && o <= HALF + 0.01 ? 0 : groundAt(kk, sd, o));
           // the hillside, in columns out to 60 m (less on the inside of a tight bend)
           const ca = [E, E + 0.05, E + 3, 10, 18, 30, 45, 60], cb = [E1, E1 + 0.05, E1 + 3, 10, 18, 30, 45, 60];
           for (let c = 0; c < ca.length - 1; c++) {
-            const oa0 = Math.min(ca[c], ext[sd][k]), oa1 = Math.min(ca[c + 1], ext[sd][k]), ob0 = Math.min(cb[c], ext[sd][k + 1]), ob1 = Math.min(cb[c + 1], ext[sd][k + 1]);
+            const xa = Math.max(HALF, ext[sd][k]), xb = Math.max(HALF, ext[sd][k + 1]);     // never inside the road
+            const oa0 = Math.min(ca[c], xa), oa1 = Math.min(ca[c + 1], xa), ob0 = Math.min(cb[c], xb), ob1 = Math.min(cb[c + 1], xb);
             if (oa1 - oa0 < 0.01 && ob1 - ob0 < 0.01) continue;
             const hex = c === 0 && g > 2.5 ? (footpath(k) ? (even ? '#a19c90' : '#9a958a') : (even ? '#5d9058' : '#64975d'))
               : g < -2.5 ? (even ? '#4f8a62' : '#558f67') : c > 3 ? (even ? '#5f9a6c' : '#5a9567') : (even ? '#6aa57a' : '#62a073');
-            st.quad(pt(k, sd * oa0, groundAt(k, sd, oa0)), pt(k, sd * oa1, groundAt(k, sd, oa1)), pt(k + 1, sd * ob1, groundAt(k + 1, sd, ob1)), pt(k + 1, sd * ob0, groundAt(k + 1, sd, ob0)), hex);
+            st.quad(pt(k, sd * oa0, gAt(k, oa0)), pt(k, sd * oa1, gAt(k, oa1)), pt(k + 1, sd * ob1, gAt(k + 1, ob1)), pt(k + 1, sd * ob0, gAt(k + 1, ob0)), hex);
           }
           // Houses, from the plan; where the ground falls, they stand on it and reach up to the road
           for (let j = 0; j < 3; j++) {
@@ -1625,9 +1698,15 @@
       const pa = (at, lat, h) => { frame3(at, lat, f); return [f.x, f.y + h, f.z]; };
       for (let j = 0; j < 15; j++) {
         const a = k * SEG + dir * j * SEG, b = a + dir * SEG;
+        st.at = k;
         frame3(b, 0, f);
         if (onRoad(f.x, f.z, 1.5, f.y - 3, f.y + 3, dir < 0 ? 0 : W3.n - 16, dir < 0 ? 15 : W3.n)) break;
-        const q = (l0, l1, h0, h1, hex) => st.quad(pa(a, l0, h0), pa(a, l1, h1), pa(b, l1, h1), pa(b, l0, h0), hex);
+        // a piece of it is left out where it would lie over another part of the road
+        const q = (l0, l1, h0, h1, hex) => {
+          const m = pa((a + b) / 2, (l0 + l1) / 2, (h0 + h1) / 2);
+          if (onRoad(m[0], m[2], Math.abs(l1 - l0) / 2 - 0.6, m[1] - 0.3, m[1] + 4, dir < 0 ? 0 : W3.n - 4, dir < 0 ? 3 : W3.n)) return;
+          st.quad(pa(a, l0, h0), pa(a, l1, h1), pa(b, l1, h1), pa(b, l0, h0), hex);
+        };
         q(-HALF, HALF, 0, 0, j % 2 ? '#565957' : '#5b5e5c');
         for (const sd of [-1, 1]) {
           q(sd * HALF, sd * KERB, 0.15, 0.15, j % 2 ? '#f3efe4' : '#c33f3f');
@@ -1635,7 +1714,7 @@
           for (let c = 0; c < cols.length - 1; c++) q(sd * cols[c], sd * cols[c + 1], groundAt(k, sd, cols[c]), groundAt(k, sd, cols[c + 1]), c > 2 ? '#5f9a6c' : '#6aa57a');
         }
       }
-      grp.add(st.mesh()); grp.userData.mid = W3.P[k];
+      const ap = st.mesh(); ap.userData.apron = true; grp.add(ap); grp.userData.mid = W3.P[k];
       return grp;
     }
     const dispose = grp => grp.traverse(o => { if (o.geometry && !shared.has(o.geometry)) o.geometry.dispose(); if (o.isInstancedMesh) o.dispose(); });
@@ -1645,6 +1724,9 @@
       built = route.id;
       for (const g of pieces) { scene.remove(g); dispose(g); }
       W3 = shape(); pieces = []; dropped = 0; planHomes();
+      // where this pass rides over an earlier one, the road under it has that road's height: so does whatever rides on it
+      W3.ride = new Float64Array(W3.n);
+      for (let k = 7; k < W3.n; k++) { const ey = earlierY(W3.P[k].x, W3.P[k].z, W3.Y[k], k - 6); if (ey !== null) W3.ride[k] = ey - W3.Y[k]; }
       for (let k = 0; k < W3.n - 1; k += PIECE) pieces.push(piece(k, k + PIECE + 1));
       pieces.push(apron(0, -1), apron(W3.n - 1, 1));
       for (const g of pieces) scene.add(g);
@@ -1965,18 +2047,23 @@
     const checkTex = signTex('finish', 128, 32, g => { for (let i = 0; i < 16; i++) for (let j = 0; j < 4; j++) { g.fillStyle = (i + j) % 2 ? '#231e16' : '#fff'; g.fillRect(i * 8, j * 8, 8, 8); } });
     const postMat = new T.MeshLambertMaterial({ color: '#4b4b4b' }), backMat = new T.MeshLambertMaterial({ color: '#8d918f' });
     let props = null;
+    // one material for each sign's picture, made once and kept
+    const signMats = new Map(), signMat = t => signMats.get(t) || signMats.set(t, new T.MeshLambertMaterial({ map: t, transparent: true })).get(t);
+    const finishMat = new T.MeshLambertMaterial({ map: checkTex, side: T.DoubleSide });
     function sign(at, lat, t, w, h, post) {
-      const f = frame3(at, lat, {}); f.pitch = 0; base(f, Math.PI);       // facing back, towards the rider
-      const g = new T.Group(); g.matrixAutoUpdate = false; g.matrix.copy(mB);
+      const f = frame3(at, lat, {}); f.pitch = 0;
+      if (onRoad(f.x, f.z, -0.5, f.y, f.y + post) || inHome(f.x, f.y + 0.5, f.y + post + h, f.z, 0.3)) return;   // not on a road, not in a house
+      base(f, Math.PI);       // facing back, towards the rider
+      const g = new T.Group(); g.matrixAutoUpdate = false; g.matrix.copy(mB); g.userData.sign = true;
       const add = (geo, mat, x, y, z, sx, sy, sz) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); g.add(m); };
       add(box, postMat, 0, 0, -0.06, 0.1, post + h * 0.5, 0.1);
       add(box, backMat, 0, post, -0.04, w, h, 0.05);
-      add(plane, new T.MeshLambertMaterial({ map: t, transparent: true }), 0, post, 0, w, h, 1);
+      add(plane, signMat(t), 0, post, 0, w, h, 1);
       props.add(g);
     }
     function setPlan() {
       setRoute();
-      if (props) { scene.remove(props); props.traverse(o => { if (o.material && o.material.map && o.material !== stripeMat) o.material.dispose(); if (o.isInstancedMesh) o.dispose(); }); }
+      if (props) { scene.remove(props); props.traverse(o => { if (o.isInstancedMesh) o.dispose(); }); }
       props = new T.Group(); scene.add(props);
       for (const [i, name, side] of route.places) if (i > 2) { const p = placeTex(name); sign(i * SEG, (side || 1) * 5.4, p.t, 0.8 * p.w / 96, 0.8, 2.2); }
       for (const j of jams) sign(j.at - 45, -5.4, honkTex(), 0.8, 1, 1.9);
@@ -1995,7 +2082,7 @@
       const f = frame3(route.length, 0, {}); f.pitch = 0; base(f, Math.PI);
       const g = new T.Group(); g.matrixAutoUpdate = false; g.matrix.copy(mB);
       for (const e of [-1, 1]) { const m = new T.Mesh(box, postMat); m.position.set(e * HALF * 1.2, 0, 0); m.scale.set(0.18, 4.6, 0.18); g.add(m); }
-      const ban = new T.Mesh(plane, new T.MeshLambertMaterial({ map: checkTex, side: T.DoubleSide })); ban.position.set(0, 3.8, 0); ban.scale.set(HALF * 2.4, 0.8, 1); g.add(ban);
+      const ban = new T.Mesh(plane, finishMat); ban.position.set(0, 3.8, 0); ban.scale.set(HALF * 2.4, 0.8, 1); g.add(ban);
       props.add(g);
       // every shader ready now, so nothing stutters the first time a new thing comes into view
       if (camera.aspect) { for (const m of pools) m.count = Math.max(m.count, 1); renderer.compile(scene, camera); }
@@ -2204,7 +2291,56 @@
       }
       return out;
     }
-    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2 };
+    // For the tests: the ground over a road, houses on a footpath, signs on a road or in a house,
+    // and the camera inside a house
+    function audit3() {
+      setRoute();
+      const { n, P, R, F, Y, grid } = W3, out = { groundOnRoad: 0, homeOnWalk: 0, signBad: 0, camInHome: 0, at: [] };
+      // is (x, y, z) over a road, within reach of its middle, from 0.15 m to 4.5 m above it?
+      // (above every piece of road it lies over: a point of the road itself is level with its own piece)
+      const overRoad = (x, y, z, reach, by, road) => {
+        const cx = Math.floor(x / 12), cz = Math.floor(z / 12); let low = Infinity;
+        for (let i = cx - 1; i <= cx + 1; i++) for (let j = cz - 1; j <= cz + 1; j++) for (const k of grid.get(i + ',' + j) || []) {
+          if (Math.abs(k - by) <= 6 || (road && k > by)) continue;     // its own part of the road (and for the road, later passes)
+          const a = P[k], b = P[k + 1], dx = b.x - a.x, dz = b.z - a.z, t = clamp(((x - a.x) * dx + (z - a.z) * dz) / (dx * dx + dz * dz || 1), 0, 1);
+          if ((a.x + dx * t - x) ** 2 + (a.z + dz * t - z) ** 2 < reach * reach) low = Math.min(low, y - (Y[k] + (Y[k + 1] - Y[k]) * t));
+        }
+        return low > 0.2 && low < 4.5;
+      };
+      for (const g of pieces) g.traverse(o => {
+        if (o.material !== groundMat) return;
+        const a = o.geometry.attributes.position, src = o.userData.apron ? 'apron' : 'piece', by = o.geometry.userData.by;
+        for (let i = 0; i < a.count; i++) if (overRoad(a.getX(i), a.getY(i), a.getZ(i), HALF - 0.3, by[i], o.geometry.userData.what[i] === 'road')) {
+          out.groundOnRoad++; out[src] = (out[src] || 0) + 1; const w = o.geometry.userData.what[i]; out.kinds = out.kinds || {}; out.kinds[w] = (out.kinds[w] || 0) + 1;
+          // which sample of the road is it nearest, how far across, how high, and which sample built it
+          const x = a.getX(i), z = a.getZ(i); let bk = 0, bd = 1e9; for (let k = 0; k < n; k++) { const d = (P[k].x - x) ** 2 + (P[k].z - z) ** 2; if (d < bd) { bd = d; bk = k; } }
+          (out.near = out.near || {})[bk] = (out.near[bk] || 0) + 1;
+          if (out.at.length < 6) out.at.push(['ground', bk, +Math.sqrt(bd).toFixed(1), +(a.getY(i) - Y[bk]).toFixed(1)]);
+          (out.list = out.list || []).push([o.geometry.userData.what[i], by[i], bk, +Math.sqrt(bd).toFixed(1), +(a.getY(i) - Y[bk]).toFixed(2)]);
+        }
+      });
+      // where the scooter rides over an earlier pass, how far its own height is from that road's
+      out.rideGap = 0;
+      for (let k = 7; k < n; k++) { const ey = earlierY(P[k].x, P[k].z, Y[k], k - 6); if (ey !== null) out.rideGap = Math.max(out.rideGap, Math.abs(ey - (Y[k] + W3.ride[k]))); }
+      out.minR = 1e9;
+      for (let k = 1; k < n - 1; k++) { let d = W3.yaw[k + 1] - W3.yaw[k - 1]; d -= Math.round(d / (Math.PI * 2)) * Math.PI * 2; const L = P[k + 1].distanceTo(P[k - 1]) || 1; const rr = L / Math.max(1e-6, Math.abs(d)); if (rr < 7) (out.tightAt = out.tightAt || []).push([k, +rr.toFixed(1), +L.toFixed(1)]); out.minR = Math.min(out.minR, rr); }
+      for (let k = 0; k < n - 1; k++) {
+        for (const sd of [-1, 1]) if (footpath(k) && sideAt(k, sd) > -2.5) { const q = ptAt(k, sd * 5.5, 0.15); if (inHome(q[0], q[1] + 0.3, q[1] + 1.6, q[2], 0.25)) out.homeOnWalk++; }
+        if (k % 2 === 0) {   // where the camera rides, 5.4 m behind and 2.3 m up
+          const cx = P[k].x - F[k].x * 5.4, cz = P[k].z - F[k].z * 5.4, cy = Y[Math.max(0, k - 1)] + 2.3;
+          if (inHome(cx, cy - 0.3, cy + 0.3, cz, 0.3)) { out.camInHome++; if (out.at.length < 12) out.at.push(['cam', k * SEG]); }
+        }
+      }
+      const signs = props ? props.children.filter(g => g.userData.sign) : [];
+      const v = new T.Vector3();
+      for (const g of signs) { v.setFromMatrixPosition(g.matrix); if (onRoad(v.x, v.z, -0.5, v.y, v.y + 2) || inHome(v.x, v.y + 0.5, v.y + 2.5, v.z, 0.3)) out.signBad++; }
+      const sign = () => {};
+      for (const [i, , side] of route.places) if (i > 2) sign(i * SEG, (side || 1) * 5.4);
+      for (const j of jams) sign(j.at - 45, -5.4);
+      for (const c of crossings) sign(c.at - 32, -(footpath(Math.floor(c.at / SEG)) ? FOOT + 0.3 : 5.3));
+      return out;
+    }
+    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3 };
   }
 
   // ---------- the HUD ----------
@@ -2746,6 +2882,7 @@
     peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1) => { const c = newCar(kind, lane, s + ahead, 0, dir); c.cruise = 0; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o),
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
     auditAll: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; const a = R3.audit(); out.push({ id: r.id, ...a }); } route = keep; R3.audit(); return out; },
+    audit3All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); R3.setPlan(); out.push({ id: r.id, ...R3.audit3() }); } route = keep; reset(); return out; },
     audit2All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit2() }); } route = keep; R3.audit(); return out; } };
 
   syncSound(); syncWallet(); syncReady(); syncPause(); drawRoutes(); showParcel(); reset(); resize();
