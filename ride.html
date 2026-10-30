@@ -1269,31 +1269,66 @@
     // ---------- trees: bark and wood, and leaves drawn on cards with gaps you can see through ----------
     // Four kinds, each built once and then placed many times: broad-leaved trees, bamboo (mau) clumps,
     // banana plants, and Khasi pines on the high ground. The leaves sway a little in the wind.
-    const REG = { broad: [0, 0.5, 0.5, 1], bamboo: [0.5, 0.5, 1, 1], banana: [0, 0, 0.5, 0.5], pine: [0.5, 0, 1, 0.5] };
-    const leafTex = tex(256, 256, g => {
+    // The leaf pictures, in a 3 × 2 grid: two kinds of broad-leaved twigs, a bamboo spray; a banana leaf,
+    // pine needles, ferns and grass. Each leaf is shaded from its base to its tip, with a vein.
+    const cellUV = (c, rw) => [c / 3, 1 - (rw + 1) / 2, (c + 1) / 3, 1 - rw / 2];
+    const REG = { broad: cellUV(0, 0), tall: cellUV(1, 0), bamboo: cellUV(2, 0), banana: cellUV(0, 1), pine: cellUV(1, 1), shrub: cellUV(2, 1) };
+    const leafTex = tex(768, 512, g => {
       let n = 0; const r = () => rnd(n++, 3.7);
-      const leaf = (x, y, len, wid, ang, col) => { g.save(); g.translate(x, y); g.rotate(ang); g.fillStyle = col; g.beginPath(); g.ellipse(0, len / 2, wid / 2, len / 2, 0, 0, 7); g.fill(); g.restore(); };
-      // a cluster of broad leaves (top left)
-      for (let i = 0; i < 120; i++) { const a = r() * 7, d = Math.sqrt(r()) * 52; leaf(64 + Math.cos(a) * d, 64 + Math.sin(a) * d * 0.9, 9 + r() * 7, 5 + r() * 3, r() * 7, ['#2f6a30', '#3f7d38', '#4d8f40', '#5c9c48', '#6aa850'][r() * 5 | 0]); }
-      // a bamboo spray (top right): thin twigs with narrow leaves hanging off them
-      g.lineCap = 'round';
-      for (let i = 0; i < 7; i++) {
-        const x0 = 192 + (r() - 0.5) * 24, ang = (r() - 0.5) * 1.4, x1 = x0 + Math.sin(ang) * 56, y1 = 6 + Math.cos(ang) * 100;
-        g.strokeStyle = '#6d7f3a'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x0, 6); g.lineTo(x1, y1); g.stroke();
-        for (let t = 0.12; t < 1; t += 0.08) leaf(x0 + (x1 - x0) * t, 6 + (y1 - 6) * t, 18 + r() * 10, 3 + r() * 2, ang + (r() < 0.5 ? 0.55 : -0.55) + (r() - 0.5) * 0.4, ['#6f9a3c', '#7fa848', '#5f8a34', '#8ab552'][r() * 4 | 0]);
-      }
-      // a banana leaf (bottom left): long and broad, a pale midrib, torn at the edges
-      g.save(); g.translate(64, 192);
-      const q = g.createLinearGradient(-30, 0, 30, 0); q.addColorStop(0, '#4f8f30'); q.addColorStop(0.5, '#7cbb48'); q.addColorStop(1, '#4f8f30');
-      g.fillStyle = q; g.beginPath(); g.ellipse(0, 0, 30, 62, 0, 0, 7); g.fill();
-      g.strokeStyle = '#c8dc8a'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(0, -62); g.lineTo(0, 62); g.stroke();
-      g.globalCompositeOperation = 'destination-out'; g.lineWidth = 2;
-      for (let y = -50; y < 56; y += 7 + r() * 8) { const e = r() < 0.5 ? -1 : 1; g.beginPath(); g.moveTo(e * 32, y + 4); g.lineTo(e * (6 + r() * 12), y); g.stroke(); }
-      g.restore();
-      // pine needles (bottom right): short dark strokes round each twig
-      g.lineWidth = 1.2;
-      for (let i = 0; i < 12; i++) { const cx = 146 + r() * 92, cy = 146 + r() * 92; for (let k = 0; k < 26; k++) { const a = r() * 7; g.strokeStyle = ['#244f2c', '#2f5f34', '#3a6c3a'][r() * 3 | 0]; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * 12, cy + Math.sin(a) * 12); g.stroke(); } }
+      const leaf = (x, y, len, wid, ang, base, tip) => {
+        g.save(); g.translate(x, y); g.rotate(ang);
+        const q = g.createLinearGradient(0, 0, 0, len); q.addColorStop(0, base); q.addColorStop(1, tip);
+        g.fillStyle = q; g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(wid, len * 0.4, 0, len); g.quadraticCurveTo(-wid, len * 0.4, 0, 0); g.fill();
+        g.strokeStyle = 'rgba(220,240,180,.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, 2); g.lineTo(0, len * 0.85); g.stroke();
+        g.restore();
+      };
+      // a twig with leaves along it, out from (x, y) towards angle ang
+      const twig = (x, y, ang, len, size, pal) => {
+        const x1 = x + Math.sin(ang) * len, y1 = y - Math.cos(ang) * len;
+        g.strokeStyle = '#4a3a28'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y); g.lineTo(x1, y1); g.stroke();
+        for (let t = 0.15; t <= 1; t += 0.12) {
+          const px = x + (x1 - x) * t, py = y + (y1 - y) * t, s = size * (0.75 + r() * 0.5), c = pal[r() * pal.length | 0];
+          for (const e of [-1, 1]) leaf(px, py, s, s * 0.42, ang + Math.PI + e * (0.7 + r() * 0.5), c[0], c[1]);
+        }
+        leaf(x1, y1, size, size * 0.42, ang + Math.PI, pal[0][0], pal[0][1]);
+      };
+      const cell = (c, rw, f) => { g.save(); g.translate(c * 256, rw * 256); g.beginPath(); g.rect(0, 0, 256, 256); g.clip(); f(); g.restore(); };
+      const greens = [['#2c5e2a', '#5f9a44'], ['#2f6830', '#6caa4c'], ['#3b6f2c', '#7fae4e'], ['#24522a', '#4f8a3e']];
+      const yellows = [['#3d6b22', '#8db248'], ['#2e5c26', '#6f9e3c'], ['#4a7428', '#9cba54'], ['#2a5226', '#5e8c38']];
+      cell(0, 0, () => { for (let i = 0; i < 9; i++) twig(128 + (r() - 0.5) * 30, 236, (r() - 0.5) * 2.4, 120 + r() * 70, 26, greens); });
+      cell(1, 0, () => { for (let i = 0; i < 8; i++) twig(128 + (r() - 0.5) * 20, 240, (r() - 0.5) * 1.6, 150 + r() * 70, 22, yellows); });
+      cell(2, 0, () => {       // a bamboo spray: thin twigs with long narrow leaves hanging off them
+        g.lineCap = 'round';
+        for (let i = 0; i < 8; i++) {
+          const x0 = 128 + (r() - 0.5) * 40, ang = (r() - 0.5) * 1.4, x1 = x0 + Math.sin(ang) * 110, y1 = 10 + Math.cos(ang) * 200;
+          g.strokeStyle = '#6d7f3a'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(x0, 10); g.lineTo(x1, y1); g.stroke();
+          for (let t = 0.1; t < 1; t += 0.07) leaf(x0 + (x1 - x0) * t, 10 + (y1 - 10) * t, 40 + r() * 20, 6 + r() * 3, ang + (r() < 0.5 ? 0.6 : -0.6) + (r() - 0.5) * 0.4, '#4f7a2a', ['#86b04a', '#9cc05a', '#7aa440'][r() * 3 | 0]);
+        }
+      });
+      cell(0, 1, () => {       // a banana leaf: long and broad, a pale midrib, torn at the edges
+        g.save(); g.translate(128, 128);
+        const q = g.createLinearGradient(-60, 0, 60, 0); q.addColorStop(0, '#3f7f26'); q.addColorStop(0.5, '#7cbb48'); q.addColorStop(1, '#3f7f26');
+        g.fillStyle = q; g.beginPath(); g.ellipse(0, 0, 60, 124, 0, 0, 7); g.fill();
+        g.strokeStyle = 'rgba(30,60,20,.35)'; g.lineWidth = 1; for (let y = -110; y < 115; y += 6) { g.beginPath(); g.moveTo(0, y); g.lineTo(-58, y + 14); g.moveTo(0, y); g.lineTo(58, y + 14); g.stroke(); }
+        g.strokeStyle = '#d4e49a'; g.lineWidth = 5; g.beginPath(); g.moveTo(0, -124); g.lineTo(0, 124); g.stroke();
+        g.globalCompositeOperation = 'destination-out'; g.lineWidth = 3;
+        for (let y = -100; y < 112; y += 12 + r() * 16) { const e = r() < 0.5 ? -1 : 1; g.beginPath(); g.moveTo(e * 64, y + 8); g.lineTo(e * (10 + r() * 26), y); g.stroke(); }
+        g.restore();
+      });
+      cell(1, 1, () => {       // pine needles: bunches of dark strokes round each twig
+        g.lineWidth = 1.6;
+        for (let i = 0; i < 26; i++) { const cx = 20 + r() * 216, cy = 20 + r() * 216; g.strokeStyle = '#4a3a28'; g.beginPath(); g.moveTo(cx - 14, cy + 10); g.lineTo(cx + 14, cy - 10); g.stroke();
+          for (let k = 0; k < 34; k++) { const a = r() * 7; g.strokeStyle = ['#1f4527', '#2b5a32', '#3a6c3a', '#2f6232'][r() * 4 | 0]; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * 20, cy + Math.sin(a) * 20); g.stroke(); } }
+      });
+      cell(2, 1, () => {       // ferns and grass, from the ground up
+        g.lineCap = 'round';
+        for (let i = 0; i < 40; i++) { const x = 30 + r() * 196, h = 120 + r() * 120, bend = (r() - 0.5) * 70; g.strokeStyle = ['#4f8a32', '#6aa040', '#3d7429', '#86b450'][r() * 4 | 0]; g.lineWidth = 2 + r() * 2.5; g.beginPath(); g.moveTo(x, 256); g.quadraticCurveTo(x + bend * 0.3, 256 - h * 0.6, x + bend, 256 - h); g.stroke(); }
+        for (let i = 0; i < 5; i++) { const x = 50 + r() * 156, ang = (r() - 0.5) * 1.2; const x1 = x + Math.sin(ang) * 170, y1 = 256 - Math.cos(ang) * 170;
+          g.strokeStyle = '#3f6e28'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, 256); g.lineTo(x1, y1); g.stroke();
+          for (let t = 0.1; t < 1; t += 0.07) { const px = x + (x1 - x) * t, py = 256 + (y1 - 256) * t, s = 26 * (1 - t * 0.7); for (const e of [-1, 1]) leaf(px, py, s, 4, ang + e * 1.3, '#3b6f2a', '#78aa48'); } }
+      });
     });
+    leafTex.anisotropy = 4;
     const woodMat = new T.MeshLambertMaterial({ vertexColors: true });
     woodMat.onBeforeCompile = sh => grain(sh);
     const windT = { value: 0 };
@@ -1322,6 +1357,7 @@
             const u = uv ? uv.getX(i) : 0, v = uv ? uv.getY(i) : 0, R = o.uv || [0, 0, 1, 1];
             U.push(R[0] + u * (R[2] - R[0]), R[1] + v * (R[3] - R[1]));
             c.set(hex); if (o.shade) c.multiplyScalar(0.62 + 0.38 * clamp((a.y - o.shade[0]) / (o.shade[1] - o.shade[0]), 0, 1));
+            if (o.ao && o.center) c.multiplyScalar(0.55 + 0.45 * clamp(a.distanceTo(o.center) / o.ao, 0, 1));     // darker deep inside
             K.push(c.r, c.g, c.b);
           }
         },
@@ -1338,15 +1374,32 @@
     const lump = (() => { const g = new T.IcosahedronGeometry(1, 0), p = g.attributes.position; for (let i = 0; i < p.count; i++) { const k = 0.8 + rnd(Math.round(p.getX(i) * 40) + Math.round(p.getZ(i) * 23), Math.round(p.getY(i) * 60)) * 0.4; p.setXYZ(i, p.getX(i) * k, p.getY(i) * k, p.getZ(i) * k); } g.computeVertexNormals(); return g; })();
     function makeTree(kind) {
       const wood = build(), leaves = build(); let n = kind.length * 17; const r = () => rnd(n++, 9.1);
-      if (kind === 'broad') {
-        wood.add(stick, mtx(0, 0, 0, 0, 0, 0, 0.24, 3.6, 0.24), '#5e4a38');
-        for (let i = 0; i < 3; i++) wood.add(stick, mtx(0, 2.3 + i * 0.45, 0, 0.85, i * 2.1 + r(), 0, 0.08, 1.7, 0.08), '#5e4a38');
-        const ctr = new T.Vector3(0, 4.4, 0);
-        for (let i = 0; i < 3; i++) wood.add(lump, mtx((r() - 0.5) * 1.2, 4.0 + r() * 0.8, (r() - 0.5) * 1.2, 0, r() * 6, 0, 1.3 + r() * 0.4, 1.0 + r() * 0.3, 1.3 + r() * 0.4), '#2c5a2b', { shade: [3, 5.6], center: ctr });
-        for (let i = 0; i < 16; i++) {
-          const a = r() * 6.28, e = (r() - 0.35) * 1.3, R = 1.4 + r() * 0.6;
-          leaves.add(cardG, mtx(Math.cos(a) * Math.cos(e) * R, 4.4 + Math.sin(e) * R * 0.85, Math.sin(a) * Math.cos(e) * R, (r() - 0.5) * 1.2, Math.PI / 2 - a, (r() - 0.5) * 0.8, 2.3, 2.3, 1), '#ffffff', { uv: REG.broad, center: ctr, shade: [2.8, 6.2] });
+      const up = new T.Vector3(0, 1, 0), V = (x, y, z) => new T.Vector3(x, y, z);
+      const seg = (a, b, w, col) => { const d = b.clone().sub(a), L = d.length(); wood.add(stick, new T.Matrix4().compose(a, new T.Quaternion().setFromUnitVectors(up, d.normalize()), V(w, L, w)), col); };
+      if (kind === 'broad' || kind === 'tall') {
+        // A trunk that bends a little and forks into branches; each branch bends up as it goes and thins
+        // out, with clusters of leaves along its outer part and at its tip, on two crossed cards each, as
+        // EZ-Tree grows its trees. Leaves deep inside the crown are darker, as in the shade.
+        const P = kind === 'broad' ? { trunk: 3.2, w: 0.26, branches: 6, spread: 0.95, len: 2.7, crownY: 4.7, crownR: 2.5, leaf: 1.8, fill: 6 }
+          : { trunk: 5.6, w: 0.22, branches: 5, spread: 0.5, len: 2.4, crownY: 7.2, crownR: 1.9, leaf: 1.6, fill: 5 };
+        const ctr = V(0, P.crownY, 0), o = { uv: REG[kind], center: ctr, ao: P.crownR, shade: [P.crownY - P.crownR * 1.2, P.crownY + P.crownR] };
+        const cluster = (p, dir) => { const yw = Math.atan2(dir.x, dir.z) + r(); for (const turn of [0, Math.PI / 2]) leaves.add(cardG, mtx(p.x, p.y, p.z, (r() - 0.5) * 0.8 + 0.2, yw + turn, (r() - 0.5) * 0.6, P.leaf, P.leaf, 1), '#ffffff', o); };
+        let p = V(0, 0, 0), d = V((r() - 0.5) * 0.12, 1, (r() - 0.5) * 0.12).normalize();
+        for (let i = 0; i < 3; i++) { const q = p.clone().addScaledVector(d, P.trunk / 3); seg(p, q, P.w * (1 - i * 0.18), '#5e4a38'); p = q; d.add(V((r() - 0.5) * 0.25, 0, (r() - 0.5) * 0.25)).normalize(); }
+        for (let b = 0; b < P.branches; b++) {
+          const a = b / P.branches * 6.28 + r() * 0.7;
+          let bp = p.clone().addScaledVector(d, -P.trunk / 3 * r() * 0.7), bd = V(Math.cos(a) * Math.sin(P.spread), Math.cos(P.spread), Math.sin(a) * Math.sin(P.spread)).normalize();
+          const bl = P.len * (0.8 + r() * 0.4);
+          for (let s2 = 0; s2 < 3; s2++) {
+            const q = bp.clone().addScaledVector(bd, bl / 3);
+            seg(bp, q, P.w * 0.42 * (1 - s2 * 0.28), '#5a4636');
+            if (s2) for (let c = 0; c < 2; c++) cluster(bp.clone().lerp(q, 0.3 + c * 0.55).add(V((r() - 0.5) * 0.7, (r() - 0.2) * 0.5, (r() - 0.5) * 0.7)), bd);
+            bp = q; bd.add(V((r() - 0.5) * 0.3, 0.14, (r() - 0.5) * 0.3)).normalize();
+          }
+          cluster(bp, bd);
         }
+        for (let i = 0; i < P.fill; i++) cluster(ctr.clone().add(V((r() - 0.5) * P.crownR, (r() - 0.3) * P.crownR * 0.8, (r() - 0.5) * P.crownR)), V(r() - 0.5, 0, r() - 0.5));
+        wood.add(lump, mtx(0, P.crownY, 0, 0, r() * 6, 0, P.crownR * 0.55, P.crownR * 0.42, P.crownR * 0.55), '#244a25');   // dark inside, so the crown is not see-through
       } else if (kind === 'bamboo') {
         for (let i = 0; i < 12; i++) {
           const a = r() * 6.28, lean = 0.08 + r() * 0.26, L = (8 + r() * 5) / 3, w = 0.07, col = ['#7f9a3e', '#93a84a', '#6f8a36'][i % 3];
@@ -1356,7 +1409,7 @@
             wood.add(stick, mtx(x, y, z, tilt, Math.PI / 2 - a, 0, w - sg * 0.015, L, w - sg * 0.015), col);
             if (sg) for (let k = 0; k < 3; k++) {
               const t = r(), lx = x + (nx - x) * t, ly = y + (ny - y) * t, lz = z + (nz - z) * t;
-              leaves.add(cardG, mtx(lx + Math.cos(a) * 0.45, ly - 0.55, lz + Math.sin(a) * 0.45, 0.25, Math.PI / 2 - a + (r() - 0.5) * 1.4, 0, 1.8, 1.9, 1), '#ffffff', { uv: REG.bamboo, center: new T.Vector3(0, ly, 0), shade: [2, 12] });
+              leaves.add(cardG, mtx(lx + Math.cos(a) * 0.45, ly - 0.55, lz + Math.sin(a) * 0.45, 0.25, Math.PI / 2 - a + (r() - 0.5) * 1.4, 0, 1.8, 1.9, 1), '#ffffff', { uv: REG.bamboo, center: V(0, ly, 0), ao: 3, shade: [2, 12] });
             }
             x = nx; y = ny; z = nz;
           }
@@ -1365,19 +1418,21 @@
         wood.add(stick, mtx(0, 0, 0, 0, 0, 0, 0.16, 2.3, 0.16), '#7d8f4c');
         for (let i = 0; i < 7; i++) {      // big leaves arching out from the top
           const a = i * 0.9 + r() * 0.4, t = 0.9 + r() * 0.45, len = 2.2 + r() * 0.5, d = [Math.cos(a) * Math.sin(t), Math.cos(t), Math.sin(a) * Math.sin(t)];
-          leaves.add(cardG, mtx(d[0] * len / 2, 2.3 + d[1] * len / 2, d[2] * len / 2, t, Math.PI / 2 - a, 0, 0.75, len, 1), '#ffffff', { uv: REG.banana, center: new T.Vector3(0, 2.0, 0), shade: [1.5, 3.6] });
+          leaves.add(cardG, mtx(d[0] * len / 2, 2.3 + d[1] * len / 2, d[2] * len / 2, t, Math.PI / 2 - a, 0, 0.75, len, 1), '#ffffff', { uv: REG.banana, center: V(0, 2.0, 0), ao: 2, shade: [1.5, 3.6] });
         }
-      } else {     // a Khasi pine: a tall straight trunk and tiers of needles
+      } else if (kind === 'pine') {     // a Khasi pine: a tall straight trunk and tiers of needles
         wood.add(stick, mtx(0, 0, 0, 0, 0, 0, 0.2, 9.5, 0.2), '#5a4636');
         for (let i = 0; i < 6; i++) {
           const y = 3 + i * 1.15, rad = 2.2 - i * 0.32;
           wood.add(cone, mtx((r() - 0.5) * 0.2, y, (r() - 0.5) * 0.2, 0, r() * 6, 0, rad, 1.8, rad), ['#2d5a32', '#335f36', '#2a5430'][i % 3], { shade: [3, 10.5] });
-          for (let k = 0; k < 3; k++) { const a = r() * 6.28; leaves.add(cardG, mtx(Math.cos(a) * rad * 0.7, y + 0.6, Math.sin(a) * rad * 0.7, 0.3, Math.PI / 2 - a, 0, rad * 1.1, 1.3, 1), '#ffffff', { uv: REG.pine, center: new T.Vector3(0, y + 0.5, 0), shade: [3, 10.5] }); }
+          for (let k = 0; k < 3; k++) { const a = r() * 6.28; leaves.add(cardG, mtx(Math.cos(a) * rad * 0.7, y + 0.6, Math.sin(a) * rad * 0.7, 0.3, Math.PI / 2 - a, 0, rad * 1.1, 1.3, 1), '#ffffff', { uv: REG.pine, center: V(0, y + 0.5, 0), ao: rad, shade: [3, 10.5] }); }
         }
+      } else {     // a low clump of ferns and grass, on three crossed cards
+        for (let i = 0; i < 3; i++) leaves.add(cardG, mtx(0, 0.45, 0, 0, i * Math.PI / 3 + r() * 0.4, 0, 1.3, 0.95, 1), '#ffffff', { uv: REG.shrub, shade: [0, 0.9] });
       }
       return { wood: wood.done(), leaves: leaves.done() };
     }
-    const TREES = Object.fromEntries(['broad', 'bamboo', 'banana', 'pine'].map(k => [k, makeTree(k)]));
+    const TREES = Object.fromEntries(['broad', 'tall', 'bamboo', 'banana', 'pine', 'shrub'].map(k => [k, makeTree(k)]));
     const TINT = ['#ffffff', '#e9f2da', '#f4fde6', '#dfe9c9'];
     const shared = new Set([box, hang, prism, tank, trunk, crown, cone, wheel, ball, disc, blob, plane, pole, ...Object.values(TREES).flatMap(t => [t.wood, t.leaves])]);
 
@@ -1548,7 +1603,11 @@
             const w = 3.6 + rnd(k, j * 3 + sd) * 2.2, d = 5 + rnd(k, j * 5 + sd) * 3, off = E + 1.6 + j * 7 + rnd(k, j + 4) * 1.2 + d / 2;
             if (off + d / 2 <= ext[sd][k]) {
               const gy = groundAt(k, sd, off), hh = tall ? Math.max(3, tall * (0.8 + rnd(k, j + 9) * 0.35)) : 3 + rnd(k, j + 7) * 5 + j * 2;
-              const bot = gy - 1.5, top = Math.max(gy + hh, 2 + rnd(k, j + 2) * 3), p = ptAt(k, sd * off, 0);
+              // its foot goes down to the lowest ground under it (across it, and along the road where it climbs):
+              // on a slope an Aizawl house has a storey more on its downhill side, never a gap beneath
+              const slope = Math.abs(Y[Math.min(n - 1, k + 1)] - Y[Math.max(0, k - 1)]) / (2 * SEG) * d / 2;
+              const low = Math.min(gy, groundAt(k, sd, off - w / 2), groundAt(k, sd, off + w / 2)) - slope;
+              const bot = low - 1, top = Math.max(gy + hh, 2 + rnd(k, j + 2) * 3), p = ptAt(k, sd * off, 0);
               if (onRoad(p[0], p[2], Math.hypot(w, d) / 2, Y[k] + bot, Y[k] + top) || onRoad(p[0], p[2], Math.hypot(w, d) / 2 + FOOT + 0.3 - HALF - 0.8, Y[k] + bot, Y[k] + top, k - 6, k + 6)) dropped++;
               else {
                 h = { w, d, off, gy, bot, top, p, x: p[0], z: p[2], y0: Y[k] + bot, y1: Y[k] + top, c: Math.cos(yaw[k]), s: Math.sin(yaw[k]) };
@@ -1578,7 +1637,7 @@
         for (let i = 0; i < 4; i++) { const [a, b] = [c[i], c[(i + 1) % 4]]; st.quad(pt(k, a[0], h0, a[1]), pt(k, b[0], h0, b[1]), pt(k, b[0], h1, b[1]), pt(k, a[0], h1, a[1]), hex); }
         st.quad(...c.map(([x, z]) => pt(k, x, h1, z)), hex);
       };
-      const H = [], RF = [], TK = [], TW = { broad: [], bamboo: [], banana: [], pine: [] }, BAL = [], RAIL = [], SHUT = [], BAND = [], POLE = [], ARM = [], WIRE = [];
+      const H = [], RF = [], TK = [], TW = { broad: [], tall: [], bamboo: [], banana: [], pine: [], shrub: [] }, BAL = [], RAIL = [], SHUT = [], BAND = [], POLE = [], ARM = [], WIRE = [];
       // An electric pole every 36 m in town, on the near side, and the ends of its crossarm for the wires
       const poleAt = k => {
         if (k < 0 || k >= n || k % 9 || !footpath(k)) return null;
@@ -1683,17 +1742,26 @@
             if (rnd(k, 40 + j + sd) > 0.55) continue;
             const off = E + 2 + j * 9 + rnd(k, 50 + j) * 7;
             if (off > ext[sd][k] - 1) continue;
-            const r = rnd(k, 60 + j), sc = 0.8 + rnd(k, j + 1) * 0.5, kind = g > 8 && r < 0.35 ? 'pine' : r < 0.45 ? 'bamboo' : r < 0.85 ? 'broad' : 'banana';
+            const r = rnd(k, 60 + j), sc = 0.8 + rnd(k, j + 1) * 0.5, kind = g > 8 && r < 0.35 ? 'pine' : r < 0.42 ? 'bamboo' : r < 0.68 ? 'broad' : r < 0.86 ? 'tall' : 'banana';
             const tp = pt(k, sd * off, groundAt(k, sd, off) - 0.2);
             if (onRoad(tp[0], tp[2], 2.2 * sc, tp[1], tp[1] + 12) || inHome(tp[0], tp[1], tp[1] + 12, tp[2], 1.8 * sc)) { dropped++; continue; }
             TW[kind].push({ p: tp, yaw: rnd(k, j + 5) * 6.28, s: [sc, sc * (0.9 + rnd(k, j + 6) * 0.25), sc], c: TINT[(k + j) % TINT.length] });
+          }
+          // low ferns and grass on the bank beside the road (fewer in town)
+          for (let j = 0; j < 2; j++) {
+            if (rnd(k, 80 + j + sd * 3) > (housesOn(sd, k) <= 1 ? 0.6 : 0.2)) continue;
+            const off = E + 0.5 + j * 2.5 + rnd(k, 90 + j) * 2;
+            if (off > Math.max(HALF, ext[sd][k]) - 0.3) continue;
+            const sp = pt(k, sd * off, gAt(k, off) - 0.05), s2 = 0.7 + rnd(k, 95 + j) * 0.6;
+            if (onRoad(sp[0], sp[2], 0.5, sp[1], sp[1] + 1) || inHome(sp[0], sp[1], sp[1] + 1, sp[2], 0.4)) continue;
+            TW.shrub.push({ p: sp, yaw: rnd(k, j + 7) * 6.28, s: [s2, s2, s2], c: TINT[(k + j) % TINT.length] });
           }
         }
       }
       if (WIRE.length) { const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(WIRE, 3)); grp.add(new T.LineSegments(g, wireMat)); }
       [instanced(box, plainMat, BAL), instanced(box, plainMat, RAIL), instanced(box, shutterMat, SHUT), instanced(box, plainMat, BAND), instanced(pole, plainMat, POLE), instanced(box, plainMat, ARM)].forEach(m => m && grp.add(m));
       [st.mesh(), instanced(box, houseMat, H), instanced(prism, plainMat, RF), instanced(tank, plainMat, TK),
-        ...Object.entries(TW).flatMap(([kind, list]) => [instanced(TREES[kind].wood, woodMat, list), instanced(TREES[kind].leaves, leafMat, list)])].forEach(m => m && grp.add(m));
+        ...Object.entries(TW).flatMap(([kind, list]) => [TREES[kind].wood.attributes.position.count ? instanced(TREES[kind].wood, woodMat, list) : null, instanced(TREES[kind].leaves, leafMat, list)])].forEach(m => m && grp.add(m));
       grp.userData.mid = P[Math.min(n - 1, (k0 + k1) >> 1)];
       return grp;
     }
@@ -2428,8 +2496,34 @@
       }
       return out;
     }
+    // For the tests: houses standing above the ground at their road side, trees standing above the
+    // ground on a slope, and leaves hanging low over the road
+    function audit6() {
+      setRoute();
+      const { n, Y, ext } = W3, out = { houseFloat: 0, treeFloat: 0, crownLow: 0, worstGap: 0 };
+      for (let k = 0; k < n - 1; k++) for (const sd of [-1, 1]) for (let j = 0; j < 3; j++) {
+        const h = W3.home[(k * 2 + (sd > 0 ? 1 : 0)) * 3 + j];
+        if (!h) continue;
+        for (const o of [h.off - h.w / 2, h.off + h.w / 2]) {
+          if (o > ext[sd][k]) continue;
+          const gap = h.bot - groundAt(k, sd, o);
+          if (gap > 0.1) { out.houseFloat++; out.worstGap = Math.max(out.worstGap, gap); }
+        }
+      }
+      for (const g of pieces) g.traverse(o => {
+        if (!o.isInstancedMesh || o.material !== leafMat || o.geometry === TREES.shrub.leaves) return;
+        const m = new T.Matrix4(), p = new T.Vector3(), qq = new T.Quaternion(), sc = new T.Vector3();
+        for (let i = 0; i < o.count; i++) {
+          o.getMatrixAt(i, m); m.decompose(p, qq, sc);
+          // the crown: about 2.2 m round (times its size), its lowest leaves about 2.5 m up
+          const r = 2.2 * sc.x, low = p.y + 2.5 * sc.y;
+          if (onRoad(p.x, p.z, r - 0.8 - HALF + HALF, low, low)) out.crownLow++;
+        }
+      });
+      return out;
+    }
     const walkable = (i, sd) => { setRoute(); i = clamp(i, 0, W3.n - 1); return !W3.bare[sd][i] && !W3.gone[sd][i] && !W3.ride[i]; };
-    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, walkable };
+    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, walkable };
   }
 
   // ---------- the HUD ----------
@@ -2972,6 +3066,7 @@
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
     auditAll: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; const a = R3.audit(); out.push({ id: r.id, ...a }); } route = keep; R3.audit(); return out; },
     audit3All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); R3.setPlan(); out.push({ id: r.id, ...R3.audit3() }); } route = keep; reset(); return out; },
+    audit6All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit6() }); } route = keep; reset(); return out; },
     audit5All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit5() }); } route = keep; reset(); return out; },
     audit4All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); out.push({ id: r.id, ...R3.audit4() }); } route = keep; reset(); return out; },
     audit2All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit2() }); } route = keep; R3.audit(); return out; } };

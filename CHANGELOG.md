@@ -4,6 +4,23 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.22.0 (31 October 2026)
+
+### Aizawl Ride: trees that look like trees
+
+- The trees are made the way trees grow: a trunk that bends a little and
+  forks into branches, and branches that get thinner towards the end, with
+  bunches of leaves on them. Inside and under the leaves it is darker, as
+  in a real tree. Bamboo, banana and pine trees are shaded the same way.
+- Two new kinds of tree: a wide, spreading one and a tall, narrow one.
+- The leaves are new pictures, lighter at the tip and with a vein down the
+  middle.
+- Ferns, grass and small bushes grow on the ground beside the road.
+- On a slope, a house now goes all the way down to the ground at its
+  lowest side, the way houses are built in Aizawl. No house is left
+  floating over the hillside.
+- Checked on every road in the game.
+
 ## 1.21.6 (31 October 2026)
 
 ### Aizawl Ride: no holes beside the road
