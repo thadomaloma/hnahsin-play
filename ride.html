@@ -62,6 +62,10 @@
   #cv { position: relative; display: block; width: 100%; height: clamp(300px, calc(100svh - 236px), min(140vw, 600px)); }
   .toast { position: absolute; left: 50%; top: 104px; z-index: 1; transform: translate(-50%, -8px); opacity: 0; transition: opacity .25s, transform .25s; background: #1d5c2e; color: #fff; border: 2px solid #fff; border-radius: 10px; padding: 6px 14px; font-weight: 800; font-size: 15px; max-width: calc(100% - 24px); text-align: center; line-height: 1.3; pointer-events: none; box-shadow: 0 2px 0 rgba(0,0,0,.25); }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .coach { position: absolute; left: 50%; bottom: 74px; z-index: 2; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; max-width: calc(100% - 24px); background: rgba(255, 253, 248, .96); color: #231e16; border: 2px solid #231e16; border-radius: 14px; padding: 8px 14px; font-weight: 800; font-size: 15px; line-height: 1.3; box-shadow: 0 3px 0 rgba(35, 30, 22, .35); pointer-events: none; animation: coach 1.2s ease-in-out infinite alternate; }
+  .coach span:first-child { font-size: 22px; }
+  .icon.langbtn { width: auto; padding: 0 10px; font: 800 13px 'Plus Jakarta Sans', sans-serif; }
+  @keyframes coach { to { transform: translateX(-50%) translateY(-4px); } }
   .overlay { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(20, 28, 18, .38); }
   .sheet { width: min(360px, 100%); background: var(--panel); color: var(--ink); border: 1.5px solid var(--ink); border-radius: 20px; box-shadow: 0 3px 0 var(--ink); padding: 18px; display: grid; gap: 10px; text-align: center; }
   .sheet h2 { margin: 0; font-family: "Baloo 2", sans-serif; font-size: 28px; line-height: 1.1; }
@@ -85,6 +89,8 @@
   .sheet h3 { margin: 4px 0 0; font-size: 17px; text-align: left; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .route.small { min-height: 44px; text-align: center; place-items: center; font-weight: 800; font-size: 15px; }
+  .route.small { display: flex; justify-content: center; align-items: center; gap: 6px; }
+  .route span[data-t], .route b span { font-size: inherit; color: inherit; font-weight: inherit; }
   .route.danger { background: #fde4e1; color: #7a1d14; }
   .fine { font-size: 14px !important; }
   .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #e53935; vertical-align: middle; }
@@ -160,7 +166,7 @@
   .mid { font-size: 14px; color: var(--muted); font-weight: 700; text-align: center; }
   .note { font-size: 14px; color: var(--muted); margin: 0; line-height: 1.45; }
   .note a { color: var(--brand); }
-  @media (prefers-reduced-motion: reduce) { .toast { transition: none; } .hud b.bump { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .coach { animation: none; } .toast { transition: none; } .hud b.bump { animation: none; } }
 </style>
 
 <div class="app">
@@ -168,6 +174,7 @@
     <a class="nav-link" href="./" aria-label="Back to Hnahsin Games">‹</a>
     <div class="brand"><b>Aizawl Ride</b><span>Zoram's real hill roads</span></div>
     <span class="wallet" id="wallet" aria-live="polite"><i class="coin"></i> 0</span>
+    <button class="icon langbtn" id="langBtn" type="button" aria-label="Mizo or English">Mizo</button>
     <button class="icon" id="sound" type="button" aria-pressed="true" aria-label="Sound">🔊</button>
   </header>
 
@@ -186,69 +193,71 @@
         <canvas class="mini" id="mini" aria-hidden="true"></canvas>
       </div>
       <div class="toast" id="toast" aria-live="polite"></div>
+      <div class="coach" id="coach" role="status" hidden><span id="coachIcon" aria-hidden="true"></span><span id="coachText"></span></div>
       <button class="pause" id="pauseBtn" type="button" aria-label="Pause" disabled>⏸</button>
       <div class="overlay" id="startView">
         <div class="sheet">
-          <h2>Deliver the parcel</h2>
+          <h2 data-t="deliver">Deliver the parcel</h2>
           <p class="parcel" id="parcel"></p>
           <p class="rankline" id="rankLine"></p>
-          <button class="route citybtn" id="mapBtn" type="button"><b>🗺️ The Aizawl map</b><span id="mapSub">Deliver between 18 veng</span></button>
-          <button class="go" id="startBtn" type="button">Start riding</button>
+          <button class="route citybtn" id="mapBtn" type="button"><b>🗺️ <span data-t="map">The Aizawl map</span></b><span id="mapSub">Deliver between 18 veng</span></button>
+          <button class="go" id="startBtn" type="button" data-t="start">Start riding</button>
           <div class="row2">
-            <button class="route small" id="garageBtn" type="button">🛵 Garage</button>
-            <button class="route small" id="missionsBtn" type="button">🎯 Missions <span class="dot" id="readyDot" hidden></span></button>
+            <button class="route small" id="garageBtn" type="button">🛵 <span data-t="garage">Garage</span></button>
+            <button class="route small" id="missionsBtn" type="button">🎯 <span data-t="missions">Missions</span> <span class="dot" id="readyDot" hidden></span></button>
           </div>
-          <p class="fine">Tap a side of the road to steer, and hold Brake to slow down. Wait your turn in a jam, and stop for people at a crossing, the Aizawl way. Coins go into your wallet when the ride ends.</p>
+          <button class="link" id="howBtn" type="button" data-t="how">How to play</button>
+          <p class="fine" data-t="startNote">Tap a side of the road to steer, and hold Brake to slow down. Wait your turn in a jam, and stop for people at a crossing, the Aizawl way. Coins go into your wallet when the ride ends.</p>
         </div>
       </div>
       <div class="overlay" id="garageView" hidden>
         <div class="sheet" role="dialog" aria-labelledby="garageTitle">
-          <h2 id="garageTitle">Garage</h2>
-          <p>Every scooter rides the same. Pick the design and the colour you like; more open as your points grow.</p>
-          <h3 class="sub">Design</h3>
+          <h2 id="garageTitle" data-t="garage">Garage</h2>
+          <p data-t="garageIntro">Every scooter rides the same. Pick the design and the colour you like; more open as your points grow.</p>
+          <h3 class="sub" data-t="design">Design</h3>
           <div class="list" id="designs"></div>
-          <h3 class="sub">Colour, by its Mizo name</h3>
+          <h3 class="sub" data-t="colour">Colour, by its Mizo name</h3>
           <div class="list" id="scooters"></div>
-          <h3 class="sub">The rider and the box <small class="fine">bought with your coins</small></h3>
+          <h3 class="sub"><span data-t="riderBox">The rider and the box</span> <small class="fine" data-t="boughtCoins">bought with your coins</small></h3>
           <div class="list" id="shop"></div>
           <p class="fine" id="garageNote" aria-live="polite"></p>
-          <button class="go" type="button" data-close>Done</button>
+          <button class="go" type="button" data-close data-t="done">Done</button>
         </div>
       </div>
       <div class="overlay" id="mapView" hidden>
         <div class="sheet" role="dialog" aria-labelledby="mapTitle">
-          <h2 id="mapTitle">The Aizawl map</h2>
+          <h2 id="mapTitle" data-t="map">The Aizawl map</h2>
           <p id="mapHere"></p>
           <canvas class="citymap" id="cityMap" aria-label="A map of Aizawl's roads, with the veng you can ride to"></canvas>
           <div class="list" id="jobs"></div>
           <p class="fine" id="mapNote"></p>
-          <h3>Long rides</h3>
+          <h3 data-t="longRides">Long rides</h3>
           <div class="routes" id="routes"></div>
-          <button class="go" type="button" data-close>Back</button>
+          <button class="go" type="button" data-close data-t="back">Back</button>
         </div>
       </div>
       <div class="overlay" id="missionsView" hidden>
         <div class="sheet" role="dialog" aria-labelledby="missionsTitle">
-          <h2 id="missionsTitle">Missions</h2>
+          <h2 id="missionsTitle" data-t="missions">Missions</h2>
           <div class="rank" id="rankCard"></div>
-          <h3 class="sub">Today <small class="fine" id="dailyLeft"></small></h3>
+          <h3 class="sub"><span data-t="today">Today</span> <small class="fine" id="dailyLeft"></small></h3>
           <div class="list" id="daily"></div>
-          <h3 class="sub">Medals</h3>
+          <h3 class="sub" data-t="medals">Medals</h3>
           <div class="list" id="missions"></div>
           <p class="fine" id="starsLine"></p>
-          <h3>Badges</h3>
+          <h3 data-t="badges">Badges</h3>
           <div class="badges" id="badges"></div>
-          <button class="go" type="button" data-close>Done</button>
-          <button class="link" id="resetBtn" type="button">Reset my progress</button>
+          <button class="go" type="button" data-close data-t="done">Done</button>
+          <button class="link" id="resetBtn" type="button" data-t="reset">Reset my progress</button>
           <div class="confirm" id="resetAsk" hidden>
-            <p>This clears your coins, scooters, missions, badges and best scores on this device.</p>
-            <button class="route small danger" id="resetYes" type="button">Yes, reset everything</button>
-            <button class="route small" id="resetNo" type="button">Keep it</button>
+            <p data-t="resetAsk">This clears your coins, scooters, missions, badges and best scores on this device.</p>
+            <button class="route small danger" id="resetYes" type="button" data-t="resetYes">Yes, reset everything</button>
+            <button class="route small" id="resetNo" type="button" data-t="resetNo">Keep it</button>
           </div>
         </div>
       </div>
       <div class="overlay" id="pauseView" hidden>
-        <div class="sheet"><h2>Paused</h2><button class="go" id="resumeBtn" type="button">Keep riding</button></div>
+        <div class="sheet"><h2 data-t="paused">Paused</h2><button class="go" id="resumeBtn" type="button" data-t="keepRiding">Keep riding</button></div>
       </div>
       <div class="overlay" id="endView" hidden>
         <div class="sheet">
@@ -256,12 +265,12 @@
           <p id="endText"></p>
           <div class="endstars" id="endStars" hidden></div>
           <div class="quiz" id="quiz" hidden><p class="q" id="quizQ"></p><div class="opts" id="quizOpts"></div><p class="fine" id="quizA" aria-live="polite"></p></div>
-          <div class="result"><span>Score</span><span id="endScore">0</span></div>
-          <div class="result"><span>Best on this road</span><span id="endBest">0</span></div>
+          <div class="result"><span data-t="score">Score</span><span id="endScore">0</span></div>
+          <div class="result"><span data-t="bestRoad">Best on this road</span><span id="endBest">0</span></div>
           <div class="news" id="endNews"></div>
-          <button class="go" id="nextBtn" type="button" hidden>Next delivery</button>
-          <button class="go" id="againBtn" type="button">Ride again</button>
-          <button class="route" id="otherBtn" type="button" style="text-align:center"><b>Back</b></button>
+          <button class="go" id="nextBtn" type="button" hidden data-t="next">Next delivery</button>
+          <button class="go" id="againBtn" type="button" data-t="again">Ride again</button>
+          <button class="route" id="otherBtn" type="button" style="text-align:center"><b data-t="back">Back</b></button>
         </div>
       </div>
     </div>
@@ -321,7 +330,7 @@
     ['serthlum', 'oranges', '🍊'], ['theihai', 'mangoes', '🥭'], ['bawkbawn', 'eggplants', '🍆'], ['fanghma', 'cucumbers', '🥒'], ['zikhlum', 'cabbages', '🥬'],
     ['mâi', 'a pumpkin', '🎃'], ['hmarcha', 'chillies', '🌶️']];
   let parcel = PARCELS[Math.random() * PARCELS.length | 0];
-  const showParcel = () => { $('parcel').innerHTML = `Today's parcel: ${parcel[2]} <b>${parcel[0]}</b> · ${parcel[1]}`; };
+  const showParcel = () => { $('parcel').innerHTML = `${L("Today's parcel:", 'Vawiin thil phurh:')} ${parcel[2]} <b>${parcel[0]}</b> · ${parcel[1]}`; };
   // Mizo words for what you ride through, each shown once a ride as you meet it
   const SCENE_WORDS = [
     ['romei', 'haze', () => look.mist > 0.3],
@@ -389,6 +398,8 @@
   // Words for the question at the end of a ride: the parcels, the land and the road
   const QUIZ_WORDS = [...PARCELS.map(([m, e]) => [m, e]), ...SCENE_WORDS.map(([m, e]) => [m, e]),
     ['motor', 'a car'], ['mi', 'a person'], ['kalkawng', 'a path'], ['tlar', 'a row, a queue'], ['dawhtheihna', 'patience'], ['zah', 'respect'], ['fimkhur', 'careful'], ['hmanhmawh', 'hurried']];
+  // The coach's tips for the first rides, each shown until it has been done once
+  const TIPS = ['steer', 'block', 'coin', 'queue', 'cross'];
   // Today's missions: three a day (an easy, a middling and a hard one), a new three at midnight, picked
   // by the date. Some count over one ride, some over the whole day. Each pays points, which open veng,
   // designs and colours just as your best scores do.
@@ -435,7 +446,7 @@
   };
   const fresh = () => ({ v: 1, best: {}, wallet: 0, lifetime: 0, metres: 0, rides: 0, deliveries: {}, bestCoins: 0, bestMetres: 0, bestTime: 0,
     owned: ['hring'], scooter: 'hring', design: 'everyday', badges: [], claimed: [], words: [], route: '', sound: true,
-    at: 'dawrpui', visited: [], cityDone: 0, cityBest: {}, jams: 0, crossed: 0, bonus: 0, dailyDone: 0, quizRight: 0, quizAsked: 0, cos: { owned: ['h-var', 'j-dumpawl', 'b-eng'], helmet: 'h-var', jacket: 'j-dumpawl', box: 'b-eng' }, stars: {}, daily: { day: '', prog: {}, claimed: [] } });
+    at: 'dawrpui', visited: [], cityDone: 0, cityBest: {}, jams: 0, crossed: 0, bonus: 0, dailyDone: 0, quizRight: 0, quizAsked: 0, tips: [], lang: 'en', cos: { owned: ['h-var', 'j-dumpawl', 'b-eng'], helmet: 'h-var', jacket: 'j-dumpawl', box: 'b-eng' }, stars: {}, daily: { day: '', prog: {}, claimed: [] } });
   function readSave() {
     const f = fresh();
     let d = null;
@@ -463,6 +474,7 @@
     f.cityDone = num(d.cityDone); f.jams = num(d.jams); f.crossed = num(d.crossed);
     if (d.cityBest && typeof d.cityBest === 'object') for (const [k, v] of Object.entries(d.cityBest)) if (/^[a-z]{2,20}>[a-z]{2,20}$/.test(k) && num(v)) f.cityBest[k] = num(v);
     // stars won on each road, points from today's missions, and today's missions themselves
+    f.tips = ids(d.tips, TIPS); f.lang = d.lang === 'mz' ? 'mz' : 'en';
     f.bonus = num(d.bonus); f.dailyDone = num(d.dailyDone); f.quizRight = num(d.quizRight); f.quizAsked = num(d.quizAsked);
     if (d.cos && typeof d.cos === 'object') {     // the rider's look: what was bought, what is worn
       f.cos.owned = [...new Set([...f.cos.owned, ...ids(d.cos.owned, COSMETICS.map(x => x.id))])];
@@ -508,6 +520,23 @@
     }
   }
   const starText = n => '★'.repeat(n) + '☆'.repeat(3 - n);
+  // ---------- the words of the game, in English or in Mizo ----------
+  // The page's own words carry a key (data-t); what the game says as it goes is given both ways, L(en, mz).
+  const MZ = {
+    deliver: 'Thil thlen rawh', map: 'Aizawl map', start: 'Tlan tan rawh', garage: 'Garage', missions: 'Tihtur', how: 'Khelh dan',
+    startNote: 'Steer turin kawng sir hmet rawh, a muan nan Brake hmet reng rawh. Jam ah i chan nghak la, crossing ah mi kal tlang te nghak rawh, Aizawl dan angin. Ride i zawh chuan coin te i wallet ah a lut ang.',
+    garageIntro: 'Scooter zawng zawng an tlan dan a inang. Design leh rawng i duh thlang rawh; i point a pun zel chuan a dang an inhawng ang.',
+    design: 'Design', colour: 'Rawng, a Mizo hming in', riderBox: 'Rider leh box', boughtCoins: 'coin hmanga lei', done: 'Zo', back: 'Kir leh', longRides: 'Kawng sei',
+    today: 'Vawiin', medals: 'Medal', badges: 'Badge', reset: 'Ka progress tihbo rawh', resetAsk: 'He device-ah hian i coin, scooter, tihtur, badge leh score tha ber te a bo vek ang.',
+    resetYes: 'Aw, a vaiin tihbo rawh', resetNo: 'Dah reng rawh', paused: 'Chawl lai', keepRiding: 'Tlan zel rawh', score: 'Score', bestRoad: 'He kawngah a tha ber',
+    next: 'Thlen leh tur', again: 'Tlan nawn leh rawh',
+  };
+  const L = (en, mz) => (S.lang === 'mz' ? mz : en);
+  function applyLang() {
+    document.documentElement.lang = S.lang === 'mz' ? 'lus' : 'en';
+    document.querySelectorAll('[data-t]').forEach(el => { if (el.dataset.en === undefined) el.dataset.en = el.textContent; el.textContent = S.lang === 'mz' && MZ[el.dataset.t] ? MZ[el.dataset.t] : el.dataset.en; });
+    const b = document.getElementById('langBtn'); if (b) { b.textContent = S.lang === 'mz' ? 'EN' : 'Mizo'; b.setAttribute('aria-label', S.lang === 'mz' ? 'English' : 'Mizo tawngin'); }
+  }
   const worn = slot => COSMETICS.find(x => x.id === S.cos[slot]) || COSMETICS.find(x => x.slot === slot);
   const fmtGoal = (x, n) => (x.kind === 'metres' ? `${(n / 1000).toFixed(1)} km` : n);
 
@@ -3210,7 +3239,7 @@
     if (!force && now - hudLast < 150) return;
     hudLast = now;
     const left = Math.max(0, route.length - s), f = Math.min(1, s / route.length);
-    $('toLabel').textContent = `To ${route.to}`;
+    $('toLabel').textContent = L(`To ${route.to}`, `${route.to} lam`);
     $('left').textContent = left >= 1000 ? `${(left / 1000).toFixed(1)} km` : `${Math.ceil(left)} m`;
     $('coins').textContent = coins;
     $('speed').textContent = `${Math.round(v * 3.6)} km/h`;
@@ -3219,7 +3248,7 @@
     // A warning for the next traffic jam, as it comes near
     const jam = jams.find(j => j.at > s - 20 && j.at - s < 320 && j.state !== 'going');
     const w = $('warn');
-    if (jam) { w.hidden = false; w.textContent = jam.at - s > 30 ? `🚦 Jam in ${Math.round((jam.at - s) / 10) * 10} m` : '🚦 Wait your turn'; }
+    if (jam) { w.hidden = false; w.textContent = jam.at - s > 30 ? L(`🚦 Jam in ${Math.round((jam.at - s) / 10) * 10} m`, `🚦 Jam m ${Math.round((jam.at - s) / 10) * 10} ah`) : L('🚦 Wait your turn', '🚦 I chan nghak rawh'); }
     else w.hidden = true;
     mini();
   }
@@ -3294,6 +3323,48 @@
     clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.remove('show'), 1800);
   }
 
+  // ---------- sound: the ride's own sounds, and short beeps; never needed ----------
+  // Made here, no files: the scooter's engine (a low buzz that climbs with the speed), the wind and the
+  // tyres on the road, the brake, and birds where the road runs through bamboo and trees. No horns: Aizawl
+  // does not honk.
+  let ride = null, birdT = 3;
+  function rideSound(dt) {
+    const on = soundOn && mode === 'playing';
+    if (!on && !ride) return;
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === 'suspended') ac.resume();
+      if (!ride) {
+        const g = ac.createGain(); g.gain.value = 0; g.connect(ac.destination);
+        const eng = ac.createOscillator(), eng2 = ac.createOscillator(), lp = ac.createBiquadFilter(), eg = ac.createGain();
+        eng.type = 'sawtooth'; eng2.type = 'square'; lp.type = 'lowpass'; lp.frequency.value = 380; eg.gain.value = 0.5;
+        eng.connect(lp); eng2.connect(lp); lp.connect(eg); eg.connect(g);
+        const buf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        const noise = ac.createBufferSource(); noise.buffer = buf; noise.loop = true;
+        const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 700; bp.Q.value = 0.6; const wg = ac.createGain(); wg.gain.value = 0;
+        const hp = ac.createBiquadFilter(); hp.type = 'bandpass'; hp.frequency.value = 3200; hp.Q.value = 8; const bg = ac.createGain(); bg.gain.value = 0;
+        noise.connect(bp); bp.connect(wg); wg.connect(g); noise.connect(hp); hp.connect(bg); bg.connect(g);
+        eng.start(); eng2.start(); noise.start();
+        ride = { g, eng, eng2, lp, wg, bg };
+      }
+      const t = ac.currentTime, k = Math.min(1, v / 18);
+      ride.g.gain.setTargetAtTime(on ? 0.05 : 0, t, 0.15);
+      ride.eng.frequency.setTargetAtTime(48 + v * 5.5, t, 0.12); ride.eng2.frequency.setTargetAtTime(96 + v * 11 + 3, t, 0.12);
+      ride.lp.frequency.setTargetAtTime(300 + v * 30, t, 0.2);
+      ride.wg.gain.setTargetAtTime(0.15 + k * 0.6, t, 0.2);
+      ride.bg.gain.setTargetAtTime(braking && v > 3 ? 0.35 : 0, t, 0.05);       // the brake's squeal
+      // a bird now and then, where the road runs through trees
+      if (on && (birdT -= dt) <= 0) {
+        birdT = 2 + Math.random() * 5;
+        if (housesNear(Math.floor(s / SEG)) <= 2) for (let i = 0; i < 2 + (Math.random() * 3 | 0); i++) {
+          const o = ac.createOscillator(), bgn = ac.createGain(), at = t + i * 0.13, f = 2400 + Math.random() * 1600;
+          o.type = 'sine'; o.frequency.setValueAtTime(f, at); o.frequency.exponentialRampToValueAtTime(f * 1.4, at + 0.08);
+          bgn.gain.setValueAtTime(0.0001, at); bgn.gain.exponentialRampToValueAtTime(0.012, at + 0.02); bgn.gain.exponentialRampToValueAtTime(0.0001, at + 0.1);
+          o.connect(bgn); bgn.connect(ac.destination); o.start(at); o.stop(at + 0.12);
+        }
+      }
+    } catch (e) {}
+  }
   // ---------- sound: short beeps, never needed ----------
   let ac = null;
   function beep(f = 600, d = 0.07, type = 'sine') {
@@ -3307,6 +3378,7 @@
   }
   function syncSound() { $('sound').textContent = soundOn ? '🔊' : '🔈'; $('sound').setAttribute('aria-pressed', soundOn); $('sound').setAttribute('aria-label', soundOn ? 'Sound on' : 'Sound off'); }
   $('sound').onclick = () => { soundOn = !soundOn; S.sound = soundOn; writeSave(); syncSound(); beep(700); };
+  $('langBtn').onclick = () => { S.lang = S.lang === 'mz' ? 'en' : 'mz'; writeSave(); applyLang(); showParcel(); hud(true); syncReady(); if (panel === 'missionsView') drawMissions(); if (panel === 'garageView') drawGarage(); beep(700); };
 
   // ---------- the game ----------
   function update(dt) {
@@ -3400,7 +3472,8 @@
   }
   function end(delivered) {
     if (banked) return;
-    banked = true; mode = delivered ? 'done' : 'over';
+    showTip(null);
+    banked = true; mode = delivered ? 'done' : 'over'; rideSound(0);
     // the score: metres, 25 a coin, 500 for the delivery, times your rank's multiplier
     const score = Math.floor((Math.floor(s) + coins * 25 + (delivered ? 500 : 0)) * rideMult), best = bestOf(route.id);
     const xpBefore = xp(), rankBefore = rankOf(xpBefore), tiersBefore = ACH.map(tierOf);
@@ -3432,25 +3505,27 @@
     askQuiz();
     $('endStars').hidden = !delivered;
     if (delivered) $('endStars').innerHTML = `<span class="stars" aria-label="${stars} of 3 stars">${starText(stars)}</span>` +
-      `<small>${stars === 3 ? 'The Aizawl way, and the coins too!' : !aizawlWay ? 'Next time wait in every queue and let people cross, for a second star.' : `Pick up half the coins (${picked} of ${coinsPut}) for the third star.`}${stars > starsBefore && starsBefore ? ' A new best!' : ''}</small>`;
+      `<small>${stars === 3 ? L('The Aizawl way, and the coins too!', 'Aizawl dan ngei, coin pawh!') : !aizawlWay ? L('Next time wait in every queue and let people cross, for a second star.', 'Arsi pahnihna tan jam zawng zawng nghak la, mi kal tlang te nghak rawh.') : L(`Pick up half the coins (${picked} of ${coinsPut}) for the third star.`, `Arsi pathumna tan coin chanve la rawh (${picked} / ${coinsPut}).`)}${stars > starsBefore && starsBefore ? L(' A new best!', ' A tha ber thar!') : ''}</small>`;
     $('endNews').innerHTML = [
-      coins ? `<span><i class="coin"></i> +${coins} into your wallet (now ${S.wallet})</span>` : '',
-      ...newBadges.map(x => `<span>${x.icon} New badge: ${x.name}</span>`),
-      readyNow > readyBefore ? `<span>🎯 A mission is done: claim it in Missions</span>` : '',
-      ...medals.map(([a, , n]) => `<span>${TIERS[n - 1].medal} ${TIERS[n - 1].name} medal: ${a.name} (${a.tiers[n - 1]})</span>`),
+      coins ? `<span><i class="coin"></i> +${coins} ${L(`into your wallet (now ${S.wallet})`, `i wallet ah (tunah ${S.wallet})`)}</span>` : '',
+      ...newBadges.map(x => `<span>${x.icon} ${L('New badge', 'Badge thar')}: ${x.name}</span>`),
+      readyNow > readyBefore ? `<span>🎯 ${L('A mission is done: claim it in Missions', 'Tihtur pakhat a zo: Tihtur ah la rawh')}</span>` : '',
+      ...medals.map(([a, , n]) => `<span>${TIERS[n - 1].medal} ${L(`${TIERS[n - 1].name} medal`, `Medal ${TIERS[n - 1].name}`)}: ${a.name} (${a.tiers[n - 1]})</span>`),
       xpNow > xpBefore ? `<span>✨ +${fmt(xpNow - xpBefore)} XP</span>` : '',
-      rankNow > rankBefore ? `<span class="rankup">🏍️ New rank: <b>${RANKS[rankNow].name}</b> · scores ×${multOf(rankNow)}</span>` : '',
-      ...daily().filter(x => !S.daily.claimed.includes(x.id) && !dailyReady(x) && dailyHave(x) > 0).map(x => `<span>🗓️ Today: ${x.text} · ${fmtGoal(x, dailyHave(x))} of ${fmtGoal(x, x.goal)}</span>`),
-      points() > ptsBefore ? `<span>⭐ +${fmt(points() - ptsBefore)} points (now ${fmt(points())})</span>` : '',
-      ...(openBefore ? CITY.veng.filter(v => isOpen(v.id) && !openBefore.includes(v.id)).map(v => `<span>🔓 ${v.name} is open on the Aizawl map</span>`) : []),
+      rankNow > rankBefore ? `<span class="rankup">🏍️ ${L('New rank', 'Rank thar')}: <b>${RANKS[rankNow].name}</b> · score ×${multOf(rankNow)}</span>` : '',
+      ...daily().filter(x => !S.daily.claimed.includes(x.id) && !dailyReady(x) && dailyHave(x) > 0).map(x => `<span>🗓️ ${L('Today', 'Vawiin')}: ${x.text} · ${fmtGoal(x, dailyHave(x))} / ${fmtGoal(x, x.goal)}</span>`),
+      points() > ptsBefore ? `<span>⭐ +${fmt(points() - ptsBefore)} ${L(`points (now ${fmt(points())})`, `point (tunah ${fmt(points())})`)}</span>` : '',
+      ...(openBefore ? CITY.veng.filter(v => isOpen(v.id) && !openBefore.includes(v.id)).map(v => `<span>🔓 ${L(`${v.name} is open on the Aizawl map`, `${v.name} chu Aizawl map ah a inhawng ta`)}</span>`) : []),
     ].join('');
     syncWallet(true); syncPause();
-    $('endTitle').textContent = delivered ? 'Delivered!' : 'Crash!';
+    $('endTitle').textContent = delivered ? L('Delivered!', 'A thleng ta!') : L('Crash!', 'I tawk ta!');
     $('endText').innerHTML = delivered
-      ? `You took the ${parcel[2]} <b>${parcel[0]}</b> (${parcel[1]}) ${(route.length / 1000).toFixed(1)} km to ${route.to} and picked up ${coins} coins.`
-      : `The ${parcel[2]} <b>${parcel[0]}</b> (${parcel[1]}) went flying after ${Math.floor(s)} m of ${(route.length / 1000).toFixed(1)} km, with ${coins} coins.`;
+      ? L(`You took the ${parcel[2]} <b>${parcel[0]}</b> (${parcel[1]}) ${(route.length / 1000).toFixed(1)} km to ${route.to} and picked up ${coins} coins.`,
+        `${parcel[2]} <b>${parcel[0]}</b> (${parcel[1]}) chu km ${(route.length / 1000).toFixed(1)} i phur a, ${route.to} i thlen a, coin ${coins} i la.`)
+      : L(`The ${parcel[2]} <b>${parcel[0]}</b> (${parcel[1]}) went flying after ${Math.floor(s)} m of ${(route.length / 1000).toFixed(1)} km, with ${coins} coins.`,
+        `km ${(route.length / 1000).toFixed(1)} zingah m ${Math.floor(s)} i tlan hnuah ${parcel[2]} <b>${parcel[0]}</b> (${parcel[1]}) a tla ta, coin ${coins} nen.`);
     $('endScore').innerHTML = `${score}${rideMult > 1 ? ` <small>×${rideMult}</small>` : ''}`;
-    $('endBest').textContent = Math.max(best, score) + (score > best ? ' · new best!' : '');
+    $('endBest').textContent = Math.max(best, score) + (score > best ? L(' · new best!', ' · a tha ber thar!') : '');
     $('endView').hidden = false;
     hud(true); draw();
     if (delivered) beep(990, 0.2);
@@ -3465,7 +3540,7 @@
     quizWord = met.length && Math.random() < 0.6 ? met[Math.random() * met.length | 0] : pool[Math.random() * pool.length | 0];
     const others = QUIZ_WORDS.filter(([m, e]) => m !== quizWord[0] && e !== quizWord[1]).sort(() => Math.random() - 0.5).slice(0, 2);
     const opts = [quizWord, ...others].sort(() => Math.random() - 0.5);
-    $('quizQ').innerHTML = `🗣️ What is <b>${quizWord[0]}</b>?`;
+    $('quizQ').innerHTML = L(`🗣️ What is <b>${quizWord[0]}</b>?`, `🗣️ <b>${quizWord[0]}</b> chu eng nge?`);
     $('quizOpts').innerHTML = opts.map(([m, e]) => `<button type="button" data-m="${m}">${e}</button>`).join('');
     $('quizA').textContent = ''; $('quiz').hidden = false; delete $('quizOpts').dataset.done;
   }
@@ -3475,14 +3550,54 @@
     const right = b.dataset.m === quizWord[0];
     $('quizOpts').querySelectorAll('button').forEach(x => { x.disabled = true; if (x.dataset.m === quizWord[0]) x.classList.add('ok'); });
     S.quizAsked++;
-    if (right) { S.quizRight++; S.wallet += 10; S.lifetime += 10; dailyAdd('quiz', 1); syncWallet(true); beep(990, 0.15); $('quizA').innerHTML = `Right! <b>${quizWord[0]}</b> is ${quizWord[1]} · <i class="coin"></i> +10`; }
-    else { b.classList.add('no'); beep(300, 0.15); $('quizA').innerHTML = `<b>${quizWord[0]}</b> is ${quizWord[1]}. Next time!`; }
+    if (right) { S.quizRight++; S.wallet += 10; S.lifetime += 10; dailyAdd('quiz', 1); syncWallet(true); beep(990, 0.15); $('quizA').innerHTML = L(`Right! <b>${quizWord[0]}</b> is ${quizWord[1]}`, `A dik! <b>${quizWord[0]}</b> chu ${quizWord[1]} a ni`) + ' · <i class="coin"></i> +10'; }
+    else { b.classList.add('no'); beep(300, 0.15); $('quizA').innerHTML = L(`<b>${quizWord[0]}</b> is ${quizWord[1]}. Next time!`, `<b>${quizWord[0]}</b> chu ${quizWord[1]} a ni. A dawt lehah!`); }
     writeSave();
   });
+  // ---------- the coach: tips on the first rides ----------
+  // Each tip shows when its moment comes and stays until it has been done: changing lanes, getting out of
+  // the way of a roadblock (the ride slows right down while it is ahead), riding over coins, waiting in a
+  // queue, letting people cross. Once done it is not shown again ("How to play" brings them all back).
+  let tip = null, tipT = 0, slow = 1, steered = false;
+  const coachSay = {
+    steer: ['👆', 'Tap ← or → (or a side of the road) to change lanes', '← emaw → (emaw kawng sir) hmet la, lane thlak rawh'],
+    block: ['🚧', 'A roadblock in your lane! Change lanes now', 'I lane ah roadblock a awm! Lane thlak nghal rawh'],
+    coin: ['🪙', 'Ride over the coins to pick them up', 'Coin te chungah tlan la, la rawh'],
+    queue: ['🚦', 'A queue ahead: hold Brake and wait your turn', 'Jam a awm: Brake hmet reng la, i chan nghak rawh'],
+    cross: ['🚸', 'People are crossing: hold Brake till they are over', 'Mi an kal tlang: an kal tlang zawh thleng Brake hmet reng rawh'],
+  };
+  function showTip(id) {
+    if (tip === id) return;
+    tip = id; tipT = 0; $('coach').hidden = !id;
+    if (id) { $('coachIcon').textContent = coachSay[id][0]; $('coachText').textContent = L(coachSay[id][1], coachSay[id][2]); }
+  }
+  const tipDone = id => { if (!S.tips.includes(id)) { S.tips.push(id); writeSave(); } if (tip === id) showTip(null); };
+  function coach(dt) {
+    slow = 1;
+    if (mode !== 'playing' || S.tips.length >= TIPS.length) { showTip(null); return; }
+    tipT += dt;
+    const need = id => !S.tips.includes(id);
+    const block = things.find(t => t.kind !== 'coin' && !t.hit && t.at > s + 2 && t.at - s < 34 && t.lane === lane);
+    const coinsAhead = things.find(t => t.kind === 'coin' && !t.got && t.at > s + 6 && t.at - s < 30);
+    const queue = jams.find(j => (j.state === 'stopped' || j.state === 'waiting') && j.at - s < 130 && j.at - s > -10);
+    const cross = crossings.find(c => c.state === 'crossing' && c.at - s < 90 && c.at > s - 2 && c.peds.some(p => Math.abs(p.x) < 4.8));
+    if (tip === 'block') { if (!block) tipDone('block'); else { slow = 0.3; return; } }
+    if (tip === 'steer' && steered) tipDone('steer');
+    if (tip === 'coin' && (picked > 0 || tipT > 4)) tipDone('coin');
+    if (tip === 'queue' && (!queue || queue.state === 'going')) { if (queue || !jams.some(j => j.broke)) tipDone('queue'); else showTip(null); }
+    if (tip === 'cross' && !cross) tipDone('cross');
+    if (need('block') && block) { showTip('block'); slow = 0.3; return; }
+    if (tip) return;
+    if (need('queue') && queue) showTip('queue');
+    else if (need('cross') && cross) showTip('cross');
+    else if (need('steer') && time > 1.2) showTip('steer');
+    else if (need('coin') && coinsAhead && !block) showTip('coin');
+  }
+  $('howBtn').onclick = () => { S.tips = []; writeSave(); $('howBtn').textContent = 'The tips will show on your next ride'; };
   function frame(now) {
     if (mode !== 'playing' && mode !== 'crashing') { loopId = 0; return; }
     const dt = Math.min(0.04, (now - last) / 1000); last = now;
-    update(dt);
+    coach(dt); update(dt * slow); rideSound(dt);
     draw(); dial();
     if (mode === 'playing' || mode === 'crashing') loopId = requestAnimationFrame(frame);
     else { loopId = 0; draw(); }
@@ -3499,7 +3614,7 @@
     hnStat(`ride/${route.id}`, `Aizawl Ride: ${route.to}`);
   }
   // Pause stops everything: no time passes, nothing moves, nothing is hit
-  function pause() { if (mode !== 'playing') return; setBrake(false); mode = 'paused'; $('pauseView').hidden = false; syncPause(); $('resumeBtn').focus(); }
+  function pause() { if (mode !== 'playing') return; setBrake(false); mode = 'paused'; rideSound(0); $('pauseView').hidden = false; syncPause(); $('resumeBtn').focus(); }
   function resume() { if (mode !== 'paused') return; mode = 'playing'; $('pauseView').hidden = true; syncPause(); run(); }
   function syncPause() {
     const b = $('pauseBtn');
@@ -3509,7 +3624,7 @@
     b.textContent = mode === 'paused' ? '▶' : '⏸'; b.setAttribute('aria-label', mode === 'paused' ? 'Keep riding' : 'Pause');
   }
   $('pauseBtn').onclick = () => (mode === 'paused' ? resume() : pause());
-  function steer(d) { if (mode !== 'playing') return; const l = Math.max(0, Math.min(2, lane + d)); if (l !== lane) { lane = l; beep(440, 0.03); } }
+  function steer(d) { if (mode !== 'playing') return; const l = Math.max(0, Math.min(2, lane + d)); if (l !== lane) { lane = l; steered = true; beep(440, 0.03); } }
 
   // ---------- choosing a road ----------
   function drawRoutes() {
@@ -3563,17 +3678,17 @@
     const pts = points(), lock = x => `🔒 ${fmt(x.need)}`;
     $('designs').innerHTML = DESIGNS.map(x => {
       const open = hasDesign(x), on = myDesign() === x;
-      return `<button class="item" type="button" data-design="${x.id}" aria-pressed="${on}" aria-label="${x.name}, ${x.en}${open ? '' : `, opens at ${fmt(x.need)} points`}"${open ? '' : ' aria-disabled="true"'}><span class="sw design ${x.id}" aria-hidden="true">🛵</span><span><b>${x.name}</b><small>${x.en}</small></span><span class="tag">${on ? 'Riding' : open ? 'Ride it' : lock(x)}</span></button>`;
+      return `<button class="item" type="button" data-design="${x.id}" aria-pressed="${on}" aria-label="${x.name}, ${x.en}${open ? '' : `, opens at ${fmt(x.need)} points`}"${open ? '' : ' aria-disabled="true"'}><span class="sw design ${x.id}" aria-hidden="true">🛵</span><span><b>${x.name}</b><small>${x.en}</small></span><span class="tag">${on ? L('Riding', 'I chuan mek') : open ? L('Ride it', 'Chuang rawh') : lock(x)}</span></button>`;
     }).join('');
     $('scooters').innerHTML = SCOOTERS.map(x => {
       const open = hasColour(x), on = myScooter() === x;
-      return `<button class="item" type="button" data-id="${x.id}" aria-pressed="${on}" aria-label="${x.name}, ${x.en}${open ? '' : `, opens at ${fmt(x.need)} points`}"${open ? '' : ' aria-disabled="true"'}><span class="sw" style="background:linear-gradient(135deg, ${x.body[0]}, ${x.body[2]})"></span><span><b>${x.name}</b><small>${x.en}</small></span><span class="tag">${on ? 'Riding' : open ? 'Ride it' : lock(x)}</span></button>`;
+      return `<button class="item" type="button" data-id="${x.id}" aria-pressed="${on}" aria-label="${x.name}, ${x.en}${open ? '' : `, opens at ${fmt(x.need)} points`}"${open ? '' : ' aria-disabled="true"'}><span class="sw" style="background:linear-gradient(135deg, ${x.body[0]}, ${x.body[2]})"></span><span><b>${x.name}</b><small>${x.en}</small></span><span class="tag">${on ? L('Riding', 'I chuan mek') : open ? L('Ride it', 'Chuang rawh') : lock(x)}</span></button>`;
     }).join('');
     // the shop: helmets, jackets and boxes; what you have is worn with a tap, the rest are bought with coins
     $('shop').innerHTML = SLOTS.map(([slot, label]) => `<h4 class="slot">${label}</h4>` + COSMETICS.filter(x => x.slot === slot).map(x => {
       const own = S.cos.owned.includes(x.id), on = worn(slot) === x;
       const look = x.puan ? 'repeating-linear-gradient(0deg, #1b1b1b 0 5px, #c8323d 5px 8px, #1b1b1b 8px 11px, #f2c230 11px 12px)' : `linear-gradient(135deg, ${x.c[0]}, ${x.c[1] || x.c[0]})`;
-      return `<button class="item" type="button" data-cos="${x.id}" aria-pressed="${on}" aria-label="${label}, ${x.name}, ${x.en}${own ? '' : `, ${x.price} coins`}"><span class="sw" style="background:${look}"></span><span><b>${x.name}</b><small>${x.en}</small></span><span class="tag">${on ? 'Wearing' : own ? 'Wear it' : `<i class="coin"></i> ${x.price}`}</span></button>`;
+      return `<button class="item" type="button" data-cos="${x.id}" aria-pressed="${on}" aria-label="${label}, ${x.name}, ${x.en}${own ? '' : `, ${x.price} coins`}"><span class="sw" style="background:${look}"></span><span><b>${x.name}</b><small>${x.en}</small></span><span class="tag">${on ? L('Wearing', 'I ha mek') : own ? L('Wear it', 'Ha rawh') : `<i class="coin"></i> ${x.price}`}</span></button>`;
     }).join('')).join('');
     if (!$('garageNote').textContent) $('garageNote').textContent = `Your points: ${fmt(pts)} · your coins: ${fmt(S.wallet)}.`;
   }
@@ -3607,7 +3722,7 @@
     $('daily').innerHTML = daily().map(x => {
       const have = dailyHave(x), done = S.daily.claimed.includes(x.id), ready = dailyReady(x);
       return `<div class="item today"><span aria-hidden="true">${done ? '✅' : '🗓️'}</span><span>${x.text}<small>${done ? 'Done' : `${fmtGoal(x, have)} of ${fmtGoal(x, x.goal)} · ⭐ ${x.reward} points`}</small><span class="meter"><i style="width:${have / x.goal * 100}%"></i></span></span>` +
-        `<button class="claim" type="button" data-daily="${x.id}"${ready ? '' : ' disabled'}>${done ? 'Claimed' : 'Claim'}</button></div>`;
+        `<button class="claim" type="button" data-daily="${x.id}"${ready ? '' : ' disabled'}>${done ? L('Claimed', 'I la tawh') : L('Claim', 'La rawh')}</button></div>`;
     }).join('');
     const roads = DATA.routes.length + (CITY ? CITY.jobs.length : 0), won = Object.values(S.stars).reduce((a, b) => a + b, 0);
     $('starsLine').innerHTML = `<span class="stars">★</span> ${won} of ${roads * 3} stars won on deliveries. Three on a road: the Aizawl way, and half its coins.`;
@@ -3849,7 +3964,7 @@
     audit4All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); out.push({ id: r.id, ...R3.audit4() }); } route = keep; reset(); return out; },
     audit2All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit2() }); } route = keep; R3.audit(); return out; } };
 
-  syncSound(); syncWallet(); syncReady(); syncPause(); drawRoutes(); showParcel(); reset(); resize();
+  applyLang(); syncSound(); syncWallet(); syncReady(); syncPause(); drawRoutes(); showParcel(); reset(); resize();
   // three.js is fetched once and kept on the phone; until then, and without WebGL, the picture is flat
   if (!/[?&]flat\b/.test(location.search)) import(THREE_URL).then(T => {
     try { R3 = make3d(T); } catch (e) { R3 = null; return; }

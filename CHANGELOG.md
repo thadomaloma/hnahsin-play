@@ -4,6 +4,23 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.29.0 (31 October 2026)
+
+### Aizawl Ride: tips, sounds and Mizo
+
+- **Tips for your first rides:** changing lanes, getting out of a
+  roadblock's way (the ride slows right down for the first one), riding
+  over coins, waiting in a queue and letting people cross. Each shows when
+  its moment comes and goes once done; "How to play" brings them back.
+- **Sounds of the ride:** the scooter's engine, rising with your speed; the
+  wind and the tyres; the brake; birds where the road runs through bamboo
+  and trees. No horns: Aizawl does not honk.
+- **Play in Mizo:** the Mizo button at the top puts the game's buttons,
+  headings, tips, the end of a ride and the word question into Mizo, and
+  remembers it. The longer mission and medal names are still in English.
+- Checked on a slowed-down computer as on a slow phone: still smooth, and a
+  ride starts in about half a second.
+
 ## 1.28.0 (31 October 2026)
 
 ### Aizawl Ride: the rider's shop and a Mizo word after every ride
