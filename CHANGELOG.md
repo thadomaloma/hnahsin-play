@@ -4,6 +4,22 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.27.0 (31 October 2026)
+
+### Aizawl Ride: rider ranks and medals
+
+- **Rider rank:** stars, today's missions and medals give you XP, and XP
+  gives you a rank, from Trainee through Courier and Express Rider to
+  Aizawl Legend (nine in all). Each rank adds a tenth to your scores (up to
+  ×1.8), so veng, designs and colours open sooner. Your rank shows on the
+  start screen, and in Missions with how far it is to the next.
+- **Medals** in bronze, silver and gold for what you do over many rides:
+  kilometres ridden, deliveries, coins earned, queues waited in, people
+  let across, veng visited, stars won and today's missions done. They take
+  the place of the old one-off missions.
+- The end of a ride shows your score's multiplier, new medals, the XP you
+  earned and a new rank when you reach one.
+
 ## 1.26.0 (31 October 2026)
 
 ### Aizawl Ride: today's missions and stars for every delivery

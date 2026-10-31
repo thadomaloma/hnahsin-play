@@ -34,8 +34,9 @@ Learn Mizo words by playing. Free, on any phone, no sign-up.
   Assembly House to Chawnga Road, in 3D. The bends, hills, hillsides and houses
   come from OpenStreetMap and Copernicus elevation data. Mizo words come up for what
   you ride past. Your points open four scooter designs (everyday, classic,
-  sport and electric) and colours named by Mizo colour words, and there are
-  missions and badges to earn. On the Aizawl map you deliver
+  sport and electric) and colours named by Mizo colour words. Every day brings
+  three new missions; deliveries win up to three stars; medals and stars raise
+  your rider rank, and each rank adds to your scores. On the Aizawl map you deliver
   between 18 veng along real roads, past houses at their real heights; more
   veng open as your points grow. Share the road with cars, buses and bikes,
   wait your turn in traffic jams and stop for people at zebra crossings, the
