@@ -43,7 +43,7 @@ Learn Mizo words by playing. Free, on any phone, no sign-up.
   the wind and the birds have their own sounds. Ride at night (by Aizawl's own
   clock) under the street lamps, or in the rain; at Krismas the town is hung with
   stars and lights, and at Chapchar Kut with flags, each with a prize to win. On the Aizawl map you deliver
-  between 18 veng along real roads, past houses at their real heights; more
+  between 22 veng along real roads, past houses at their real heights; more
   veng open as your points grow. Share the road with cars, buses and bikes,
   wait your turn in traffic jams and stop for people at zebra crossings, the
   Aizawl way.

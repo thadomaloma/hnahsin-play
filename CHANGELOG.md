@@ -4,6 +4,23 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.31.0 (31 October 2026)
+
+### Aizawl Ride: four new veng
+
+- **22 veng** on the Aizawl map, from 18: Ramhlun North, Ramhlun Vengthar,
+  Ramthar North and Thuampui, each at its church or its named place on
+  OpenStreetMap, with 23 new deliveries to and from them.
+- Every delivery there was before is still there, the same road, so your
+  best scores and stars stay. The first 18 veng open at the points they
+  always did, so nothing already open closes; the new ones open after their
+  neighbours.
+- The "Veng visited" medal now runs to 22 (5, 12 and 22), and "Every veng"
+  means all of them.
+- After an update, the Aizawl map and the people are fetched fresh, never
+  an old saved copy.
+- Checked on every road, all 98 of them.
+
 ## 1.30.1 (31 October 2026)
 
 ### Aizawl Ride: houses that meet the road

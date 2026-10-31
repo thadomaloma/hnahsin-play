@@ -201,7 +201,7 @@
           <h2 data-t="deliver">Deliver the parcel</h2>
           <p class="parcel" id="parcel"></p>
           <p class="rankline" id="rankLine"></p>
-          <button class="route citybtn" id="mapBtn" type="button"><b>🗺️ <span data-t="map">The Aizawl map</span></b><span id="mapSub">Deliver between 18 veng</span></button>
+          <button class="route citybtn" id="mapBtn" type="button"><b>🗺️ <span data-t="map">The Aizawl map</span></b><span id="mapSub">Deliver between 22 veng</span></button>
           <button class="go" id="startBtn" type="button" data-t="start">Start riding</button>
           <div class="row2">
             <button class="route small" id="garageBtn" type="button">🛵 <span data-t="garage">Garage</span></button>
@@ -366,7 +366,7 @@
     { id: 'coins', icon: '<i class="coin"></i>', name: 'Coins earned', tiers: [100, 500, 2000], have: () => S.lifetime },
     { id: 'jams', icon: '🚦', name: 'Queues waited in', tiers: [3, 15, 40], have: () => S.jams },
     { id: 'crossed', icon: '🚸', name: 'People let across', tiers: [3, 10, 30], have: () => S.crossed },
-    { id: 'veng', icon: '🏘️', name: 'Veng visited', tiers: [5, 10, 18], have: () => S.visited.length },
+    { id: 'veng', icon: '🏘️', name: 'Veng visited', tiers: [5, 12, 22], have: () => S.visited.length },
     { id: 'stars', icon: '⭐', name: 'Stars won', tiers: [10, 50, 150], have: () => totalStars() },
     { id: 'daily', icon: '🗓️', name: "Today's missions done", tiers: [5, 20, 60], have: () => S.dailyDone },
     { id: 'quiz', icon: '🗣️', name: 'Mizo words answered right', tiers: [5, 20, 60], have: () => S.quizRight },
@@ -447,7 +447,7 @@
     { id: 'garage', icon: '🔑', name: 'A new look', got: () => S.design !== 'everyday' || S.scooter !== 'hring' },
     { id: 'words', icon: '🗣️', name: 'All 5 road words', got: () => S.words.length >= SCENE_WORDS.length },
     { id: 'veng5', icon: '🏘️', name: '5 veng visited', got: () => S.visited.length >= 5 },
-    { id: 'vengall', icon: '🗺️', name: 'Every veng', got: () => S.visited.length >= 18 },
+    { id: 'vengall', icon: '🗺️', name: 'Every veng', got: () => CITY && CITY.veng.every(v => S.visited.includes(v.id)) },
     { id: 'driver', icon: '🚦', name: 'Aizawl driver', got: () => S.jams >= 5 },
     { id: 'zah', icon: '🚸', name: 'Let people cross', got: () => S.crossed >= 3 },
   ];
@@ -2626,7 +2626,7 @@
     };
     (async () => {
       const [{ GLTFLoader }, SK] = await Promise.all([import(ADDONS + 'loaders/GLTFLoader.js'), import(ADDONS + 'utils/SkeletonUtils.js')]);
-      const g = await new GLTFLoader().loadAsync('ride/people.glb');
+      const g = await new GLTFLoader().loadAsync('ride/people.glb?v=5ac40a85');
       const kind = (name, female, scale) => {
         const rig = g.scene.getObjectByName(name + 'Rig'), clips = { walk: g.animations.find(a => a.name === name + 'Walk'), idle: g.animations.find(a => a.name === name + 'Idle') };
         let map = null;
@@ -3931,7 +3931,7 @@
   let jobPick = null, mapBox = null;
   function loadCity() {
     if (CITY) return Promise.resolve(CITY);
-    return fetch('ride/city.json').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => (CITY = d));
+    return fetch('ride/city.json?v=2a931e1f').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => (CITY = d));
   }
   const vengOf = id => CITY.veng.find(v => v.id === id) || CITY.veng[0];
   // A packed list of small numbers (one character each) back into numbers
@@ -3953,6 +3953,7 @@
   // Dawrpui and the four veng nearest it are open from the start; the others open one by one,
   // nearer ones first (by the shortest ride from Dawrpui). A veng you have been to stays open.
   const UNLOCK = [0, 0, 0, 0, 0, 2000, 4000, 6500, 9000, 12000, 15000, 18500, 22000, 26000, 30000, 35000, 40000, 46000];
+  const LATER = ['ramhlunn', 'ramhlunv', 'ramtharn', 'thuampui'];     // the veng added after the first eighteen
   let vengNeed = null;
   function needs() {
     if (vengNeed) return vengNeed;
@@ -3963,7 +3964,11 @@
       for (const j of CITY.jobs) if (j.a === v && dist[v] + j.length < (dist[j.b] ?? Infinity)) { dist[j.b] = dist[v] + j.length; todo.push(j.b); }
     }
     const order = CITY.veng.map(v => v.id).sort((p, q) => (dist[p] ?? 1e9) - (dist[q] ?? 1e9));
-    vengNeed = Object.fromEntries(order.map((id, i) => [id, UNLOCK[Math.min(i, UNLOCK.length - 1)]]));
+    // the first eighteen keep the points they always needed; a veng added since needs a thousand more than
+    // the one before it on the way out from Dawrpui (so nothing already open closes)
+    const first = order.filter(id => !LATER.includes(id));
+    vengNeed = Object.fromEntries(first.map((id, i) => [id, UNLOCK[Math.min(i, UNLOCK.length - 1)]]));
+    order.forEach((id, i) => { if (LATER.includes(id)) vengNeed[id] = (i ? vengNeed[order[i - 1]] : 0) + 1000; });
     return vengNeed;
   }
   const points = () => [...Object.values(S.best), ...Object.values(S.cityBest)].reduce((a, b) => a + (b || 0), 0) + (S.bonus || 0);
