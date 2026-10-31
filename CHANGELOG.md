@@ -4,6 +4,25 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.24.2 (31 October 2026)
+
+### Aizawl Ride: people come first, and no getting stuck
+
+- Cars, buses and two-wheelers, both ways, stop for people on a zebra
+  crossing and go on once they are across. Oncoming traffic no longer
+  drives through the car in front.
+- There are zebra crossings on many more roads (25 of them, before 5),
+  Chawnga Road among them, so "Let people cross" can be earned.
+- On the Aizawl map you are never stuck: where every road on from a veng
+  leads to one not open yet (as from Treasury, early on), the nearest one
+  opens.
+- Trees and ferns stand on the ground everywhere: none in the air and
+  none sunk into the hillside. On the inside of the tightest bends, where
+  the hillside crowds together, no tree or house stands.
+- A roadblock is as wide to hit as it looks, and none stands on a zebra
+  crossing.
+- Checked on every road in the game, and every mission.
+
 ## 1.24.1 (31 October 2026)
 
 ### Aizawl Ride: a gentler lane change

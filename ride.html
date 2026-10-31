@@ -432,7 +432,7 @@
   function plan() {
     const end = route.length - 40;
     while (nextRow < Math.min(end, s + VIEW * SEG + 40)) {
-      if (!jams.some(j => nextRow > j.at - 70 && nextRow < j.at + 70)) {
+      if (!jams.some(j => nextRow > j.at - 70 && nextRow < j.at + 70) && !crossings.some(c => Math.abs(nextRow - c.at) < 30)) {     // none in a queue or on a zebra crossing
         const blocked = Math.random() * 2 | 0, open = 1 - blocked;
         things.push({ kind: ['rock', 'log', 'barrier'][Math.random() * 3 | 0], lane: blocked, at: nextRow, hit: false });
         if (Math.random() < 0.7) for (let i = 1; i <= 4; i++) things.push({ kind: 'coin', lane: open, at: nextRow + 4 + i * 3.2, got: false });
@@ -507,30 +507,37 @@
         if (s > back && s < front) { j.broke = true; say('hmanhmawh', 'hurried · wait your turn', true); }
       }
     }
-    // Each car: keeps its lane, slows for what is ahead, goes round an obstacle if it can
+    // Each car, either way: keeps its lane, slows for what is ahead (the one in front, the scooter,
+    // people on a zebra crossing), goes round an obstacle if it can
     for (const c of cars) {
-      if (c.dir > 0) {
-        let want = c.cruise;
-        if (c.jam) {
-          const j = c.jam;
-          want = j.state === 'going' && j.t > c.goAt ? 8 : 0;
-          if (j.state === 'going' && j.t > c.goAt + 6) c.jam = null;
-        }
-        // what is ahead in its lane: a car, the scooter, or an obstacle
-        let gap = 1e9, aheadV = 0;
-        for (const o of cars) if (o !== c && o.dir > 0 && o.lane === c.lane && o.at > c.at) { const g = o.at - o.len / 2 - (c.at + c.len / 2); if (g < gap) { gap = g; aheadV = o.v; } }
-        if (lane === c.lane && s > c.at) { const g = s - 0.9 - (c.at + c.len / 2); if (g < gap) { gap = g; aheadV = v; } }
+      const d = c.dir;
+      let want = c.cruise;
+      if (c.jam) {
+        const j = c.jam;
+        want = j.state === 'going' && j.t > c.goAt ? 8 : 0;
+        if (j.state === 'going' && j.t > c.goAt + 6) c.jam = null;
+      }
+      // what is ahead in its lane: a car, the scooter, or an obstacle
+      let gap = 1e9, aheadV = 0;
+      for (const o of cars) if (o !== c && o.dir === d && o.lane === c.lane && (o.at - c.at) * d > 0) { const g = (o.at - c.at) * d - (o.len + c.len) / 2; if (g < gap) { gap = g; aheadV = Math.abs(o.v); } }
+      if (d > 0 && lane === c.lane && s > c.at) { const g = s - 0.9 - (c.at + c.len / 2); if (g < gap) { gap = g; aheadV = v; } }
+      // people on a zebra crossing: it stops short of the stripes until they are across
+      for (const z of crossings) if (z.state === 'crossing' && z.peds.some(p => Math.abs(p.x) < 4.9)) {
+        const g = (z.at + 2 - c.at) * d - c.len / 2 - 2.1;
+        if (g > -1 && g < gap) { gap = Math.max(0, g); aheadV = 0; }
+      }
+      if (d > 0) {
         const block = things.find(t => t.kind !== 'coin' && t.lane === c.lane && t.at > c.at && t.at - c.at < 22);
         if (block && !c.jam) {
           const other = 1 - c.lane;
           if (c.lane < 2 && !carNear(other, c.at - 8, c.at + 14) && !thingNear(other, c.at - 4, c.at + 24) && !(lane === other && Math.abs(s - c.at) < 8)) c.lane = other;
           else { const g = block.at - 1.2 - (c.at + c.len / 2); if (g < gap) { gap = g; aheadV = 0; } }
         }
-        if (gap < 12) want = Math.min(want, aheadV + Math.max(0, gap - 2.5) * 0.8);
-        c.slowing = want < c.v - 0.3 || c.v < 0.5;
-        c.v += Math.max(-10 * dt, Math.min(3 * dt, want - c.v));
-        c.v = Math.max(0, c.v);
       }
+      if (gap < 12) want = Math.min(want, aheadV + Math.max(0, gap - 2.5) * 0.8);
+      const sp = Math.abs(c.v);
+      c.slowing = want < sp - 0.3 || sp < 0.5;
+      c.v = d * Math.max(0, sp + Math.max(-10 * dt, Math.min(3 * dt, want - sp)));
       c.at += c.v * dt;
       c.vx = (c.vx || 0) + ((LANES[c.lane] - c.x) * 6.8 - 5.2 * (c.vx || 0)) * dt; c.x += c.vx * dt;   // to a new lane on a spring
     }
@@ -559,13 +566,20 @@
     { shirt: '#ffffff', lower: '#1f3a68', stripes: '#c8323d', hair: '#1d1b22', long: 1, bag: '#8e2b2b' },   // a schoolgirl in her puan
     { shirt: '#4a4f57', lower: '#2b2b2b', hair: '#1d1b22', jacket: 1 },                  // a man in a jacket
   ];
+  // Zebra crossings near the named places and every 380 m or so: each at the nearest spot (within
+  // 120 m) with a footpath on both sides for a few metres, and no queue close by
   function planCrossings() {
     const out = [], spots = route.places.map(p => p[0] * SEG);
-    for (let m = 400; m < route.length - 120; m += 560) spots.push(m);
-    for (const m of spots.sort((a, b) => a - b)) {
-      const ci = Math.floor(m / SEG);
-      if (m < 160 || m > route.length - 90 || !footpath(ci) || !walkHere(ci, -1) || !walkHere(ci, 1) || jams.some(j => Math.abs(j.at - m) < 110)) continue;
-      if (!out.length || m - out[out.length - 1].at > 260) out.push({ at: m, state: 'far', minV: 99, miss: false });
+    for (let m = 300; m < route.length - 120; m += 380) spots.push(m);
+    const ok = m => {
+      if (m < 160 || m > route.length - 90 || jams.some(j => Math.abs(j.at - m) < 110)) return false;
+      for (let i = Math.floor(m / SEG) - 1; i <= Math.floor(m / SEG) + 1; i++) if (!footpath(i) || !walkHere(i, -1) || !walkHere(i, 1)) return false;
+      return true;
+    };
+    for (const m0 of spots.sort((a, b) => a - b)) {
+      let m = null;
+      for (let d = 0; d <= 120 && m === null; d += 8) for (const t of d ? [m0 + d, m0 - d] : [m0]) if (m === null && ok(t)) m = t;
+      if (m !== null && (!out.length || m - out[out.length - 1].at > 260)) out.push({ at: m, state: 'far', minV: 99, miss: false });
     }
     return out.slice(0, 4);
   }
@@ -1620,6 +1634,14 @@
       }
       return Math.max(0, least);
     }
+    // on the inside of a bend the hillside's strips crowd together (and fold, far enough in); nothing stands
+    // there, nor at the very ends of the road
+    function crowdedAt(k, sd, o) {
+      const { n, F } = W3;
+      if (k < 2 || k > n - 3) return true;
+      const a = ptAt(k - 1, sd * o, 0), b = ptAt(k, sd * o, 0), c = ptAt(k + 1, sd * o, 0), f = F[k];
+      return (b[0] - a[0]) * f.x + (b[2] - a[2]) * f.z < 1.2 || (c[0] - b[0]) * f.x + (c[2] - b[2]) * f.z < 1.2;
+    }
     function planHomes() {
       const { n, Y, yaw, ext } = W3, list = W3.home = [], grid = W3.homes = new Map();
       for (let k = 0; k < n - 1; k++) for (const sd of [-1, 1]) {
@@ -1628,7 +1650,7 @@
           let h = null;
           if (rnd(k, 10 + j + sd * 7) <= dens * 1.15 && !(j === 2 && dens < 0.4)) {
             const w = 3.6 + rnd(k, j * 3 + sd) * 2.2, d = 5 + rnd(k, j * 5 + sd) * 3, off = E + 1.6 + j * 7 + rnd(k, j + 4) * 1.2 + w / 2;     // w across, d along the road
-            if (off + w / 2 <= ext[sd][k]) {
+            if (off + w / 2 <= ext[sd][k] && !crowdedAt(k, sd, off - w / 2) && !crowdedAt(k, sd, off + w / 2)) {
               const gy = groundAt(k, sd, off), hh = tall ? Math.max(3, tall * (0.8 + rnd(k, j + 9) * 0.35)) : 3 + rnd(k, j + 7) * 5 + j * 2;
               // its foot goes down to the lowest ground under it (across it, and along the road where it climbs):
               // on a slope an Aizawl house has a storey more on its downhill side, never a gap beneath
@@ -1751,6 +1773,13 @@
               : g < -2.5 ? (even ? '#4f8a62' : '#558f67') : c > 3 ? (even ? '#5f9a6c' : '#5a9567') : (even ? '#6aa57a' : '#62a073');
             st.quad(pt(k, sd * oa0, gAt(k, oa0)), pt(k, sd * oa1, gAt(k, oa1)), pt(k + 1, sd * ob1, gAt(k + 1, ob1)), pt(k + 1, sd * ob0, gAt(k + 1, ob0)), hex);
           }
+          // the hillside's height o metres out as drawn (between its columns), for what stands on it
+          const drawnAt = o => {
+            const xa = Math.max(HALF, ext[sd][k]), cols = ca.map(c => Math.min(c, xa));
+            for (let c = 0; c < cols.length - 1; c++) if (o <= cols[c + 1] + 1e-6) { const t = cols[c + 1] > cols[c] ? clamp((o - cols[c]) / (cols[c + 1] - cols[c]), 0, 1) : 0; return gAt(k, cols[c]) + (gAt(k, cols[c + 1]) - gAt(k, cols[c])) * t; }
+            return gAt(k, cols[cols.length - 1]);
+          };
+          const crowded = o => crowdedAt(k, sd, o);
           // Houses, from the plan; where the ground falls, they stand on it and reach up to the road
           for (let j = 0; j < 3; j++) {
             const hm = W3.home[(k * 2 + (sd > 0 ? 1 : 0)) * 3 + j];
@@ -1778,7 +1807,8 @@
             const off = E + 2 + j * 9 + rnd(k, 50 + j) * 7;
             if (off > ext[sd][k] - 1) continue;
             const r = rnd(k, 60 + j), sc = 0.8 + rnd(k, j + 1) * 0.5, kind = g > 8 && r < 0.35 ? 'pine' : r < 0.42 ? 'bamboo' : r < 0.68 ? 'broad' : r < 0.86 ? 'tall' : 'banana';
-            const tp = pt(k, sd * off, groundAt(k, sd, off) - 0.2);
+            if (crowded(off)) continue;
+            const tp = pt(k, sd * off, drawnAt(off) - 0.2);
             if (onRoad(tp[0], tp[2], 2.2 * sc, tp[1], tp[1] + 12) || inHome(tp[0], tp[1], tp[1] + 12, tp[2], 1.8 * sc)) { dropped++; continue; }
             TW[kind].push({ p: tp, yaw: rnd(k, j + 5) * 6.28, s: [sc, sc * (0.9 + rnd(k, j + 6) * 0.25), sc], c: TINT[(k + j) % TINT.length] });
           }
@@ -1787,7 +1817,8 @@
             if (rnd(k, 80 + j + sd * 3) > (housesOn(sd, k) <= 1 ? 0.6 : 0.2)) continue;
             const off = (!bareSide && [k - 1, k, k + 1].some(kk => footpath(kk) && sideAt(kk, sd) > -2.5) ? FOOT + 0.9 : E + 0.5) + j * 2.5 + rnd(k, 90 + j) * 2;
             if (off > Math.max(HALF, ext[sd][k]) - 0.3) continue;
-            const sp = pt(k, sd * off, gAt(k, off) - 0.05), s2 = 0.7 + rnd(k, 95 + j) * 0.6;
+            if (crowded(off)) continue;
+            const sp = pt(k, sd * off, drawnAt(off) - 0.05), s2 = 0.7 + rnd(k, 95 + j) * 0.6;
             if (onRoad(sp[0], sp[2], 0.5, sp[1], sp[1] + 1) || onRoad(sp[0], sp[2], FOOT + 0.9 - HALF - 0.8, sp[1], sp[1] + 1, k - 6, k + 6) || inHome(sp[0], sp[1], sp[1] + 1, sp[2], 0.4)) continue;
             TW.shrub.push({ p: sp, yaw: rnd(k, j + 7) * 6.28, s: [s2, s2, s2], c: TINT[(k + j) % TINT.length] });
           }
@@ -2904,8 +2935,29 @@
       }
       return out;
     }
+    // For the tests: trees and ferns standing on the ground: a ray down through each trunk to the
+    // hillside, the base ground or the road; a tree whose foot is in the air, or deep under the ground
+    function audit9() {
+      setRoute();
+      const out = { trees: 0, treeFloat: 0, treeBuried: 0, at: [] }, ray = new T.Raycaster(), down = new T.Vector3(0, -1, 0), o = new T.Vector3();
+      const m = new T.Matrix4(), p = new T.Vector3(), qq = new T.Quaternion(), sc = new T.Vector3();
+      const grounds = g => g.children.filter(c => c.material === groundMat);
+      for (const g of pieces) g.traverse(obj => {
+        if (!obj.isInstancedMesh || (obj.material !== woodMat && obj.geometry !== TREES.shrub.leaves)) return;
+        const near = pieces.filter(q => q.userData.mid && q.userData.mid.distanceTo(g.userData.mid) < 260).flatMap(grounds).concat(fill ? [fill] : []);
+        for (let i = 0; i < obj.count; i++) {
+          obj.getMatrixAt(i, m); m.decompose(p, qq, sc); out.trees++;
+          o.set(p.x, p.y + 6, p.z); ray.set(o, down); ray.far = 40;
+          const hits = ray.intersectObjects(near, false);
+          let best = null; for (const h of hits) if (best === null || Math.abs(h.point.y - p.y) < Math.abs(best - p.y)) best = h.point.y;
+          if (best === null || p.y - best > 0.35) { out.treeFloat++; if (out.at.length < 6) out.at.push(['float', Math.round(p.x), Math.round(p.z), best === null ? null : +(p.y - best).toFixed(2)]); }
+          else if (best - p.y > 1.2) { out.treeBuried++; if ((out.bat = out.bat || []).length < 6) out.bat.push(['buried', Math.round(p.x), Math.round(p.z), +(best - p.y).toFixed(2), obj.geometry === TREES.shrub.leaves ? 'shrub' : 'tree', hits.map(h => [+(h.point.y - p.y).toFixed(2), h.object === fill ? 'fill' : 'piece', h.face ? +h.face.normal.y.toFixed(2) : null])]); }
+        }
+      });
+      return out;
+    }
     const walkable = (i, sd) => { setRoute(); i = clamp(i, 0, W3.n - 1); return !W3.bare[sd][i] && !W3.gone[sd][i] && !W3.ride[i]; };
-    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, walkable,
+    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, audit9, walkable,
       // for the tests: each vehicle's size as drawn (length, width with the mirrors, height in metres), and our scooter's
       sizes: () => Object.fromEntries([...Object.keys(KINDS).map(k => { const M = MODELS[k], K = KINDS[k], b = new T.Box3().setFromBufferAttribute(M.paint.attributes.position); return [k, { len: +((b.max.z - b.min.z) * K.len / M.len).toFixed(2), wid: +((M.single ? b.max.x - b.min.x : (b.max.x - b.min.x) * K.wid)).toFixed(2), hgt: +(b.max.y * K.hgt / M.hgt).toFixed(2), wheel: +(M.wheels[0][1] * K.hgt / M.hgt * 2).toFixed(2) }]; }), ['me', (() => { const p0 = scoot.position.clone(), r0 = scoot.rotation.clone(); scoot.position.set(0, 0, 0); scoot.rotation.set(0, 0, 0); scoot.updateMatrixWorld(true); const b = new T.Box3().setFromObject(scoot); scoot.position.copy(p0); scoot.rotation.copy(r0); scoot.updateMatrixWorld(true); return { len: +(b.max.z - b.min.z).toFixed(2), wid: +(b.max.x - b.min.x).toFixed(2), hgt: +(b.max.y - b.min.y).toFixed(2) }; })()]]) };
   }
@@ -3063,7 +3115,8 @@
     // What the scooter meets: each coin once, the first obstacle ends the ride
     for (const t of things) {
       if (t.got || t.hit || Math.abs(t.at - s) > 0.9) continue;
-      if (Math.abs(LANES[t.lane] - px) > 1.15) continue;
+      // as wide as it is drawn, with the scooter's own half width: a barrier or a log 2.2 m across, a rock about 1.9 m
+      if (Math.abs(LANES[t.lane] - px) > (t.kind === 'coin' ? 1.15 : t.kind === 'rock' ? 0.95 + 0.3 : 1.1 + 0.3)) continue;
       if (t.kind === 'coin') {
         t.got = true; coins++; beep(880, 0.06); burst('#ffd34d');
         pops.push({ text: '+1', x: riderXY().x + (Math.random() - .5) * 30, y: riderXY().y - 110, life: 1 });
@@ -3296,7 +3349,11 @@
     return vengNeed;
   }
   const points = () => [...Object.values(S.best), ...Object.values(S.cityBest)].reduce((a, b) => a + (b || 0), 0);
-  const isOpen = id => S.visited.includes(id) || id === S.at || points() >= needs()[id];
+  const openBy = id => S.visited.includes(id) || id === S.at || points() >= needs()[id];
+  // You are never stuck: where every road on from here leads to a veng not open yet, the nearest
+  // of them is open (some roads go only one way: from Dawrpui to Treasury, and on to veng opened later)
+  const wayOn = () => { const js = jobsFrom(S.at); return js.length && !js.some(j => openBy(j.b)) ? js.reduce((a, j) => (needs()[j.b] < needs()[a.b] ? j : a)).b : null; };
+  const isOpen = id => openBy(id) || id === wayOn();
   const openVeng = () => CITY.veng.filter(v => isOpen(v.id)).map(v => v.id);
   const fmt = n => n.toLocaleString('en');
 
@@ -3448,13 +3505,17 @@
   document.querySelectorAll('.steer').forEach(b => b.addEventListener('contextmenu', e => e.preventDefault()));
 
   // For the automatic tests only (?test in the address): read the ride and steer.
-  if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
-    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)) })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1) => { const c = newCar(kind, lane, s + ahead, 0, dir); c.cruise = 0; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), sizes: () => R3 && R3.sizes(), walker: (ahead, x, va = 1, vx = 0, look) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; peds.push(p); return peds.length; },
+  if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ kind: c.kind, lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, wid: c.wid, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
+    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)) })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1, speed = 0) => { const c = newCar(kind, lane, s + ahead, dir * speed, dir); c.cruise = speed; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), sizes: () => R3 && R3.sizes(), walker: (ahead, x, va = 1, vx = 0, look) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; peds.push(p); return peds.length; },
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
+    // for the tests: ride a given road; and every road with how many crossings and jams it has
+    useRoute: id => { route = [...DATA.routes, ...CITY.jobs.map(routeOf)].find(r => r.id === id); reset(); return route.length; }, go: () => start(),
+    plans: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push([r.id, Math.round(r.length), planCrossings().length, planJams().length]); } route = keep; reset(); return out; },
     auditAll: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; const a = R3.audit(); out.push({ id: r.id, ...a }); } route = keep; R3.audit(); return out; },
     audit3All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); R3.setPlan(); out.push({ id: r.id, ...R3.audit3() }); } route = keep; reset(); return out; },
     audit7All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); R3.setPlan(); out.push({ id: r.id, ...R3.audit7() }); } route = keep; reset(); return out; },
     audit8All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit8() }); } route = keep; reset(); return out; },
+    audit9All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit9() }); } route = keep; reset(); return out; },
     audit6All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit6() }); } route = keep; reset(); return out; },
     audit5All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit5() }); } route = keep; reset(); return out; },
     audit4All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); out.push({ id: r.id, ...R3.audit4() }); } route = keep; reset(); return out; },
