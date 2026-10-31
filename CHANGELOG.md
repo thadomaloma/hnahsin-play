@@ -4,6 +4,24 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.32.0 (31 October 2026)
+
+### Aizawl Ride: Bawngkawn, Zemabawk, Durtlang and Kulikawn
+
+- **26 veng** on the Aizawl map: Bawngkawn (at its police station),
+  Zemabawk (at its health centre), Durtlang (at the BCM church, up NH6) and
+  Kulikawn (at its police station), found on OpenStreetMap, with 18 new
+  deliveries to and from them.
+- Every delivery there was before is still there, on the same road, and
+  nothing already open closes.
+- No road is steeper than Aizawl's steepest (35 in 100): a sudden drop in
+  the height data on the way down from Durtlang no longer throws the camera
+  off the road.
+- A fern no longer stands on a footpath on the way from Ramhlun to Ramhlun
+  Vengthar.
+- The "Veng visited" medal now runs to 26.
+- Checked on every road, all 116 of them.
+
 ## 1.31.0 (31 October 2026)
 
 ### Aizawl Ride: four new veng
