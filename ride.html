@@ -101,6 +101,12 @@
   .item[aria-pressed="true"] small { color: #44513a; }
   .item .tag { font-weight: 800; font-size: 14px; white-space: nowrap; }
   .sheet h3.sub { margin: 14px 0 6px; font-size: 15px; }
+  .sheet h3.sub small { font-weight: 600; margin-left: 6px; }
+  .stars { color: #f2b01e; font-style: normal; letter-spacing: 2px; text-shadow: 0 1px 0 rgba(35, 30, 22, .35); }
+  .endstars { display: grid; justify-items: center; gap: 2px; margin: 4px 0 8px; }
+  .endstars .stars { font-size: 34px; line-height: 1; }
+  .endstars small { color: var(--muted); text-align: center; }
+  .item.today { border-color: #f2b01e; }
   .meter { display: block; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--ink) 14%, transparent); margin-top: 5px; overflow: hidden; }
   .meter i { display: block; height: 100%; background: var(--leaf); }
   .claim { min-height: 40px; padding: 4px 12px; border-radius: 99px; border: 1.5px solid var(--ink); background: #2e7d32; color: #fff; font-weight: 800; font-size: 14px; }
@@ -205,7 +211,11 @@
       <div class="overlay" id="missionsView" hidden>
         <div class="sheet" role="dialog" aria-labelledby="missionsTitle">
           <h2 id="missionsTitle">Missions</h2>
+          <h3 class="sub">Today <small class="fine" id="dailyLeft"></small></h3>
+          <div class="list" id="daily"></div>
+          <h3 class="sub">For good</h3>
           <div class="list" id="missions"></div>
+          <p class="fine" id="starsLine"></p>
           <h3>Badges</h3>
           <div class="badges" id="badges"></div>
           <button class="go" type="button" data-close>Done</button>
@@ -224,6 +234,7 @@
         <div class="sheet">
           <h2 id="endTitle">Delivered!</h2>
           <p id="endText"></p>
+          <div class="endstars" id="endStars" hidden></div>
           <div class="result"><span>Score</span><span id="endScore">0</span></div>
           <div class="result"><span>Best on this road</span><span id="endBest">0</span></div>
           <div class="news" id="endNews"></div>
@@ -326,6 +337,23 @@
     { id: 'city3', text: 'Make 3 deliveries on the Aizawl map', goal: 3, reward: 150, have: () => S.cityDone },
     { id: 'jam3', text: 'Wait your turn in 3 traffic jams', goal: 3, reward: 120, have: () => S.jams },
   ];
+  // Today's missions: three a day (an easy, a middling and a hard one), a new three at midnight, picked
+  // by the date. Some count over one ride, some over the whole day. Each pays points, which open veng,
+  // designs and colours just as your best scores do.
+  const DAILY = [
+    { id: 'coins25', text: 'Pick up 25 coins in one ride', kind: 'coin', per: 'ride', goal: 25, reward: 250, tier: 0 },
+    { id: 'jam1', text: 'Wait your turn in a traffic jam', kind: 'jam', per: 'day', goal: 1, reward: 250, tier: 0 },
+    { id: 'deliver1', text: 'Make a delivery', kind: 'deliver', per: 'day', goal: 1, reward: 250, tier: 0 },
+    { id: 'coins60', text: 'Pick up 60 coins today', kind: 'coin', per: 'day', goal: 60, reward: 400, tier: 1 },
+    { id: 'city2', text: 'Make 2 deliveries on the Aizawl map today', kind: 'city', per: 'day', goal: 2, reward: 400, tier: 1 },
+    { id: 'km2', text: 'Ride 2 km today', kind: 'metres', per: 'day', goal: 2000, reward: 350, tier: 1 },
+    { id: 'star2', text: 'Earn 2 stars on a delivery', kind: 'stars', per: 'ride', goal: 2, reward: 350, tier: 1 },
+    { id: 'words3', text: 'Meet 3 Mizo road words in one ride', kind: 'words', per: 'ride', goal: 3, reward: 350, tier: 1 },
+    { id: 'jam3', text: 'Wait your turn in 3 traffic jams today', kind: 'jam', per: 'day', goal: 3, reward: 500, tier: 2 },
+    { id: 'cross2', text: 'Stop and let people cross 2 times today', kind: 'cross', per: 'day', goal: 2, reward: 500, tier: 2 },
+    { id: 'deliver3', text: 'Make 3 deliveries today', kind: 'deliver', per: 'day', goal: 3, reward: 500, tier: 2 },
+    { id: 'star3', text: 'Earn 3 stars on a delivery', kind: 'stars', per: 'ride', goal: 3, reward: 600, tier: 2 },
+  ];
   const BADGES = [
     { id: 'first', icon: '🛵', name: 'First ride', got: () => S.rides >= 1 },
     { id: 'deliver', icon: '📦', name: 'Delivered', got: () => Object.values(S.deliveries).some(n => n > 0) },
@@ -348,7 +376,7 @@
   };
   const fresh = () => ({ v: 1, best: {}, wallet: 0, lifetime: 0, metres: 0, rides: 0, deliveries: {}, bestCoins: 0, bestMetres: 0, bestTime: 0,
     owned: ['hring'], scooter: 'hring', design: 'everyday', badges: [], claimed: [], words: [], route: '', sound: true,
-    at: 'dawrpui', visited: [], cityDone: 0, cityBest: {}, jams: 0, crossed: 0 });
+    at: 'dawrpui', visited: [], cityDone: 0, cityBest: {}, jams: 0, crossed: 0, bonus: 0, stars: {}, daily: { day: '', prog: {}, claimed: [] } });
   function readSave() {
     const f = fresh();
     let d = null;
@@ -375,6 +403,14 @@
     f.visited = Array.isArray(d.visited) ? [...new Set(d.visited.filter(vengId))].slice(0, 60) : [];
     f.cityDone = num(d.cityDone); f.jams = num(d.jams); f.crossed = num(d.crossed);
     if (d.cityBest && typeof d.cityBest === 'object') for (const [k, v] of Object.entries(d.cityBest)) if (/^[a-z]{2,20}>[a-z]{2,20}$/.test(k) && num(v)) f.cityBest[k] = num(v);
+    // stars won on each road, points from today's missions, and today's missions themselves
+    f.bonus = num(d.bonus);
+    if (d.stars && typeof d.stars === 'object') for (const [k, v] of Object.entries(d.stars)) if (/^([a-z]{2,20}|city:[a-z]{2,20}>[a-z]{2,20})$/.test(k) && [1, 2, 3].includes(v)) f.stars[k] = v;
+    const dd = d.daily;
+    if (dd && typeof dd === 'object' && typeof dd.day === 'string' && /^\d{4}-\d{1,2}-\d{1,2}$/.test(dd.day)) {
+      f.daily.day = dd.day; f.daily.claimed = ids(dd.claimed, DAILY.map(x => x.id));
+      for (const x of DAILY) if (dd.prog && num(dd.prog[x.id])) f.daily.prog[x.id] = num(dd.prog[x.id]);
+    }
     return f;
   }
   let S = readSave();
@@ -385,6 +421,32 @@
   const myScooter = () => SCOOTERS.find(x => x.id === S.scooter && hasColour(x)) || SCOOTERS[0];
   const myDesign = () => DESIGNS.find(x => x.id === S.design && hasDesign(x)) || DESIGNS[0];
   const missionReady = m => !S.claimed.includes(m.id) && m.have() >= m.goal;
+  // today's three: a new day starts them afresh
+  const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+  function daily() {
+    const day = todayKey();
+    if (S.daily.day !== day) S.daily = { day, prog: {}, claimed: [] };
+    let h = 0; for (const ch of day) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return [0, 1, 2].map(t => { const of = DAILY.filter(x => x.tier === t); return of[(h >>> (t * 3)) % of.length]; });
+  }
+  const dailyHave = x => Math.min(x.goal, S.daily.prog[x.id] || 0);
+  const dailyReady = x => !S.daily.claimed.includes(x.id) && dailyHave(x) >= x.goal;
+  // something happened that today's missions count: n more of it today, or this ride's own count
+  function dailyAdd(kind, n, rideCount = 0) {
+    for (const x of daily()) {
+      if (x.kind !== kind || S.daily.claimed.includes(x.id)) continue;
+      const was = S.daily.prog[x.id] || 0, now = x.per === 'day' ? was + n : Math.max(was, rideCount);
+      if (now === was || was >= x.goal) continue;
+      S.daily.prog[x.id] = now;
+      // said on the road, after whatever else is being said: when it is done, or a step of a few
+      if (mode === 'playing' && (now >= x.goal || (x.goal <= 5 && kind !== 'coin'))) {
+        const msg = now >= x.goal ? `🎯 <b>Done!</b> ${x.text}` : `🎯 ${x.text} · ${now} of ${x.goal}`;
+        setTimeout(() => { if (mode === 'playing') { toast(msg, true); if (now >= x.goal) beep(1180, 0.12); } }, 1900);
+      }
+    }
+  }
+  const starText = n => '★'.repeat(n) + '☆'.repeat(3 - n);
+  const fmtGoal = (x, n) => (x.kind === 'metres' ? `${(n / 1000).toFixed(1)} km` : n);
 
   // ---------- the world ----------
   const LANE = 2.4, LANES = [-LANE, 0, LANE], LANE_T = 0.6;   // lane centres, metres from the road's middle; a lane change takes LANE_T s
@@ -430,7 +492,7 @@
   let crashBy = '';
   let cars = [], jams = [], braking = false, carT = 0, oncomingT = 0, eventWords = new Set();
   let peds = [], crossings = [], pedT = 0;
-  let s, v, px, pvx, pax, laneFrom, laneV, laneA, laneTo, laneT, lane, coins, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
+  let s, v, px, pvx, pax, laneFrom, laneV, laneA, laneTo, laneT, lane, coins, picked, coinsPut, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
   let soundOn = S.sound;
 
   function reset() {
@@ -438,7 +500,7 @@
     s = 0; v = 0; lane = 1; px = 0; pvx = 0; pax = 0; laneFrom = laneV = laneA = laneTo = 0; laneT = LANE_T; coins = 0; time = 0; bgX = 0; shake = 0; lean = 0; crashT = 0; crashDir = 1;
     things = []; sparks = []; pops = []; nextRow = 70; lastOpen = 1; passed = new Set();
     cars = []; jams = planJams(); crossings = planCrossings(); peds = []; pedT = 0; buildStrip(); prepMini(); braking = false; carT = 3; oncomingT = 5; eventWords = new Set(); brakeHint(false);
-    best0 = bestOf(route.id); bestShown = false; wordsSeen = new Set(); wordT = 4;
+    best0 = bestOf(route.id); bestShown = false; wordsSeen = new Set(); wordT = 4; picked = 0; coinsPut = 0;
     plan(); hud(true);
     if (R3) R3.setPlan();
   }
@@ -452,7 +514,7 @@
       if (!jams.some(j => nextRow > j.at - 70 && nextRow < j.at + 70) && !crossings.some(c => Math.abs(nextRow - c.at) < 30)) {     // none in a queue or on a zebra crossing
         const blocked = Math.random() * 2 | 0, open = 1 - blocked;
         things.push({ kind: ['rock', 'log', 'barrier'][Math.random() * 3 | 0], lane: blocked, at: nextRow, hit: false });
-        if (Math.random() < 0.7) for (let i = 1; i <= 4; i++) things.push({ kind: 'coin', lane: open, at: nextRow + 4 + i * 3.2, got: false });
+        if (Math.random() < 0.7) for (let i = 1; i <= 4; i++) { things.push({ kind: 'coin', lane: open, at: nextRow + 4 + i * 3.2, got: false }); coinsPut++; }
       }
       nextRow += Math.max(18, 1.3 * (v || 12)) + Math.random() * 18;
     }
@@ -512,7 +574,7 @@
         j.cars.sort((a, b) => b.at - a.at).forEach((c, k) => (c.goAt = k * 0.45));
         // Waited in the queue, not going round it: Aizawl style
         if (!j.broke) {
-          S.jams++; coins += 10; burst('#ffd34d');
+          S.jams++; dailyAdd('jam', 1); coins += 10; burst('#ffd34d');
           pops.push({ text: '+10', x: riderXY().x, y: riderXY().y - 120, life: 1.3 });
           say('dawhtheihna', 'patience · +10 coins');
         }
@@ -629,7 +691,7 @@
       if (s > c.at + 3) {
         c.state = 'done';
         if (!c.miss && c.minV < 1.5) {   // you stopped and let them cross
-          S.crossed++; coins += 5; pops.push({ text: '+5', x: riderXY().x, y: riderXY().y - 120, life: 1.3 });
+          S.crossed++; dailyAdd('cross', 1); coins += 5; pops.push({ text: '+5', x: riderXY().x, y: riderXY().y - 120, life: 1.3 });
           say('zah', 'respect · you let them cross, +5 coins', true);
         }
       }
@@ -3218,7 +3280,7 @@
       // as wide as it is drawn, with the scooter's own half width: a barrier or a log 2.2 m across, a rock about 1.9 m
       if (Math.abs(LANES[t.lane] - px) > (t.kind === 'coin' ? 1.15 : t.kind === 'rock' ? 0.95 + 0.3 : 1.1 + 0.3)) continue;
       if (t.kind === 'coin') {
-        t.got = true; coins++; beep(880, 0.06); burst('#ffd34d');
+        t.got = true; coins++; picked++; dailyAdd('coin', 1, coins); beep(880, 0.06); burst('#ffd34d');
         pops.push({ text: '+1', x: riderXY().x + (Math.random() - .5) * 30, y: riderXY().y - 110, life: 1 });
         const b = $('coins'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump');
         if (coins % 10 === 0) toast(`${coins} coins!`);
@@ -3240,7 +3302,7 @@
     if (wordT <= 0) {
       const i = Math.floor(s / SEG);
       const w = SCENE_WORDS.find(([m, , when]) => !wordsSeen.has(m) && when(i));
-      if (w) { wordsSeen.add(w[0]); if (!S.words.includes(w[0])) S.words.push(w[0]); wordT = 7; toast(`<b>${w[0]}</b> · ${w[1]}`, true); }
+      if (w) { wordsSeen.add(w[0]); if (!S.words.includes(w[0])) S.words.push(w[0]); wordT = 7; toast(`<b>${w[0]}</b> · ${w[1]}`, true); dailyAdd('words', 0, wordsSeen.size); }
     }
     if (s >= route.length) return end(true);
     hud();
@@ -3262,7 +3324,14 @@
     banked = true; mode = delivered ? 'done' : 'over';
     const score = Math.floor(s) + coins * 25 + (delivered ? 500 : 0), best = bestOf(route.id);
     // Bank the ride, once: coins into the wallet, records, deliveries, badges
-    const readyBefore = MISSIONS.filter(missionReady).length, openBefore = CITY ? openVeng() : null, ptsBefore = points();
+    const readyBefore = MISSIONS.filter(missionReady).length + daily().filter(dailyReady).length, openBefore = CITY ? openVeng() : null, ptsBefore = points();
+    // Stars for a delivery: one for getting there; two the Aizawl way (waiting in every queue, letting
+    // people cross); three, the Aizawl way with half the coins on the road picked up as well
+    const aizawlWay = !jams.some(j => j.broke) && !crossings.some(c => c.miss), half = picked >= Math.ceil(coinsPut * 0.5);
+    const stars = delivered ? 1 + (aizawlWay ? 1 : 0) + (aizawlWay && half ? 1 : 0) : 0, starsBefore = S.stars[route.id] || 0;
+    if (stars > starsBefore) S.stars[route.id] = stars;
+    dailyAdd('metres', Math.floor(s));
+    if (delivered) { dailyAdd('deliver', 1); if (route.id.startsWith('city:')) dailyAdd('city', 1); dailyAdd('stars', 0, stars); }
     S.rides++; S.wallet += coins; S.lifetime += coins; S.metres += Math.floor(s);
     S.bestCoins = Math.max(S.bestCoins, coins); S.bestMetres = Math.max(S.bestMetres, Math.floor(s)); S.bestTime = Math.max(S.bestTime, Math.floor(time));
     const city = route.id.startsWith('city:');
@@ -3277,11 +3346,15 @@
     const newBadges = BADGES.filter(x => !S.badges.includes(x.id) && x.got());
     newBadges.forEach(x => S.badges.push(x.id));
     writeSave();
-    const readyNow = MISSIONS.filter(missionReady).length;
+    const readyNow = MISSIONS.filter(missionReady).length + daily().filter(dailyReady).length;
+    $('endStars').hidden = !delivered;
+    if (delivered) $('endStars').innerHTML = `<span class="stars" aria-label="${stars} of 3 stars">${starText(stars)}</span>` +
+      `<small>${stars === 3 ? 'The Aizawl way, and the coins too!' : !aizawlWay ? 'Next time wait in every queue and let people cross, for a second star.' : `Pick up half the coins (${picked} of ${coinsPut}) for the third star.`}${stars > starsBefore && starsBefore ? ' A new best!' : ''}</small>`;
     $('endNews').innerHTML = [
       coins ? `<span><i class="coin"></i> +${coins} into your wallet (now ${S.wallet})</span>` : '',
       ...newBadges.map(x => `<span>${x.icon} New badge: ${x.name}</span>`),
       readyNow > readyBefore ? `<span>🎯 A mission is done: claim it in Missions</span>` : '',
+      ...daily().filter(x => !S.daily.claimed.includes(x.id) && !dailyReady(x) && dailyHave(x) > 0).map(x => `<span>🗓️ Today: ${x.text} · ${fmtGoal(x, dailyHave(x))} of ${fmtGoal(x, x.goal)}</span>`),
       points() > ptsBefore ? `<span>⭐ +${fmt(points() - ptsBefore)} points (now ${fmt(points())})</span>` : '',
       ...(openBefore ? CITY.veng.filter(v => isOpen(v.id) && !openBefore.includes(v.id)).map(v => `<span>🔓 ${v.name} is open on the Aizawl map</span>`) : []),
     ].join('');
@@ -3331,7 +3404,7 @@
 
   // ---------- choosing a road ----------
   function drawRoutes() {
-    $('routes').innerHTML = DATA.routes.map(r => `<button class="route" type="button" data-id="${r.id}" aria-pressed="${r === route}"><b>To ${r.to}</b><span>From ${r.from} · ${(r.length / 1000).toFixed(1)} km${bestOf(r.id) ? ` · best ${bestOf(r.id)}` : ''}</span></button>`).join('');
+    $('routes').innerHTML = DATA.routes.map(r => `<button class="route" type="button" data-id="${r.id}" aria-pressed="${r === route}"><b>To ${r.to}</b><span>From ${r.from} · ${(r.length / 1000).toFixed(1)} km${bestOf(r.id) ? ` · best ${bestOf(r.id)}` : ''}${S.stars[r.id] ? ` · <i class="stars">${starText(S.stars[r.id])}</i>` : ''}</span></button>`).join('');
   }
   $('routes').addEventListener('click', e => {
     const b = e.target.closest('.route'); if (!b) return;
@@ -3357,7 +3430,7 @@
     const w = $('wallet'); w.innerHTML = `<i class="coin"></i> ${S.wallet}`; w.setAttribute('aria-label', `${S.wallet} coins in your wallet`);
     if (bump) { w.classList.remove('bump'); void w.offsetWidth; w.classList.add('bump'); }
   }
-  const syncReady = () => { $('readyDot').hidden = !MISSIONS.some(missionReady); };
+  const syncReady = () => { $('readyDot').hidden = !MISSIONS.some(missionReady) && !daily().some(dailyReady); };
   let panel = null;
   function openPanel(id) {
     panel = id; $('startView').hidden = true; $(id).hidden = false;
@@ -3400,6 +3473,15 @@
   });
 
   function drawMissions() {
+    const left = new Date(); left.setHours(24, 0, 0, 0); const mins = Math.max(1, Math.round((left - Date.now()) / 60000));
+    $('dailyLeft').textContent = `· new ones in ${mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`}`;
+    $('daily').innerHTML = daily().map(x => {
+      const have = dailyHave(x), done = S.daily.claimed.includes(x.id), ready = dailyReady(x);
+      return `<div class="item today"><span aria-hidden="true">${done ? '✅' : '🗓️'}</span><span>${x.text}<small>${done ? 'Done' : `${fmtGoal(x, have)} of ${fmtGoal(x, x.goal)} · ⭐ ${x.reward} points`}</small><span class="meter"><i style="width:${have / x.goal * 100}%"></i></span></span>` +
+        `<button class="claim" type="button" data-daily="${x.id}"${ready ? '' : ' disabled'}>${done ? 'Claimed' : 'Claim'}</button></div>`;
+    }).join('');
+    const roads = DATA.routes.length + (CITY ? CITY.jobs.length : 0), won = Object.values(S.stars).reduce((a, b) => a + b, 0);
+    $('starsLine').innerHTML = `<span class="stars">★</span> ${won} of ${roads * 3} stars won on deliveries. Three on a road: the Aizawl way, and half its coins.`;
     $('missions').innerHTML = MISSIONS.map(m => {
       const have = Math.min(m.goal, m.have()), done = S.claimed.includes(m.id), ready = missionReady(m);
       return `<div class="item"><span aria-hidden="true">${done ? '✅' : '🎯'}</span><span>${m.text}<small>${done ? 'Done' : `${have} of ${m.goal} · <i class="coin"></i> ${m.reward}`}</small><span class="meter"><i style="width:${have / m.goal * 100}%"></i></span></span>` +
@@ -3407,6 +3489,13 @@
     }).join('');
     $('badges').innerHTML = BADGES.map(x => `<div class="badge${S.badges.includes(x.id) ? ' got' : ''}"><span aria-hidden="true">${x.icon}</span>${x.name}</div>`).join('');
   }
+  // today's: its points go to your points, for veng, designs and colours
+  $('daily').addEventListener('click', e => {
+    const b = e.target.closest('.claim'); if (!b || b.disabled) return;
+    const x = DAILY.find(y => y.id === b.dataset.daily);
+    if (!x || !dailyReady(x)) return;                     // each paid once
+    S.daily.claimed.push(x.id); S.bonus = (S.bonus || 0) + x.reward; writeSave(); beep(990, 0.15); syncReady(); drawMissions();
+  });
   $('missions').addEventListener('click', e => {
     const b = e.target.closest('.claim'); if (!b || b.disabled) return;
     const m = MISSIONS.find(y => y.id === b.dataset.id);
@@ -3437,7 +3526,8 @@
     };
   }
   const jobsFrom = id => CITY.jobs.filter(j => j.a === id).sort((p, q) => p.length - q.length);
-  // Veng open as your points grow. Your points are your best scores on every road, added up.
+  // Veng open as your points grow. Your points are your best scores on every road, added up, and the
+  // points from today's missions.
   // Dawrpui and the four veng nearest it are open from the start; the others open one by one,
   // nearer ones first (by the shortest ride from Dawrpui). A veng you have been to stays open.
   const UNLOCK = [0, 0, 0, 0, 0, 2000, 4000, 6500, 9000, 12000, 15000, 18500, 22000, 26000, 30000, 35000, 40000, 46000];
@@ -3454,7 +3544,7 @@
     vengNeed = Object.fromEntries(order.map((id, i) => [id, UNLOCK[Math.min(i, UNLOCK.length - 1)]]));
     return vengNeed;
   }
-  const points = () => [...Object.values(S.best), ...Object.values(S.cityBest)].reduce((a, b) => a + (b || 0), 0);
+  const points = () => [...Object.values(S.best), ...Object.values(S.cityBest)].reduce((a, b) => a + (b || 0), 0) + (S.bonus || 0);
   const openBy = id => S.visited.includes(id) || id === S.at || points() >= needs()[id];
   // You are never stuck: where every road on from here leads to a veng not open yet, the nearest
   // of them is open (some roads go only one way: from Dawrpui to Treasury, and on to veng opened later)
@@ -3484,7 +3574,7 @@
     $('jobs').innerHTML = jobsFrom(S.at).map(j => {
       const best = S.cityBest[j.id], been = S.visited.includes(j.b), open = isOpen(j.b), name = vengOf(j.b).name;
       if (!open) return `<button class="item job locked" type="button" data-id="${j.id}" aria-disabled="true" aria-label="${name}, opens at ${fmt(needs()[j.b])} points"><span aria-hidden="true">🔒</span><span><b>${name}</b><small>${(j.length / 1000).toFixed(1)} km · opens at ${fmt(needs()[j.b])} points</small></span><span class="tag"></span></button>`;
-      return `<button class="item job" type="button" data-id="${j.id}" aria-pressed="${jobPick === j}"><span aria-hidden="true">${been ? '📍' : '✨'}</span><span><b>${name}</b><small>${(j.length / 1000).toFixed(1)} km${best ? ` · best ${fmt(best)}` : been ? '' : ' · a new veng'}</small></span><span class="tag">${jobPick === j ? 'Ride ▸' : ''}</span></button>`;
+      return `<button class="item job" type="button" data-id="${j.id}" aria-pressed="${jobPick === j}"><span aria-hidden="true">${been ? '📍' : '✨'}</span><span><b>${name}</b><small>${(j.length / 1000).toFixed(1)} km${best ? ` · best ${fmt(best)}` : been ? '' : ' · a new veng'}${S.stars['city:' + j.id] ? ` · <i class="stars">${starText(S.stars['city:' + j.id])}</i>` : ''}</small></span><span class="tag">${jobPick === j ? 'Ride ▸' : ''}</span></button>`;
     }).join('');
     $('mapNote').textContent = `${S.visited.length} of ${CITY.veng.length} veng visited, ${openVeng().length} open. Beat your best scores to open more. Map data © OpenStreetMap contributors.`;
     paintMap();

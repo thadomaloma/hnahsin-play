@@ -4,6 +4,25 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.26.0 (31 October 2026)
+
+### Aizawl Ride: today's missions and stars for every delivery
+
+- **Today's missions:** three new missions every day (an easy one, a
+  middling one and a hard one), picked from twelve: coins, traffic jams,
+  deliveries, the Aizawl map, kilometres, stars, Mizo road words and letting
+  people cross. They change at midnight. Each pays points (250 to 600),
+  which open veng, designs and colours just as your best scores do.
+- While you ride, a mission's progress shows as it happens ("Meet 3 Mizo
+  road words in one ride · 1 of 3"), and a cheer when it is done.
+- **Stars for every delivery:** one for getting there, two for doing it the
+  Aizawl way (waiting in every queue and letting people cross), three for
+  the Aizawl way with half the coins on the road picked up too. The end of
+  a ride says what the next star needs. Your best stars show on each road,
+  on the Aizawl map, and added up in Missions.
+- Missions now shows Today first, with when the new ones come, and the
+  missions for good below.
+
 ## 1.25.0 (31 October 2026)
 
 ### Aizawl Ride: four scooter designs, opened by your points
