@@ -4,6 +4,22 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.32.1 (31 October 2026)
+
+### Aizawl Ride: smooth bends and a whole road
+
+- No bend is tighter than a vehicle can turn (9 m round). Where the map's
+  line turned sharper, at the corners of junctions and the tips of
+  hairpins, the road folded over itself and its kerbs crossed; now it
+  sweeps round, and only there.
+- No more gaps in the road where it comes back past itself (on the way to
+  Civil Hospital), and where two stretches of road run side by side they
+  meet at the same height.
+- The straight bit of road before the start and after the end no longer
+  lies over another road (around Electric Veng).
+- A new check for the road itself, its surface and its bends, and every
+  check passed on every road, all 116 of them.
+
 ## 1.32.0 (31 October 2026)
 
 ### Aizawl Ride: Bawngkawn, Zemabawk, Durtlang and Kulikawn
