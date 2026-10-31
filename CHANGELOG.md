@@ -4,6 +4,26 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.30.0 (31 October 2026)
+
+### Aizawl Ride: night, rain, Krismas and Chapchar Kut
+
+- **Night**, by Aizawl's own clock (from half past six in the evening to
+  half past five in the morning): a dark sky and the moon, your headlamp on
+  the road, street lamps on the poles with their pools of light, and lit
+  windows in the houses.
+- **Rain** now and then, more in the monsoon (June to September): a grey
+  sky, falling rain and its sound, a wet road, and brakes that need longer
+  to stop you.
+- **Krismas** (1 December to 6 January): stars on the poles and coloured
+  lights on the houses, and a mission (five deliveries) that wins the
+  Krismas helmet.
+- **Chapchar Kut** (1 to 15 March): flags in a puan's colours across the
+  roads, and a mission (let people cross three times) that wins the
+  Chapchar Kut box.
+- Night and rain show in the flat picture too.
+- Checked on every road in the game.
+
 ## 1.29.0 (31 October 2026)
 
 ### Aizawl Ride: tips, sounds and Mizo

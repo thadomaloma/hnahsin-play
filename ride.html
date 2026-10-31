@@ -114,6 +114,7 @@
   .endstars .stars { font-size: 34px; line-height: 1; }
   .endstars small { color: var(--muted); text-align: center; }
   .item.today { border-color: #f2b01e; }
+  .item.fest { border-color: #c62828; background: color-mix(in srgb, #c62828 7%, var(--panel)); }
   .rank { border: 1.5px solid var(--ink); border-radius: 14px; padding: 10px 12px; background: color-mix(in srgb, #f2b01e 14%, var(--panel)); }
   .rank b { font-size: 18px; }
   .rank .meter { height: 8px; }
@@ -393,6 +394,9 @@
     { id: 'b-hring', slot: 'box', name: 'hring', en: 'green', price: 150, c: ['#2e8b57', '#ffffff'] },
     { id: 'b-dumpawl', slot: 'box', name: 'dumpâwl', en: 'blue', price: 150, c: ['#2f6fb0', '#ffffff'] },
     { id: 'b-puan', slot: 'box', name: 'puanchei', en: 'a Mizo puan', price: 400, c: ['#1b1b1b', '#ffffff'], puan: true },
+    // won in the festivals, not bought
+    { id: 'h-krismas', slot: 'helmet', name: 'Krismas', en: 'red and white, for Christmas', event: 'xmas', c: ['#c62828', '#ffffff'] },
+    { id: 'b-chapchar', slot: 'box', name: 'Chapchar Kut', en: 'spring green and gold, for Chapchar Kut', event: 'chapchar', c: ['#3d8b3d', '#fff3c4'], puan: true },
   ];
   const SLOTS = [['helmet', 'Helmet'], ['jacket', 'Jacket'], ['box', 'Delivery box']];
   // Words for the question at the end of a ride: the parcels, the land and the road
@@ -400,6 +404,17 @@
     ['motor', 'a car'], ['mi', 'a person'], ['kalkawng', 'a path'], ['tlar', 'a row, a queue'], ['dawhtheihna', 'patience'], ['zah', 'respect'], ['fimkhur', 'careful'], ['hmanhmawh', 'hurried']];
   // The coach's tips for the first rides, each shown until it has been done once
   const TIPS = ['steer', 'block', 'coin', 'queue', 'cross'];
+  // Festivals: Krismas (from the first of December to Epiphany: Aizawl's streets hung with lights and
+  // stars) and Chapchar Kut (the first half of March: the spring festival, the roads hung with flags).
+  // While one is on, the town is dressed for it and it has a mission of its own with a prize to wear.
+  // For the tests, ?event=xmas or ?event=chapchar.
+  const EVENTS = [
+    { id: 'xmas', icon: '🎄', name: 'Krismas', on: d => d.getMonth() === 11 || (d.getMonth() === 0 && d.getDate() <= 6), kind: 'deliver', goal: 5,
+      text: 'Krismas: make 5 deliveries', mz: 'Krismas: thil 5 thlen rawh', prize: 'h-krismas' },
+    { id: 'chapchar', icon: '🌸', name: 'Chapchar Kut', on: d => d.getMonth() === 2 && d.getDate() <= 15, kind: 'cross', goal: 3,
+      text: 'Chapchar Kut: let people cross 3 times', mz: 'Chapchar Kut: mi kal tlang vawi 3 nghak rawh', prize: 'b-chapchar' },
+  ];
+  const festival = () => { const f = (location.search.match(/[?&]event=(\w+)/) || [])[1], d = new Date(); return EVENTS.find(e => e.id === f) || (f ? null : EVENTS.find(e => e.on(d))) || null; };
   // Today's missions: three a day (an easy, a middling and a hard one), a new three at midnight, picked
   // by the date. Some count over one ride, some over the whole day. Each pays points, which open veng,
   // designs and colours just as your best scores do.
@@ -446,7 +461,7 @@
   };
   const fresh = () => ({ v: 1, best: {}, wallet: 0, lifetime: 0, metres: 0, rides: 0, deliveries: {}, bestCoins: 0, bestMetres: 0, bestTime: 0,
     owned: ['hring'], scooter: 'hring', design: 'everyday', badges: [], claimed: [], words: [], route: '', sound: true,
-    at: 'dawrpui', visited: [], cityDone: 0, cityBest: {}, jams: 0, crossed: 0, bonus: 0, dailyDone: 0, quizRight: 0, quizAsked: 0, tips: [], lang: 'en', cos: { owned: ['h-var', 'j-dumpawl', 'b-eng'], helmet: 'h-var', jacket: 'j-dumpawl', box: 'b-eng' }, stars: {}, daily: { day: '', prog: {}, claimed: [] } });
+    at: 'dawrpui', visited: [], cityDone: 0, cityBest: {}, jams: 0, crossed: 0, bonus: 0, dailyDone: 0, quizRight: 0, quizAsked: 0, tips: [], lang: 'en', fest: { id: '', year: 0, prog: 0, claimed: false }, cos: { owned: ['h-var', 'j-dumpawl', 'b-eng'], helmet: 'h-var', jacket: 'j-dumpawl', box: 'b-eng' }, stars: {}, daily: { day: '', prog: {}, claimed: [] } });
   function readSave() {
     const f = fresh();
     let d = null;
@@ -474,7 +489,8 @@
     f.cityDone = num(d.cityDone); f.jams = num(d.jams); f.crossed = num(d.crossed);
     if (d.cityBest && typeof d.cityBest === 'object') for (const [k, v] of Object.entries(d.cityBest)) if (/^[a-z]{2,20}>[a-z]{2,20}$/.test(k) && num(v)) f.cityBest[k] = num(v);
     // stars won on each road, points from today's missions, and today's missions themselves
-    f.tips = ids(d.tips, TIPS); f.lang = d.lang === 'mz' ? 'mz' : 'en';
+    f.tips = ids(d.tips, TIPS);
+    if (d.fest && typeof d.fest === 'object' && EVENTS.some(e => e.id === d.fest.id)) f.fest = { id: d.fest.id, year: num(d.fest.year), prog: num(d.fest.prog), claimed: d.fest.claimed === true }; f.lang = d.lang === 'mz' ? 'mz' : 'en';
     f.bonus = num(d.bonus); f.dailyDone = num(d.dailyDone); f.quizRight = num(d.quizRight); f.quizAsked = num(d.quizAsked);
     if (d.cos && typeof d.cos === 'object') {     // the rider's look: what was bought, what is worn
       f.cos.owned = [...new Set([...f.cos.owned, ...ids(d.cos.owned, COSMETICS.map(x => x.id))])];
@@ -506,7 +522,19 @@
   const dailyHave = x => Math.min(x.goal, S.daily.prog[x.id] || 0);
   const dailyReady = x => !S.daily.claimed.includes(x.id) && dailyHave(x) >= x.goal;
   // something happened that today's missions count: n more of it today, or this ride's own count
+  // this festival's mission (a new festival, or a new year of it, starts it afresh)
+  function festMission() {
+    const e = festival(); if (!e) return null;
+    const year = new Date().getFullYear() - (new Date().getMonth() === 0 ? 1 : 0);
+    if (S.fest.id !== e.id || S.fest.year !== year) S.fest = { id: e.id, year, prog: 0, claimed: false };
+    return e;
+  }
   function dailyAdd(kind, n, rideCount = 0) {
+    const e = festMission();
+    if (e && e.kind === kind && !S.fest.claimed && S.fest.prog < e.goal) {
+      S.fest.prog = Math.min(e.goal, S.fest.prog + n);
+      if (S.fest.prog >= e.goal && mode === 'playing') setTimeout(() => { if (mode === 'playing') toast(`${e.icon} <b>${L('Done!', 'A zo!')}</b> ${L(e.text, e.mz)}`, true); }, 1900);
+    }
     for (const x of daily()) {
       if (x.kind !== kind || S.daily.claimed.includes(x.id)) continue;
       const was = S.daily.prog[x.id] || 0, now = x.per === 'day' ? was + n : Math.max(was, rideCount);
@@ -582,6 +610,14 @@
   let mode = 'ready', loopId = 0, last = 0;
   let wordsSeen, wordT, banked = false;
   let crashBy = '';
+  // Each ride's weather and light: night by Aizawl's own clock (after half past six in the evening, before
+  // half past five in the morning), rain now and then (more in the monsoon, June to September). For the
+  // tests, ?night and ?rain in the address make it so.
+  let cond = { night: false, rain: false };
+  function pickCond() {
+    const q = location.search, d = new Date(), h = d.getHours() + d.getMinutes() / 60, m = d.getMonth();
+    return { night: /[?&]night\b/.test(q) || (!/[?&]day\b/.test(q) && (h >= 18.5 || h < 5.5)), rain: /[?&]rain\b/.test(q) || (!/[?&]dry\b/.test(q) && Math.random() < (m >= 5 && m <= 8 ? 0.4 : 0.12)) };
+  }
   let cars = [], jams = [], braking = false, carT = 0, oncomingT = 0, eventWords = new Set();
   let peds = [], crossings = [], pedT = 0;
   let s, v, px, pvx, pax, laneFrom, laneV, laneA, laneTo, laneT, lane, coins, picked, coinsPut, rideMult, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
@@ -1095,7 +1131,18 @@
     scooter(W / 2 + (px - px * 0.82) * F / PLAYER_Z, H * 0.84);
     effects();
     // Late afternoon warms the whole picture a little
-    if (look.golden > 0.02) { ctx.fillStyle = `rgba(255,170,80,${0.07 * look.golden})`; ctx.fillRect(-10, 0, W + 20, H); }
+    if (look.golden > 0.02 && !cond.night) { ctx.fillStyle = `rgba(255,170,80,${0.07 * look.golden})`; ctx.fillRect(-10, 0, W + 20, H); }
+    // night: dark all round but where our lamp shines ahead; rain: grey, and its streaks
+    if (cond.night) {
+      const x = W / 2 + (px - px * 0.82) * F / PLAYER_Z, y = H * 0.84, g = ctx.createRadialGradient(x, y - H * 0.25, 10, x, y - H * 0.2, H * 0.55);
+      g.addColorStop(0, 'rgba(10,16,32,0.15)'); g.addColorStop(1, 'rgba(10,16,32,0.72)'); ctx.fillStyle = g; ctx.fillRect(-10, 0, W + 20, H);
+    }
+    if (cond.rain) {
+      ctx.fillStyle = 'rgba(120,135,145,0.18)'; ctx.fillRect(-10, 0, W + 20, H);
+      ctx.strokeStyle = 'rgba(220,230,240,0.45)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let i = 0; i < 90; i++) { const rx = (i * 97.3 + time * 40 * (1 + i % 3)) % (W + 40) - 20, ry = (i * 53.7 + time * 700) % (H + 40) - 20; ctx.moveTo(rx, ry); ctx.lineTo(rx - 3, ry + 14); }
+      ctx.stroke();
+    }
     ctx.restore();
   }
   const P = Array.from({ length: VIEW + 1 }, () => ({}));   // the projected road, reused every picture
@@ -1419,6 +1466,14 @@
     const groundMat = new T.MeshLambertMaterial({ vertexColors: true, side: T.DoubleSide });
     groundMat.onBeforeCompile = sh => grain(sh);
     const plainMat = new T.MeshLambertMaterial(), glowMat = new T.MeshBasicMaterial({ toneMapped: false });
+    // street lamps: dark by day, warm at night, each with its pool of light on the road; lit windows at night
+    const lampMat = new T.MeshBasicMaterial({ color: '#4a4a48', toneMapped: false }), poolMat = new T.MeshBasicMaterial({ color: '#ffcf80', transparent: true, opacity: 0.22, blending: T.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, visible: false });
+    const nightU = { value: 0 };
+    // the festivals' dressing: a Christmas star (five points, a little thick), a bunting flag, their materials
+    const starGeo = (() => { const sh = new T.Shape(); for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 0.2 : 0.5; i ? sh.lineTo(Math.cos(a) * r, Math.sin(a) * r) : sh.moveTo(Math.cos(a) * r, Math.sin(a) * r); } return new T.ExtrudeGeometry(sh, { depth: 0.06, bevelEnabled: false }).translate(0, 0, -0.03); })();
+    const flagGeo = new T.BufferGeometry().setAttribute('position', new T.Float32BufferAttribute([-0.16, 0, 0, 0.16, 0, 0, 0, -0.32, 0], 3)); flagGeo.computeVertexNormals();
+    const flagMat = new T.MeshLambertMaterial({ side: T.DoubleSide });
+    const BULBS = ['#ff4d4d', '#ffd23f', '#4dd2ff', '#7dff6b', '#ff7de9'], FLAGS = ['#c8323d', '#f2c230', '#2f8a4a', '#ffffff', '#1b1b1b'];
     const shadowMat = new T.MeshBasicMaterial({ color: '#000', transparent: true, opacity: 0.22, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
     const coinMat = new T.MeshLambertMaterial({ emissive: '#6b4a00' });
     // House walls: a window every 3 m across and every floor (3 m) up, worked out from each house's own size
@@ -1437,8 +1492,9 @@
     windowTex.anisotropy = 2;
     const houseMat = new T.MeshLambertMaterial({ map: windowTex });
     houseMat.onBeforeCompile = sh => {
+      sh.uniforms.uNight = nightU;
       sh.vertexShader = 'varying vec2 vWall;\nvarying float vStyle;\n' + sh.vertexShader;
-      sh.fragmentShader = 'varying vec2 vWall;\nvarying float vStyle;\n' + sh.fragmentShader;
+      sh.fragmentShader = 'uniform float uNight;\nvarying vec2 vWall;\nvarying float vStyle;\n' + sh.fragmentShader;
       grain(sh, `
         vec3 hs = vec3(1.0); vStyle = 0.0;
         #ifdef USE_INSTANCING
@@ -1447,7 +1503,11 @@
         #endif
         vWall = abs(normal.y) > 0.5 ? vec2(0.03, 0.97) : vec2((abs(normal.x) > 0.5 ? position.z * hs.z : position.x * hs.x) / 3.0, position.y * hs.y / 3.0);`, `
         vec2 gw = vWall * vec2(0.25, 1.0);
-        diffuseColor *= textureGrad(map, vec2((fract(vWall.x) + vStyle) * 0.25, fract(vWall.y)), dFdx(gw), dFdy(gw));`);
+        vec4 wt = textureGrad(map, vec2((fract(vWall.x) + vStyle) * 0.25, fract(vWall.y)), dFdx(gw), dFdy(gw));
+        diffuseColor *= wt;
+        // at night some windows are lit, warm, one window (and floor) at a time
+        float glassy = step(wt.r + 0.08, wt.b), lit = step(0.42, fract(sin(dot(floor(vWall) + vStyle * 7.0, vec2(41.3, 289.1))) * 43758.5453));
+        totalEmissiveRadiance += uNight * glassy * lit * vec3(1.0, 0.76, 0.42) * 0.85;`);
     };
     const stripeMat = new T.MeshLambertMaterial({ map: tex(64, 16, (g, w, h) => { g.fillStyle = '#f3efe4'; g.fillRect(0, 0, w, h); g.fillStyle = '#d4483b'; for (let i = 0; i < 4; i++) g.fillRect(i * 16, 0, 8, h); }) });
     const box = new T.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);           // stands on its base
@@ -1864,7 +1924,7 @@
         for (let i = 0; i < 4; i++) { const [a, b] = [c[i], c[(i + 1) % 4]]; st.quad(pt(k, a[0], h0, a[1]), pt(k, b[0], h0, b[1]), pt(k, b[0], h1, b[1]), pt(k, a[0], h1, a[1]), hex); }
         st.quad(...c.map(([x, z]) => pt(k, x, h1, z)), hex);
       };
-      const H = [], RF = [], TK = [], TW = { broad: [], tall: [], bamboo: [], banana: [], pine: [], shrub: [] }, BAL = [], RAIL = [], SHUT = [], BAND = [], POLE = [], ARM = [], WIRE = [];
+      const LAMP = [], POOL = [], BULB = [], STAR = [], FLAG = [], fest = festival(), H = [], RF = [], TK = [], TW = { broad: [], tall: [], bamboo: [], banana: [], pine: [], shrub: [] }, BAL = [], RAIL = [], SHUT = [], BAND = [], POLE = [], ARM = [], WIRE = [];
       // An electric pole every 36 m in town, on the near side, and the ends of its crossarm for the wires
       const poleAt = k => {
         if (k < 0 || k >= n || k % 9 || !footpath(k)) return null;
@@ -1881,6 +1941,19 @@
         if (pl) {
           POLE.push({ p: pt(k, pl.lat, 0.15), s: [1, 8.6, 1], c: '#a9a9a1' });
           ARM.push({ p: pt(k, pl.lat, 7.95), yaw: yaw[k], s: [1.5, 0.1, 0.1], c: '#8d8d86' });
+          // a street lamp on an arm over the road, and the pool of light it throws at night
+          ARM.push({ p: pt(k, pl.lat - pl.sd * 0.7, 7.3), yaw: yaw[k], s: [1.4, 0.07, 0.07], c: '#8d8d86' });
+          LAMP.push({ p: pt(k, pl.lat - pl.sd * 1.35, 7.18), yaw: yaw[k], s: [0.45, 0.1, 0.22], c: '#ffffff' });
+          POOL.push({ p: pt(k, pl.lat - pl.sd * 2.6, 0.06), yaw: 0, s: [10, 1, 10], c: '#ffffff' });
+          if (fest && fest.id === 'xmas') STAR.push({ p: pt(k, pl.lat - pl.sd * 0.3, 5.2), yaw: yaw[k], s: [1.2, 1.2, 1.2], c: k % 72 ? '#fff4c2' : '#ffd23f' });
+          if (fest && fest.id === 'chapchar' && k % 18 === 0) {      // a line of flags in the puan's colours, sagging across the road
+            const a = pt(k, pl.lat, 6.4), b = pt(k, -pl.lat, 6.4), at = t => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - 0.9 * t * (1 - t) * 4 * 0.25, a[2] + (b[2] - a[2]) * t];
+            // (only where it is clear: well over every road and out of every house, as the wires are)
+            if ([...Array(13).keys()].every(i => { const q = at(i / 12); return !onRoad(q[0], q[2], -0.8, q[1] - 0.4, q[1]) && !inHome(q[0], q[1] - 0.4, q[1], q[2], 0.15); })) {
+              for (let i = 0; i < 12; i++) WIRE.push(...at(i / 12), ...at((i + 1) / 12));
+              for (let i = 1; i < 17; i++) FLAG.push({ p: at(i / 17), yaw: yaw[k], s: [1, 1, 1], c: FLAGS[(i + k) % FLAGS.length] });
+            }
+          }
           if (k % 36 === 0) ARM.push({ p: pt(k, pl.lat + pl.sd * 0.4, 5.6), yaw: yaw[k], s: [0.5, 0.7, 0.5], c: '#7d8288' });   // a transformer, on the far side of its pole
           // the wires from the pole before, sagging between
           const before = poleAt(k - 9);
@@ -1958,6 +2031,7 @@
             if (!hm) continue;
             const { w, d, off, gy, bot, top, p } = hm;
             H.push({ p: [p[0], Y[k] + bot, p[2]], yaw: yaw[k], s: [w, top - bot, d], c: HOUSE[(k + j) % HOUSE.length] });
+            if (fest && fest.id === 'xmas' && rnd(k, j + 77) < 0.55) for (let i = 0; i < 8; i++) BULB.push({ p: pt(k, sd * (off - w / 2 - 0.06), top - 0.2, -d / 2 + (i + 0.5) * d / 8), yaw: yaw[k], s: [0.13, 0.13, 0.13], c: BULBS[(i + k + j) % BULBS.length] });
             if (j === 0 && footpath(k)) {
               const face = off - w / 2, along = d * 0.7;
               if (Math.abs(g) < 2.5) {     // a shop at street level: its shutter and its signboard
@@ -1997,7 +2071,7 @@
         }
       }
       if (WIRE.length) { const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(WIRE, 3)); grp.add(new T.LineSegments(g, wireMat)); }
-      [instanced(box, plainMat, BAL), instanced(box, plainMat, RAIL), instanced(box, shutterMat, SHUT), instanced(box, plainMat, BAND), instanced(pole, plainMat, POLE), instanced(box, plainMat, ARM)].forEach(m => m && grp.add(m));
+      [instanced(box, plainMat, BAL), instanced(box, plainMat, RAIL), instanced(box, shutterMat, SHUT), instanced(box, plainMat, BAND), instanced(pole, plainMat, POLE), instanced(box, plainMat, ARM), instanced(box, lampMat, LAMP), instanced(blob, poolMat, POOL), instanced(box, glowMat, BULB), instanced(starGeo, glowMat, STAR), instanced(flagGeo, flagMat, FLAG)].forEach(m => m && grp.add(m));
       [st.mesh(), instanced(box, houseMat, H), instanced(prism, plainMat, RF), instanced(tank, plainMat, TK),
         ...Object.entries(TW).flatMap(([kind, list]) => [TREES[kind].wood.attributes.position.count ? instanced(TREES[kind].wood, woodMat, list) : null, instanced(TREES[kind].leaves, leafMat, list)])].forEach(m => m && grp.add(m));
       grp.userData.mid = P[Math.min(n - 1, (k0 + k1) >> 1)];
@@ -2878,6 +2952,13 @@
     part(plane, logo, 0, 0.84, -1.012, 0.4, 0.22, 1).rotation.y = Math.PI;
     for (const e of [-1, 1]) part(plane, logo, e * 0.258, 0.84, -0.69, 0.44, 0.22, 1).rotation.y = -e * Math.PI / 2;
     into = scoot;
+    // our own lamp: a spot light from the headlight, down the road (off by day)
+    const head = new T.SpotLight('#fff1d2', 0, 46, 0.5, 0.55, 1.3); head.position.set(0, 1.05, 0.95); head.target.position.set(0, 0, 14);
+    scoot.add(head, head.target);
+    // the rain: streaks falling round the camera
+    const rainPos = (() => { const a = new Float32Array(1400 * 6); for (let i = 0; i < a.length; i += 6) { const x = (Math.random() - 0.5) * 50, y = Math.random() * 22 - 2, z = (Math.random() - 0.5) * 50; a.set([x, y, z, x + 0.06, y - 0.65, z + 0.1], i); } return new T.Float32BufferAttribute(a, 3); })();
+    const rainG = new T.LineSegments(new T.BufferGeometry().setAttribute('position', rainPos), new T.LineBasicMaterial({ color: '#cfd9e0', transparent: true, opacity: 0.45 }));
+    rainG.frustumCulled = false; rainG.visible = false; scene.add(rainG);
     const riderShadow = new T.Mesh(blob, shadowMat); riderShadow.scale.set(0.8, 1, 1.9); scene.add(riderShadow);
     scoot.traverse(m => { m.castShadow = !!m.isMesh; });
     scene.add(scoot);
@@ -2937,6 +3018,24 @@
       sky.material.uniforms.low.value.copy(fogCol); sky.material.uniforms.top.value.copy(SKY0).lerp(SKY1, look.golden);
       sun.color.copy(SUN0).lerp(SUN1, look.golden); sunDir.set(-0.5, 1 - 0.65 * look.golden, 0.35).normalize();
       ridgeMat.color.copy(WHITE).lerp(WARM, look.golden * 0.5);
+      // Night and rain, over the day's light: a dark sky, the moon instead of the sun, the street lamps and
+      // lit windows on, our own lamp on the road; or a grey sky, a nearer haze, a wet road and the rain
+      const night = cond.night, rain = cond.rain, dts = Math.min(0.05, ms / 1000);
+      nightU.value = night ? 1 : 0; poolMat.visible = night; lampMat.color.set(night ? '#ffe2a8' : '#4a4a48'); head.intensity = night ? 38 : 0;
+      if (night) {
+        fogCol.set(rain ? '#1c232c' : '#151d2b'); sky.material.uniforms.top.value.set('#060c1a'); sun.color.set('#9db2ee'); ridgeMat.color.set('#283246');
+      } else if (rain) {
+        fogCol.set('#a6b1b7'); sky.material.uniforms.top.value.set('#7c8993'); sun.color.multiplyScalar(0.8); ridgeMat.color.set('#b9c0c4');
+      }
+      if (night || rain) { scene.fog.color.copy(fogCol); scene.fog.near = night ? 10 : 14; scene.fog.far = far * (night ? 0.55 : 0.6); sky.material.uniforms.low.value.copy(fogCol); }
+      sun.intensity = night ? 0.28 : rain ? 1.2 : 2.6; hemi.intensity = night ? 0.32 : rain ? 1.5 : 2.1;
+      groundMat.color.setScalar(rain ? 0.8 : 1);
+      rainG.visible = rain;
+      if (rain) {
+        const a = rainPos.array;
+        for (let i = 0; i < a.length; i += 6) { a[i + 1] -= 24 * dts; a[i + 4] -= 24 * dts; if (a[i + 4] < -2) { a[i + 1] += 22; a[i + 4] += 22; } }
+        rainPos.needsUpdate = true; rainG.position.copy(camera.position);
+      }
       // The scooter: it leans, bobs on the road, and tips over in a crash
       const my = myScooter();
       if (painted !== my.id) { painted = my.id; my.body.forEach((h, i) => bodyMats[i].forEach(m => m.color.set(h))); }
@@ -3343,9 +3442,10 @@
         const noise = ac.createBufferSource(); noise.buffer = buf; noise.loop = true;
         const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 700; bp.Q.value = 0.6; const wg = ac.createGain(); wg.gain.value = 0;
         const hp = ac.createBiquadFilter(); hp.type = 'bandpass'; hp.frequency.value = 3200; hp.Q.value = 8; const bg = ac.createGain(); bg.gain.value = 0;
-        noise.connect(bp); bp.connect(wg); wg.connect(g); noise.connect(hp); hp.connect(bg); bg.connect(g);
+        const rp = ac.createBiquadFilter(); rp.type = 'highpass'; rp.frequency.value = 1800; const rg = ac.createGain(); rg.gain.value = 0;
+        noise.connect(bp); bp.connect(wg); wg.connect(g); noise.connect(hp); hp.connect(bg); bg.connect(g); noise.connect(rp); rp.connect(rg); rg.connect(g);
         eng.start(); eng2.start(); noise.start();
-        ride = { g, eng, eng2, lp, wg, bg };
+        ride = { g, eng, eng2, lp, wg, bg, rg };
       }
       const t = ac.currentTime, k = Math.min(1, v / 18);
       ride.g.gain.setTargetAtTime(on ? 0.05 : 0, t, 0.15);
@@ -3353,10 +3453,11 @@
       ride.lp.frequency.setTargetAtTime(300 + v * 30, t, 0.2);
       ride.wg.gain.setTargetAtTime(0.15 + k * 0.6, t, 0.2);
       ride.bg.gain.setTargetAtTime(braking && v > 3 ? 0.35 : 0, t, 0.05);       // the brake's squeal
+      ride.rg.gain.setTargetAtTime(cond.rain ? 0.5 : 0, t, 0.3);                  // the rain
       // a bird now and then, where the road runs through trees
       if (on && (birdT -= dt) <= 0) {
         birdT = 2 + Math.random() * 5;
-        if (housesNear(Math.floor(s / SEG)) <= 2) for (let i = 0; i < 2 + (Math.random() * 3 | 0); i++) {
+        if (housesNear(Math.floor(s / SEG)) <= 2 && !cond.rain && !cond.night) for (let i = 0; i < 2 + (Math.random() * 3 | 0); i++) {
           const o = ac.createOscillator(), bgn = ac.createGain(), at = t + i * 0.13, f = 2400 + Math.random() * 1600;
           o.type = 'sine'; o.frequency.setValueAtTime(f, at); o.frequency.exponentialRampToValueAtTime(f * 1.4, at + 0.08);
           bgn.gain.setValueAtTime(0.0001, at); bgn.gain.exponentialRampToValueAtTime(0.012, at + 0.02); bgn.gain.exponentialRampToValueAtTime(0.0001, at + 0.1);
@@ -3392,7 +3493,7 @@
     }
     // Speed builds up to a top speed that rises slowly; it eases off on a steep climb
     const top = 11 + Math.min(7, time * 0.1), climb = roadAt(route.grade, s, 1e-3);
-    if (braking) v = Math.max(0, v - 12 * dt);                 // a firm brake: stops in a few metres
+    if (braking) v = Math.max(0, v - (cond.rain ? 8 : 12) * dt);   // a firm brake: stops in a few metres (more on a wet road)
     else v += ((top - Math.max(0, climb) * 12) - v) * Math.min(1, dt * 0.9);
     s += v * dt;
     const was = px;
@@ -3607,7 +3708,11 @@
     last = performance.now(); loopId = requestAnimationFrame(frame);
   }
   function start() {
+    cond = pickCond();
     reset(); mode = 'playing'; banked = false;
+    const fe = festMission();
+    if (fe && !S.fest.claimed) setTimeout(() => { if (mode === 'playing') toast(`${fe.icon} ${L(fe.text, fe.mz)} · ${S.fest.prog} / ${fe.goal}`, true); }, 5200);
+    if (cond.rain || cond.night) setTimeout(() => { if (mode === 'playing') toast(cond.rain ? L('🌧️ Rain: the road is wet, brake early', '🌧️ Ruah a sur: kawng a hnawng, brake hma takin') : L('🌙 Night: your lamp lights the way', '🌙 Zan a ni: i light in kawng a en ang'), true); }, 2600);
     $('startView').hidden = $('endView').hidden = $('pauseView').hidden = true; syncPause();
     toast(`${parcel[2]} <b>${parcel[0]}</b> · ${parcel[1]}, to ${route.to}`, true);
     run();
@@ -3655,7 +3760,7 @@
     if (bump) { w.classList.remove('bump'); void w.offsetWidth; w.classList.add('bump'); }
   }
   const syncReady = () => {
-    $('readyDot').hidden = !daily().some(dailyReady);
+    const fe = festMission(); $('readyDot').hidden = !daily().some(dailyReady) && !(fe && !S.fest.claimed && S.fest.prog >= fe.goal);
     const r = rankOf(); $('rankLine').textContent = `🏍️ ${RANKS[r].name}${r ? ` · scores ×${multOf(r)}` : ''}`;
   };
   let panel = null;
@@ -3688,7 +3793,7 @@
     $('shop').innerHTML = SLOTS.map(([slot, label]) => `<h4 class="slot">${label}</h4>` + COSMETICS.filter(x => x.slot === slot).map(x => {
       const own = S.cos.owned.includes(x.id), on = worn(slot) === x;
       const look = x.puan ? 'repeating-linear-gradient(0deg, #1b1b1b 0 5px, #c8323d 5px 8px, #1b1b1b 8px 11px, #f2c230 11px 12px)' : `linear-gradient(135deg, ${x.c[0]}, ${x.c[1] || x.c[0]})`;
-      return `<button class="item" type="button" data-cos="${x.id}" aria-pressed="${on}" aria-label="${label}, ${x.name}, ${x.en}${own ? '' : `, ${x.price} coins`}"><span class="sw" style="background:${look}"></span><span><b>${x.name}</b><small>${x.en}</small></span><span class="tag">${on ? L('Wearing', 'I ha mek') : own ? L('Wear it', 'Ha rawh') : `<i class="coin"></i> ${x.price}`}</span></button>`;
+      return `<button class="item" type="button" data-cos="${x.id}" aria-pressed="${on}" aria-label="${label}, ${x.name}, ${x.en}${own ? '' : `, ${x.price} coins`}"><span class="sw" style="background:${look}"></span><span><b>${x.name}</b><small>${x.en}</small></span><span class="tag">${on ? L('Wearing', 'I ha mek') : own ? L('Wear it', 'Ha rawh') : x.event ? `🎁 ${EVENTS.find(e => e.id === x.event).name}` : `<i class="coin"></i> ${x.price}`}</span></button>`;
     }).join('')).join('');
     if (!$('garageNote').textContent) $('garageNote').textContent = `Your points: ${fmt(pts)} · your coins: ${fmt(S.wallet)}.`;
   }
@@ -3697,6 +3802,7 @@
     const b = e.target.closest('.item'); if (!b) return;
     if (b.dataset.cos) {        // the shop
       const x = COSMETICS.find(y => y.id === b.dataset.cos); if (!x) return;
+      if (!S.cos.owned.includes(x.id) && x.event) { $('garageNote').textContent = L(`Won in ${EVENTS.find(e => e.id === x.event).name}: its mission, in Missions while it is on.`, `${EVENTS.find(e => e.id === x.event).name} lai a tihtur zawh a hmuh theih.`); return; }
       if (!S.cos.owned.includes(x.id)) {
         if (S.wallet < x.price) { $('garageNote').textContent = `You need ${x.price - S.wallet} more coins for the ${x.name} ${x.slot === 'box' ? 'box' : x.slot}.`; return; }
         S.wallet -= x.price; S.cos.owned.push(x.id); syncWallet(true); beep(990, 0.15);
@@ -3719,7 +3825,12 @@
   function drawMissions() {
     const left = new Date(); left.setHours(24, 0, 0, 0); const mins = Math.max(1, Math.round((left - Date.now()) / 60000));
     $('dailyLeft').textContent = `· new ones in ${mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`}`;
-    $('daily').innerHTML = daily().map(x => {
+    const fe = festMission();
+    $('daily').innerHTML = (fe ? (() => {
+      const prize = COSMETICS.find(c => c.id === fe.prize), have = S.fest.prog, ready = have >= fe.goal && !S.fest.claimed;
+      return `<div class="item today fest"><span aria-hidden="true">${S.fest.claimed ? '✅' : fe.icon}</span><span>${L(fe.text, fe.mz)}<small>${S.fest.claimed ? L('Done', 'A zo') : `${have} / ${fe.goal} · 🎁 ${prize.name} ${prize.slot === 'box' ? 'box' : prize.slot}`}</small><span class="meter"><i style="width:${have / fe.goal * 100}%"></i></span></span>` +
+        `<button class="claim" type="button" data-fest="1"${ready ? '' : ' disabled'}>${S.fest.claimed ? L('Claimed', 'I la tawh') : L('Claim', 'La rawh')}</button></div>`;
+    })() : '') + daily().map(x => {
       const have = dailyHave(x), done = S.daily.claimed.includes(x.id), ready = dailyReady(x);
       return `<div class="item today"><span aria-hidden="true">${done ? '✅' : '🗓️'}</span><span>${x.text}<small>${done ? 'Done' : `${fmtGoal(x, have)} of ${fmtGoal(x, x.goal)} · ⭐ ${x.reward} points`}</small><span class="meter"><i style="width:${have / x.goal * 100}%"></i></span></span>` +
         `<button class="claim" type="button" data-daily="${x.id}"${ready ? '' : ' disabled'}>${done ? L('Claimed', 'I la tawh') : L('Claim', 'La rawh')}</button></div>`;
@@ -3742,6 +3853,12 @@
   // today's: its points go to your points, for veng, designs and colours
   $('daily').addEventListener('click', e => {
     const b = e.target.closest('.claim'); if (!b || b.disabled) return;
+    if (b.dataset.fest) {     // the festival's prize: yours to wear, and worn now
+      const fe = festMission(); if (!fe || S.fest.claimed || S.fest.prog < fe.goal) return;
+      const prize = COSMETICS.find(c => c.id === fe.prize);
+      S.fest.claimed = true; if (!S.cos.owned.includes(prize.id)) S.cos.owned.push(prize.id); S.cos[prize.slot] = prize.id;
+      writeSave(); beep(1320, 0.2); syncReady(); drawMissions(); return;
+    }
     const x = DAILY.find(y => y.id === b.dataset.daily);
     if (!x || !dailyReady(x)) return;                     // each paid once
     const r0 = rankOf();
