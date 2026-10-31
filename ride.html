@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#f3efe6"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Hnahsin"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="icon" href="favicon.png" type="image/png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js'));</script></head><body>
 <title>Aizawl Ride · Hnahsin</title>
 <meta name="description" content="Ride a scooter along real Aizawl roads, dodge the roadblocks and deliver the parcel.">
-<script type="importmap">{"imports":{"three":"https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.module.min.js"}}</script>
+<script type="importmap">{"imports":{"three":"https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.module.min.js","https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.core.js":"https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.core.min.js"}}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap">
 <style>
@@ -4009,9 +4009,10 @@
   // city.json holds the veng (at their landmarks), a job from each to its nearest neighbours along
   // real roads, and the roads to draw. You ride from where you are; a delivery moves you there.
   let jobPick = null, mapBox = null;
-  function loadCity() {
+  let cityP = null;
+  function loadCity() {      // fetched once, however many ask for it at the same time (and again after a failure)
     if (CITY) return Promise.resolve(CITY);
-    return fetch('ride/city.json?v=4ff2083a').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => (CITY = d));
+    return cityP || (cityP = fetch('ride/city.json?v=4ff2083a').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => (CITY = d)).catch(e => { cityP = null; throw e; }));
   }
   const vengOf = id => CITY.veng.find(v => v.id === id) || CITY.veng[0];
   // A packed list of small numbers (one character each) back into numbers
@@ -4230,12 +4231,14 @@
 
   applyLang(); syncSound(); syncWallet(); syncReady(); syncPause(); drawRoutes(); showParcel(); reset(); resize();
   // three.js is fetched once and kept on the phone; until then, and without WebGL, the picture is flat
-  if (!/[?&]flat\b/.test(location.search)) import(THREE_URL).then(T => {
+  const three = /[?&]flat\b/.test(location.search) ? Promise.resolve() : import(THREE_URL).then(T => {
     try { R3 = make3d(T); } catch (e) { R3 = null; return; }
     $('gl').classList.add('on'); R3.setPlan(); resize();
   }).catch(() => {});
   hnStat('ride', 'Aizawl Ride');
-  loadCity().then(() => { $('mapSub').textContent = `${openVeng().length} of ${CITY.veng.length} veng open`; }).catch(() => {});     // and so the end of any ride can say which veng opened
+  // the Aizawl map once three.js is in (on a slow line they would share it, and the picture comes first);
+  // a tap on Start or the map before then fetches it at once
+  three.then(() => loadCity()).then(() => { $('mapSub').textContent = `${openVeng().length} of ${CITY.veng.length} veng open`; }).catch(() => {});     // and so the end of any ride can say which veng opened
 })();
 </script>
 

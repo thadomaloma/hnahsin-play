@@ -4,6 +4,18 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.32.2 (31 October 2026)
+
+### A lighter site
+
+- The home page's app picture is a small picture now (9 KB, before 169 KB),
+  fetched only when you scroll to it.
+- Aizawl Ride uses the small build of the 3D engine it was meant to (84 KB,
+  before 209 KB), and fetches the Aizawl map after the 3D picture, so the
+  picture comes first on a slow line.
+- The first visit fetches less to keep for playing offline (about 1.4 MB,
+  before 2 MB): the people of Aizawl Ride are kept the first time you ride.
+
 ## 1.32.1 (31 October 2026)
 
 ### Aizawl Ride: smooth bends and a whole road
