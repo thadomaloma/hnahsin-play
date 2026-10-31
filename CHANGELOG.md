@@ -4,6 +4,20 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.30.1 (31 October 2026)
+
+### Aizawl Ride: houses that meet the road
+
+- Where the ground falls away from the road, the houses below it now
+  meet the road: a concrete yard at the road's level joins the footpath
+  to the house, the way Aizawl's houses below the road are built. Before,
+  there was a deep slot between them in every veng (more than 13,000 of
+  them, most over 2 m deep).
+- No more holes through the ground beside the road on the way between
+  Khatla and Treasury.
+- Two new checks, for slots between the road and the houses and for holes
+  anywhere beside the road, and every check passed on every road.
+
 ## 1.30.0 (31 October 2026)
 
 ### Aizawl Ride: night, rain, Krismas and Chapchar Kut

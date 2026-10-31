@@ -1924,7 +1924,7 @@
         for (let i = 0; i < 4; i++) { const [a, b] = [c[i], c[(i + 1) % 4]]; st.quad(pt(k, a[0], h0, a[1]), pt(k, b[0], h0, b[1]), pt(k, b[0], h1, b[1]), pt(k, a[0], h1, a[1]), hex); }
         st.quad(...c.map(([x, z]) => pt(k, x, h1, z)), hex);
       };
-      const LAMP = [], POOL = [], BULB = [], STAR = [], FLAG = [], fest = festival(), H = [], RF = [], TK = [], TW = { broad: [], tall: [], bamboo: [], banana: [], pine: [], shrub: [] }, BAL = [], RAIL = [], SHUT = [], BAND = [], POLE = [], ARM = [], WIRE = [];
+      const LAMP = [], POOL = [], YARD = [], BULB = [], STAR = [], FLAG = [], fest = festival(), H = [], RF = [], TK = [], TW = { broad: [], tall: [], bamboo: [], banana: [], pine: [], shrub: [] }, BAL = [], RAIL = [], SHUT = [], BAND = [], POLE = [], ARM = [], WIRE = [];
       // An electric pole every 36 m in town, on the near side, and the ends of its crossarm for the wires
       const poleAt = k => {
         if (k < 0 || k >= n || k % 9 || !footpath(k)) return null;
@@ -2047,6 +2047,21 @@
             if (top - gy < 9 && rnd(k, j + 21) < 0.45) RF.push({ p: [p[0], Y[k] + top, p[2]], yaw: yaw[k], s: [w * 1.08, 1.3, d * 1.05], c: ROOF[(k * 3 + j) % ROOF.length] });
             else if (rnd(k, j + 31) < 0.5) { const q = pt(k, sd * (off + (rnd(k, j) - 0.5) * d * 0.5), 0); TK.push({ p: [q[0], Y[k] + top, q[2]], s: [1.1, 1.3, 1.1], c: '#2b2d2c' }); }   // the black water tank
           }
+          // Where the ground falls between the road and the house beside it, a concrete yard at the road's
+          // level joins them, as Aizawl's houses below the road have: no slot to look down into
+          {
+            let front = null;
+            for (let j = 0; j < 3; j++) { const h = W3.home[(k * 2 + (sd > 0 ? 1 : 0)) * 3 + j]; if (h && (!front || h.off - h.w / 2 < front.off - front.w / 2)) front = h; }
+            const face = front ? front.off - front.w / 2 : 0;
+            if (front && face - E >= 0.25) {
+              let low = Infinity; for (let i = 0; i <= 4; i++) low = Math.min(low, gAt(k, E + 0.05 + (face - E - 0.1) * i / 4));
+              const along = Math.max(front.d, SEG * 1.05), c = pt(k, sd * (E + face) / 2, 0);
+              if (low < -0.5 && !onRoad(c[0], c[2], Math.max(face - E, along) / 2 - 0.8, Y[k] + low - 0.5, Y[k] + 0.15, k - 6, k + 6)) {
+                front.plinth = true;
+                YARD.push({ p: pt(k, sd * (E + face) / 2, low - 0.5), yaw: yaw[k], s: [face - E + 0.1, 0.15 - (low - 0.5), along], c: even ? '#bdb8ac' : '#b6b1a5' });
+              }
+            }
+          }
           // Bamboo (mau), broad-leaved trees and banana plants where the map has few houses; pines on high ground
           if (housesOn(sd, k) <= 1) for (let j = 0; j < 3; j++) {
             if (rnd(k, 40 + j + sd) > 0.55) continue;
@@ -2071,7 +2086,7 @@
         }
       }
       if (WIRE.length) { const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(WIRE, 3)); grp.add(new T.LineSegments(g, wireMat)); }
-      [instanced(box, plainMat, BAL), instanced(box, plainMat, RAIL), instanced(box, shutterMat, SHUT), instanced(box, plainMat, BAND), instanced(pole, plainMat, POLE), instanced(box, plainMat, ARM), instanced(box, lampMat, LAMP), instanced(blob, poolMat, POOL), instanced(box, glowMat, BULB), instanced(starGeo, glowMat, STAR), instanced(flagGeo, flagMat, FLAG)].forEach(m => m && grp.add(m));
+      [instanced(box, plainMat, BAL), instanced(box, plainMat, RAIL), instanced(box, shutterMat, SHUT), instanced(box, plainMat, BAND), instanced(pole, plainMat, POLE), instanced(box, plainMat, ARM), instanced(box, plainMat, YARD), instanced(box, lampMat, LAMP), instanced(blob, poolMat, POOL), instanced(box, glowMat, BULB), instanced(starGeo, glowMat, STAR), instanced(flagGeo, flagMat, FLAG)].forEach(m => m && grp.add(m));
       [st.mesh(), instanced(box, houseMat, H), instanced(prism, plainMat, RF), instanced(tank, plainMat, TK),
         ...Object.entries(TW).flatMap(([kind, list]) => [TREES[kind].wood.attributes.position.count ? instanced(TREES[kind].wood, woodMat, list) : null, instanced(TREES[kind].leaves, leafMat, list)])].forEach(m => m && grp.add(m));
       grp.userData.mid = P[Math.min(n - 1, (k0 + k1) >> 1)];
@@ -2143,6 +2158,17 @@
       }
       // each point no higher than its neighbours: a cell from the road to the top of a cut bank would
       // otherwise slope up across the road's edge, a green peak in front of the wall
+      // and any kept point still empty (its neighbours were not worked out before it): from whichever
+      // neighbour has a height, over and over until none is left
+      for (let pass = 0, left = true; left && pass < 12; pass++) {
+        left = false;
+        for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+          if (!keep[j * nx + i] || !Number.isNaN(H[j * nx + i])) continue;
+          let v = Infinity;
+          for (let b = Math.max(0, j - 1); b <= Math.min(nz - 1, j + 1); b++) for (let a = Math.max(0, i - 1); a <= Math.min(nx - 1, i + 1); a++) { const w = H[b * nx + a]; if (!Number.isNaN(w)) v = Math.min(v, w); }
+          if (v < Infinity) H[j * nx + i] = v; else left = true;
+        }
+      }
       const low = H.slice();
       for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
         if (Number.isNaN(H[j * nx + i])) continue;
@@ -3324,8 +3350,41 @@
       });
       return out;
     }
+    // For the tests: a drop between the road's edge and the nearest house beside it, deeper than half a
+    // metre: a slot you would look down into from the road
+    function audit10() {
+      setRoute();
+      const { n, ext } = W3, out = { gaps: 0, deep: 0, filled: 0, at: [] };
+      for (let k = 0; k < n - 1; k++) for (const sd of [-1, 1]) {
+        if (W3.gone[sd][k] || W3.gone[sd][k + 1]) continue;
+        const bare = W3.bare[sd][k] || W3.bare[sd][k + 1], E = bare ? HALF : edge(k, sd);
+        let front = null;
+        for (let j = 0; j < 3; j++) { const h = W3.home[(k * 2 + (sd > 0 ? 1 : 0)) * 3 + j]; if (h && (!front || h.off - h.w / 2 < front.off - front.w / 2)) front = h; }
+        if (!front) continue;
+        const face = front.off - front.w / 2; if (face - E < 0.25) continue;
+        let low = Infinity; for (let i = 0; i <= 4; i++) { const o = E + 0.05 + (face - E - 0.1) * i / 4; low = Math.min(low, bare && o <= HALF + 0.01 ? 0 : groundAt(k, sd, o)); }
+        if (low < -0.5) { out.gaps++; if (low < -2) out.deep++; if (front.plinth) out.filled++; else if (out.at.length < 6) out.at.push([k, sd, +(face - E).toFixed(1), +low.toFixed(1)]); }
+      }
+      out.open = out.gaps - out.filled;
+      return out;
+    }
+    // For the tests: holes anywhere beside the road, not only where the hillside is cut short: rays down
+    // at every other sample, both sides, out to 20 m, that meet nothing at all (a view to nowhere)
+    function audit11() {
+      setRoute();
+      const { n } = W3, ray = new T.Raycaster(), down = new T.Vector3(0, -1, 0), o = new T.Vector3(), out = { rays: 0, voids: 0, at: [] };
+      for (let k = 2; k < n - 2; k += 2) {
+        const near = pieces.slice(Math.max(0, Math.floor(k / PIECE) - 1), Math.floor(k / PIECE) + 2).concat(pieces.slice(-2)).flatMap(g => g.children).concat(fill ? [fill] : []);
+        for (const sd of [-1, 1]) for (const L of [HALF + 0.3, KERB + 0.5, 6, 8, 11, 15, 20]) {
+          const q = ptAt(k, sd * L, 0); o.set(q[0], q[1] + 40, q[2]); ray.set(o, down); ray.far = 400; out.rays++;
+          const hit = ray.intersectObjects(near, false)[0];
+          if (!hit) { out.voids++; if (out.at.length < 8) out.at.push([k, sd, L]); } else if (q[1] - hit.point.y > 60) out.deep = (out.deep || 0) + 1;     // (a steep valley, ground far below: not a hole)
+        }
+      }
+      return out;
+    }
     const walkable = (i, sd) => { setRoute(); i = clamp(i, 0, W3.n - 1); return !W3.bare[sd][i] && !W3.gone[sd][i] && !W3.ride[i]; };
-    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, audit9, walkable,
+    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, audit9, audit10, audit11, walkable,
       mem: () => ({ ...renderer.info.memory, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, programs: renderer.info.programs.length, objects: scene.children.length, people: PEOPLE ? PEOPLE.live.size : -1 }),     // for the tests: what the GPU holds
       // for the tests: each vehicle's size as drawn (length, width with the mirrors, height in metres), and our scooter's
       sizes: () => Object.fromEntries([...Object.keys(KINDS).map(k => { const M = MODELS[k], K = KINDS[k], b = new T.Box3().setFromBufferAttribute(M.paint.attributes.position); return [k, { len: +((b.max.z - b.min.z) * K.len / M.len).toFixed(2), wid: +((M.single ? b.max.x - b.min.x : (b.max.x - b.min.x) * K.wid)).toFixed(2), hgt: +(b.max.y * K.hgt / M.hgt).toFixed(2), wheel: +(M.wheels[0][1] * K.hgt / M.hgt * 2).toFixed(2) }]; }), ['me', (() => { const p0 = scoot.position.clone(), r0 = scoot.rotation.clone(); scoot.position.set(0, 0, 0); scoot.rotation.set(0, 0, 0); scoot.updateMatrixWorld(true); const b = new T.Box3().setFromObject(scoot); scoot.position.copy(p0); scoot.rotation.copy(r0); scoot.updateMatrixWorld(true); return { len: +(b.max.z - b.min.z).toFixed(2), wid: +(b.max.x - b.min.x).toFixed(2), hgt: +(b.max.y - b.min.y).toFixed(2) }; })()]]) };
@@ -4076,6 +4135,8 @@
     audit7All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); R3.setPlan(); out.push({ id: r.id, ...R3.audit7() }); } route = keep; reset(); return out; },
     audit8All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit8() }); } route = keep; reset(); return out; },
     audit9All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit9() }); } route = keep; reset(); return out; },
+    audit10All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit10() }); } route = keep; reset(); return out; },
+    audit11All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit11() }); } route = keep; reset(); return out; },
     audit6All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit6() }); } route = keep; reset(); return out; },
     audit5All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit5() }); } route = keep; reset(); return out; },
     audit4All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); out.push({ id: r.id, ...R3.audit4() }); } route = keep; reset(); return out; },
