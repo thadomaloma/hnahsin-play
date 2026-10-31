@@ -2958,6 +2958,7 @@
     }
     const walkable = (i, sd) => { setRoute(); i = clamp(i, 0, W3.n - 1); return !W3.bare[sd][i] && !W3.gone[sd][i] && !W3.ride[i]; };
     return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, audit9, walkable,
+      mem: () => ({ ...renderer.info.memory, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, programs: renderer.info.programs.length, objects: scene.children.length, people: PEOPLE ? PEOPLE.live.size : -1 }),     // for the tests: what the GPU holds
       // for the tests: each vehicle's size as drawn (length, width with the mirrors, height in metres), and our scooter's
       sizes: () => Object.fromEntries([...Object.keys(KINDS).map(k => { const M = MODELS[k], K = KINDS[k], b = new T.Box3().setFromBufferAttribute(M.paint.attributes.position); return [k, { len: +((b.max.z - b.min.z) * K.len / M.len).toFixed(2), wid: +((M.single ? b.max.x - b.min.x : (b.max.x - b.min.x) * K.wid)).toFixed(2), hgt: +(b.max.y * K.hgt / M.hgt).toFixed(2), wheel: +(M.wheels[0][1] * K.hgt / M.hgt * 2).toFixed(2) }]; }), ['me', (() => { const p0 = scoot.position.clone(), r0 = scoot.rotation.clone(); scoot.position.set(0, 0, 0); scoot.rotation.set(0, 0, 0); scoot.updateMatrixWorld(true); const b = new T.Box3().setFromObject(scoot); scoot.position.copy(p0); scoot.rotation.copy(r0); scoot.updateMatrixWorld(true); return { len: +(b.max.z - b.min.z).toFixed(2), wid: +(b.max.x - b.min.x).toFixed(2), hgt: +(b.max.y - b.min.y).toFixed(2) }; })()]]) };
   }
@@ -3477,7 +3478,7 @@
   $('resetNo').onclick = () => { $('resetAsk').hidden = true; $('resetBtn').focus(); };
   $('resetYes').onclick = () => {
     const keep = S.sound; S = fresh(); S.sound = keep; writeSave();
-    $('resetAsk').hidden = true; syncWallet(); drawMissions(); draw();
+    $('resetAsk').hidden = true; syncWallet(); drawMissions(); drawRoutes(); syncReady(); draw();
   };
   $('leftBtn').addEventListener('pointerdown', e => { e.preventDefault(); steer(-1); });
   $('rightBtn').addEventListener('pointerdown', e => { e.preventDefault(); steer(1); });
@@ -3487,6 +3488,7 @@
   for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) $('brakeBtn').addEventListener(ev, () => setBrake(false));
   $('brakeBtn').addEventListener('contextmenu', e => e.preventDefault());
   addEventListener('keyup', e => { if (['ArrowDown', 's', 'S', ' '].includes(e.key)) setBrake(false); });
+  addEventListener('blur', () => setBrake(false));      // a key let go in another window never comes back as a keyup
   $('stage').addEventListener('pointerdown', e => {
     if (mode !== 'playing' || e.target !== cv) return;
     const r = cv.getBoundingClientRect(); steer(e.clientX - r.left < r.width / 2 ? -1 : 1);
@@ -3506,7 +3508,7 @@
 
   // For the automatic tests only (?test in the address): read the ride and steer.
   if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ kind: c.kind, lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, wid: c.wid, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
-    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)) })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1, speed = 0) => { const c = newCar(kind, lane, s + ahead, dir * speed, dir); c.cruise = speed; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), sizes: () => R3 && R3.sizes(), walker: (ahead, x, va = 1, vx = 0, look) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; peds.push(p); return peds.length; },
+    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)) })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1, speed = 0) => { const c = newCar(kind, lane, s + ahead, dir * speed, dir); c.cruise = speed; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), sizes: () => R3 && R3.sizes(), mem: () => R3 && R3.mem(), walker: (ahead, x, va = 1, vx = 0, look) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; peds.push(p); return peds.length; },
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
     // for the tests: ride a given road; and every road with how many crossings and jams it has
     useRoute: id => { route = [...DATA.routes, ...CITY.jobs.map(routeOf)].find(r => r.id === id); reset(); return route.length; }, go: () => start(),

@@ -4,6 +4,17 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.24.3 (31 October 2026)
+
+### Aizawl Ride: small fixes
+
+- Holding the brake on the keyboard and clicking into another window no
+  longer leaves the brake held when you come back.
+- After "Reset my progress", the road list no longer shows the old best
+  scores.
+- Checked again: no memory left behind between rides, the flat picture,
+  the controls, and every road in the game.
+
 ## 1.24.2 (31 October 2026)
 
 ### Aizawl Ride: people come first, and no getting stuck
