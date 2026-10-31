@@ -4,6 +4,21 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.33.0 (31 October 2026)
+
+### The games feel like an app on a phone
+
+- In the games (Aizawl Ride, Rova's Journey, the Playground and Touch and
+  learn) the screen no longer zooms when you pinch or tap twice, no longer
+  bounces or reloads when you pull it, and holding a button no longer opens
+  a copy or save menu. The home page can still be zoomed for reading.
+- A full-screen button in the games on Android phones hides the browser's
+  address bar while you play.
+- On your third visit, a short note says how to install Hnahsin so it opens
+  like an app (once a week at most).
+- In Aizawl Ride on a phone the top bar makes room for its buttons, and the
+  name shows in full.
+
 ## 1.32.2 (31 October 2026)
 
 ### A lighter site
