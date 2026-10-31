@@ -4,6 +4,17 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.24.1 (31 October 2026)
+
+### Aizawl Ride: a gentler lane change
+
+- Changing lanes is slower and smoother: it takes 0.6 s and never gets
+  fast in the middle, easing in and settling without a jolt.
+- The scooter turns towards where it is going and back again smoothly,
+  with no sudden stop at its widest turn, and leans with the move.
+- The camera follows a moment behind, so the picture sweeps across rather
+  than jumps.
+
 ## 1.24.0 (31 October 2026)
 
 ### Aizawl Ride: real people on the footpaths
