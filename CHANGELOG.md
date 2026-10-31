@@ -4,6 +4,21 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.28.0 (31 October 2026)
+
+### Aizawl Ride: the rider's shop and a Mizo word after every ride
+
+- **The shop**, in the Garage: coins now buy the rider's look. Helmets
+  (vâr, dum, sen, dumpâwl and rangkachak, gold), jackets (dumpâwl, hring,
+  eng, dum and sen) and delivery boxes (eng, sen, hring, dumpâwl, and the
+  **puanchei** box in a Mizo puan's stripes). What you have is worn with a
+  tap, in 3D and in the flat picture.
+- **A Mizo word after every ride:** "What is …?" with three meanings to pick
+  from, a word met on the road or a parcel's. Right: 10 coins. Wrong: the
+  meaning, to learn it.
+- A new medal, **Mizo words answered right**, and a new mission for today:
+  answer two word questions right.
+
 ## 1.27.0 (31 October 2026)
 
 ### Aizawl Ride: rider ranks and medals

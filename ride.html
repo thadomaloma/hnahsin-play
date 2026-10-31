@@ -94,6 +94,7 @@
   button.item { box-shadow: 0 2px 0 var(--ink); }
   .item[aria-pressed="true"] { background: #e3f4dd; color: #1d2a16; }
   .item .sw { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--ink); }
+  .list h4.slot { margin: 8px 0 0; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
   .item .sw.design { display: grid; place-items: center; font-size: 17px; background: var(--panel); }
   .item b { font-size: 16px; color: var(--brand); }
   .item[aria-pressed="true"] b { color: #1d4f8a; }
@@ -115,6 +116,13 @@
   .medals { letter-spacing: 1px; white-space: nowrap; }
   .medals .off { filter: grayscale(1); opacity: .3; }
   .news .rankup { font-size: 16px; }
+  .quiz { border: 1.5px solid var(--ink); border-radius: 14px; padding: 8px 10px; margin: 2px 0 8px; background: color-mix(in srgb, var(--brand) 8%, var(--panel)); }
+  .quiz .q { margin: 0 0 6px; font-weight: 800; text-align: center; }
+  .quiz .opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .quiz .opts button { font: inherit; font-weight: 700; padding: 8px 4px; border-radius: 10px; border: 1.5px solid var(--ink); background: var(--panel); color: var(--ink); cursor: pointer; }
+  .quiz .opts button.ok { background: #2e7d32; color: #fff; }
+  .quiz .opts button.no { background: #c62828; color: #fff; }
+  .quiz .fine { margin: 6px 0 0; text-align: center; min-height: 1.2em; }
   .meter { display: block; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--ink) 14%, transparent); margin-top: 5px; overflow: hidden; }
   .meter i { display: block; height: 100%; background: var(--leaf); }
   .claim { min-height: 40px; padding: 4px 12px; border-radius: 99px; border: 1.5px solid var(--ink); background: #2e7d32; color: #fff; font-weight: 800; font-size: 14px; }
@@ -201,6 +209,8 @@
           <div class="list" id="designs"></div>
           <h3 class="sub">Colour, by its Mizo name</h3>
           <div class="list" id="scooters"></div>
+          <h3 class="sub">The rider and the box <small class="fine">bought with your coins</small></h3>
+          <div class="list" id="shop"></div>
           <p class="fine" id="garageNote" aria-live="polite"></p>
           <button class="go" type="button" data-close>Done</button>
         </div>
@@ -245,6 +255,7 @@
           <h2 id="endTitle">Delivered!</h2>
           <p id="endText"></p>
           <div class="endstars" id="endStars" hidden></div>
+          <div class="quiz" id="quiz" hidden><p class="q" id="quizQ"></p><div class="opts" id="quizOpts"></div><p class="fine" id="quizA" aria-live="polite"></p></div>
           <div class="result"><span>Score</span><span id="endScore">0</span></div>
           <div class="result"><span>Best on this road</span><span id="endBest">0</span></div>
           <div class="news" id="endNews"></div>
@@ -348,12 +359,36 @@
     { id: 'veng', icon: '🏘️', name: 'Veng visited', tiers: [5, 10, 18], have: () => S.visited.length },
     { id: 'stars', icon: '⭐', name: 'Stars won', tiers: [10, 50, 150], have: () => totalStars() },
     { id: 'daily', icon: '🗓️', name: "Today's missions done", tiers: [5, 20, 60], have: () => S.dailyDone },
+    { id: 'quiz', icon: '🗣️', name: 'Mizo words answered right', tiers: [5, 20, 60], have: () => S.quizRight },
   ];
   const TIERS = [{ name: 'Bronze', medal: '🥉', xp: 100 }, { name: 'Silver', medal: '🥈', xp: 200 }, { name: 'Gold', medal: '🥇', xp: 400 }];
   const RANKS = [
     { name: 'Trainee', xp: 0 }, { name: 'Rider', xp: 500 }, { name: 'Courier', xp: 1200 }, { name: 'Senior Courier', xp: 2200 }, { name: 'Express Rider', xp: 3500 },
     { name: 'Veng Expert', xp: 5000 }, { name: 'City Rider', xp: 7000 }, { name: 'Aizawl Pro', xp: 9500 }, { name: 'Aizawl Legend', xp: 13000 },
   ];
+  // The rider's look, bought with coins: a helmet (its shell and its stripe), a jacket, and the delivery
+  // box (its colour and the colour of the writing on it; the puanchei box wears a Mizo puan's stripes)
+  const COSMETICS = [
+    { id: 'h-var', slot: 'helmet', name: 'vâr', en: 'white', price: 0, c: ['#f2f2ee', '#c03a2e'] },
+    { id: 'h-dum', slot: 'helmet', name: 'dum', en: 'black', price: 60, c: ['#232323', '#f2c230'] },
+    { id: 'h-sen', slot: 'helmet', name: 'sen', en: 'red', price: 80, c: ['#c0392b', '#f4f4f0'] },
+    { id: 'h-dumpawl', slot: 'helmet', name: 'dumpâwl', en: 'blue', price: 100, c: ['#1565c0', '#f4f4f0'] },
+    { id: 'h-rangkachak', slot: 'helmet', name: 'rangkachak', en: 'gold', price: 250, c: ['#d4a017', '#1b1b1b'] },
+    { id: 'j-dumpawl', slot: 'jacket', name: 'dumpâwl', en: 'blue', price: 0, c: ['#3b78bf'] },
+    { id: 'j-hring', slot: 'jacket', name: 'hring', en: 'green', price: 80, c: ['#2e7d4f'] },
+    { id: 'j-eng', slot: 'jacket', name: 'eng', en: 'yellow', price: 100, c: ['#e8b923'] },
+    { id: 'j-dum', slot: 'jacket', name: 'dum', en: 'black', price: 120, c: ['#2b2b2b'] },
+    { id: 'j-sen', slot: 'jacket', name: 'sen', en: 'red', price: 150, c: ['#b8322a'] },
+    { id: 'b-eng', slot: 'box', name: 'eng', en: 'yellow', price: 0, c: ['#ffc43d', '#1d6b34'] },
+    { id: 'b-sen', slot: 'box', name: 'sen', en: 'red', price: 120, c: ['#d64032', '#ffffff'] },
+    { id: 'b-hring', slot: 'box', name: 'hring', en: 'green', price: 150, c: ['#2e8b57', '#ffffff'] },
+    { id: 'b-dumpawl', slot: 'box', name: 'dumpâwl', en: 'blue', price: 150, c: ['#2f6fb0', '#ffffff'] },
+    { id: 'b-puan', slot: 'box', name: 'puanchei', en: 'a Mizo puan', price: 400, c: ['#1b1b1b', '#ffffff'], puan: true },
+  ];
+  const SLOTS = [['helmet', 'Helmet'], ['jacket', 'Jacket'], ['box', 'Delivery box']];
+  // Words for the question at the end of a ride: the parcels, the land and the road
+  const QUIZ_WORDS = [...PARCELS.map(([m, e]) => [m, e]), ...SCENE_WORDS.map(([m, e]) => [m, e]),
+    ['motor', 'a car'], ['mi', 'a person'], ['kalkawng', 'a path'], ['tlar', 'a row, a queue'], ['dawhtheihna', 'patience'], ['zah', 'respect'], ['fimkhur', 'careful'], ['hmanhmawh', 'hurried']];
   // Today's missions: three a day (an easy, a middling and a hard one), a new three at midnight, picked
   // by the date. Some count over one ride, some over the whole day. Each pays points, which open veng,
   // designs and colours just as your best scores do.
@@ -366,6 +401,7 @@
     { id: 'km2', text: 'Ride 2 km today', kind: 'metres', per: 'day', goal: 2000, reward: 350, tier: 1 },
     { id: 'star2', text: 'Earn 2 stars on a delivery', kind: 'stars', per: 'ride', goal: 2, reward: 350, tier: 1 },
     { id: 'words3', text: 'Meet 3 Mizo road words in one ride', kind: 'words', per: 'ride', goal: 3, reward: 350, tier: 1 },
+    { id: 'quiz2', text: 'Answer 2 Mizo word questions right today', kind: 'quiz', per: 'day', goal: 2, reward: 350, tier: 1 },
     { id: 'jam3', text: 'Wait your turn in 3 traffic jams today', kind: 'jam', per: 'day', goal: 3, reward: 500, tier: 2 },
     { id: 'cross2', text: 'Stop and let people cross 2 times today', kind: 'cross', per: 'day', goal: 2, reward: 500, tier: 2 },
     { id: 'deliver3', text: 'Make 3 deliveries today', kind: 'deliver', per: 'day', goal: 3, reward: 500, tier: 2 },
@@ -399,7 +435,7 @@
   };
   const fresh = () => ({ v: 1, best: {}, wallet: 0, lifetime: 0, metres: 0, rides: 0, deliveries: {}, bestCoins: 0, bestMetres: 0, bestTime: 0,
     owned: ['hring'], scooter: 'hring', design: 'everyday', badges: [], claimed: [], words: [], route: '', sound: true,
-    at: 'dawrpui', visited: [], cityDone: 0, cityBest: {}, jams: 0, crossed: 0, bonus: 0, dailyDone: 0, stars: {}, daily: { day: '', prog: {}, claimed: [] } });
+    at: 'dawrpui', visited: [], cityDone: 0, cityBest: {}, jams: 0, crossed: 0, bonus: 0, dailyDone: 0, quizRight: 0, quizAsked: 0, cos: { owned: ['h-var', 'j-dumpawl', 'b-eng'], helmet: 'h-var', jacket: 'j-dumpawl', box: 'b-eng' }, stars: {}, daily: { day: '', prog: {}, claimed: [] } });
   function readSave() {
     const f = fresh();
     let d = null;
@@ -427,7 +463,11 @@
     f.cityDone = num(d.cityDone); f.jams = num(d.jams); f.crossed = num(d.crossed);
     if (d.cityBest && typeof d.cityBest === 'object') for (const [k, v] of Object.entries(d.cityBest)) if (/^[a-z]{2,20}>[a-z]{2,20}$/.test(k) && num(v)) f.cityBest[k] = num(v);
     // stars won on each road, points from today's missions, and today's missions themselves
-    f.bonus = num(d.bonus); f.dailyDone = num(d.dailyDone);
+    f.bonus = num(d.bonus); f.dailyDone = num(d.dailyDone); f.quizRight = num(d.quizRight); f.quizAsked = num(d.quizAsked);
+    if (d.cos && typeof d.cos === 'object') {     // the rider's look: what was bought, what is worn
+      f.cos.owned = [...new Set([...f.cos.owned, ...ids(d.cos.owned, COSMETICS.map(x => x.id))])];
+      for (const [slot] of SLOTS) { const w = d.cos[slot]; if (f.cos.owned.includes(w) && COSMETICS.some(x => x.id === w && x.slot === slot)) f.cos[slot] = w; }
+    }
     if (d.stars && typeof d.stars === 'object') for (const [k, v] of Object.entries(d.stars)) if (/^([a-z]{2,20}|city:[a-z]{2,20}>[a-z]{2,20})$/.test(k) && [1, 2, 3].includes(v)) f.stars[k] = v;
     const dd = d.daily;
     if (dd && typeof dd === 'object' && typeof dd.day === 'string' && /^\d{4}-\d{1,2}-\d{1,2}$/.test(dd.day)) {
@@ -468,6 +508,7 @@
     }
   }
   const starText = n => '★'.repeat(n) + '☆'.repeat(3 - n);
+  const worn = slot => COSMETICS.find(x => x.id === S.cos[slot]) || COSMETICS.find(x => x.slot === slot);
   const fmtGoal = (x, n) => (x.kind === 'metres' ? `${(n / 1000).toFixed(1)} km` : n);
 
   // ---------- the world ----------
@@ -1229,20 +1270,21 @@
     ctx.strokeStyle = '#2a2622'; ctx.lineWidth = 3; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(-27, -60); ctx.lineTo(27, -60); ctx.stroke();
     ctx.fillStyle = '#2a2622'; for (const e of [-1, 1]) { ctx.beginPath(); ctx.arc(e * 28, -70, 3.2, 0, 7); ctx.fill(); ctx.fillRect(e * 27.5 - 0.8, -69, 1.6, 9); }
-    const jg = ctx.createLinearGradient(-12, 0, 12, 0); jg.addColorStop(0, '#4a8ad0'); jg.addColorStop(1, '#244f8a');
+    const jc = worn('jacket').c[0], jg = ctx.createLinearGradient(-12, 0, 12, 0); jg.addColorStop(0, shadeHex(jc, 0.18)); jg.addColorStop(1, shadeHex(jc, -0.3));
     ctx.fillStyle = jg; ctx.beginPath(); ctx.roundRect(-12, -82, 24, 30, 9); ctx.fill();
-    ctx.strokeStyle = '#2f6fb0'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(-10, -76); ctx.lineTo(-24, -61); ctx.moveTo(10, -76); ctx.lineTo(24, -61); ctx.stroke();
+    ctx.strokeStyle = shadeHex(jc, -0.05); ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(-10, -76); ctx.lineTo(-24, -61); ctx.moveTo(10, -76); ctx.lineTo(24, -61); ctx.stroke();
     ctx.fillStyle = '#e8b48a'; for (const e of [-1, 1]) { ctx.beginPath(); ctx.arc(e * 24, -61, 3, 0, 7); ctx.fill(); }
-    // the yellow delivery box on the rack, its dark lid and Hnahsin on the back
-    const bg = ctx.createLinearGradient(0, -68, 0, -42); bg.addColorStop(0, '#ffd36a'); bg.addColorStop(1, '#e0a52a');
+    // the delivery box on the rack (in its bought colour, or a puan's stripes), its dark lid and Hnahsin on the back
+    const bx = worn('box'), bg = ctx.createLinearGradient(0, -68, 0, -42); bg.addColorStop(0, shadeHex(bx.c[0], 0.2)); bg.addColorStop(1, shadeHex(bx.c[0], -0.12));
     ctx.fillStyle = bg; ctx.beginPath(); ctx.roundRect(-16, -68, 32, 26, 4); ctx.fill();
+    if (bx.puan) for (const [y, h, c] of [[-63, 2.5, '#c8323d'], [-58, 1.2, '#f2c230'], [-48, 2.5, '#c8323d'], [-45, 1.2, '#2f8a4a']]) { ctx.fillStyle = c; ctx.fillRect(-16, y, 32, h); }
     ctx.strokeStyle = 'rgba(35,30,22,.5)'; ctx.lineWidth = 1.2; ctx.stroke();
     rr(-17, -70, 34, 5, 2.5, '#2b2b2b');
-    ctx.fillStyle = '#1d6b34'; ctx.font = '800 6.5px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Hnahsin', 0, -54);
-    // helmet, with a shine
-    const hg = ctx.createRadialGradient(-4, -98, 2, 0, -93, 12); hg.addColorStop(0, '#ffffff'); hg.addColorStop(1, '#d9dcd6');
+    ctx.fillStyle = bx.c[1]; ctx.font = '800 6.5px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Hnahsin', 0, -54);
+    // helmet, with a shine and its stripe
+    const hm = worn('helmet').c, hg = ctx.createRadialGradient(-4, -98, 2, 0, -93, 12); hg.addColorStop(0, shadeHex(hm[0], 0.35)); hg.addColorStop(1, shadeHex(hm[0], -0.12));
     ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(0, -93, 11, 0, 7); ctx.fill();
-    ctx.fillStyle = '#c03a2e'; ctx.fillRect(-11, -95, 22, 3.5);
+    ctx.fillStyle = hm[1]; ctx.fillRect(-11, -95, 22, 3.5);
     ctx.fillStyle = '#2a2622'; ctx.fillRect(-7, -84, 14, 3);
     ctx.restore();
   }
@@ -2788,22 +2830,29 @@
       limb([e * 0.2, 1.33, -0.26], [e * 0.31, 1.1, 0.7], 0.062, jacket);                       // arms to the grips
     }
     part(torsoGeo, jacket, 0, 0.9, -0.36, 1.12, 1, 0.74, 0.28);                                   // the rider, leaning forward a little
-    part(ball, lm('#f2f2ee'), 0, 1.54, -0.2, 0.16, 0.17, 0.18);                               // helmet
-    part(ball, lm('#c03a2e'), 0, 1.57, -0.2, 0.164, 0.045, 0.184);
+    const helmetMat = new T.MeshPhongMaterial({ color: '#f2f2ee', shininess: 60, specular: C('#555555') }), helmetBand = lm('#c03a2e');
+    part(ball, helmetMat, 0, 1.54, -0.2, 0.16, 0.17, 0.18);                                   // helmet
+    part(ball, helmetBand, 0, 1.57, -0.2, 0.164, 0.045, 0.184);
     part(ball, new T.MeshPhongMaterial({ color: '#1b2026', shininess: 90, specular: C('#8a9aa4') }), 0, 1.52, -0.1, 0.12, 0.07, 0.1);   // its visor
     // the delivery box: insulated, rounded, Hnahsin on its back and sides (raised to sit on each design's rack)
     const boxG = new T.Group(); scoot.add(boxG); into = boxG;
     const boxMat = new T.MeshPhongMaterial({ color: '#ffc43d', emissive: '#3a2600', shininess: 30 });
     part(side([[-0.98, 0.76], [-0.98, 1.24], [-0.4, 1.24], [-0.4, 0.76]], 0.5, 0.07, 2), boxMat, 0, 0, 0);
     part(side([[-0.99, 1.17], [-0.99, 1.26], [-0.39, 1.26], [-0.39, 1.17]], 0.52, 0.04), lm('#2b2b2b'), 0, 0, 0);   // its lid
-    const logo = new T.MeshLambertMaterial({ map: tex(128, 64, g => { g.fillStyle = '#ffc43d'; g.fillRect(0, 0, 128, 64); g.fillStyle = '#1d6b34'; g.font = '800 30px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('Hnahsin', 64, 27); g.font = '700 13px sans-serif'; g.fillText('DELIVERY', 64, 51); }) });
+    // its writing: Hnahsin DELIVERY on the box's colour; on the puanchei box, on a puan's bands
+    const boxTex = b => tex(128, 64, g => {
+      g.fillStyle = b.c[0]; g.fillRect(0, 0, 128, 64);
+      if (b.puan) for (const [y, h, c] of [[2, 6, '#c8323d'], [11, 2, '#f2c230'], [46, 2, '#2f8a4a'], [52, 7, '#c8323d'], [61, 2, '#f2c230']]) { g.fillStyle = c; g.fillRect(0, y, 128, h); }
+      g.fillStyle = b.c[1]; g.font = '800 30px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('Hnahsin', 64, 27); g.font = '700 13px sans-serif'; g.fillText('DELIVERY', 64, b.puan ? 40 : 51);
+    });
+    const logo = new T.MeshLambertMaterial({ map: boxTex(COSMETICS.find(x => x.id === 'b-eng')) });
     part(plane, logo, 0, 0.84, -1.012, 0.4, 0.22, 1).rotation.y = Math.PI;
     for (const e of [-1, 1]) part(plane, logo, e * 0.258, 0.84, -0.69, 0.44, 0.22, 1).rotation.y = -e * Math.PI / 2;
     into = scoot;
     const riderShadow = new T.Mesh(blob, shadowMat); riderShadow.scale.set(0.8, 1, 1.9); scene.add(riderShadow);
     scoot.traverse(m => { m.castShadow = !!m.isMesh; });
     scene.add(scoot);
-    let painted = '', shown = '', camX = 0;
+    let painted = '', shown = '', dressed = '', camX = 0;
 
     // ---------- what the shiny things mirror: our own sky, the hills and the sun, made once ----------
     const pmrem = new T.PMREMGenerator(renderer), envScene = new T.Scene();
@@ -2862,6 +2911,14 @@
       // The scooter: it leans, bobs on the road, and tips over in a crash
       const my = myScooter();
       if (painted !== my.id) { painted = my.id; my.body.forEach((h, i) => bodyMats[i].forEach(m => m.color.set(h))); }
+      // the rider's look from the shop: helmet, jacket, delivery box
+      const hw = worn('helmet'), jw = worn('jacket'), bw = worn('box');
+      if (dressed !== hw.id + jw.id + bw.id) {
+        dressed = hw.id + jw.id + bw.id;
+        helmetMat.color.set(hw.c[0]); helmetBand.color.set(hw.c[1]); jacket.color.set(jw.c[0]);
+        boxMat.color.set(bw.c[0]); boxMat.emissive.set(bw.c[0]).multiplyScalar(0.12);
+        if (logo.map) logo.map.dispose(); logo.map = boxTex(bw); logo.needsUpdate = true;
+      }
       const dz = myDesign().id;
       if (shown !== dz) { shown = dz; for (const [id, d] of Object.entries(DESIGN3)) d.g.visible = id === dz; boxG.position.y = DESIGN3[dz].boxY; }
       if (extras && envStep !== hazeStep) makeEnv();     // the sky in the paint follows the light of the day
@@ -3372,6 +3429,7 @@
     writeSave();
     const readyNow = daily().filter(dailyReady).length, xpNow = xp(), rankNow = rankOf(xpNow);
     const medals = ACH.map((a, i) => [a, tiersBefore[i], tierOf(a)]).filter(([, b, n]) => n > b);
+    askQuiz();
     $('endStars').hidden = !delivered;
     if (delivered) $('endStars').innerHTML = `<span class="stars" aria-label="${stars} of 3 stars">${starText(stars)}</span>` +
       `<small>${stars === 3 ? 'The Aizawl way, and the coins too!' : !aizawlWay ? 'Next time wait in every queue and let people cross, for a second star.' : `Pick up half the coins (${picked} of ${coinsPut}) for the third star.`}${stars > starsBefore && starsBefore ? ' A new best!' : ''}</small>`;
@@ -3398,6 +3456,29 @@
     if (delivered) beep(990, 0.2);
     hnStat(`ride/${route.id}/${delivered ? 'done' : 'over'}`, `Aizawl Ride: ${route.to} ${delivered ? 'delivered' : 'crashed'}`);
   }
+  // A Mizo word to answer at the end of a ride: one met on the road, or a parcel's; three meanings to pick
+  // from. Right: 10 coins and a step towards the medal. Wrong: the meaning, to learn it.
+  let quizWord = null;
+  function askQuiz() {
+    // (not this ride's own parcel: its meaning is in the words just above)
+    const pool = QUIZ_WORDS.filter(([m]) => m !== parcel[0]), met = pool.filter(([m]) => wordsSeen.has(m) || eventWords.has(m));
+    quizWord = met.length && Math.random() < 0.6 ? met[Math.random() * met.length | 0] : pool[Math.random() * pool.length | 0];
+    const others = QUIZ_WORDS.filter(([m, e]) => m !== quizWord[0] && e !== quizWord[1]).sort(() => Math.random() - 0.5).slice(0, 2);
+    const opts = [quizWord, ...others].sort(() => Math.random() - 0.5);
+    $('quizQ').innerHTML = `🗣️ What is <b>${quizWord[0]}</b>?`;
+    $('quizOpts').innerHTML = opts.map(([m, e]) => `<button type="button" data-m="${m}">${e}</button>`).join('');
+    $('quizA').textContent = ''; $('quiz').hidden = false; delete $('quizOpts').dataset.done;
+  }
+  $('quizOpts').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || !quizWord || $('quizOpts').dataset.done === quizWord[0]) return;
+    $('quizOpts').dataset.done = quizWord[0];
+    const right = b.dataset.m === quizWord[0];
+    $('quizOpts').querySelectorAll('button').forEach(x => { x.disabled = true; if (x.dataset.m === quizWord[0]) x.classList.add('ok'); });
+    S.quizAsked++;
+    if (right) { S.quizRight++; S.wallet += 10; S.lifetime += 10; dailyAdd('quiz', 1); syncWallet(true); beep(990, 0.15); $('quizA').innerHTML = `Right! <b>${quizWord[0]}</b> is ${quizWord[1]} · <i class="coin"></i> +10`; }
+    else { b.classList.add('no'); beep(300, 0.15); $('quizA').innerHTML = `<b>${quizWord[0]}</b> is ${quizWord[1]}. Next time!`; }
+    writeSave();
+  });
   function frame(now) {
     if (mode !== 'playing' && mode !== 'crashing') { loopId = 0; return; }
     const dt = Math.min(0.04, (now - last) / 1000); last = now;
@@ -3488,11 +3569,28 @@
       const open = hasColour(x), on = myScooter() === x;
       return `<button class="item" type="button" data-id="${x.id}" aria-pressed="${on}" aria-label="${x.name}, ${x.en}${open ? '' : `, opens at ${fmt(x.need)} points`}"${open ? '' : ' aria-disabled="true"'}><span class="sw" style="background:linear-gradient(135deg, ${x.body[0]}, ${x.body[2]})"></span><span><b>${x.name}</b><small>${x.en}</small></span><span class="tag">${on ? 'Riding' : open ? 'Ride it' : lock(x)}</span></button>`;
     }).join('');
-    if (!$('garageNote').textContent) $('garageNote').textContent = `Your points: ${fmt(pts)}.`;
+    // the shop: helmets, jackets and boxes; what you have is worn with a tap, the rest are bought with coins
+    $('shop').innerHTML = SLOTS.map(([slot, label]) => `<h4 class="slot">${label}</h4>` + COSMETICS.filter(x => x.slot === slot).map(x => {
+      const own = S.cos.owned.includes(x.id), on = worn(slot) === x;
+      const look = x.puan ? 'repeating-linear-gradient(0deg, #1b1b1b 0 5px, #c8323d 5px 8px, #1b1b1b 8px 11px, #f2c230 11px 12px)' : `linear-gradient(135deg, ${x.c[0]}, ${x.c[1] || x.c[0]})`;
+      return `<button class="item" type="button" data-cos="${x.id}" aria-pressed="${on}" aria-label="${label}, ${x.name}, ${x.en}${own ? '' : `, ${x.price} coins`}"><span class="sw" style="background:${look}"></span><span><b>${x.name}</b><small>${x.en}</small></span><span class="tag">${on ? 'Wearing' : own ? 'Wear it' : `<i class="coin"></i> ${x.price}`}</span></button>`;
+    }).join('')).join('');
+    if (!$('garageNote').textContent) $('garageNote').textContent = `Your points: ${fmt(pts)} · your coins: ${fmt(S.wallet)}.`;
   }
   // pick a design or a colour; one not open yet says how many points it needs
   $('garageView').addEventListener('click', e => {
     const b = e.target.closest('.item'); if (!b) return;
+    if (b.dataset.cos) {        // the shop
+      const x = COSMETICS.find(y => y.id === b.dataset.cos); if (!x) return;
+      if (!S.cos.owned.includes(x.id)) {
+        if (S.wallet < x.price) { $('garageNote').textContent = `You need ${x.price - S.wallet} more coins for the ${x.name} ${x.slot === 'box' ? 'box' : x.slot}.`; return; }
+        S.wallet -= x.price; S.cos.owned.push(x.id); syncWallet(true); beep(990, 0.15);
+        $('garageNote').textContent = `The ${x.name} ${x.slot === 'box' ? 'box' : x.slot} is yours!`;
+      } else $('garageNote').textContent = `Wearing the ${x.name} ${x.slot === 'box' ? 'box' : x.slot}.`;
+      S.cos[x.slot] = x.id; writeSave(); drawGarage(); draw();
+      const again = $('garageView').querySelector(`[data-cos="${x.id}"]`); if (again) again.focus();
+      return;
+    }
     const d = b.dataset.design, x = d ? DESIGNS.find(y => y.id === d) : SCOOTERS.find(y => y.id === b.dataset.id);
     if (!x) return;
     if (!(d ? hasDesign(x) : hasColour(x))) { $('garageNote').textContent = `${x.name} opens at ${fmt(x.need)} points. You have ${fmt(points())}: beat your best scores to get there.`; return; }

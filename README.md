@@ -36,7 +36,9 @@ Learn Mizo words by playing. Free, on any phone, no sign-up.
   you ride past. Your points open four scooter designs (everyday, classic,
   sport and electric) and colours named by Mizo colour words. Every day brings
   three new missions; deliveries win up to three stars; medals and stars raise
-  your rider rank, and each rank adds to your scores. On the Aizawl map you deliver
+  your rider rank, and each rank adds to your scores. Coins buy the rider a
+  helmet, a jacket and a delivery box (even one in a Mizo puan's stripes), and
+  every ride ends with a Mizo word to answer. On the Aizawl map you deliver
   between 18 veng along real roads, past houses at their real heights; more
   veng open as your points grow. Share the road with cars, buses and bikes,
   wait your turn in traffic jams and stop for people at zebra crossings, the
