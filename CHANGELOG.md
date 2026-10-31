@@ -4,6 +4,24 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.25.0 (31 October 2026)
+
+### Aizawl Ride: four scooter designs, opened by your points
+
+- Your delivery scooter now comes in four designs: **Everyday** (the town
+  scooter, as Aizawl rides it), **Classic** (a round body, a bell of a front
+  mudguard, a round chrome-ringed lamp, chrome trims and a brown seat),
+  **Sport** (sharp panels, a raised tail, twin LED lamps under a smoked
+  visor, an upswept exhaust) and **Electric** (one smooth body, a dark front
+  panel with an LED strip, a screen on the handlebar).
+- Designs and colours open as your points grow, the same points that open
+  veng on the Aizawl map: Classic at 3,000, Sport at 8,000 and Electric at
+  14,000; the colours from 1,000 to 10,000. A new colour, **eng** (yellow).
+  Colours you bought with coins before stay yours.
+- The Garage shows the designs and the colours apart, and what each one
+  still needs. The badge "A second scooter" is now "A new look".
+- The progress bars in Missions show again.
+
 ## 1.24.3 (31 October 2026)
 
 ### Aizawl Ride: small fixes

@@ -94,12 +94,14 @@
   button.item { box-shadow: 0 2px 0 var(--ink); }
   .item[aria-pressed="true"] { background: #e3f4dd; color: #1d2a16; }
   .item .sw { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--ink); }
+  .item .sw.design { display: grid; place-items: center; font-size: 17px; background: var(--panel); }
   .item b { font-size: 16px; color: var(--brand); }
   .item[aria-pressed="true"] b { color: #1d4f8a; }
   .item small { display: block; font-size: 14px; color: var(--muted); font-weight: 600; }
   .item[aria-pressed="true"] small { color: #44513a; }
   .item .tag { font-weight: 800; font-size: 14px; white-space: nowrap; }
-  .meter { height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--ink) 14%, transparent); margin-top: 5px; overflow: hidden; }
+  .sheet h3.sub { margin: 14px 0 6px; font-size: 15px; }
+  .meter { display: block; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--ink) 14%, transparent); margin-top: 5px; overflow: hidden; }
   .meter i { display: block; height: 100%; background: var(--leaf); }
   .claim { min-height: 40px; padding: 4px 12px; border-radius: 99px; border: 1.5px solid var(--ink); background: #2e7d32; color: #fff; font-weight: 800; font-size: 14px; }
   .claim[disabled] { background: transparent; color: var(--muted); border-color: color-mix(in srgb, var(--ink) 30%, transparent); }
@@ -179,7 +181,10 @@
       <div class="overlay" id="garageView" hidden>
         <div class="sheet" role="dialog" aria-labelledby="garageTitle">
           <h2 id="garageTitle">Garage</h2>
-          <p>Every scooter rides the same. Pick the colour you like, by its Mizo name.</p>
+          <p>Every scooter rides the same. Pick the design and the colour you like; more open as your points grow.</p>
+          <h3 class="sub">Design</h3>
+          <div class="list" id="designs"></div>
+          <h3 class="sub">Colour, by its Mizo name</h3>
           <div class="list" id="scooters"></div>
           <p class="fine" id="garageNote" aria-live="polite"></p>
           <button class="go" type="button" data-close>Done</button>
@@ -295,13 +300,21 @@
   ];
 
   // ---------- scooters, missions and badges ----------
-  // Scooters are named by Mizo colour words. They look different and ride the same.
+  // Scooters come in four designs and in colours named by Mizo colour words. They look different and
+  // ride the same. Each opens as your points grow (your best scores, added up; see the Aizawl map).
   const SCOOTERS = [
-    { id: 'hring', name: 'hring', en: 'green', price: 0, body: ['#e2f58a', '#b9db4a', '#86a82e'] },
-    { id: 'sen', name: 'sen', en: 'red', price: 150, body: ['#ff9a8a', '#e0453a', '#a52a22'] },
-    { id: 'dumpawl', name: 'dumpâwl', en: 'blue', price: 300, body: ['#9ccbff', '#3d7fd6', '#24528f'] },
-    { id: 'var', name: 'vâr', en: 'white', price: 500, body: ['#ffffff', '#ebe8e0', '#b9b6ad'] },
-    { id: 'dum', name: 'dum', en: 'black', price: 800, body: ['#6a6a6a', '#333333', '#151515'] },
+    { id: 'hring', name: 'hring', en: 'green', need: 0, body: ['#e2f58a', '#b9db4a', '#86a82e'] },
+    { id: 'sen', name: 'sen', en: 'red', need: 1000, body: ['#ff9a8a', '#e0453a', '#a52a22'] },
+    { id: 'dumpawl', name: 'dumpâwl', en: 'blue', need: 2500, body: ['#9ccbff', '#3d7fd6', '#24528f'] },
+    { id: 'var', name: 'vâr', en: 'white', need: 4500, body: ['#ffffff', '#ebe8e0', '#b9b6ad'] },
+    { id: 'dum', name: 'dum', en: 'black', need: 7000, body: ['#6a6a6a', '#333333', '#151515'] },
+    { id: 'eng', name: 'eng', en: 'yellow', need: 10000, body: ['#fff1a8', '#f2c230', '#b88a12'] },
+  ];
+  const DESIGNS = [
+    { id: 'everyday', name: 'Everyday', en: 'the town scooter, as Aizawl rides it', need: 0 },
+    { id: 'classic', name: 'Classic', en: 'round and chrome, a round lamp, the old Italian way', need: 3000 },
+    { id: 'sport', name: 'Sport', en: 'sharp lines, twin lights, a raised tail', need: 8000 },
+    { id: 'electric', name: 'Electric', en: 'smooth and quiet, LED lights and a screen', need: 14000 },
   ];
   const MISSIONS = [
     { id: 'coins10', text: 'Pick up 10 coins in one ride', goal: 10, reward: 50, have: () => S.bestCoins },
@@ -318,7 +331,7 @@
     { id: 'deliver', icon: '📦', name: 'Delivered', got: () => Object.values(S.deliveries).some(n => n > 0) },
     { id: 'coins25', icon: '<i class="coin"></i>', name: '25 coins saved', got: () => S.lifetime >= 25 },
     { id: 'km1', icon: '🛣️', name: '1 km ridden', got: () => S.metres >= 1000 },
-    { id: 'garage', icon: '🔑', name: 'A second scooter', got: () => S.owned.length >= 2 },
+    { id: 'garage', icon: '🔑', name: 'A new look', got: () => S.design !== 'everyday' || S.scooter !== 'hring' },
     { id: 'words', icon: '🗣️', name: 'All 5 road words', got: () => S.words.length >= SCENE_WORDS.length },
     { id: 'veng5', icon: '🏘️', name: '5 veng visited', got: () => S.visited.length >= 5 },
     { id: 'vengall', icon: '🗺️', name: 'Every veng', got: () => S.visited.length >= 18 },
@@ -334,7 +347,7 @@
     set(k, v) { mem[k] = v; try { localStorage.setItem(k, v); } catch (e) {} },
   };
   const fresh = () => ({ v: 1, best: {}, wallet: 0, lifetime: 0, metres: 0, rides: 0, deliveries: {}, bestCoins: 0, bestMetres: 0, bestTime: 0,
-    owned: ['hring'], scooter: 'hring', badges: [], claimed: [], words: [], route: '', sound: true,
+    owned: ['hring'], scooter: 'hring', design: 'everyday', badges: [], claimed: [], words: [], route: '', sound: true,
     at: 'dawrpui', visited: [], cityDone: 0, cityBest: {}, jams: 0, crossed: 0 });
   function readSave() {
     const f = fresh();
@@ -351,7 +364,8 @@
     for (const r of DATA.routes) { f.best[r.id] = num(d.best && d.best[r.id]); f.deliveries[r.id] = num(d.deliveries && d.deliveries[r.id]); }
     for (const k of ['wallet', 'lifetime', 'metres', 'rides', 'bestCoins', 'bestMetres', 'bestTime']) f[k] = num(d[k]);
     f.owned = ids(d.owned, SCOOTERS.map(x => x.id)); if (!f.owned.includes('hring')) f.owned.unshift('hring');
-    f.scooter = f.owned.includes(d.scooter) ? d.scooter : 'hring';
+    f.scooter = SCOOTERS.some(x => x.id === d.scooter) ? d.scooter : 'hring';     // (one not open yet falls back below)
+    f.design = DESIGNS.some(x => x.id === d.design) ? d.design : 'everyday';
     f.badges = ids(d.badges, BADGES.map(x => x.id)); f.claimed = ids(d.claimed, MISSIONS.map(x => x.id));
     f.words = ids(d.words, SCENE_WORDS.map(x => x[0]));
     f.route = typeof d.route === 'string' ? d.route : ''; f.sound = d.sound !== false;
@@ -366,7 +380,10 @@
   let S = readSave();
   const writeSave = () => store.set(SAVE_KEY, JSON.stringify(S));
   const bestOf = id => (id.startsWith('city:') ? S.cityBest[id.slice(5)] : S.best[id]) || 0;
-  const myScooter = () => SCOOTERS.find(x => x.id === S.scooter) || SCOOTERS[0];
+  // a colour or a design is yours once your points reach it (colours bought with coins before stay yours)
+  const hasColour = x => S.owned.includes(x.id) || points() >= x.need, hasDesign = x => points() >= x.need;
+  const myScooter = () => SCOOTERS.find(x => x.id === S.scooter && hasColour(x)) || SCOOTERS[0];
+  const myDesign = () => DESIGNS.find(x => x.id === S.design && hasDesign(x)) || DESIGNS[0];
   const missionReady = m => !S.claimed.includes(m.id) && m.have() >= m.goal;
 
   // ---------- the world ----------
@@ -2578,28 +2595,106 @@
     const part = (geo, mat, x, y, z, sx = 1, sy = 1, sz = 1, rx = 0) => {
       const pair = Array.isArray(mat) ? mat : null, m = new T.Mesh(geo, pair ? pair[0] : mat);
       if (pair) m.userData.sw = pair;
-      m.position.set(-x, y, z); m.scale.set(sx, sy, sz); m.rotation.x = rx; scoot.add(m); return m;
+      m.position.set(-x, y, z); m.scale.set(sx, sy, sz); m.rotation.x = rx; into.add(m); return m;
     };
+    let into = scoot;      // where part() puts what it makes: the scooter, or one of its designs
     const up = new T.Vector3(0, -1, 0);
     const limb = (a, b, r, mat) => {      // a capsule from a to b ([x, y, z], x to the right)
       const d = new T.Vector3(-(b[0] - a[0]), b[1] - a[1], b[2] - a[2]), L = d.length(), m = new T.Mesh(capHang, mat);
       m.position.set(-a[0], a[1], a[2]); m.quaternion.setFromUnitVectors(up, d.normalize()); m.scale.set(r * 2, L / 2, r * 2); scoot.add(m);
     };
-    {
-      // the body, as on the traffic's scooters: rear cowl, floorboard, front apron with its chrome V and
-      // the handlebar cover, in the garage's three colours; the seat; the chrome; a rack for the box
-      const B = parts(), A = parts(), N = parts(), S = parts(), H = parts();
-      scooterBody(B, A, N, S, H);
-      H.box(-0.66, 0.74, 0, 0.42, 0.03, 0.4);
-      part(B.done(), bodyMats[1], 0, 0, 0); part(A.done(), bodyMats[0], 0, 0, 0); part(N.done(), bodyMats[2], 0, 0, 0);
-      part(S.done(), dark, 0, 0, 0); part(H.done(), VMAT.chrome, 0, 0, 0);
-    }
-    const tail = part(box, tailMat, 0, 0.5, -0.94, 0.2, 0.07, 0.02);
-    for (const e of [-1, 1]) { part(box, amber, e * 0.17, 0.52, -0.935, 0.06, 0.05, 0.02); part(box, amber, e * 0.27, 1.06, 0.9, 0.06, 0.04, 0.02); }   // indicators
-    part(plateGeo, plateMat, 0, 0.36, -0.94, 0.24, 0.1, 1);
-    part(box, new T.MeshBasicMaterial({ color: '#fffbe6', toneMapped: false }), 0, 1.06, 0.93, 0.2, 0.07, 0.02);       // headlight
-    const wheels = [];
-    for (const z of [0.62, -0.56]) { wheels.push(part(tyreGeo, VMAT.tyre, 0, 0.25, z, 0.13, 0.25, 0.25)); part(rimGeo, VMAT.chrome, 0, 0.25, z, 0.13, 0.25, 0.25); }
+    // Four designs, each a group of its own, shown one at a time: its body in the garage's three
+    // colours (light, main, dark), its seat, chrome and black parts, its lights, wheels and plate, and
+    // a rack at the height its box sits. The rider, the mirrors and the grips are the same on all.
+    const headMat = new T.MeshBasicMaterial({ color: '#fffbe6', toneMapped: false }), screenMat = new T.MeshBasicMaterial({ color: '#7fd4ff', toneMapped: false });
+    const brown = lm('#5a3a24'), black = new T.MeshPhongMaterial({ color: '#1d1e20', shininess: 40, specular: C('#333333') }), smoke = new T.MeshPhongMaterial({ color: '#1b2026', shininess: 90, specular: C('#8a9aa4'), transparent: true, opacity: 0.85 });
+    const DESIGN3 = {}, wheels = [];
+    const design = (id, boxY, wheel, build) => {
+      const g = new T.Group(); g.visible = false; scoot.add(g); into = g;
+      const P = { B: parts(), A: parts(), N: parts(), S: parts(), H: parts(), K: parts() };
+      build(P);
+      part(P.B.done(), bodyMats[1], 0, 0, 0); part(P.A.done(), bodyMats[0], 0, 0, 0); part(P.N.done(), bodyMats[2], 0, 0, 0);
+      part(P.S.done(), P.seat || dark, 0, 0, 0); part(P.H.done(), VMAT.chrome, 0, 0, 0); part(P.K.done(), black, 0, 0, 0);
+      for (const [z, r] of wheel) { wheels.push(part(tyreGeo, VMAT.tyre, 0, r, z, 0.13, r, r)); part(rimGeo, VMAT.chrome, 0, r, z, 0.13, r, r); }
+      for (const e of [-1, 1]) part(box, amber, e * 0.17, P.indY || 0.52, -0.935 - (P.tailOut || 0), 0.06, 0.05, 0.02);   // rear indicators
+      DESIGN3[id] = { g, boxY };
+      into = scoot;
+      return g;
+    };
+    // Everyday: the town scooter (an Activa), as the traffic's scooters are
+    design('everyday', 0, [[0.62, 0.25], [-0.56, 0.25]], P => {
+      scooterBody(P.B, P.B, P.N, P.S, P.H);                                                       // (the apron in the main colour too)
+      P.H.box(-0.66, 0.74, 0, 0.42, 0.03, 0.4);                                                   // the rack
+      part(box, tailMat, 0, 0.5, -0.94, 0.2, 0.07, 0.02);
+      for (const e of [-1, 1]) part(box, amber, e * 0.27, 1.06, 0.9, 0.06, 0.04, 0.02);
+      part(plateGeo, plateMat, 0, 0.36, -0.94, 0.24, 0.1, 1);
+      part(box, headMat, 0, 1.06, 0.93, 0.2, 0.07, 0.02);
+    });
+    // Classic: a round monocoque body swelling at the back, a tall bell of a front mudguard, a round
+    // chrome-ringed lamp on the handlebar, chrome trims and a two-tone brown seat
+    design('classic', 0.03, [[0.64, 0.23], [-0.56, 0.23]], P => {
+      P.B.curve([[-0.9, 0.36], [-0.95, 0.52], [-0.87, 0.69], [-0.6, 0.77], [-0.18, 0.74], [-0.02, 0.6], [0.02, 0.42], [-0.25, 0.3], [-0.66, 0.29]], 0.5, '#ffffff', 4);
+      P.B.curve([[0.42, 0.32], [0.47, 0.62], [0.52, 0.96], [0.58, 1.03], [0.66, 1.0], [0.7, 0.7], [0.66, 0.42], [0.56, 0.3]], 0.52, '#ffffff', 3);   // the leg shield
+      P.B.curve([[0.5, 0.27], [0.52, 0.45], [0.63, 0.55], [0.78, 0.54], [0.88, 0.42], [0.88, 0.28], [0.8, 0.36], [0.64, 0.44], [0.56, 0.37]], 0.22, '#ffffff', 3);   // the bell mudguard
+      P.B.curve([[0.56, 1.02], [0.6, 1.12], [0.78, 1.15], [0.87, 1.07], [0.8, 1.0]], 0.56, '#ffffff', 3);   // the headset
+      P.A.box(0.25, 0.37, 0, 0.5, 0.04, 0.4);                                                         // the floorboard, in the light tone
+      for (let i = -2; i <= 2; i++) P.K.box(0.25, 0.395, i * 0.07, 0.46, 0.012, 0.02);               // its rubber strips
+      for (const e of [-1, 1]) { P.H.bar(-0.86, 0.43, -0.08, 0.45, e * 0.252, 0.006, 0.02); P.H.bar(-0.82, 0.66, -0.12, 0.68, e * 0.248, 0.006, 0.014); }   // chrome trims along the cowls
+      P.H.box(0.705, 0.82, 0, 0.03, 0.2, 0.07);                                                      // the horn cast, the "tie" on the shield
+      P.H.lamp(0.875, 1.08, 0, 0.09, 0.05);                                                          // the lamp's chrome ring
+      P.S.curve([[-0.8, 0.76], [-0.76, 0.87], [-0.4, 0.88], [-0.08, 0.86], [0.02, 0.77], [-0.1, 0.74]], 0.36, '#ffffff', 2); P.seat = brown;
+      P.H.box(-0.66, 0.77, 0, 0.42, 0.03, 0.4); for (const e of [-1, 1]) P.H.rod(-0.88, 0.78, e * 0.19, -0.44, 0.78, e * 0.19, 0.012);   // the chrome rack
+      for (const e of [-1, 1]) P.H.rod(0.64, 0.23, e * 0.06, 0.6, 0.62, e * 0.06, 0.022);
+      part(ROD, headMat, 0, 1.08, 0.905, 0.075, 0.01, 0.075, Math.PI / 2);                          // the round lamp
+      part(box, tailMat, 0, 0.56, -0.955, 0.16, 0.08, 0.02);
+      for (const e of [-1, 1]) part(box, amber, e * 0.3, 1.06, 0.83, 0.05, 0.04, 0.02);
+      part(plateGeo, plateMat, 0, 0.38, -0.95, 0.24, 0.1, 1);
+      P.indY = 0.55; P.tailOut = 0.02;
+    });
+    // Sport: sharp panels and a raised tail, dark lower panels, a stripe in the light tone, a smoked
+    // visor over twin LED lamps, a spine between the feet, bigger wheels and an upswept exhaust
+    design('sport', 0.1, [[0.68, 0.27], [-0.6, 0.27]], P => {
+      P.B.side([[-0.98, 0.64], [-1.0, 0.74], [-0.74, 0.87], [-0.22, 0.85], [-0.02, 0.66], [0.05, 0.46], [-0.2, 0.33], [-0.72, 0.36]], 0.42, 0.04);
+      P.K.side([[-0.92, 0.4], [-0.9, 0.52], [-0.3, 0.5], [-0.08, 0.36], [-0.6, 0.31]], 0.44, 0.03);   // the dark lower panels
+      for (const e of [-1, 1]) P.A.bar(-0.96, 0.74, -0.18, 0.69, e * 0.214, 0.006, 0.05);          // the stripe
+      P.B.side([[0.4, 0.32], [0.5, 0.64], [0.6, 0.98], [0.8, 1.05], [0.93, 0.86], [0.87, 0.56], [0.72, 0.34]], 0.48, 0.04);   // the front, sharp
+      P.N.side([[0.6, 0.98], [0.66, 1.1], [0.8, 1.12], [0.86, 1.05], [0.8, 1.02]], 0.5, 0.03);    // the handlebar cover, dark tone
+      P.B.box(0.2, 0.5, 0, 0.42, 0.22, 0.2);                                                         // the spine
+      for (const e of [-1, 1]) P.K.box(0.2, 0.4, e * 0.17, 0.46, 0.04, 0.14);                       // footboards each side
+      P.K.side(guard(0.68, 0.27, 0.3, 0.34, 0.15, 0.6), 0.14, 0.01);                                  // front mudguard
+      P.K.rod(-0.75, 0.32, 0.17, -0.25, 0.3, 0.16, 0.05); P.K.rod(-0.95, 0.45, 0.17, -0.72, 0.33, 0.17, 0.055);   // the upswept exhaust
+      P.S.side([[-0.82, 0.85], [-0.78, 0.94], [-0.3, 0.92], [-0.06, 0.88], [-0.04, 0.82], [-0.3, 0.84]], 0.34, 0.03);
+      P.H.box(-0.7, 0.86, 0, 0.36, 0.03, 0.36);
+      for (const e of [-1, 1]) P.H.rod(0.68, 0.27, e * 0.07, 0.62, 0.66, e * 0.07, 0.026);
+      part(box, smoke, 0, 1.0, 0.86, 0.32, 0.12, 0.08, -0.5);                                        // the smoked visor
+      for (const e of [-1, 1]) part(box, headMat, e * 0.11, 0.88, 0.925, 0.13, 0.035, 0.02, -0.25); // twin LED lamps
+      part(box, tailMat, 0, 0.73, -1.0, 0.24, 0.03, 0.02);                                           // the LED tail
+      for (const e of [-1, 1]) part(box, amber, e * 0.3, 0.98, 0.84, 0.05, 0.03, 0.02);
+      part(plateGeo, plateMat, 0, 0.5, -0.97, 0.24, 0.1, 1);
+      P.indY = 0.66; P.tailOut = 0.05;
+    });
+    // Electric: one smooth body, a light-tone front with an LED strip across it, a screen on the bars,
+    // the battery low under the floor, a disc brake, no exhaust
+    design('electric', 0, [[0.64, 0.26], [-0.58, 0.26]], P => {
+      P.B.curve([[-0.9, 0.42], [-0.95, 0.56], [-0.85, 0.69], [-0.4, 0.73], [-0.08, 0.66], [0.02, 0.46], [-0.3, 0.34], [-0.76, 0.36]], 0.42, '#ffffff', 4);
+      P.A.curve([[0.42, 0.34], [0.48, 0.66], [0.56, 0.98], [0.7, 1.07], [0.87, 0.98], [0.87, 0.6], [0.72, 0.36]], 0.46, '#ffffff', 3);
+      P.N.curve([[0.58, 1.02], [0.62, 1.12], [0.8, 1.15], [0.88, 1.06], [0.8, 1.0]], 0.56, '#ffffff', 2);
+      P.K.box(0.15, 0.33, 0, 0.62, 0.12, 0.36);                                                      // the battery under the floor
+      P.A.box(0.2, 0.41, 0, 0.5, 0.03, 0.38);
+      P.K.side(guard(0.64, 0.26, 0.29, 0.33, 0.12, 0.66), 0.14, 0.01);
+      P.S.curve([[-0.8, 0.71], [-0.76, 0.82], [-0.3, 0.83], [-0.06, 0.8], [0.0, 0.73], [-0.1, 0.7]], 0.35, '#ffffff', 2);
+      P.H.box(-0.66, 0.74, 0, 0.42, 0.03, 0.4);
+      for (const e of [-1, 1]) P.K.rod(0.64, 0.26, e * 0.07, 0.62, 0.64, e * 0.07, 0.024);
+      P.H.disc(0.64, 0.26, 0.09, 0.15, 0.01);                                                        // the disc brake
+      P.K.box(0.905, 0.95, 0, 0.025, 0.17, 0.38);                                                    // the dark glass front panel
+      part(box, headMat, 0, 0.885, 0.92, 0.34, 0.022, 0.02);                                         // the LED strip across it
+      part(ROD, headMat, 0, 0.98, 0.92, 0.05, 0.01, 0.05, Math.PI / 2);                              // the lamp above it
+      part(box, screenMat, 0, 1.135, 0.7, 0.16, 0.012, 0.1, 0.35);                                   // the screen
+      part(box, tailMat, 0, 0.6, -0.955, 0.3, 0.025, 0.02);                                          // the tail strip
+      for (const e of [-1, 1]) part(box, amber, e * 0.28, 1.05, 0.86, 0.05, 0.03, 0.02);
+      part(plateGeo, plateMat, 0, 0.42, -0.95, 0.24, 0.1, 1);
+      P.indY = 0.56; P.tailOut = 0.02;
+    });
     for (const e of [-1, 1]) {
       part(ball, dark, e * 0.3, 1.27, 0.68, 0.06, 0.045, 0.02);                                 // mirrors
       part(box, dark, e * 0.33, 1.08, 0.72, 0.12, 0.045, 0.045);                                // grips
@@ -2612,17 +2707,19 @@
     part(ball, lm('#f2f2ee'), 0, 1.54, -0.2, 0.16, 0.17, 0.18);                               // helmet
     part(ball, lm('#c03a2e'), 0, 1.57, -0.2, 0.164, 0.045, 0.184);
     part(ball, new T.MeshPhongMaterial({ color: '#1b2026', shininess: 90, specular: C('#8a9aa4') }), 0, 1.52, -0.1, 0.12, 0.07, 0.1);   // its visor
-    // the delivery box: insulated, rounded, Hnahsin on its back and sides
+    // the delivery box: insulated, rounded, Hnahsin on its back and sides (raised to sit on each design's rack)
+    const boxG = new T.Group(); scoot.add(boxG); into = boxG;
     const boxMat = new T.MeshPhongMaterial({ color: '#ffc43d', emissive: '#3a2600', shininess: 30 });
     part(side([[-0.98, 0.76], [-0.98, 1.24], [-0.4, 1.24], [-0.4, 0.76]], 0.5, 0.07, 2), boxMat, 0, 0, 0);
     part(side([[-0.99, 1.17], [-0.99, 1.26], [-0.39, 1.26], [-0.39, 1.17]], 0.52, 0.04), lm('#2b2b2b'), 0, 0, 0);   // its lid
     const logo = new T.MeshLambertMaterial({ map: tex(128, 64, g => { g.fillStyle = '#ffc43d'; g.fillRect(0, 0, 128, 64); g.fillStyle = '#1d6b34'; g.font = '800 30px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('Hnahsin', 64, 27); g.font = '700 13px sans-serif'; g.fillText('DELIVERY', 64, 51); }) });
     part(plane, logo, 0, 0.84, -1.012, 0.4, 0.22, 1).rotation.y = Math.PI;
     for (const e of [-1, 1]) part(plane, logo, e * 0.258, 0.84, -0.69, 0.44, 0.22, 1).rotation.y = -e * Math.PI / 2;
+    into = scoot;
     const riderShadow = new T.Mesh(blob, shadowMat); riderShadow.scale.set(0.8, 1, 1.9); scene.add(riderShadow);
     scoot.traverse(m => { m.castShadow = !!m.isMesh; });
     scene.add(scoot);
-    let painted = '', camX = 0;
+    let painted = '', shown = '', camX = 0;
 
     // ---------- what the shiny things mirror: our own sky, the hills and the sun, made once ----------
     const pmrem = new T.PMREMGenerator(renderer), envScene = new T.Scene();
@@ -2681,6 +2778,8 @@
       // The scooter: it leans, bobs on the road, and tips over in a crash
       const my = myScooter();
       if (painted !== my.id) { painted = my.id; my.body.forEach((h, i) => bodyMats[i].forEach(m => m.color.set(h))); }
+      const dz = myDesign().id;
+      if (shown !== dz) { shown = dz; for (const [id, d] of Object.entries(DESIGN3)) d.g.visible = id === dz; boxG.position.y = DESIGN3[dz].boxY; }
       if (extras && envStep !== hazeStep) makeEnv();     // the sky in the paint follows the light of the day
       frame3(s, px, fS);
       const fall = mode === 'crashing' ? Math.min(1, crashT / 0.45) : 0, bob = mode === 'playing' && !reduce ? Math.sin(time * 31) * 0.006 + Math.sin(time * 7.3) * 0.004 : 0;
@@ -3276,22 +3375,28 @@
   $('missionsBtn').onclick = () => openPanel('missionsView');
 
   function drawGarage() {
-    $('scooters').innerHTML = SCOOTERS.map(x => {
-      const own = S.owned.includes(x.id), on = S.scooter === x.id;
-      const tag = on ? 'Riding' : own ? 'Ride it' : `<i class="coin"></i> ${x.price}`;
-      return `<button class="item" type="button" data-id="${x.id}" aria-pressed="${on}" aria-label="${x.name}, ${x.en}${own ? '' : `, ${x.price} coins`}"><span class="sw" style="background:linear-gradient(135deg, ${x.body[0]}, ${x.body[2]})"></span><span><b>${x.name}</b><small>${x.en}</small></span><span class="tag">${tag}</span></button>`;
+    const pts = points(), lock = x => `🔒 ${fmt(x.need)}`;
+    $('designs').innerHTML = DESIGNS.map(x => {
+      const open = hasDesign(x), on = myDesign() === x;
+      return `<button class="item" type="button" data-design="${x.id}" aria-pressed="${on}" aria-label="${x.name}, ${x.en}${open ? '' : `, opens at ${fmt(x.need)} points`}"${open ? '' : ' aria-disabled="true"'}><span class="sw design ${x.id}" aria-hidden="true">🛵</span><span><b>${x.name}</b><small>${x.en}</small></span><span class="tag">${on ? 'Riding' : open ? 'Ride it' : lock(x)}</span></button>`;
     }).join('');
+    $('scooters').innerHTML = SCOOTERS.map(x => {
+      const open = hasColour(x), on = myScooter() === x;
+      return `<button class="item" type="button" data-id="${x.id}" aria-pressed="${on}" aria-label="${x.name}, ${x.en}${open ? '' : `, opens at ${fmt(x.need)} points`}"${open ? '' : ' aria-disabled="true"'}><span class="sw" style="background:linear-gradient(135deg, ${x.body[0]}, ${x.body[2]})"></span><span><b>${x.name}</b><small>${x.en}</small></span><span class="tag">${on ? 'Riding' : open ? 'Ride it' : lock(x)}</span></button>`;
+    }).join('');
+    if (!$('garageNote').textContent) $('garageNote').textContent = `Your points: ${fmt(pts)}.`;
   }
-  $('scooters').addEventListener('click', e => {
+  // pick a design or a colour; one not open yet says how many points it needs
+  $('garageView').addEventListener('click', e => {
     const b = e.target.closest('.item'); if (!b) return;
-    const x = SCOOTERS.find(y => y.id === b.dataset.id);
-    if (!S.owned.includes(x.id)) {
-      if (S.wallet < x.price) { $('garageNote').textContent = `You need ${x.price - S.wallet} more coins for ${x.name}.`; return; }
-      S.wallet -= x.price; S.owned.push(x.id); $('garageNote').textContent = `${x.name} (${x.en}) is yours!`; beep(990, 0.15); syncWallet(true);
-      BADGES.filter(y => !S.badges.includes(y.id) && y.got()).forEach(y => S.badges.push(y.id));
-    }
-    S.scooter = x.id; writeSave(); drawGarage(); draw();
-    const again = $('scooters').querySelector(`[data-id="${x.id}"]`); if (again) again.focus();
+    const d = b.dataset.design, x = d ? DESIGNS.find(y => y.id === d) : SCOOTERS.find(y => y.id === b.dataset.id);
+    if (!x) return;
+    if (!(d ? hasDesign(x) : hasColour(x))) { $('garageNote').textContent = `${x.name} opens at ${fmt(x.need)} points. You have ${fmt(points())}: beat your best scores to get there.`; return; }
+    if (d) S.design = x.id; else S.scooter = x.id;
+    $('garageNote').textContent = `${x.name}${d ? '' : ` (${x.en})`}: ready to ride.`; beep(990, 0.12);
+    BADGES.filter(y => !S.badges.includes(y.id) && y.got()).forEach(y => S.badges.push(y.id));
+    writeSave(); drawGarage(); draw();
+    const again = $('garageView').querySelector(d ? `[data-design="${x.id}"]` : `[data-id="${x.id}"]`); if (again) again.focus();
   });
 
   function drawMissions() {
