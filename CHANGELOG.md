@@ -4,6 +4,17 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.38.1 (1 November 2026)
+
+### Home page: the games people play, as a chart
+
+- At the foot of the home page, how often each of the four games has been
+  opened, as coloured bars, most played first. The numbers come from the
+  same counter as before, with no cookies and nothing that tells who anyone
+  is; they are asked for only when the foot of the page comes near.
+- Without the counter (offline, or if it is down) the plain line about
+  counting shows as before.
+
 ## 1.38.0 (1 November 2026)
 
 ### Home page: the four games, at once

@@ -196,6 +196,35 @@
     }, calm ? 5000 : 2600);
   }).catch(() => {});
 
+  // ------------------------------------------------ the games people play, as bars
+  // How many times each game has been opened, from GoatCounter's public counter (no cookies, nothing
+  // that tells who anyone is). Asked for once, when the foot of the page comes near; if the counter
+  // cannot be reached, the plain line about counting stays instead.
+  const played = $('.played');
+  if (played) new IntersectionObserver(([e], obs) => {
+    if (!e.isIntersecting) return;
+    obs.disconnect();
+    const GAMES = [['journey', '🏃', "Rova's Journey", '#f2a516'], ['playground', '🎮', 'Playground', '#7569e8'], ['things', '🏠', 'Touch and learn', '#4caf50'], ['ride', '🛵', 'Aizawl Ride', '#3c9fea']];
+    const count = id => fetch(`https://hnahsin.goatcounter.com/counter/${encodeURIComponent(`/hnahsin-play/${id}.html`)}.json`)
+      .then(r => (r.ok ? r.json() : null)).then(j => (j ? Number(String(j.count).replace(/[^0-9]/g, '')) : null)).catch(() => null);
+    Promise.all(GAMES.map(([id]) => count(id))).then(ns => {
+      if (ns.some(n => n === null)) return;
+      const rows = GAMES.map((g, i) => [...g, ns[i]]).sort((a, b) => b[4] - a[4]), top = Math.max(1, rows[0][4]);
+      $('#bars').innerHTML = rows.map(([, icon, name, col, n], i) =>
+        `<li><span class="ic" aria-hidden="true">${icon}</span><span class="nm">${name}</span><span class="tr" aria-hidden="true"><i style="--w:${Math.max(3, n / top * 100)}%;--c:${col};--d:${i * 120}ms"></i></span><b data-n="${n}">${calm ? n.toLocaleString('en') : 0}</b><span class="sr-only"> times played</span></li>`).join('');
+      played.hidden = false; $('#privacy').hidden = true;
+      if (calm) return;
+      played.classList.add('grow');
+      const start = performance.now();
+      const step = t => {
+        const k = 1 - Math.pow(1 - Math.min(1, (t - start) / 1200), 3);
+        $$('#bars b').forEach(b => { b.textContent = Math.round(b.dataset.n * k).toLocaleString('en'); });
+        if (k < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  }, { rootMargin: '300px' }).observe(played.parentElement);
+
   // A canvas that draws Rova at the screen's sharpness.
   const rovaOn = (canvas, draw = drawRova) => {
     const ctx = canvas.getContext('2d');
