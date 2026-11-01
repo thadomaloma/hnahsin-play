@@ -4,6 +4,20 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.37.0 (1 November 2026)
+
+### Home page: Aizawl Ride rides on its card
+
+- The Aizawl Ride card now shows the ride itself: a few seconds of the game
+  on a loop, from Chanmari to Zarkawt, round a roadblock, over the coins and
+  stopping for people at a crossing. Over it, the Mizo word for what the road
+  passes changes as it goes, with the road's name and a 3D mark.
+- It is fetched only when the card comes on the screen (about half a
+  megabyte) and plays only while it is there. With reduced motion, or when the
+  phone is saving data, the card keeps a still picture instead.
+- The offline helper leaves video to the network, so it plays in every
+  browser, Safari too.
+
 ## 1.36.1 (1 November 2026)
 
 ### Aizawl Ride: Done always in reach

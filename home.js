@@ -662,6 +662,39 @@
     setTimeout(() => turnOver(t, () => { t.textContent = icon; t.classList.remove('name'); }), 1900);
   }, 900);
 
+  // ------------------------------------------------ the Aizawl Ride card rides
+  // A few seconds of the game on a loop, fetched only when the card comes on the screen and played only
+  // while it is there; a still for reduced motion or when the phone is saving data. The Mizo word on it
+  // changes as the road goes by.
+  const rideCover = $('.cover.ride');
+  if (rideCover) {
+    const clip = $('.clip', rideCover), word = $('.q', rideCover);
+    const save = navigator.connection && navigator.connection.saveData;
+    let onScreen = false, loaded = false;
+    const wake = () => {
+      if (!clip || calm || save) return;
+      if (onScreen && !document.hidden) {
+        if (!loaded) {
+          loaded = true;
+          clip.innerHTML = '<source src="pics/ride-loop.webm" type="video/webm; codecs=av01.0.05M.08"><source src="pics/ride-loop.mp4" type="video/mp4">';
+          clip.addEventListener('playing', () => clip.classList.add('on'), { once: true });
+          clip.load();
+        }
+        const p = clip.play(); if (p) p.catch(() => {});
+      } else clip.pause();
+    };
+    new IntersectionObserver(([e]) => { onScreen = e.isIntersecting; wake(); }, { threshold: 0.25 }).observe(rideCover);
+    document.addEventListener('visibilitychange', wake);
+    const WORDS = [['tlang', 'hill'], ['mi', 'a person'], ['kalkawng', 'a path'], ['zah', 'respect'], ['mau', 'bamboo'], ['tlar', 'a queue'], ['ruam', 'a valley'], ['romei', 'haze']];
+    let wi = 0;
+    if (!calm) setInterval(() => {
+      if (!onScreen || document.hidden) return;
+      const [m, e] = WORDS[++wi % WORDS.length];
+      word.innerHTML = `<b>${m}</b> · ${e}`;
+      word.classList.remove('swap'); void word.offsetWidth; word.classList.add('swap');
+    }, 2600);
+  }
+
   // ------------------------------------------------ stars behind the page at night (dark mode)
   const sky = $('.stars');
   for (let i = 0; i < 40; i++) {

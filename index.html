@@ -115,10 +115,22 @@
 
   /* Cover: Touch and learn, a still of the Mizo house */
   .cover.things { background: #cfe8f6; }
-  /* Aizawl Ride cover: a still from the ride, with a slow pan along the road */
-  .cover.ride { background: #a9d8f5 url(pics/ride.jpg) center 62% / cover no-repeat; }
-  .cover.ride .q { position: absolute; left: 12px; top: 12px; padding: 5px 11px; border-radius: 99px; background: #1d6b34; color: #fff; font-weight: 800; font-size: 14px; border: 2px solid #fff; }
-  @media (prefers-reduced-motion: no-preference) { .card.game:hover .cover.ride { background-position: center 66%; transition: background-position 2s ease; } }
+  /* Aizawl Ride cover: the ride itself, a few seconds of it on a loop (a still until it is on the screen,
+     and for reduced motion or saving data), the Mizo word for what it passes, and the real road it is */
+  .cover.ride { background: #a9d8f5 url(pics/ride.jpg) 50% 72% / cover no-repeat; }
+  .cover.ride .clip { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 72%; opacity: 0; transition: opacity .6s ease, transform 1.2s var(--ease); }
+  .cover.ride .clip.on { opacity: 1; }
+  .card.game:hover .cover.ride .clip { transform: scale(1.04); }
+  .cover.ride::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, .45)); }
+  .cover.ride .q { position: absolute; z-index: 1; left: 12px; top: 12px; padding: 5px 12px; border-radius: 99px; background: #1d6b34; color: #fff; font-weight: 800; font-size: 14px; border: 2px solid #fff; box-shadow: 0 4px 12px rgba(0, 0, 0, .25); }
+  .cover.ride .q b { color: #ffe08a; }
+  .cover.ride .q.swap { animation: wordIn .45s var(--ease); }
+  @keyframes wordIn { from { opacity: 0; transform: translateY(-8px) scale(.92); } }
+  .cover.ride .road { position: absolute; z-index: 1; left: 12px; bottom: 12px; display: flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 99px; background: rgba(16, 20, 24, .55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); color: #fff; font-weight: 700; font-size: 13px; border: 1px solid rgba(255, 255, 255, .3); }
+  .cover.ride .road i { width: 8px; height: 8px; border-radius: 50%; background: #c6ff00; box-shadow: 0 0 8px #c6ff00; }
+  .cover.ride .badge3d { position: absolute; z-index: 1; right: 12px; bottom: 12px; padding: 5px 10px; border-radius: 10px; background: rgba(255, 255, 255, .92); color: #231e16; font-weight: 800; font-size: 13px; letter-spacing: .04em; }
+  @media (prefers-reduced-motion: no-preference) { .cover.ride .road i { animation: blink 1.6s ease-in-out infinite; } }
+  @keyframes blink { 50% { opacity: .35; } }
   /* The card shows the house, then the loom, and back: each picture fades in over the other. */
   .cover.things .scene { position: absolute; inset: 0; background: center / cover no-repeat; transition: opacity .9s ease, transform 6s ease-out; }
   .cover.things .scene.house { background-image: url(pics/things-house.svg); }
@@ -496,7 +508,7 @@
       </a>
 
       <a class="card game wide" href="ride.html">
-        <div class="cover ride" aria-hidden="true"><span class="q">tlang · hill</span></div>
+        <div class="cover ride" aria-hidden="true"><video class="clip" muted loop playsinline preload="none" disablepictureinpicture disableremoteplayback tabindex="-1"></video><span class="q"><b>tlang</b> · hill</span><span class="road"><i></i>Chanmari → Zarkawt</span><span class="badge3d">3D</span></div>
         <div class="body">
           <div class="tags"><span class="pill">🆕 New</span><span class="pill">🛵 A scooter ride</span><span class="pill">🗺️ Real Aizawl roads</span></div>
           <h3>Aizawl Ride</h3>
@@ -550,7 +562,7 @@
   <p class="foot-note">📖 Dictionary words from J.F. Laldailova's English–Lushai Dictionary.</p>
   <p class="foot-note">🔒 We count which games are played, without cookies or anything that tells who you are.</p>
   <p class="dev">Developed by <b>Maloma Thado</b></p>
-  <p class="ver">Version 1.36.1 · <a href="https://github.com/thadomaloma/hnahsin-play/releases">What's new</a> · <a href="https://github.com/thadomaloma/hnahsin-play/issues/new/choose">Tell us about a mistake</a></p>
+  <p class="ver">Version 1.37.0 · <a href="https://github.com/thadomaloma/hnahsin-play/releases">What's new</a> · <a href="https://github.com/thadomaloma/hnahsin-play/issues/new/choose">Tell us about a mistake</a></p>
 </footer>
 
 <div class="sheet" id="ios-sheet" hidden>
@@ -579,7 +591,7 @@
 
 <script src="stats.js?v=ff1d2eba" async></script>
 <script src="rova.js?v=f35ca6fa" defer></script>
-<script src="home.js?v=038c8d00" defer></script>
+<script src="home.js?v=962734c4" defer></script>
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js'));</script>
 
 </body>

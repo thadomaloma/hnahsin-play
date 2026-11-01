@@ -2,9 +2,9 @@
 // phone, so the games open without internet. Pages are fetched fresh when
 // online (so updates show), and fall back to the kept copy when offline.
 // The Flutter app under app/ is kept as it is fetched (it is too big to fetch all up front).
-const VERSION = 'hnahsin-87';
+const VERSION = 'hnahsin-88';
 const CORE = [
-  './', 'index.html', 'theme.css?v=d03db89c', 'home.js?v=038c8d00', 'rova.js?v=f35ca6fa', 'stats.js?v=ff1d2eba', 'journey.html', 'playground.html', 'things.html', 'ride.html', 'ride/city.json?v=24d78b21', 'pics/ride.jpg', 'pics/things-house.svg', 'pics/things-house.json', 'pics/things-loom.svg', 'pics/things-loom.json', 'pics/things-bazar.svg', 'pics/things-bazar.json',
+  './', 'index.html', 'theme.css?v=d03db89c', 'home.js?v=962734c4', 'rova.js?v=f35ca6fa', 'stats.js?v=ff1d2eba', 'journey.html', 'playground.html', 'things.html', 'ride.html', 'ride/city.json?v=24d78b21', 'pics/ride.jpg', 'pics/things-house.svg', 'pics/things-house.json', 'pics/things-loom.svg', 'pics/things-loom.json', 'pics/things-bazar.svg', 'pics/things-bazar.json',
   'favicon.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'manifest.webmanifest',
   'https://cdnjs.cloudflare.com/ajax/libs/phaser/3.90.0/phaser.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.module.min.js',
@@ -30,6 +30,8 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+  // Video goes straight to the network: it comes in ranges, which a kept copy cannot answer
+  if (req.headers.has('range') || /\.(mp4|webm)$/.test(url.pathname)) return;
   const mine = url.origin === location.origin;
   // The app (Flutter): its files are big, so once fetched they are kept and served
   // from the phone at once, refreshed in the background. Bump VERSION when app/ changes.
