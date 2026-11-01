@@ -27,6 +27,12 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap">
 <link rel="stylesheet" href="theme.css?v=d03db89c">
 <style>
+  /* The page holds still at its ends: pulled past the top or the bottom, it does not stretch away from the
+     browser's bar (and where a browser bounces anyway, what shows is the sky above and the forest below) */
+  html { overscroll-behavior-y: none; background: linear-gradient(180deg, #3c9fea 0 50%, #102a18 50% 100%); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { background: linear-gradient(180deg, #3c9fea 0 50%, #0a1c10 50% 100%); } }
+  :root[data-theme="dark"] { background: linear-gradient(180deg, #3c9fea 0 50%, #0a1c10 50% 100%); }
+  body { overscroll-behavior-y: none; }
   /* ------------------------------------------------ hero: a sunny Mizo hillside */
   .hero { position: relative; overflow: hidden; color: #fff; background: linear-gradient(180deg, #3c9fea 0%, #6db8f2 45%, #bfe5ff 100%); padding: clamp(28px, 6vw, 64px) 0 clamp(150px, 24vw, 236px); text-align: center; isolation: isolate; }
   .sun { position: absolute; top: -120px; right: -80px; width: 380px; height: 380px; border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, .95) 0 12%, rgba(255, 249, 220, .5) 30%, transparent 65%); z-index: -1; }
@@ -499,7 +505,7 @@
   </div>
   <div class="wrap foot-bar">
     <p>Developed by <b>Maloma Thado</b></p>
-    <p>Version 1.38.4 · <a href="https://github.com/thadomaloma/hnahsin-play/releases">What's new</a></p>
+    <p>Version 1.38.5 · <a href="https://github.com/thadomaloma/hnahsin-play/releases">What's new</a></p>
   </div>
 </footer>
 

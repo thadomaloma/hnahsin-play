@@ -4,6 +4,15 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.38.5 (1 November 2026)
+
+### Home page: it holds still at the top
+
+- Pulling down at the top of the home page (or up at the foot) no longer
+  stretches the page away from the browser's bar, just as in the games. On
+  older phones that still bounce, what shows is the sky above and the forest
+  green below, never a blank gap.
+
 ## 1.38.4 (1 November 2026)
 
 ### Home page: hnahsin in all its colours
