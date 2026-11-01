@@ -4,6 +4,19 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.38.2 (1 November 2026)
+
+### Home page: a new foot
+
+- The foot of the page is the hill again, with cosmos flowers on it, the
+  Hnahsin flower as its logo, the Hnahsin tiles, Mizo Thumal Infiamna and a
+  button to try the Hnahsin app; then who made it, the version and What's
+  new.
+- The dictionary's credit and "Tell us about a mistake" are no longer on the
+  page (the credit is in the README and CREDITS).
+- The chart of the games people play sits just above the foot, and its
+  names fit on the smallest phones.
+
 ## 1.38.1 (1 November 2026)
 
 ### Home page: the games people play, as a chart

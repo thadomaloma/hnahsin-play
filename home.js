@@ -223,7 +223,7 @@
       };
       requestAnimationFrame(step);
     });
-  }, { rootMargin: '300px' }).observe(played.parentElement);
+  }, { rootMargin: '300px' }).observe($('#privacy'));     // (the line shows while the chart is hidden, so it is the one watched)
 
   // A canvas that draws Rova at the screen's sharpness.
   const rovaOn = (canvas, draw = drawRova) => {

@@ -165,18 +165,34 @@
   .install { display: grid; justify-items: center; gap: 4px; width: min(100%, 340px); margin: 14px auto 0; color: var(--navy); }
   .install p { margin: 0; padding: 10px 14px; border-radius: 14px; background: rgba(255, 255, 255, .55); font-size: 15px; font-weight: 600; line-height: 1.4; }
   .install .note { font-size: 14px; font-weight: 700; }
-  footer { padding: 48px 0 max(36px, env(safe-area-inset-bottom)); color: var(--muted); font-size: 14px; line-height: 1.5; text-align: center; }
-  footer p { margin: 4px 0; }
-  footer .dev { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 14px; }
-  footer .dev b { color: var(--ink); }
-  footer .ver a { color: var(--accent-text); }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .foot-brand { display: grid; justify-items: center; gap: 6px; margin: 2px 0 12px; }
+  /* ------------------------------------------------ the foot of the page: the hill again, the Hnahsin flower, who made it */
+  .site-foot { position: relative; margin-top: 64px; padding: 26px 0 max(26px, env(safe-area-inset-bottom)); background: linear-gradient(180deg, #6dbe5e, #4f9d45 70%, #3f8a39); color: #f2ffe9; text-align: center; font-size: 14px; line-height: 1.5; isolation: isolate; }
+  .foot-hill { position: absolute; left: 0; right: 0; bottom: 100%; width: 100%; height: clamp(40px, 6vw, 80px); display: block; }
+  .foot-hill .h1 { fill: #8fd27a; } .foot-hill .h2 { fill: #6dbe5e; }
+  .foot-flower { position: absolute; bottom: calc(100% - 6px); width: var(--s); transform-origin: 50% 100%; animation: sway 4s ease-in-out infinite alternate; }
+  .foot-flower svg { display: block; width: 100%; aspect-ratio: 1; }
+  .foot-flower::after { content: ""; display: block; width: 3px; height: calc(var(--s) * .7); margin: -4px auto 0; border-radius: 3px; background: var(--leaf-deep); }
+  .foot-flower.f1 { left: 6%; --s: 44px; animation-delay: -1s; } .foot-flower.f2 { right: 9%; --s: 52px; animation-delay: -2.4s; } .foot-flower.f3 { left: 18%; --s: 30px; animation-delay: -.6s; }
+  .foot-in { display: grid; justify-items: center; gap: 12px; }
+  .foot-logo { width: 96px; height: 96px; border-radius: 26px; border: 4px solid #fff; box-shadow: 0 10px 24px rgba(20, 60, 20, .35); animation: float 4s ease-in-out infinite; }
+  .site-foot .mini-tiles i { box-shadow: 0 3px 0 #f8bbd0, 0 6px 12px rgba(20, 60, 20, .25); }
+  .site-foot .foot-tag { color: #fff; text-shadow: 0 1px 2px rgba(20, 60, 20, .35); }
+  .foot-app { display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: 99px; background: #fff; color: #2e7d32; font-weight: 800; text-decoration: none; box-shadow: 0 4px 0 rgba(20, 60, 20, .35); transition: transform .15s var(--ease); }
+  .foot-app:hover { transform: translateY(-2px); }
+  .foot-base { width: min(100%, 460px); margin-top: 6px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, .3); }
+  .foot-base p { margin: 2px 0; color: rgba(242, 255, 233, .9); }
+  .foot-base b { color: #fff; }
+  .foot-base a { color: #fff; font-weight: 700; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .site-foot { background: linear-gradient(180deg, #2c5e2c, #1f4722 70%, #183a1b); } :root:not([data-theme="light"]) .foot-hill .h1 { fill: #3b7a38; } :root:not([data-theme="light"]) .foot-hill .h2 { fill: #2c5e2c; } }
+  :root[data-theme="dark"] .site-foot { background: linear-gradient(180deg, #2c5e2c, #1f4722 70%, #183a1b); } :root[data-theme="dark"] .foot-hill .h1 { fill: #3b7a38; } :root[data-theme="dark"] .foot-hill .h2 { fill: #2c5e2c; }
+  @media (prefers-reduced-motion: reduce) { .foot-logo, .foot-flower { animation: none; } }
+  .foot-brand { display: grid; justify-items: center; gap: 6px; }
   .mini-tiles { display: flex; gap: 4px; }
   .mini-tiles i { display: grid; place-items: center; width: 24px; height: 26px; border-radius: 7px; background: #fffdf7; color: var(--coral); font-style: normal; font-family: var(--font-display); font-weight: 800; font-size: 15px; box-shadow: 0 3px 0 #f8bbd0; }
   .mini-tiles i:nth-child(odd) { transform: rotate(-4deg); } .mini-tiles i:nth-child(even) { transform: rotate(3deg); }
   .foot-tag { font-family: var(--font-display); font-weight: 800; font-size: 16px; color: var(--accent-text); letter-spacing: .02em; }
-  .foot-note { max-width: 46ch; margin-inline: auto !important; }
+  .foot-note { max-width: 46ch; margin: 18px auto 0; text-align: center; color: var(--muted); font-size: 14px; }
   /* How often each game has been opened, as bars (from GoatCounter's public counter; without it, the plain line) */
   .played { width: min(100%, 460px); margin: 18px auto 10px; padding: 16px 16px 12px; border-radius: 22px; background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow-1); text-align: left; }
   .played h2 { margin: 0 0 10px; font-family: var(--font-display); font-size: 19px; color: var(--ink); text-align: center; }
@@ -190,7 +206,7 @@
   @keyframes bar-grow { from { transform: scaleX(0); } }
   .bars b { min-width: 2.5em; text-align: right; font-family: var(--font-display); font-size: 17px; color: var(--accent-text); font-variant-numeric: tabular-nums; }
   .played-note { margin: 10px 0 0 !important; font-size: 13px; text-align: center; }
-  @media (max-width: 380px) { .bars li { grid-template-columns: 24px minmax(0, 7.5em) 1fr auto; gap: 6px; } }
+  @media (max-width: 380px) { .bars li { grid-template-columns: 22px minmax(0, 8.3em) 1fr auto; gap: 6px; } .bars .nm { font-size: 14px; } }
 
   /* ------------------------------------------------ more motion (home.js) */
   /* How far down the page you are */
@@ -415,22 +431,34 @@
       </a>
     </div>
   </section>
-</main>
-
-<footer class="wrap">
-  <div class="foot-brand" aria-label="Hnahsin, Mizo Thumal Infiamna">
-    <span class="mini-tiles" aria-hidden="true"><i>H</i><i>N</i><i>A</i><i>H</i><i>S</i><i>I</i><i>N</i></span>
-    <span class="foot-tag">Mizo Thumal Infiamna</span>
-  </div>
-  <p class="foot-note">📖 Dictionary words from J.F. Laldailova's English–Lushai Dictionary.</p>
   <section class="played" aria-labelledby="played-title" hidden>
     <h2 id="played-title">🎮 The games people play</h2>
     <ol class="bars" id="bars"></ol>
     <p class="played-note">🔒 Counted without cookies or anything that tells who you are.</p>
   </section>
   <p class="foot-note" id="privacy">🔒 We count which games are played, without cookies or anything that tells who you are.</p>
-  <p class="dev">Developed by <b>Maloma Thado</b></p>
-  <p class="ver"><a href="app/">▶ Try the Hnahsin app</a> · Version 1.38.1 · <a href="https://github.com/thadomaloma/hnahsin-play/releases">What's new</a> · <a href="https://github.com/thadomaloma/hnahsin-play/issues/new/choose">Tell us about a mistake</a></p>
+</main>
+
+<footer class="site-foot">
+  <svg class="foot-hill" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
+    <path class="h1" d="M0 52C240 10 470 18 720 44S1180 78 1440 30V90H0Z"/>
+    <path class="h2" d="M0 72C300 40 560 52 820 66S1240 86 1440 60V90H0Z"/>
+  </svg>
+  <span class="foot-flower f1" aria-hidden="true"><svg style="--petal-fill:#f06292"><use href="#cosmos"/></svg></span>
+  <span class="foot-flower f2" aria-hidden="true"><svg style="--petal-fill:#9c7cf0"><use href="#cosmos"/></svg></span>
+  <span class="foot-flower f3" aria-hidden="true"><svg style="--petal-fill:#fbe4ee"><use href="#cosmos"/></svg></span>
+  <div class="wrap foot-in">
+    <img class="foot-logo" src="pics/app-icon.webp" alt="" width="96" height="96" loading="lazy" decoding="async">
+    <div class="foot-brand" aria-label="Hnahsin, Mizo Thumal Infiamna">
+      <span class="mini-tiles" aria-hidden="true"><i>H</i><i>N</i><i>A</i><i>H</i><i>S</i><i>I</i><i>N</i></span>
+      <span class="foot-tag">Mizo Thumal Infiamna</span>
+    </div>
+    <a class="foot-app" href="app/">▶ Try the Hnahsin app</a>
+    <div class="foot-base">
+      <p class="dev">Developed by <b>Maloma Thado</b></p>
+      <p class="ver">Version 1.38.2 · <a href="https://github.com/thadomaloma/hnahsin-play/releases">What's new</a></p>
+    </div>
+  </div>
 </footer>
 
 <div class="sheet" id="ios-sheet" hidden>
@@ -459,7 +487,7 @@
 
 <script src="stats.js?v=ff1d2eba" async></script>
 <script src="rova.js?v=f35ca6fa" defer></script>
-<script src="home.js?v=738c4257" defer></script>
+<script src="home.js?v=e52aa3b6" defer></script>
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js'));</script>
 
 </body>
