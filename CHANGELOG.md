@@ -4,6 +4,15 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.34.1 (1 November 2026)
+
+### Aizawl Ride: a way out, and a phone turned sideways
+
+- Pause now has "Leave this ride": with the top bar out of the way while
+  you ride, it takes you back to the start (nothing from the ride is kept).
+- A phone held sideways is a phone too: the road fills the screen while
+  you ride and the buttons stay on screen, with no scrolling to reach them.
+
 ## 1.34.0 (1 November 2026)
 
 ### Aizawl Ride: a riding game's screen

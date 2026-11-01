@@ -254,11 +254,13 @@
   .pause { background: rgba(16, 20, 24, .55); color: #fff; border: 1px solid rgba(255, 255, 255, .3); box-shadow: 0 4px 14px rgba(0, 0, 0, .25); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
   .sheet a.fine { color: var(--brand); }
   /* on a phone, before and after a ride too, the game fills the screen under the top bar: no gap below */
-  @media (max-width: 700px) {
+  /* (a phone held either way: narrow, or turned on its side and so not tall) */
+  @media (max-width: 700px), (max-height: 500px) {
     .app { padding-bottom: max(8px, env(safe-area-inset-bottom)); gap: 8px; }
     #cv { height: max(300px, calc(100svh - var(--chrome, 168px))); }
   }
-  @media (max-width: 700px) {
+  @media (max-height: 500px) { #cv { height: max(200px, calc(100svh - var(--chrome, 168px))); } }
+  @media (max-width: 700px), (max-height: 500px) {
     body.riding { padding-inline: 0; overflow: hidden; }
     body.riding header.top { display: none; }
     body.riding .app { padding: 0; gap: 0; max-width: none; }
@@ -386,7 +388,7 @@
         </div>
       </div>
       <div class="overlay" id="pauseView" hidden>
-        <div class="sheet"><h2 data-t="paused">Paused</h2><button class="go" id="resumeBtn" type="button" data-t="keepRiding">Keep riding</button></div>
+        <div class="sheet"><h2 data-t="paused">Paused</h2><button class="go" id="resumeBtn" type="button" data-t="keepRiding">Keep riding</button><button class="route" id="leaveBtn" type="button" style="text-align:center"><b data-t="leave">Leave this ride</b></button></div>
       </div>
       <div class="overlay" id="endView" hidden>
         <div class="sheet">
@@ -679,7 +681,7 @@
   // The page's own words carry a key (data-t); what the game says as it goes is given both ways, L(en, mz).
   const MZ = {
     deliver: 'Thil thlen rawh', map: 'Aizawl map', start: 'Tlan tan rawh', garage: 'Garage', missions: 'Tihtur', how: 'Khelh dan',
-    credits: 'Credits', creditsIntro: 'Aizawl kawng, tlang leh in dik tak te.', allCredits: 'Credits zawng zawng',
+    leave: 'He ride hi kalsan rawh', credits: 'Credits', creditsIntro: 'Aizawl kawng, tlang leh in dik tak te.', allCredits: 'Credits zawng zawng',
     startNote: 'Steer turin kawng sir hmet rawh, a muan nan Brake hmet reng rawh. Jam ah i chan nghak la, crossing ah mi kal tlang te nghak rawh, Aizawl dan angin. Ride i zawh chuan coin te i wallet ah a lut ang.',
     garageIntro: 'Scooter zawng zawng an tlan dan a inang. Design leh rawng i duh thlang rawh; i point a pun zel chuan a dang an inhawng ang.',
     design: 'Design', colour: 'Rawng, a Mizo hming in', riderBox: 'Rider leh box', boughtCoins: 'coin hmanga lei', done: 'Zo', back: 'Kir leh', longRides: 'Kawng sei',
@@ -1104,7 +1106,7 @@
       document.documentElement.style.setProperty('--chrome', `${Math.ceil(chrome)}px`);
     }
     // (the flat picture puts the scooter low on the screen: while riding it stops above the buttons)
-    const flatRide = document.body.classList.contains('riding') && !R3 && innerWidth <= 700;
+    const flatRide = document.body.classList.contains('riding') && !R3 && (innerWidth <= 700 || innerHeight <= 500);
     cv.style.height = flatRide ? `${innerHeight - document.querySelector('.controls').offsetHeight}px` : '';
     document.body.classList.toggle('flatride', flatRide);
     const r = cv.getBoundingClientRect();
@@ -4032,6 +4034,8 @@
   }).catch(() => start());
   $('againBtn').onclick = () => { parcel = PARCELS[Math.random() * PARCELS.length | 0]; showParcel(); start(); };
   $('resumeBtn').onclick = resume;
+  // (riding fills a phone's screen, so the way out is here: back to the start, nothing banked)
+  $('leaveBtn').onclick = () => { if (mode !== 'paused') return; mode = 'ready'; $('pauseView').hidden = true; $('startView').hidden = false; syncPause(); drawRoutes(); syncReady(); reset(); draw(); $('startBtn').focus(); };
   $('otherBtn').onclick = () => { if (route.id.startsWith('city:')) route = DATA.routes.find(r => r.id === S.route) || DATA.routes[0]; mode = 'ready'; $('endView').hidden = true; $('startView').hidden = false; drawRoutes(); syncReady(); reset(); draw(); };
 
   // ---------- the wallet, the garage and the missions ----------
