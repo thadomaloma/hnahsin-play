@@ -4,6 +4,17 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.38.4 (1 November 2026)
+
+### Home page: hnahsin in all its colours
+
+- More cosmos (hnahsin) on the hills at the top and the foot of the page, in
+  the colours it grows in: orange and yellow, crimson and magenta, lavender,
+  the white candy stripe with pink edges, and the dark red chocolate cosmos,
+  beside the pink, pale and purple ones. The petals blowing across the top
+  come in the new colours too.
+- On a phone a few of them stay away, so the hill is not crowded.
+
 ## 1.38.3 (1 November 2026)
 
 ### Home page: a finer foot

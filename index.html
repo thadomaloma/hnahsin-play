@@ -55,6 +55,9 @@
   .flower { position: absolute; bottom: 0; width: var(--s); transform-origin: 50% 100%; animation: sway 4s ease-in-out infinite alternate; animation-delay: var(--d); }
   .flower svg { width: 100%; height: auto; aspect-ratio: 1; }
   .flower .stem { width: 4px; height: calc(var(--s) * .9); margin: -6px auto 0; background: var(--leaf-deep); border-radius: 4px; }
+  .flower.more { z-index: 1; } .flower.more .stem { width: 3px; }
+  /* on a phone, fewer of them, so the hill is not a crowd */
+  @media (max-width: 640px) { .flower.wide { display: none; } }
   @keyframes sway { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
   /* Rova is drawn on a canvas by rova.js and moved by home.js. */
   .kid { position: absolute; top: 100%; left: 0; width: clamp(48px, 8vw, 70px); aspect-ratio: 3 / 4; will-change: transform; transform-origin: 50% 100%; }
@@ -173,9 +176,8 @@
     background: linear-gradient(180deg, #22512f 0, var(--deep) 45%, #102a18 100%); isolation: isolate; }
   .foot-hill { position: absolute; left: 0; right: 0; bottom: calc(100% - 1px); width: 100%; height: clamp(54px, 8vw, 110px); display: block; }
   .foot-hill .h1 { fill: #9fd98a; opacity: .55; } .foot-hill .h2 { fill: #4f9d45; } .foot-hill .h3 { fill: #22512f; }
-  .foot-flower { position: absolute; right: 8%; bottom: calc(100% + clamp(14px, 2.4vw, 34px)); width: 34px; transform-origin: 50% 100%; animation: sway 5s ease-in-out infinite alternate; }
-  .foot-flower svg { display: block; width: 100%; aspect-ratio: 1; }
-  .foot-flower::after { content: ""; display: block; width: 2px; height: 26px; margin: -3px auto 0; border-radius: 2px; background: #3d7f39; }
+  .foot-flowers { position: absolute; left: 0; right: 0; bottom: calc(100% - 4px); height: 0; pointer-events: none; }
+  .foot-flowers .flower .stem { width: 3px; background: #3d7f39; }
   .foot-grid { display: grid; gap: 28px; justify-items: center; text-align: center; }
   .foot-logo-link { display: inline-flex; align-items: center; gap: 14px; color: inherit; text-decoration: none; border-radius: 20px; }
   .foot-logo { width: 64px; height: 64px; border-radius: 18px; box-shadow: 0 0 0 1px rgba(255, 255, 255, .25), 0 10px 26px rgba(0, 0, 0, .35); transition: transform .4s var(--ease), box-shadow .4s var(--ease); }
@@ -201,7 +203,7 @@
   }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .site-foot { --deep: #0f2617; background: linear-gradient(180deg, #183b22 0, #0f2617 45%, #0a1c10 100%); } :root:not([data-theme="light"]) .foot-hill .h1 { fill: #2f6b31; opacity: .6; } :root:not([data-theme="light"]) .foot-hill .h2 { fill: #24532a; } :root:not([data-theme="light"]) .foot-hill .h3 { fill: #183b22; } }
   :root[data-theme="dark"] .site-foot { --deep: #0f2617; background: linear-gradient(180deg, #183b22 0, #0f2617 45%, #0a1c10 100%); } :root[data-theme="dark"] .foot-hill .h1 { fill: #2f6b31; opacity: .6; } :root[data-theme="dark"] .foot-hill .h2 { fill: #24532a; } :root[data-theme="dark"] .foot-hill .h3 { fill: #183b22; }
-  @media (prefers-reduced-motion: reduce) { .foot-flower { animation: none; } .foot-logo, .foot-col a::after { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .foot-flowers .flower, .field .flower { animation: none; } .foot-logo, .foot-col a::after { transition: none; } }
   .mini-tiles { display: flex; gap: 4px; }
   .mini-tiles i { display: grid; place-items: center; width: 24px; height: 26px; border-radius: 7px; background: #fffdf7; color: var(--coral); font-style: normal; font-family: var(--font-display); font-weight: 800; font-size: 15px; box-shadow: 0 3px 0 #f8bbd0; }
   .mini-tiles i:nth-child(odd) { transform: rotate(-4deg); } .mini-tiles i:nth-child(even) { transform: rotate(3deg); }
@@ -348,12 +350,12 @@
   <defs>
     <!-- A cosmos flower, the app's mark. Colour comes from --petal-fill. -->
     <symbol id="cosmos" viewBox="-50 -50 100 100">
-      <g style="fill: var(--petal-fill, #f06292)">
+      <g style="fill: var(--petal-fill, #f06292); stroke: var(--petal-edge, none); stroke-width: 3.5; stroke-linejoin: round">
         <path id="petal" d="M0-9C9-18 13-34 7-47L3-42 0-48-3-42-7-47C-13-34-9-18 0-9Z"/>
         <use href="#petal" transform="rotate(45)"/><use href="#petal" transform="rotate(90)"/><use href="#petal" transform="rotate(135)"/>
         <use href="#petal" transform="rotate(180)"/><use href="#petal" transform="rotate(225)"/><use href="#petal" transform="rotate(270)"/><use href="#petal" transform="rotate(315)"/>
       </g>
-      <circle r="12" fill="#f2a516"/><circle r="8" fill="#ffc94a"/>
+      <circle r="12" style="fill: var(--disc, #f2a516)"/><circle r="8" style="fill: var(--disc-2, #ffc94a)"/>
     </symbol>
   </defs>
 </svg>
@@ -396,6 +398,13 @@
     <div class="flower" style="right:24%;--s:clamp(32px,5vw,52px);--d:-3s"><svg style="--petal-fill:#f48fb1"><use href="#cosmos"/></svg><div class="stem"></div></div>
     <div class="flower" style="right:11%;--s:clamp(48px,8vw,84px);--d:-1.8s"><svg style="--petal-fill:#9c7cf0"><use href="#cosmos"/></svg><div class="stem"></div></div>
     <div class="flower" style="right:2%;--s:clamp(36px,6vw,60px);--d:-.9s"><svg style="--petal-fill:#fbe4ee"><use href="#cosmos"/></svg><div class="stem"></div></div>
+    <!-- more of the colours hnahsin comes in: orange and yellow, crimson and magenta, the candy stripe, the chocolate cosmos -->
+    <div class="flower more" style="left:7.5%;--s:clamp(28px,4.4vw,50px);--d:-1.4s"><svg style="--petal-fill:#ff8f00;--disc:#e65100;--disc-2:#ffb300"><use href="#cosmos"/></svg><div class="stem"></div></div>
+    <div class="flower more" style="left:17.5%;--s:clamp(26px,4vw,46px);--d:-2.1s"><svg style="--petal-fill:#c2185b"><use href="#cosmos"/></svg><div class="stem"></div></div>
+    <div class="flower more wide" style="left:31%;--s:clamp(24px,3.4vw,40px);--d:-.2s"><svg style="--petal-fill:#ffffff;--petal-edge:#e91e63"><use href="#cosmos"/></svg><div class="stem"></div></div>
+    <div class="flower more wide" style="right:31%;--s:clamp(24px,3.4vw,40px);--d:-2.8s"><svg style="--petal-fill:#d81b60"><use href="#cosmos"/></svg><div class="stem"></div></div>
+    <div class="flower more" style="right:17.5%;--s:clamp(26px,4vw,46px);--d:-1.1s"><svg style="--petal-fill:#fdd835;--disc:#f57f17;--disc-2:#fbc02d"><use href="#cosmos"/></svg><div class="stem"></div></div>
+    <div class="flower more" style="right:6.5%;--s:clamp(28px,4.4vw,50px);--d:-3.3s"><svg style="--petal-fill:#6d1b2b;--disc:#2b0d0f;--disc-2:#4a1a14"><use href="#cosmos"/></svg><div class="stem"></div></div>
     <div class="kid mami"><canvas></canvas></div>
     <div class="kid rova"><canvas></canvas></div>
     <div class="hello" aria-hidden="true">Chibai!</div>
@@ -459,7 +468,16 @@
     <path class="h2" d="M0 82C260 46 520 56 790 74S1230 104 1440 70V120H0Z"/>
     <path class="h3" d="M0 102C320 78 600 86 860 98S1260 116 1440 96V120H0Z"/>
   </svg>
-  <span class="foot-flower" aria-hidden="true"><svg style="--petal-fill:#f48fb1"><use href="#cosmos"/></svg></span>
+  <div class="foot-flowers" aria-hidden="true">
+      <div class="flower" style="left:3%;--s:clamp(30px,3.6vw,46px);--d:-1s"><svg style="--petal-fill:#d81b60"><use href="#cosmos"/></svg><div class="stem"></div></div>
+      <div class="flower" style="left:9%;--s:clamp(22px,2.6vw,34px);--d:-2.2s"><svg style="--petal-fill:#ffffff;--petal-edge:#e91e63"><use href="#cosmos"/></svg><div class="stem"></div></div>
+      <div class="flower wide" style="left:15%;--s:clamp(26px,3vw,40px);--d:-.4s"><svg style="--petal-fill:#ff8f00;--disc:#e65100;--disc-2:#ffb300"><use href="#cosmos"/></svg><div class="stem"></div></div>
+      <div class="flower wide" style="left:22%;--s:clamp(20px,2.2vw,30px);--d:-3s"><svg style="--petal-fill:#b39ddb"><use href="#cosmos"/></svg><div class="stem"></div></div>
+      <div class="flower wide" style="right:24%;--s:clamp(20px,2.2vw,30px);--d:-1.6s"><svg style="--petal-fill:#fbe4ee"><use href="#cosmos"/></svg><div class="stem"></div></div>
+      <div class="flower wide" style="right:16%;--s:clamp(26px,3vw,40px);--d:-2.6s"><svg style="--petal-fill:#fdd835;--disc:#f57f17;--disc-2:#fbc02d"><use href="#cosmos"/></svg><div class="stem"></div></div>
+      <div class="flower" style="right:9%;--s:clamp(30px,3.6vw,46px);--d:-.8s"><svg style="--petal-fill:#f48fb1"><use href="#cosmos"/></svg><div class="stem"></div></div>
+      <div class="flower" style="right:3%;--s:clamp(24px,2.8vw,38px);--d:-1.9s"><svg style="--petal-fill:#6d1b2b;--disc:#2b0d0f;--disc-2:#4a1a14"><use href="#cosmos"/></svg><div class="stem"></div></div>
+  </div>
   <div class="wrap foot-grid">
     <div class="foot-brand-col">
       <a class="foot-logo-link" href="./" aria-label="Hnahsin: back to the top">
@@ -481,7 +499,7 @@
   </div>
   <div class="wrap foot-bar">
     <p>Developed by <b>Maloma Thado</b></p>
-    <p>Version 1.38.3 · <a href="https://github.com/thadomaloma/hnahsin-play/releases">What's new</a></p>
+    <p>Version 1.38.4 · <a href="https://github.com/thadomaloma/hnahsin-play/releases">What's new</a></p>
   </div>
 </footer>
 
@@ -511,7 +529,7 @@
 
 <script src="stats.js?v=ff1d2eba" async></script>
 <script src="rova.js?v=f35ca6fa" defer></script>
-<script src="home.js?v=073c2047" defer></script>
+<script src="home.js?v=8be99861" defer></script>
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js'));</script>
 
 </body>

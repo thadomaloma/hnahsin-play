@@ -250,7 +250,7 @@
 
   // ------------------------------------------------ cosmos petals on the wind
   const canvas = $('.petals'), ctx = canvas.getContext('2d');
-  const COLOURS = ['#f06292', '#f48fb1', '#fbe4ee', '#9c7cf0', '#c5b5ff'];
+  const COLOURS = ['#f06292', '#f48fb1', '#fbe4ee', '#9c7cf0', '#c5b5ff', '#d81b60', '#ff8f00', '#fdd835', '#ffffff'];
   let W = 0, H = 0, petals = [];
   const resize = () => {
     const dpr = Math.min(devicePixelRatio || 1, 2);
