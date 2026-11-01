@@ -4,6 +4,20 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.38.7 (2 November 2026)
+
+### Rova's Journey: in the middle of the screen, and a livelier card
+
+- On a computer or a wide screen, the game now sits in the middle. Before,
+  it was pushed off to the right.
+- The Rova's Journey card on the home page plays like the game: the 3D Rova
+  runs past hills, clouds and grass that slide by under a sun, the word
+  doors slide in, he crouches and jumps into the right one, it lights up
+  with a coin and the meaning (✓ hlim = happy), and he drops back in for
+  the next word. There are six words now, among them sun and mother.
+- The card only moves while it is on the screen, and stands still for
+  anyone who has asked for less motion.
+
 ## 1.38.6 (1 November 2026)
 
 ### Rova's Journey: Rova in 3D

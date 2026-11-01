@@ -967,7 +967,8 @@ const game = new Phaser.Game({
   width: Math.round(GW * RES), height: Math.round(GH * RES),
   backgroundColor: '#0d2a4a',
   physics: { default: 'arcade', arcade: { debug: false } },
-  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  // #game centres the canvas; Phaser's own centring added a margin on top, pushing it right
+  scale: { mode: Phaser.Scale.FIT },
   scene: [],
 });
 // The game's loop sleeps while a menu is showing (there is nothing to play), so the phone is

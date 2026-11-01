@@ -245,8 +245,28 @@
       draw(ctx, phase, pose, { live: true, ...extra });
     };
   };
-  const drawCover = rovaOn($('.cover.journey .runner canvas'));
-  if (calm) { $$('.kid').forEach(k => { k.hidden = true; }); drawCover(.6, 'run'); return; }
+  // Rova on the Journey card: the game's own 3D frames (made with Blender, 120 × 160 box units at
+  // SHEET.px pixels each, five a row), fetched when the card comes near. Until they arrive, or if they
+  // cannot be had, rova.js draws him. frame: 0–15 the run, 16 going up, 17 at the top, 18 coming down.
+  const coverCanvas = $('.cover.journey .runner canvas'), coverRunner = coverCanvas.parentNode;
+  const SHEET = { px: 3.2, cols: 5 }, rovaSheet = new Image(), drawCover2d = rovaOn(coverCanvas), coverCtx = coverCanvas.getContext('2d');
+  new IntersectionObserver(([e], obs) => { if (e.isIntersecting) { obs.disconnect(); rovaSheet.src = coverRunner.dataset.sheet; } }, { rootMargin: '400px' }).observe(coverRunner);
+  const drawCover = frame => {
+    if (!(rovaSheet.complete && rovaSheet.naturalWidth)) { drawCover2d(frame < 16 ? frame * Math.PI / 8 : 0, frame < 16 ? 'run' : 'jump'); return; }
+    const dpr = Math.min(devicePixelRatio || 1, 3), w = coverCanvas.clientWidth, h = coverCanvas.clientHeight;
+    if (!w) return;
+    if (coverCanvas.width !== Math.round(w * dpr)) { coverCanvas.width = Math.round(w * dpr); coverCanvas.height = Math.round(h * dpr); }
+    const sw = Math.round(120 * SHEET.px), sh = Math.round(160 * SHEET.px);
+    coverCtx.setTransform(1, 0, 0, 1, 0, 0);
+    coverCtx.clearRect(0, 0, coverCanvas.width, coverCanvas.height);
+    coverCtx.imageSmoothingQuality = 'high';
+    coverCtx.drawImage(rovaSheet, (frame % SHEET.cols) * sw, Math.floor(frame / SHEET.cols) * sh, sw, sh, 0, 0, coverCanvas.width, coverCanvas.height);
+  };
+  if (calm) {
+    $$('.kid').forEach(k => { k.hidden = true; });
+    drawCover(4); rovaSheet.addEventListener('load', () => drawCover(4));
+    return;
+  }
 
   // ------------------------------------------------ cosmos petals on the wind
   const canvas = $('.petals'), ctx = canvas.getContext('2d');
@@ -426,44 +446,107 @@
   requestAnimationFrame(run);
 
   // ------------------------------------------------ the Journey card plays itself
+  // A round every 4.2 s, as in the game: the word doors slide in, Rova crouches and jumps into the right
+  // one, it lights up with a coin and the meaning, the doors slide away, and he drops back in to run on.
+  // It runs only while the card is on the screen (the hills and clouds stop with it).
   const cover = $('.cover.journey');
   const ROUNDS = [
     { q: 'happy', doors: ['inchhirna', 'hlim', 'hlawh'], a: 1 },
     { q: 'dog', doors: ['ui', 'sava', 'vawk'], a: 0 },
     { q: 'bird', doors: ['zawhte', 'sangha', 'sava'], a: 2 },
     { q: 'water', doors: ['mei', 'tui', 'chhum'], a: 1 },
+    { q: 'sun', doors: ['ni', 'thla', 'arsi'], a: 0 },
+    { q: 'mother', doors: ['pa', 'nu', 'u'], a: 1 },
   ];
-  const doors = $$('.door', cover), q = $('.q', cover), runner = $('.runner', cover);
-  let round = 0, coverPose = 'run';
-  // The Journey card's Rova runs only while the card is on the screen.
-  let coverSeen = false, coverLooping = false;
-  const coverRun = t => { if (!coverSeen || document.hidden) { coverLooping = false; return; } requestAnimationFrame(coverRun); if (t - (coverRun.last || 0) > 30) { coverRun.last = t; drawCover(t / 60, coverPose); } };
-  const coverWake = () => { if (coverSeen && !document.hidden && !coverLooping) { coverLooping = true; requestAnimationFrame(coverRun); } };
-  new IntersectionObserver(([e]) => { coverSeen = e.isIntersecting; coverWake(); }).observe(cover);
-  document.addEventListener('visibilitychange', coverWake);
-  const play = () => {
-    if (!document.hidden && coverSeen) {
-      const r = ROUNDS[round++ % ROUNDS.length];
-      q.textContent = `Which one means “${r.q}”?`;
-      doors.forEach((d, i) => { d.textContent = r.doors[i]; d.classList.remove('hit'); });
-      const door = doors[r.a], cr = cover.getBoundingClientRect(), dr = door.getBoundingClientRect(), rr = runner.getBoundingClientRect();
-      const dx = dr.left - rr.right + 14, dy = dr.top + dr.height / 2 - (rr.top + rr.height / 2);
-      setTimeout(() => { coverPose = 'jump'; }, 500);
-      runner.animate([
-        { transform: 'translate(0, 0)' },
-        { transform: `translate(${dx * .5}px, ${Math.min(dy, 0) - 40}px) rotate(-6deg)`, offset: .55 },
-        { transform: `translate(${dx}px, ${dy}px)` },
-      ], { duration: 900, easing: 'cubic-bezier(.3,.7,.4,1)', fill: 'forwards', delay: 500 }).onfinish = () => {
-        coverPose = 'run';
-        door.classList.add('hit');
-        burst(cover, dr.left - cr.left + dr.width / 2, dr.top - cr.top + dr.height / 2);
-        setTimeout(() => runner.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }).onfinish = () =>
-          runner.animate([{ transform: 'none', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, fill: 'forwards' }), 900);
-      };
-    }
-    setTimeout(play, 3400);
+  const doors = $$('.door', cover), q = $('.q', cover), runner = coverRunner, shadow = $('.shadow', cover);
+  const ROUND = 4200, J0 = 1350, J1 = 2050, CROUCH = 150, DROP = 3150, LAND = 3550;
+  const clamp01 = k => Math.max(0, Math.min(1, k));
+  const easeBack = k => 1 + 2.4 * Math.pow(k - 1, 3) + 1.4 * Math.pow(k - 1, 2);
+  const swap = el => { el.classList.remove('swap'); void el.offsetWidth; el.classList.add('swap'); };
+  let round = 0, r = ROUNDS[0], start = 0, drawn = 0, geo = null, hitDone = false, landed = false;
+  const setRound = () => {
+    r = ROUNDS[round++ % ROUNDS.length];
+    q.textContent = `Which one means “${r.q}”?`; q.classList.remove('right'); swap(q);
+    doors.forEach((d, i) => { d.textContent = r.doors[i]; d.classList.remove('hit', 'miss'); });
+    geo = null; hitDone = landed = false;
   };
-  play();
+  // Where things are in the card, without the doors' slide or Rova's own moves: measured once a round.
+  const measure = () => {
+    const d = doors[r.a], rw = runner.offsetWidth, rh = runner.offsetHeight;
+    const cx = runner.offsetLeft + rw / 2, cy = runner.offsetTop + rh * .55;
+    const dx = d.offsetLeft + d.offsetWidth * .3 - cx, dy = d.offsetTop + d.offsetHeight / 2 - cy;
+    return { W: cover.clientWidth, H: cover.clientHeight, dx, dy, lift: 40 + Math.max(0, -dy) * .6, shadowX: cx - shadow.offsetWidth / 2 };
+  };
+  const hit = () => {
+    const d = doors[r.a];
+    d.classList.add('hit');
+    doors.forEach(o => { if (o !== d) o.classList.add('miss'); });
+    const x = d.offsetLeft + d.offsetWidth / 2, y = d.offsetTop + d.offsetHeight / 2;
+    burst(cover, x, y);
+    const coin = document.createElement('span');
+    coin.className = 'coin'; coin.textContent = '🪙'; coin.style.left = x - 11 + 'px'; coin.style.top = y - 30 + 'px';
+    cover.appendChild(coin);
+    coin.animate([{ transform: 'translateY(0) scale(.6)', opacity: 0 }, { transform: 'translateY(-14px) scale(1.15)', opacity: 1, offset: .3 }, { transform: 'translateY(-46px) scale(1)', opacity: 0 }],
+      { duration: 900, easing: 'cubic-bezier(.2,.8,.2,1)' }).onfinish = () => coin.remove();
+    q.textContent = `✓ ${r.doors[r.a]} = ${r.q}`; q.classList.add('right'); swap(q);
+  };
+  const dust = () => {
+    const x = runner.offsetLeft + runner.offsetWidth / 2, y = runner.offsetTop + runner.offsetHeight * .97;
+    for (let i = 0; i < 6; i++) {
+      const s = document.createElement('i');
+      s.className = 'spark'; s.style.left = x + 'px'; s.style.top = y + 'px'; s.style.background = '#f4f1e4';
+      cover.appendChild(s);
+      const dir = i < 3 ? -1 : 1, d = 14 + (i % 3) * 9;
+      s.animate([{ transform: 'translate(-50%, -50%) scale(1.2)', opacity: .9 },
+        { transform: `translate(calc(-50% + ${dir * d}px), calc(-50% - ${6 + (i % 3) * 4}px)) scale(.2)`, opacity: 0 }],
+        { duration: 450, easing: 'cubic-bezier(.2,.8,.2,1)' }).onfinish = () => s.remove();
+    }
+  };
+  const coverStep = now => {
+    if (!coverSeen || document.hidden) { coverLooping = false; return; }
+    requestAnimationFrame(coverStep);
+    if (now - drawn < 30) return;    // about 30 drawings a second is plenty for a card
+    drawn = now;
+    let k = now - start;
+    if (k >= ROUND) { start = now; k = 0; setRound(); }
+    if (!geo) geo = measure();
+    // the doors: in from the right with a little overshoot, out to the left
+    doors.forEach((d, i) => {
+      const kin = clamp01((k - i * 90) / 650), kout = clamp01((k - 2900 - i * 70) / 550);
+      d.style.translate = `${((1 - easeBack(kin)) * .6 - kout * kout) * geo.W}px 0`;
+      d.style.opacity = kout > 0 ? 1 - kout : '';
+    });
+    // Rova: run, crouch, jump into the door, gone, drop back in, land
+    let x = 0, y = 0, sx = 1, sy = 1, alpha = 1, frame = Math.floor(now / 34) % 16;
+    if (k > J0 - CROUCH && k < J0) {
+      const c = Math.sin((k - J0 + CROUCH) / CROUCH * Math.PI);
+      sy = 1 - .12 * c; sx = 1 + .08 * c;
+    } else if (k >= J0 && k < J1) {
+      const s = (k - J0) / (J1 - J0), vy = geo.dy - 4 * geo.lift * (1 - 2 * s);
+      x = geo.dx * s; y = geo.dy * s - 4 * geo.lift * s * (1 - s);
+      frame = vy < -geo.lift ? 16 : vy < geo.lift ? 17 : 18;
+      if (s < .2) { sy = 1 + .08 * (1 - s / .2); sx = 1 - .05 * (1 - s / .2); }
+      if (s > .8) { const e = (s - .8) / .2; sx = sy = 1 - .55 * e; alpha = 1 - e; }   // into the door
+    } else if (k >= J1 && k < DROP) alpha = 0;
+    else if (k >= DROP && k < LAND) { const e = (k - DROP) / (LAND - DROP); y = -geo.H * .75 * (1 - e * e); frame = 18; }
+    else if (k >= LAND && k < LAND + 180) {
+      const c = Math.sin((k - LAND) / 180 * Math.PI);
+      sy = 1 - .16 * c; sx = 1 + .1 * c;
+      if (!landed) { landed = true; dust(); }
+    }
+    if (k >= J1 && !hitDone) { hitDone = true; hit(); }
+    runner.style.transform = `translate(${x}px, ${y}px) scale(${sx}, ${sy})`;
+    runner.style.opacity = alpha;
+    // the shadow stays on the ground, smaller and fainter the higher he is
+    const sc = Math.max(.3, 1 - Math.max(0, -y) / 160);
+    shadow.style.transform = `translateX(${geo.shadowX + x}px) scale(${sc * sx})`;
+    shadow.style.opacity = (k >= J0 && k < J1) ? alpha * sc : alpha;
+    drawCover(frame);
+  };
+  let coverSeen = false, coverLooping = false;
+  const coverWake = () => { if (coverSeen && !document.hidden && !coverLooping) { coverLooping = true; start = performance.now() - ROUND; requestAnimationFrame(coverStep); } };
+  new IntersectionObserver(([e]) => { coverSeen = e.isIntersecting; cover.classList.toggle('live', coverSeen); coverWake(); }).observe(cover);
+  document.addEventListener('visibilitychange', coverWake);
 
   function burst(box, x, y) {
     for (let i = 0; i < 14; i++) {
