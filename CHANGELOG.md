@@ -4,6 +4,18 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.34.2 (1 November 2026)
+
+### Aizawl Ride: no getting shut in down south
+
+- From Treasury Square, Venghlui, Upper Republic, Khatla, Mission Veng and
+  Kulikawn there was no delivery back north: once there, a rider could never
+  reach the other 20 veng. A new delivery from Treasury Square to Chhinga
+  Veng, up Bazar Road past Vanapa Hall, leads back, and every veng can now
+  reach every other.
+- Checked: all 26 veng can be opened riding carefully, without a single
+  coin, and every road passed every check.
+
 ## 1.34.1 (1 November 2026)
 
 ### Aizawl Ride: a way out, and a phone turned sideways

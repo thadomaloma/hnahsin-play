@@ -4158,7 +4158,7 @@
   let cityP = null;
   function loadCity() {      // fetched once, however many ask for it at the same time (and again after a failure)
     if (CITY) return Promise.resolve(CITY);
-    return cityP || (cityP = fetch('ride/city.json?v=4ff2083a').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => (CITY = d)).catch(e => { cityP = null; throw e; }));
+    return cityP || (cityP = fetch('ride/city.json?v=24d78b21').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => (CITY = d)).catch(e => { cityP = null; throw e; }));
   }
   const vengOf = id => CITY.veng.find(v => v.id === id) || CITY.veng[0];
   // A packed list of small numbers (one character each) back into numbers
