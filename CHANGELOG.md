@@ -4,6 +4,19 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.35.1 (1 November 2026)
+
+### Aizawl Ride: a brake to lean on
+
+- A finger held on Brake through a pause brakes again on Keep riding; before,
+  the brake let go though the finger was still on it.
+- Two fingers on Brake: letting one go no longer lets go of the brake. And a
+  finger let go anywhere always lets go of it, so it never sticks on.
+- A finger on the road just above Brake, in the middle of the screen, no
+  longer steers the scooter left or right by mistake.
+- A firm, long press on the buttons brings up no menu, magnifier, picked
+  text or zoom on a phone.
+
 ## 1.35.0 (1 November 2026)
 
 ### Aizawl Ride: a game's cards

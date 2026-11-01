@@ -4085,7 +4085,7 @@
   }
   function start() {
     cond = pickCond();
-    reset(); mode = 'playing'; banked = false;
+    reset(); mode = 'playing'; banked = false; syncBrake();
     const fe = festMission();
     if (fe && !S.fest.claimed) setTimeout(() => { if (mode === 'playing') toast(`${fe.icon} ${L(fe.text, fe.mz)} · ${S.fest.prog} / ${fe.goal}`, true); }, 5200);
     if (cond.rain || cond.night) setTimeout(() => { if (mode === 'playing') toast(cond.rain ? L('🌧️ Rain: the road is wet, brake early', '🌧️ Ruah a sur: kawng a hnawng, brake hma takin') : L('🌙 Night: your lamp lights the way', '🌙 Zan a ni: i light in kawng a en ang'), true); }, 2600);
@@ -4095,8 +4095,8 @@
     hnStat(`ride/${route.id}`, `Aizawl Ride: ${route.to}`);
   }
   // Pause stops everything: no time passes, nothing moves, nothing is hit
-  function pause() { if (mode !== 'playing') return; setBrake(false); mode = 'paused'; rideSound(0); $('pauseView').hidden = false; syncPause(); $('resumeBtn').focus(); }
-  function resume() { if (mode !== 'paused') return; mode = 'playing'; $('pauseView').hidden = true; syncPause(); run(); }
+  function pause() { if (mode !== 'playing') return; mode = 'paused'; syncBrake(); rideSound(0); $('pauseView').hidden = false; syncPause(); $('resumeBtn').focus(); }
+  function resume() { if (mode !== 'paused') return; mode = 'playing'; $('pauseView').hidden = true; syncPause(); syncBrake(); run(); }
   function syncPause() {
     // on a phone, riding fills the screen like a game: no top bar, no frame, the controls over the road
     const riding = mode === 'playing' || mode === 'paused' || mode === 'crashing';
@@ -4430,15 +4430,28 @@
   };
   $('leftBtn').addEventListener('pointerdown', e => { e.preventDefault(); steer(-1); });
   $('rightBtn').addEventListener('pointerdown', e => { e.preventDefault(); steer(1); });
-  // Brake: hold the button (or the down arrow, S or the space bar)
-  const setBrake = on => { braking = on && mode === 'playing'; $('brakeBtn').classList.toggle('on', braking); };
-  $('brakeBtn').addEventListener('pointerdown', e => { e.preventDefault(); try { $('brakeBtn').setPointerCapture(e.pointerId); } catch (err) {} setBrake(true); });
-  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) $('brakeBtn').addEventListener(ev, () => setBrake(false));
-  $('brakeBtn').addEventListener('contextmenu', e => e.preventDefault());
+  // Brake: hold the button (or the down arrow, S or the space bar). It brakes while any finger is on it
+  // or the key is down, and only while riding: a finger held through a pause brakes again on Keep riding.
+  const brakeFingers = new Set(); let brakeKey = false;
+  function syncBrake() { braking = (brakeFingers.size > 0 || brakeKey) && mode === 'playing'; $('brakeBtn').classList.toggle('on', braking); }
+  const setBrake = on => { brakeKey = on; syncBrake(); };
+  const letGo = e => { if (brakeFingers.delete(e.pointerId)) syncBrake(); };
+  $('brakeBtn').addEventListener('pointerdown', e => { e.preventDefault(); try { $('brakeBtn').setPointerCapture(e.pointerId); } catch (err) {} brakeFingers.add(e.pointerId); syncBrake(); });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) $('brakeBtn').addEventListener(ev, letGo);
+  for (const ev of ['pointerup', 'pointercancel']) addEventListener(ev, letGo, true);     // (a finger let go anywhere, so the brake never sticks on)
+  // A firm, long press on a phone: no menu, no magnifier, no text picked, no zoom (an iPhone does these
+  // from the touch, whatever the pointer events say)
+  for (const b of document.querySelectorAll('.controls button')) {
+    b.addEventListener('contextmenu', e => e.preventDefault());
+    b.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+  }
   addEventListener('keyup', e => { if (['ArrowDown', 's', 'S', ' '].includes(e.key)) setBrake(false); });
-  addEventListener('blur', () => setBrake(false));      // a key let go in another window never comes back as a keyup
+  addEventListener('blur', () => { brakeFingers.clear(); setBrake(false); });      // a key let go in another window never comes back as a keyup
   $('stage').addEventListener('pointerdown', e => {
     if (mode !== 'playing' || e.target !== cv) return;
+    // (a finger on the road just above the brake was meant for the brake: in the middle, it could steer either way)
+    const k = $('brakeBtn').getBoundingClientRect();
+    if (e.pointerType === 'touch' && e.clientX > k.left - 8 && e.clientX < k.right + 8 && e.clientY > k.top - 48 && e.clientY < k.top) return;
     const r = cv.getBoundingClientRect(); steer(e.clientX - r.left < r.width / 2 ? -1 : 1);
   });
   addEventListener('keydown', e => {
@@ -4452,7 +4465,6 @@
   });
   // Leaving the page pauses the ride, so it never runs on unseen
   document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
-  document.querySelectorAll('.steer').forEach(b => b.addEventListener('contextmenu', e => e.preventDefault()));
 
   // For the automatic tests only (?test in the address): read the ride and steer.
   if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ kind: c.kind, lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, wid: c.wid, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
