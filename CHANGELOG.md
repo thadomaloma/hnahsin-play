@@ -4,6 +4,20 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.38.6 (1 November 2026)
+
+### Rova's Journey: Rova in 3D
+
+- Rova is now drawn in 3D, made with Blender: shaded like a cartoon, with
+  the same ink line, face, hair, T-shirt and shoes as before.
+- He runs in sixteen steps instead of eight, so his run is smoother, with
+  his arms, legs and body moving together.
+- In the air he has three poses instead of one: going up, at the top and
+  coming down.
+- The Rova next to the title runs in 3D too.
+- The pictures add 214 KB and are kept on the phone for playing offline.
+  If they cannot be fetched, the game shows the drawn Rova as before.
+
 ## 1.38.5 (1 November 2026)
 
 ### Home page: it holds still at the top
