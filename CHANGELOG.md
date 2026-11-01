@@ -4,6 +4,20 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.34.0 (1 November 2026)
+
+### Aizawl Ride: a riding game's screen
+
+- On a phone, the road fills the whole screen while you ride: no top bar,
+  no frame, and the left, Brake and right buttons lie over the road as glass
+  buttons, clear of the notch and the home bar. Before and after a ride the
+  game fills the screen under the top bar, with no gap below.
+- The HUD is dark glass with light writing: the distance, the coins, the
+  pause button, a bright progress line along the top and a dark speedometer.
+- The credits are behind a Credits button on the start screen, instead of a
+  line of small print under the game. The Aizawl map still names
+  OpenStreetMap.
+
 ## 1.33.0 (31 October 2026)
 
 ### The games feel like an app on a phone

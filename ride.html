@@ -223,8 +223,9 @@
   .steer { min-height: 56px; border-radius: 16px; border: 1.5px solid var(--ink); background: var(--panel); box-shadow: 0 2px 0 var(--ink); font-size: 26px; font-weight: 800; touch-action: manipulation; }
   .steer:active { transform: translateY(2px); box-shadow: none; }
   .mid { font-size: 14px; color: var(--muted); font-weight: 700; text-align: center; }
-  .note { font-size: 14px; color: var(--muted); margin: 0; line-height: 1.45; }
-  .note a { color: var(--brand); }
+  .links { display: flex; justify-content: center; gap: 18px; }
+  .credits { margin: 0; padding: 0 0 0 18px; text-align: left; display: grid; gap: 6px; font-size: 14px; line-height: 1.4; }
+  .credits a { color: var(--brand); }
   @media (prefers-reduced-motion: reduce) { .coach { animation: none; } .toast { transition: none; } .hud b.bump { animation: none; } }
   /* on a phone, room for the buttons: the line under the name left out, the buttons a little smaller */
   @media (max-width: 440px) {
@@ -236,6 +237,50 @@
     .wallet { padding: 6px 9px; }
   }
   @media (max-width: 370px) { header.top { gap: 4px; } .brand b { font-size: 18px; } .wallet { padding: 6px 7px; } .icon.langbtn { padding: 0 6px; } }
+
+  /* ---------- a riding game's screen ----------
+     The HUD: dark glass with light writing over the road, a bright progress line along the top. On a
+     phone, while riding, the road fills the whole screen (no top bar, no frame) and the controls lie over
+     it, clear of the notch and the home bar. */
+  .pill { background: rgba(16, 20, 24, .55); border: 1px solid rgba(255, 255, 255, .22); color: #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, .25); -webkit-backdrop-filter: blur(8px) saturate(1.3); backdrop-filter: blur(8px) saturate(1.3); }
+  .hud { color: #fff; }
+  .hud small { color: rgba(255, 255, 255, .75); }
+  .hud b { text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
+  .warn { color: #ffb4a8; }
+  .strip { height: 6px; background: rgba(16, 20, 24, .45); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
+  .strip i { background: linear-gradient(90deg, #43a047, #c6ff00); box-shadow: 0 0 8px rgba(198, 255, 0, .6); }
+  .strip .me { background: #fff; box-shadow: 0 0 0 2px #1565c0, 0 0 10px rgba(255, 255, 255, .8); }
+  .mini { border: 1px solid rgba(255, 255, 255, .3); box-shadow: 0 4px 14px rgba(0, 0, 0, .25); }
+  .pause { background: rgba(16, 20, 24, .55); color: #fff; border: 1px solid rgba(255, 255, 255, .3); box-shadow: 0 4px 14px rgba(0, 0, 0, .25); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  .sheet a.fine { color: var(--brand); }
+  /* on a phone, before and after a ride too, the game fills the screen under the top bar: no gap below */
+  @media (max-width: 700px) {
+    .app { padding-bottom: max(8px, env(safe-area-inset-bottom)); gap: 8px; }
+    #cv { height: max(300px, calc(100svh - var(--chrome, 168px))); }
+  }
+  @media (max-width: 700px) {
+    body.riding { padding-inline: 0; overflow: hidden; }
+    body.riding header.top { display: none; }
+    body.riding .app { padding: 0; gap: 0; max-width: none; }
+    body.riding .card { border: 0; border-radius: 0; box-shadow: none; }
+    body.riding #cv { height: 100svh; height: 100dvh; }
+    body.riding .strip { top: calc(8px + env(safe-area-inset-top)); }
+    body.riding .pill { top: calc(22px + env(safe-area-inset-top)); }
+    body.riding .controls { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; border: 0; padding: 12px max(14px, env(safe-area-inset-left)) max(14px, env(safe-area-inset-bottom)); background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, .38)); }
+    body.riding .steer, body.riding .brake { min-height: 64px; color: #fff; background: rgba(255, 255, 255, .16); border: 1.5px solid rgba(255, 255, 255, .55); box-shadow: 0 4px 14px rgba(0, 0, 0, .25); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+    body.riding .brake { background: rgba(229, 57, 53, .55); border-color: rgba(255, 205, 200, .8); }
+    body.riding .brake.on { background: rgba(229, 57, 53, .9); }
+    body.riding .dial { bottom: calc(96px + env(safe-area-inset-bottom)); }
+    body.riding .mini { bottom: calc(150px + env(safe-area-inset-bottom)); }
+    body.riding .pause { top: calc(64px + env(safe-area-inset-top)); bottom: auto; }
+    body.riding .coach { bottom: calc(108px + env(safe-area-inset-bottom)); }
+    /* (the flat picture stops above the buttons: what sits low on it stays where it was, and the strip
+       under the buttons is the road's own grey) */
+    body.flatride, body.flatride .card { background: #4a4d4b; }
+    body.flatride .dial { bottom: 6px; }
+    body.flatride .mini { bottom: 58px; }
+    body.flatride .coach { bottom: 74px; }
+  }
 </style>
 
 <div class="app">
@@ -275,7 +320,7 @@
             <button class="route small" id="garageBtn" type="button">🛵 <span data-t="garage">Garage</span></button>
             <button class="route small" id="missionsBtn" type="button">🎯 <span data-t="missions">Missions</span> <span class="dot" id="readyDot" hidden></span></button>
           </div>
-          <button class="link" id="howBtn" type="button" data-t="how">How to play</button>
+          <div class="links"><button class="link" id="howBtn" type="button" data-t="how">How to play</button><button class="link" id="creditsBtn" type="button">ⓘ <span data-t="credits">Credits</span></button></div>
           <p class="fine" data-t="startNote">Tap a side of the road to steer, and hold Brake to slow down. Wait your turn in a jam, and stop for people at a crossing, the Aizawl way. Coins go into your wallet when the ride ends.</p>
         </div>
       </div>
@@ -325,6 +370,21 @@
           </div>
         </div>
       </div>
+      <div class="overlay" id="creditsView" hidden>
+        <div class="sheet" role="dialog" aria-labelledby="creditsTitle">
+          <h2 id="creditsTitle" data-t="credits">Credits</h2>
+          <p class="fine" data-t="creditsIntro">Real roads, hills and houses of Aizawl.</p>
+          <ul class="credits">
+            <li><b>Roads and places:</b> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, ODbL</li>
+            <li><b>Hills:</b> Copernicus WorldDEM-30 © DLR e.V. 2010–2014 and © Airbus Defence and Space GmbH 2014–2018, provided under COPERNICUS by the European Union and ESA</li>
+            <li><b>Houses:</b> Google Open Buildings (CC BY 4.0)</li>
+            <li><b>People:</b> Quaternius, Universal Base Characters (CC0)</li>
+            <li><b>3D:</b> three.js (MIT)</li>
+          </ul>
+          <a class="fine" href="https://github.com/thadomaloma/hnahsin-play/blob/main/CREDITS.md" target="_blank" rel="noopener" data-t="allCredits">All the credits</a>
+          <button class="go" type="button" data-close data-t="done">Done</button>
+        </div>
+      </div>
       <div class="overlay" id="pauseView" hidden>
         <div class="sheet"><h2 data-t="paused">Paused</h2><button class="go" id="resumeBtn" type="button" data-t="keepRiding">Keep riding</button></div>
       </div>
@@ -350,7 +410,6 @@
     </div>
   </section>
 
-  <p class="note">Real roads, hills and houses. Map © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors (ODbL) · Elevation: Copernicus · Buildings: Google Open Buildings · <a href="https://github.com/thadomaloma/hnahsin-play/blob/main/CREDITS.md#maps">Credits</a></p>
 </div>
 
 <script>
@@ -620,6 +679,7 @@
   // The page's own words carry a key (data-t); what the game says as it goes is given both ways, L(en, mz).
   const MZ = {
     deliver: 'Thil thlen rawh', map: 'Aizawl map', start: 'Tlan tan rawh', garage: 'Garage', missions: 'Tihtur', how: 'Khelh dan',
+    credits: 'Credits', creditsIntro: 'Aizawl kawng, tlang leh in dik tak te.', allCredits: 'Credits zawng zawng',
     startNote: 'Steer turin kawng sir hmet rawh, a muan nan Brake hmet reng rawh. Jam ah i chan nghak la, crossing ah mi kal tlang te nghak rawh, Aizawl dan angin. Ride i zawh chuan coin te i wallet ah a lut ang.',
     garageIntro: 'Scooter zawng zawng an tlan dan a inang. Design leh rawng i duh thlang rawh; i point a pun zel chuan a dang an inhawng ang.',
     design: 'Design', colour: 'Rawng, a Mizo hming in', riderBox: 'Rider leh box', boughtCoins: 'coin hmanga lei', done: 'Zo', back: 'Kir leh', longRides: 'Kawng sei',
@@ -1037,6 +1097,16 @@
   // ---------- drawing ----------
   let W = 360, H = 450, dpr = 1;
   function resize() {
+    // (on a phone, the game takes the screen's height less the top bar, the buttons and the frame round them)
+    if (!document.body.classList.contains('riding')) {
+      const head = document.querySelector('header.top'), ctl = document.querySelector('.controls'), app = document.querySelector('.app');
+      const cs = getComputedStyle(app), chrome = head.offsetHeight + ctl.offsetHeight + parseFloat(cs.rowGap || 0) + parseFloat(cs.paddingBottom || 0) + 4;
+      document.documentElement.style.setProperty('--chrome', `${Math.ceil(chrome)}px`);
+    }
+    // (the flat picture puts the scooter low on the screen: while riding it stops above the buttons)
+    const flatRide = document.body.classList.contains('riding') && !R3 && innerWidth <= 700;
+    cv.style.height = flatRide ? `${innerHeight - document.querySelector('.controls').offsetHeight}px` : '';
+    document.body.classList.toggle('flatride', flatRide);
     const r = cv.getBoundingClientRect();
     dpr = Math.min(2, devicePixelRatio || 1);
     W = Math.max(280, r.width); H = Math.max(300, r.height);
@@ -3611,16 +3681,16 @@
     if (c.width !== Wd * r) { c.width = Wd * r; c.height = Hd * r; }
     const g = c.getContext('2d'); g.setTransform(r, 0, 0, r, 0, 0); g.clearRect(0, 0, Wd, Hd);
     const cx = Wd / 2, cy = Hd - 8, R = 44, MAX = 70, kmh = v * 3.6, a = Math.PI + Math.min(1, kmh / MAX) * Math.PI;
-    g.fillStyle = 'rgba(255,253,248,.86)'; g.strokeStyle = 'rgba(35,30,22,.7)'; g.lineWidth = 1.5;
+    g.fillStyle = 'rgba(16,20,24,.58)'; g.strokeStyle = 'rgba(255,255,255,.25)'; g.lineWidth = 1;
     g.beginPath(); g.arc(cx, cy, R + 6, Math.PI, 0); g.lineTo(cx + R + 6, cy + 6); g.lineTo(cx - R - 6, cy + 6); g.closePath(); g.fill(); g.stroke();
-    g.lineCap = 'round'; g.strokeStyle = '#e3ddd0'; g.lineWidth = 6; g.beginPath(); g.arc(cx, cy, R - 4, Math.PI, 0); g.stroke();
-    g.strokeStyle = braking ? '#e53935' : kmh > 55 ? '#e39b00' : '#2e7d32'; g.beginPath(); g.arc(cx, cy, R - 4, Math.PI, a); g.stroke();
-    g.strokeStyle = '#231e16'; g.lineWidth = 1.2;
+    g.lineCap = 'round'; g.strokeStyle = 'rgba(255,255,255,.18)'; g.lineWidth = 6; g.beginPath(); g.arc(cx, cy, R - 4, Math.PI, 0); g.stroke();
+    g.strokeStyle = braking ? '#ff5252' : kmh > 55 ? '#ffb300' : '#c6ff00'; g.beginPath(); g.arc(cx, cy, R - 4, Math.PI, a); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 1.2;
     for (let k = 0; k <= MAX; k += 10) { const t = Math.PI + k / MAX * Math.PI; g.beginPath(); g.moveTo(cx + Math.cos(t) * (R - 12), cy + Math.sin(t) * (R - 12)); g.lineTo(cx + Math.cos(t) * (R - 8), cy + Math.sin(t) * (R - 8)); g.stroke(); }
-    g.strokeStyle = '#c62828'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * (R - 10), cy + Math.sin(a) * (R - 10)); g.stroke();
-    g.fillStyle = '#231e16'; g.beginPath(); g.arc(cx, cy, 3.5, 0, 7); g.fill();
+    g.strokeStyle = '#ff5252'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * (R - 10), cy + Math.sin(a) * (R - 10)); g.stroke();
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(cx, cy, 3.5, 0, 7); g.fill();
     g.textAlign = 'center'; g.font = '800 17px "Plus Jakarta Sans", sans-serif'; g.fillText(Math.round(kmh), cx, cy - 16);
-    g.textAlign = 'left'; g.font = '700 10px "Plus Jakarta Sans", sans-serif'; g.fillStyle = '#5d5547'; g.fillText('km/h', cx + 10, cy + 2);
+    g.textAlign = 'left'; g.font = '700 10px "Plus Jakarta Sans", sans-serif'; g.fillStyle = 'rgba(255,255,255,.7)'; g.fillText('km/h', cx + 10, cy + 2);
     if (braking) { g.fillStyle = '#e53935'; g.beginPath(); g.arc(Wd - 12, 12, 5, 0, 7); g.fill(); }
   }
   let toastTimer = 0;
@@ -3929,6 +3999,9 @@
   function pause() { if (mode !== 'playing') return; setBrake(false); mode = 'paused'; rideSound(0); $('pauseView').hidden = false; syncPause(); $('resumeBtn').focus(); }
   function resume() { if (mode !== 'paused') return; mode = 'playing'; $('pauseView').hidden = true; syncPause(); run(); }
   function syncPause() {
+    // on a phone, riding fills the screen like a game: no top bar, no frame, the controls over the road
+    const riding = mode === 'playing' || mode === 'paused' || mode === 'crashing';
+    if (document.body.classList.contains('riding') !== riding) { document.body.classList.toggle('riding', riding); resize(); }
     const b = $('pauseBtn');
     // while riding, the ride's own coins show on the road; the wallet comes back after
     $('wallet').style.visibility = mode === 'playing' || mode === 'paused' || mode === 'crashing' ? 'hidden' : '';
@@ -3973,7 +4046,7 @@
   let panel = null;
   function openPanel(id) {
     panel = id; $('startView').hidden = true; $(id).hidden = false;
-    id === 'garageView' ? drawGarage() : id === 'mapView' ? drawMap() : drawMissions();
+    if (id === 'garageView') drawGarage(); else if (id === 'mapView') drawMap(); else if (id === 'missionsView') drawMissions();
     const f = $(id).querySelector('button'); if (f) f.focus({ preventScroll: true });
     $(id).querySelector('.sheet').scrollTop = 0;
   }
@@ -3985,6 +4058,7 @@
   document.querySelectorAll('[data-close]').forEach(b => b.onclick = closePanel);
   $('garageBtn').onclick = () => openPanel('garageView');
   $('missionsBtn').onclick = () => openPanel('missionsView');
+  $('creditsBtn').onclick = () => openPanel('creditsView');
 
   function drawGarage() {
     const pts = points(), lock = x => `🔒 ${fmt(x.need)}`;
