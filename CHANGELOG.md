@@ -4,6 +4,21 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.38.0 (1 November 2026)
+
+### Home page: the four games, at once
+
+- The home page is now the four games: Rova's Journey, the Hnahsin
+  Playground, Touch and learn and Aizawl Ride, each with its moving cover,
+  its name, one line about it and a Play button. On a phone the first shows
+  right under the hill; on a computer all four show on one screen.
+- The top is shorter: the Hnahsin tiles, Mizo Thumal Infiamna, one line, and
+  Rova and Mami on the hill.
+- Taken away: the numbers, the scrolling words, today's word, how you learn,
+  the app's big card, the garden of games played and Back to the top. The
+  app is a link at the foot of the page, with What's new.
+- The page's description for search and sharing names the four games.
+
 ## 1.37.0 (1 November 2026)
 
 ### Home page: Aizawl Ride rides on its card

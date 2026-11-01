@@ -9,21 +9,6 @@
   let heroOnScreen = true;
   new IntersectionObserver(([e]) => { heroOnScreen = e.isIntersecting; }).observe(hero);
 
-  // ------------------------------------------------ words that scroll past
-  const WORDS = [
-    ['ui', '🐕', 'dog'], ['tui', '💧', 'water'], ['ni', '☀️', 'sun'], ['in', '🏠', 'house'], ['ruah', '🌧️', 'rain'],
-    ['pangpâr', '🌸', 'flower'], ['sangha', '🐟', 'fish'], ['thingkung', '🌳', 'tree'], ['zawhte', '🐈', 'cat'],
-    ['thla', '🌙', 'moon'], ['lehkhabu', '📖', 'book'], ['sava', '🐦', 'bird'], ['arsi', '⭐', 'star'],
-    ['mei', '🔥', 'fire'], ['sikul', '🏫', 'school'], ['balhla', '🍌', 'banana'], ['lui', '🏞️', 'river'],
-    ['bâwngnu', '🐄', 'cow'], ['motor', '🚗', 'car'], ['thingpui', '🍵', 'tea'], ['hnute', '🥛', 'milk'],
-    ['vawk', '🐖', 'pig'], ['chhum', '☁️', 'cloud'], ['kawng', '🛣️', 'road'], ['muhil', '😴', 'sleep'], ['sen', '🔴', 'red'],
-  ];
-  $$('.ticker .row').forEach((row, i) => {
-    const half = i ? WORDS.slice(13).concat(WORDS.slice(0, 13)) : WORDS;
-    const chips = half.map(([m, e, g]) => `<span class="word"><i>${e}</i><b>${m}</b><small>${g}</small></span>`).join('');
-    row.innerHTML = `<div class="track">${chips}${chips}</div>`; // twice, so the loop has no seam
-  });
-
   // ------------------------------------------------ reveal on scroll
   document.documentElement.classList.add('js');
   const reveal = new IntersectionObserver(entries => entries.forEach(e => {
@@ -35,21 +20,6 @@
     [...el.children].forEach((child, i) => child.style.setProperty('--d', i * 90 + 'ms'));
     reveal.observe(el);
   });
-
-  // ------------------------------------------------ numbers count up
-  const counter = new IntersectionObserver(entries => entries.forEach(e => {
-    if (!e.isIntersecting) return;
-    counter.unobserve(e.target);
-    const el = e.target, to = Number(el.dataset.count), start = performance.now(), ms = 1400;
-    if (calm) { el.textContent = to.toLocaleString('en'); return; }
-    const step = t => {
-      const p = Math.min(1, (t - start) / ms), eased = 1 - Math.pow(1 - p, 3);
-      el.textContent = Math.round(to * eased).toLocaleString('en');
-      if (p < 1) requestAnimationFrame(step); else el.classList.add('done');
-    };
-    requestAnimationFrame(step);
-  }), { threshold: .6 });
-  $$('[data-count]').forEach(el => { if (!calm) el.textContent = '0'; counter.observe(el); });
 
   // ------------------------------------------------ button ripple
   document.addEventListener('pointerdown', e => {
@@ -164,42 +134,6 @@
   }));
   if (!calm) { setTimeout(wave, 1400); setInterval(() => { if (heroOnScreen && !document.hidden) wave(); }, 6500); }
 
-  // ------------------------------------------------ Open the Playground: tiles drift across the button
-  // Little letter tiles and game bits float from left to right behind the words; they hurry
-  // when the button is touched.
-  {
-    const btn = $('.play-btn'), cv = $('.btn-canvas', btn), c = cv.getContext('2d');
-    const BITS = ['A', 'AW', 'CH', 'NG', 'Ṭ', '🧩', '⭐', '🫧', '🐝', 'I', 'U', 'E'];
-    const COLS = ['#ffe08a', '#c9ddf3', '#f8bbd0', '#d9cff7', '#c8eebd'];
-    let bits = [], fast = 0, last = 0;
-    const make = (x) => ({ x, y: Math.random(), s: .7 + Math.random() * .5, v: .25 + Math.random() * .35, r: (Math.random() - .5) * .6, vr: (Math.random() - .5) * .02, t: BITS[Math.floor(Math.random() * BITS.length)], col: COLS[Math.floor(Math.random() * COLS.length)] });
-    // The button's size is read once (and again on resize), not every frame.
-    let dims = null;
-    addEventListener('resize', () => { dims = null; });
-    const size = () => { if (!dims) { const dpr = Math.min(devicePixelRatio || 1, 2), w = cv.clientWidth, h = cv.clientHeight; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); dims = [w, h, dpr]; } return dims; };
-    const paint = t => {
-      const [w, h, dpr] = size(); if (!w) return;
-      if (!bits.length) bits = Array.from({ length: Math.round(w / 34) }, () => make(Math.random() * w));
-      const dt = Math.min(50, t - (last || t)) / 16.7; last = t;
-      fast = Math.max(0, fast - .02 * dt);
-      c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
-      for (const b of bits) {
-        if (!calm) { b.x += (b.v + fast * 3) * dt; b.r += b.vr * dt; }
-        if (b.x > w + 20) Object.assign(b, make(-20));
-        const y = 6 + b.y * (h - 12) + (calm ? 0 : Math.sin(t / 700 + b.x * .05) * 3), z = 15 * b.s;
-        c.save(); c.translate(b.x, y); c.rotate(b.r); c.globalAlpha = .55;
-        if (/[A-ZṬ]/.test(b.t)) {
-          c.fillStyle = b.col; c.beginPath(); c.roundRect(-z / 2, -z / 2, z, z, 4); c.fill();
-          c.fillStyle = '#1565c0'; c.font = `800 ${z * (b.t.length > 1 ? .45 : .62)}px "Baloo 2", sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(b.t, 0, 1);
-        } else { c.font = `${z}px system-ui`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(b.t, 0, 0); }
-        c.restore();
-      }
-    };
-    const loop = t => { requestAnimationFrame(loop); if (heroOnScreen && !document.hidden && t - (loop.last || 0) > 33) { loop.last = t; paint(t); } };
-    if (calm) paint(0); else requestAnimationFrame(loop);
-    ['pointerenter', 'pointerdown', 'focus'].forEach(ev => btn.addEventListener(ev, () => { fast = 1; }));
-  }
-
   // ------------------------------------------------ how far down the page you are
   const bar = $('.progress');
   let barQueued = false;
@@ -220,49 +154,6 @@
       el.animate([{ transform: 'rotateY(-90deg)' }, { transform: 'rotateY(0deg)' }], { duration: ms / 2 + 80, easing: 'cubic-bezier(.3,1.5,.5,1)' });
     };
   }
-
-  // ------------------------------------------------ word of the day: tap to turn it over
-  // The same word all day, from the words in the ticker; "Another word" picks the next one.
-  const card = $('#wotd'), face = $('.face', card), today = Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 86400000);
-  let wi = today % WORDS.length;
-  const showWord = () => {
-    const [m, e, g] = WORDS[wi], over = card.classList.contains('over');
-    $('.e', card).hidden = over;
-    $('.m', card).textContent = over ? g : m;
-    $('.sub', card).hidden = !over; $('.sub', card).textContent = m;
-    $('.hint', card).textContent = over ? 'Tap to turn it back' : 'Tap to see what it means';
-    $('.e', card).textContent = e;
-    card.setAttribute('aria-label', over ? `${m} means ${g}. Tap to turn it back.` : `${m}. Tap to see what it means.`);
-  };
-  card.addEventListener('click', () => {
-    turnOver(face, () => {
-      card.classList.toggle('over');
-      showWord();
-      if (card.classList.contains('over') && !calm) confetti(card);
-    });
-  });
-  $('#wotd-next').addEventListener('click', () => {
-    turnOver(face, () => { wi = (wi + 1) % WORDS.length; card.classList.remove('over'); showWord(); });
-  });
-  showWord();
-  function confetti(box) {
-    const r = box.getBoundingClientRect();
-    for (let i = 0; i < 26; i++) {
-      const c = document.createElement('i');
-      c.className = 'confetti';
-      c.style.left = r.width / 2 + 'px'; c.style.top = r.height / 2 + 'px';
-      c.style.background = ['#f06292', '#ffc94a', '#6dbe5e', '#3c9fea', '#9c7cf0'][i % 5];
-      box.appendChild(c);
-      const a = Math.random() * Math.PI * 2, d = 90 + Math.random() * 90;
-      c.animate([
-        { transform: 'translate(-50%, -50%) rotate(0deg)', opacity: 1 },
-        { transform: `translate(calc(-50% + ${Math.cos(a) * d}px), calc(-50% + ${Math.sin(a) * d * .7 + 40}px)) rotate(${Math.random() * 720 - 360}deg)`, opacity: 0 },
-      ], { duration: 900 + Math.random() * 400, easing: 'cubic-bezier(.2,.7,.3,1)' }).onfinish = () => c.remove();
-    }
-  }
-
-  // ------------------------------------------------ back to the top
-  $('#to-top').addEventListener('click', () => scrollTo({ top: 0, behavior: calm ? 'auto' : 'smooth' }));
 
   // ------------------------------------------------ Touch and learn card: name tags on the pictures
   // The card shows the house, pi at her loom and the market stall in turn. The .json files say where each part is
@@ -304,106 +195,6 @@
       place();
     }, calm ? 5000 : 2600);
   }).catch(() => {});
-
-  // ------------------------------------------------ the garden: which games are played most
-  // Play counts come from GoatCounter's public counter (it must be switched on in the site's
-  // GoatCounter settings: "Allow adding visitor counts on your website"). The five most played
-  // games grow as cosmos flowers, taller the more they are played. Without counts the garden
-  // still grows, with no names, and the numbers stay hidden.
-  const GC = 'https://hnahsin.goatcounter.com/counter/';
-  const COUNTED = [
-    ['/hnahsin-play/journey.html', '🏃', "Rova's Journey"], ['/hnahsin-play/things.html', '🏠', 'Touch and learn'],
-    ...[['dungeon', '⚔️', 'Word dungeon'], ['fall', '🧱', 'Falling letters'], ['cave', '🔦', 'Crossword cave'], ['sentences', '🧱', 'Sentence builder'],
-      ['sayings', '🗣️', 'Saying match'], ['bee', '🐝', 'Spelling bee'], ['waffle', '🧇', 'Waffle'], ['strands', '🧵', 'Strands'], ['tubes', '🧪', 'Word tubes'],
-      ['sort', '⚡', 'Sort it'], ['run', '🏃', 'Rova run'], ['bubble', '🫧', 'Bubble pop'], ['whack', '🐁', 'Whack the rat'], ['bazar', '🛒', 'Bazar'],
-      ['spy', '🔍', 'I Spy'], ['count', '🔢', 'Count'], ['dress', '👕', 'Dress Rova'], ['size', '🐘', 'Big and small'], ['days', '📅', 'Days and times'],
-      ['says', '👃', 'Rova says'], ['colour', '🎨', 'Colour it'], ['family', '👪', "Rova's family"], ['weather', '🌦️', 'Weather report'], ['stall', '🍲', 'Food stall'],
-    ].map(([id, i, n]) => ['playground/' + id, i, n]),
-    ...[['picture_match', '🖼️', 'Picture Match'], ['spelling', '🔤', 'Spelling'], ['word_search', '🔍', 'Word Search'], ['word_chain', '🔗', 'Word Chain'],
-      ['tawng_upa', '🗣️', 'Tawng Upa'], ['crossword', '✏️', 'Crossword'], ['odd_one_out', '🐷', 'Odd One Out'], ['sentence_builder', '🧱', 'Sentence Builder'],
-    ].map(([id, i, n]) => ['playground/app/' + id, i, n]),
-  ];
-  const num = c => Number(String(c || '0').replace(/[^0-9]/g, '')) || 0;
-  const gc = path => fetch(GC + encodeURIComponent(path) + '.json').then(r => (r.ok ? r.json() : null)).then(j => (j ? num(j.count) : null)).catch(() => null);
-  const gardenCanvas = $('#garden'), gctx = gardenCanvas.getContext('2d');
-  const PETALS = ['#f06292', '#9c7cf0', '#ffc94a', '#f48fb1', '#3c9fea'];
-  let blooms = [0, 1, 2, 3, 4].map(i => ({ name: '', icon: '', count: 0, h: [.55, .8, .65, .9, .5][i], grow: 0 }));
-  function drawGarden(t) {
-    const dpr = Math.min(devicePixelRatio || 1, 3), w = gardenCanvas.clientWidth, h = gardenCanvas.clientHeight;
-    if (!w) return;
-    if (gardenCanvas.width !== Math.round(w * dpr)) { gardenCanvas.width = Math.round(w * dpr); gardenCanvas.height = Math.round(h * dpr); }
-    const c = gctx; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
-    const ground = h - 44, named = blooms.some(b => b.name);
-    // The ground: a soft green hill with grass.
-    c.fillStyle = '#7cc65a';
-    c.beginPath(); c.moveTo(0, ground + 6); c.quadraticCurveTo(w / 2, ground - 12, w, ground + 6); c.lineTo(w, h); c.lineTo(0, h); c.fill();
-    c.strokeStyle = '#5dae47'; c.lineWidth = 1.5; c.lineCap = 'round';
-    for (let x = 6; x < w; x += 9) { const sway = calm ? 0 : Math.sin(t / 900 + x * .07) * 2; const gy = ground + 6 - 18 * Math.sin(Math.PI * x / w) * .6; c.beginPath(); c.moveTo(x, gy + 6); c.lineTo(x + sway, gy - 2 - (x * 7 % 5)); c.stroke(); }
-    const n = blooms.length, gap = w / n, maxH = ground - (named ? 40 : 26);   // room for the tags
-    blooms.forEach((b, i) => {
-      b.grow = Math.min(1, b.grow + .02);
-      const e = 1 - Math.pow(1 - b.grow, 3), x = gap * (i + .5), stem = 30 + (maxH - 30) * b.h * e;
-      const gy = ground + 6 - 18 * Math.sin(Math.PI * x / w) * .6, top = gy - stem;
-      const sway = calm ? 0 : Math.sin(t / 1100 + i * 1.7) * 3 * e;
-      c.strokeStyle = '#4a9a3e'; c.lineWidth = 3.5;
-      c.beginPath(); c.moveTo(x, gy); c.quadraticCurveTo(x + sway * .3, (gy + top) / 2, x + sway, top); c.stroke();
-      c.fillStyle = '#6dbe5e';   // a leaf
-      c.beginPath(); c.ellipse(x + 7, gy - stem * .4, 8, 3.5, -.6, 0, Math.PI * 2); c.fill();
-      // The cosmos: eight petals round a gold middle, turning slowly.
-      const r = 11 + 7 * b.h * e, spin = calm ? 0 : t / 6000 + i;
-      c.save(); c.translate(x + sway, top); c.rotate(spin); c.fillStyle = PETALS[i % PETALS.length];
-      for (let k = 0; k < 8; k++) { c.rotate(Math.PI / 4); c.beginPath(); c.ellipse(0, -r * .62, r * .32, r * .52, 0, 0, Math.PI * 2); c.fill(); }
-      c.restore();
-      c.fillStyle = '#f2a516'; c.beginPath(); c.arc(x + sway, top, r * .3, 0, Math.PI * 2); c.fill();
-      c.fillStyle = '#ffc94a'; c.beginPath(); c.arc(x + sway, top, r * .2, 0, Math.PI * 2); c.fill();
-      if (named) {
-        // The game's icon on the ground (its name is written under the canvas).
-        c.textAlign = 'center'; c.font = '700 22px system-ui, sans-serif'; c.fillText(b.icon, x, h - 12);
-        // How many plays, on a little tag above the flower.
-        c.font = '800 12px "Plus Jakarta Sans", system-ui, sans-serif';
-        const txt = Math.round(b.count * e).toLocaleString('en'), tw = c.measureText(txt).width + 12;
-        const ty = Math.max(2, top - r - 24);
-        c.fillStyle = 'rgba(255,255,255,.92)'; c.beginPath(); c.roundRect(x + sway - tw / 2, ty, tw, 18, 9); c.fill();
-        c.fillStyle = '#1565c0'; c.fillText(txt, x + sway, ty + 13);
-      }
-    });
-  }
-  let gardenOn = false;
-  const gardenLoop = t => { if (gardenOn) { if (t - (gardenLoop.last || 0) > 33) { gardenLoop.last = t; drawGarden(t); } requestAnimationFrame(gardenLoop); } };
-  new IntersectionObserver(([e]) => {
-    gardenOn = e.isIntersecting && !document.hidden;
-    if (gardenOn) requestAnimationFrame(gardenLoop);
-  }).observe(gardenCanvas);
-  // Counts are fetched once, the first time the garden comes into view.
-  let fetched = false;
-  new IntersectionObserver(([e], obs) => {
-    if (!e.isIntersecting || fetched) return;
-    fetched = true; obs.disconnect();
-    // Ask for the home page's count first: if the public counter is off, ask nothing more.
-    gc('/hnahsin-play/').then(visits => (visits === null ? null : Promise.all(COUNTED.map(([p]) => gc(p))).then(counts => [visits, ...counts]))).then(res => {
-      if (!res) return;   // the public counter is off: keep the plain garden
-      const [visits, ...counts] = res;
-      const games = COUNTED.map(([, icon, name], i) => ({ icon, name, count: counts[i] || 0 })).filter(g => g.count > 0).sort((a, b) => b.count - a.count).slice(0, 5);
-      const total = counts.reduce((a, b) => a + (b || 0), 0);
-      if (games.length) {
-        const most = games[0].count;
-        // Tallest in the middle, the rest either side, like a little podium.
-        const order = [3, 1, 0, 2, 4].map(i => games[i]).filter(Boolean);
-        blooms = order.map(g => ({ ...g, h: .25 + .75 * g.count / most, grow: 0 }));
-        $('#garden-sub').textContent = 'The most played games. Every game played helps its flower grow.';
-        $('#garden-list').innerHTML = games.map(g => `<li>${g.name}: played ${g.count.toLocaleString('en')} times</li>`).join('');
-        $('#garden-names').innerHTML = blooms.map(b => `<span>${b.name}</span>`).join('');
-        $('#garden-names').hidden = false;
-      }
-      $('#plays').hidden = false;
-      const countUp = (el, to) => {
-        const start = performance.now();
-        const step = t => { const p = Math.min(1, (t - start) / 1400), v = Math.round(to * (1 - Math.pow(1 - p, 3))); el.textContent = v.toLocaleString('en'); if (p < 1 && !calm) requestAnimationFrame(step); else el.textContent = to.toLocaleString('en'); };
-        requestAnimationFrame(step);
-      };
-      countUp($('#ft-plays'), total); countUp($('#ft-visits'), visits);
-    });
-  }, { rootMargin: '200px' }).observe(gardenCanvas);
 
   // A canvas that draws Rova at the screen's sharpness.
   const rovaOn = (canvas, draw = drawRova) => {
