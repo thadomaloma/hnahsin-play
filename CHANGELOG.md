@@ -4,6 +4,25 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.35.0 (1 November 2026)
+
+### Aizawl Ride: a game's cards
+
+- Every card now opens with a band in its own colour, with the hills of
+  Aizawl along its foot: sky blue for a new delivery, green when it is
+  delivered, red for a crash, and a colour each for the garage, the map,
+  the missions, the pause and the credits.
+- The names on the cards, the big buttons and the score are in Lilita One,
+  a game's lettering; the reading text stays as it was.
+- The start card: the rank as a chip, today's parcel as a ticket, the map
+  button with its icon and how many veng are open, and pressed-in buttons.
+- The end card: the stars large in the band, the score and the best on the
+  road as two tiles, what the ride brought as a list, and Next delivery,
+  Ride again and Back kept in sight at the foot of the card.
+- On a phone held sideways the cards are wider and lower, so Start riding
+  shows without scrolling.
+- "5 of 26 veng open" and the map's other lines now read in Mizo too.
+
 ## 1.34.2 (1 November 2026)
 
 ### Aizawl Ride: no getting shut in down south
