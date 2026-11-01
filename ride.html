@@ -324,6 +324,7 @@
   /* (what to do next stays in sight at the foot of a long card) */
   .actions { position: sticky; bottom: calc(-1 * var(--pad)); z-index: 2; display: grid; gap: 8px; margin: 2px calc(-1 * var(--pad)) calc(-1 * var(--pad)); padding: 10px var(--pad) var(--pad); background: linear-gradient(color-mix(in srgb, var(--panel) 0%, transparent), var(--panel) 12px); }
   .quiz .fine:empty { display: none; }
+  .actions #garageNote:empty { display: none; }
   @media (prefers-color-scheme: dark) {
     .citybtn { background: linear-gradient(#20354a, #182a3c); }
     .citybtn .txt b, .citybtn .chev { color: #dcebfb !important; }
@@ -435,8 +436,8 @@
           <div class="list" id="scooters"></div>
           <h3 class="sub"><span data-t="riderBox">The rider and the box</span> <small class="fine" data-t="boughtCoins">bought with your coins</small></h3>
           <div class="list" id="shop"></div>
-          <p class="fine" id="garageNote" aria-live="polite"></p>
-          <button class="go" type="button" data-close data-t="done">Done</button>
+          <div class="actions"><p class="fine" id="garageNote" aria-live="polite"></p>
+          <button class="go" type="button" data-close data-t="done">Done</button></div>
         </div>
       </div>
       <div class="overlay" id="mapView" hidden>
@@ -448,7 +449,7 @@
           <p class="fine" id="mapNote"></p>
           <h3 data-t="longRides">Long rides</h3>
           <div class="routes" id="routes"></div>
-          <button class="go" type="button" data-close data-t="back">Back</button>
+          <div class="actions"><button class="go" type="button" data-close data-t="back">Back</button></div>
         </div>
       </div>
       <div class="overlay" id="missionsView" hidden>
@@ -462,13 +463,13 @@
           <p class="fine" id="starsLine"></p>
           <h3 class="sub"><span data-t="badges">Badges</span> <small class="fine" id="badgeCount"></small></h3>
           <div class="badges" id="badges"></div>
-          <button class="go" type="button" data-close data-t="done">Done</button>
           <button class="link" id="resetBtn" type="button" data-t="reset">Reset my progress</button>
           <div class="confirm" id="resetAsk" hidden>
             <p data-t="resetAsk">This clears your coins, scooters, missions, badges and best scores on this device.</p>
             <button class="route small danger" id="resetYes" type="button" data-t="resetYes">Yes, reset everything</button>
             <button class="route small" id="resetNo" type="button" data-t="resetNo">Keep it</button>
           </div>
+          <div class="actions"><button class="go" type="button" data-close data-t="done">Done</button></div>
         </div>
       </div>
       <div class="overlay" id="creditsView" hidden>

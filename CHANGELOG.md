@@ -4,6 +4,20 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.36.1 (1 November 2026)
+
+### Aizawl Ride: Done always in reach
+
+- On the Missions, Garage and Aizawl map cards, Done and Back stay at the
+  foot of the card: with thirty badges, the Missions card no longer has to
+  be scrolled to the end to close it.
+- What the garage says when you tap something (how many more coins it
+  needs, that it is yours) now shows beside Done, where it is seen, not
+  at the far end of the card.
+- Checked: every page on a phone, sideways and on a computer, hundreds of
+  random taps on every game, broken saves, the keyboard, and playing
+  offline.
+
 ## 1.36.0 (1 November 2026)
 
 ### Aizawl Ride: thirty badges, and the game in Mizo all through
