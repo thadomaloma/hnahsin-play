@@ -166,28 +166,42 @@
   .install p { margin: 0; padding: 10px 14px; border-radius: 14px; background: rgba(255, 255, 255, .55); font-size: 15px; font-weight: 600; line-height: 1.4; }
   .install .note { font-size: 14px; font-weight: 700; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  /* ------------------------------------------------ the foot of the page: the hill again, the Hnahsin flower, who made it */
-  .site-foot { position: relative; margin-top: 64px; padding: 26px 0 max(26px, env(safe-area-inset-bottom)); background: linear-gradient(180deg, #6dbe5e, #4f9d45 70%, #3f8a39); color: #f2ffe9; text-align: center; font-size: 14px; line-height: 1.5; isolation: isolate; }
-  .foot-hill { position: absolute; left: 0; right: 0; bottom: 100%; width: 100%; height: clamp(40px, 6vw, 80px); display: block; }
-  .foot-hill .h1 { fill: #8fd27a; } .foot-hill .h2 { fill: #6dbe5e; }
-  .foot-flower { position: absolute; bottom: calc(100% - 6px); width: var(--s); transform-origin: 50% 100%; animation: sway 4s ease-in-out infinite alternate; }
+  /* ------------------------------------------------ the foot of the page: hills falling into a forest green,
+     the Hnahsin flower (a tap takes you back to the top), the games, and who made it */
+  .site-foot { --fg: #e9f5e4; --fg-2: rgba(233, 245, 228, .68); --rule: rgba(233, 245, 228, .14); --deep: #173a22;
+    position: relative; margin-top: 96px; padding: 30px 0 max(22px, env(safe-area-inset-bottom)); color: var(--fg); font-size: 15px; line-height: 1.5;
+    background: linear-gradient(180deg, #22512f 0, var(--deep) 45%, #102a18 100%); isolation: isolate; }
+  .foot-hill { position: absolute; left: 0; right: 0; bottom: calc(100% - 1px); width: 100%; height: clamp(54px, 8vw, 110px); display: block; }
+  .foot-hill .h1 { fill: #9fd98a; opacity: .55; } .foot-hill .h2 { fill: #4f9d45; } .foot-hill .h3 { fill: #22512f; }
+  .foot-flower { position: absolute; right: 8%; bottom: calc(100% + clamp(14px, 2.4vw, 34px)); width: 34px; transform-origin: 50% 100%; animation: sway 5s ease-in-out infinite alternate; }
   .foot-flower svg { display: block; width: 100%; aspect-ratio: 1; }
-  .foot-flower::after { content: ""; display: block; width: 3px; height: calc(var(--s) * .7); margin: -4px auto 0; border-radius: 3px; background: var(--leaf-deep); }
-  .foot-flower.f1 { left: 6%; --s: 44px; animation-delay: -1s; } .foot-flower.f2 { right: 9%; --s: 52px; animation-delay: -2.4s; } .foot-flower.f3 { left: 18%; --s: 30px; animation-delay: -.6s; }
-  .foot-in { display: grid; justify-items: center; gap: 12px; }
-  .foot-logo { width: 96px; height: 96px; border-radius: 26px; border: 4px solid #fff; box-shadow: 0 10px 24px rgba(20, 60, 20, .35); animation: float 4s ease-in-out infinite; }
-  .site-foot .mini-tiles i { box-shadow: 0 3px 0 #f8bbd0, 0 6px 12px rgba(20, 60, 20, .25); }
-  .site-foot .foot-tag { color: #fff; text-shadow: 0 1px 2px rgba(20, 60, 20, .35); }
-  .foot-app { display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: 99px; background: #fff; color: #2e7d32; font-weight: 800; text-decoration: none; box-shadow: 0 4px 0 rgba(20, 60, 20, .35); transition: transform .15s var(--ease); }
-  .foot-app:hover { transform: translateY(-2px); }
-  .foot-base { width: min(100%, 460px); margin-top: 6px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, .3); }
-  .foot-base p { margin: 2px 0; color: rgba(242, 255, 233, .9); }
-  .foot-base b { color: #fff; }
-  .foot-base a { color: #fff; font-weight: 700; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .site-foot { background: linear-gradient(180deg, #2c5e2c, #1f4722 70%, #183a1b); } :root:not([data-theme="light"]) .foot-hill .h1 { fill: #3b7a38; } :root:not([data-theme="light"]) .foot-hill .h2 { fill: #2c5e2c; } }
-  :root[data-theme="dark"] .site-foot { background: linear-gradient(180deg, #2c5e2c, #1f4722 70%, #183a1b); } :root[data-theme="dark"] .foot-hill .h1 { fill: #3b7a38; } :root[data-theme="dark"] .foot-hill .h2 { fill: #2c5e2c; }
-  @media (prefers-reduced-motion: reduce) { .foot-logo, .foot-flower { animation: none; } }
-  .foot-brand { display: grid; justify-items: center; gap: 6px; }
+  .foot-flower::after { content: ""; display: block; width: 2px; height: 26px; margin: -3px auto 0; border-radius: 2px; background: #3d7f39; }
+  .foot-grid { display: grid; gap: 28px; justify-items: center; text-align: center; }
+  .foot-logo-link { display: inline-flex; align-items: center; gap: 14px; color: inherit; text-decoration: none; border-radius: 20px; }
+  .foot-logo { width: 64px; height: 64px; border-radius: 18px; box-shadow: 0 0 0 1px rgba(255, 255, 255, .25), 0 10px 26px rgba(0, 0, 0, .35); transition: transform .4s var(--ease), box-shadow .4s var(--ease); }
+  .foot-logo-link:focus-visible .foot-logo, .foot-logo-link:active .foot-logo { transform: translateY(-3px) rotate(-4deg); box-shadow: 0 0 0 2px #ffc94a, 0 14px 30px rgba(0, 0, 0, .4); }
+  .foot-name { display: grid; justify-items: start; gap: 6px; }
+  .site-foot .mini-tiles i { width: 22px; height: 24px; font-size: 14px; box-shadow: 0 3px 0 #f8bbd0; }
+  .site-foot .foot-tag { font-size: 15px; color: #ffe08a; letter-spacing: .04em; }
+  .foot-line { margin: 12px 0 0; color: var(--fg-2); max-width: 32ch; }
+  .foot-col h2 { margin: 0 0 10px; font-family: inherit; font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--fg-2); }
+  .foot-col ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .foot-col a { position: relative; color: var(--fg); font-weight: 700; text-decoration: none; }
+  .foot-col a::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; border-radius: 2px; background: #ffc94a; transform: scaleX(0); transform-origin: 0 50%; transition: transform .3s var(--ease); }
+  .foot-col a:focus-visible::after { transform: scaleX(1); }
+  @media (hover: hover) { .foot-logo-link:hover .foot-logo { transform: translateY(-3px) rotate(-4deg); box-shadow: 0 0 0 2px #ffc94a, 0 14px 30px rgba(0, 0, 0, .4); } .foot-col a:hover::after { transform: scaleX(1); } }
+  .foot-col .tag { margin-left: 6px; padding: 1px 7px; border-radius: 99px; border: 1px solid var(--rule); color: var(--fg-2); font-size: 11px; font-weight: 700; vertical-align: 2px; }
+  .foot-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--rule); color: var(--fg-2); font-size: 13.5px; text-align: center; }
+  .foot-bar p { margin: 0; } .foot-bar b { color: var(--fg); }
+  .foot-bar a { color: var(--fg); font-weight: 700; text-decoration-color: rgba(255, 201, 74, .7); text-underline-offset: 3px; }
+  @media (min-width: 760px) {
+    .foot-grid { grid-template-columns: 1fr auto; align-items: start; justify-items: stretch; text-align: left; }
+    .foot-col { min-width: 200px; }
+    .foot-bar { justify-content: space-between; text-align: left; }
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .site-foot { --deep: #0f2617; background: linear-gradient(180deg, #183b22 0, #0f2617 45%, #0a1c10 100%); } :root:not([data-theme="light"]) .foot-hill .h1 { fill: #2f6b31; opacity: .6; } :root:not([data-theme="light"]) .foot-hill .h2 { fill: #24532a; } :root:not([data-theme="light"]) .foot-hill .h3 { fill: #183b22; } }
+  :root[data-theme="dark"] .site-foot { --deep: #0f2617; background: linear-gradient(180deg, #183b22 0, #0f2617 45%, #0a1c10 100%); } :root[data-theme="dark"] .foot-hill .h1 { fill: #2f6b31; opacity: .6; } :root[data-theme="dark"] .foot-hill .h2 { fill: #24532a; } :root[data-theme="dark"] .foot-hill .h3 { fill: #183b22; }
+  @media (prefers-reduced-motion: reduce) { .foot-flower { animation: none; } .foot-logo, .foot-col a::after { transition: none; } }
   .mini-tiles { display: flex; gap: 4px; }
   .mini-tiles i { display: grid; place-items: center; width: 24px; height: 26px; border-radius: 7px; background: #fffdf7; color: var(--coral); font-style: normal; font-family: var(--font-display); font-weight: 800; font-size: 15px; box-shadow: 0 3px 0 #f8bbd0; }
   .mini-tiles i:nth-child(odd) { transform: rotate(-4deg); } .mini-tiles i:nth-child(even) { transform: rotate(3deg); }
@@ -440,24 +454,34 @@
 </main>
 
 <footer class="site-foot">
-  <svg class="foot-hill" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
-    <path class="h1" d="M0 52C240 10 470 18 720 44S1180 78 1440 30V90H0Z"/>
-    <path class="h2" d="M0 72C300 40 560 52 820 66S1240 86 1440 60V90H0Z"/>
+  <svg class="foot-hill" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true">
+    <path class="h1" d="M0 58C210 18 420 22 640 48S1120 92 1440 36V120H0Z"/>
+    <path class="h2" d="M0 82C260 46 520 56 790 74S1230 104 1440 70V120H0Z"/>
+    <path class="h3" d="M0 102C320 78 600 86 860 98S1260 116 1440 96V120H0Z"/>
   </svg>
-  <span class="foot-flower f1" aria-hidden="true"><svg style="--petal-fill:#f06292"><use href="#cosmos"/></svg></span>
-  <span class="foot-flower f2" aria-hidden="true"><svg style="--petal-fill:#9c7cf0"><use href="#cosmos"/></svg></span>
-  <span class="foot-flower f3" aria-hidden="true"><svg style="--petal-fill:#fbe4ee"><use href="#cosmos"/></svg></span>
-  <div class="wrap foot-in">
-    <img class="foot-logo" src="pics/app-icon.webp" alt="" width="96" height="96" loading="lazy" decoding="async">
-    <div class="foot-brand" aria-label="Hnahsin, Mizo Thumal Infiamna">
-      <span class="mini-tiles" aria-hidden="true"><i>H</i><i>N</i><i>A</i><i>H</i><i>S</i><i>I</i><i>N</i></span>
-      <span class="foot-tag">Mizo Thumal Infiamna</span>
+  <span class="foot-flower" aria-hidden="true"><svg style="--petal-fill:#f48fb1"><use href="#cosmos"/></svg></span>
+  <div class="wrap foot-grid">
+    <div class="foot-brand-col">
+      <a class="foot-logo-link" href="./" aria-label="Hnahsin: back to the top">
+        <img class="foot-logo" src="pics/app-icon.webp" alt="" width="64" height="64" loading="lazy" decoding="async">
+        <span class="foot-name"><span class="mini-tiles" aria-hidden="true"><i>H</i><i>N</i><i>A</i><i>H</i><i>S</i><i>I</i><i>N</i></span><span class="foot-tag">Mizo Thumal Infiamna</span></span>
+      </a>
+      <p class="foot-line">Learn Mizo by playing. Free, on any phone, no sign-up.</p>
     </div>
-    <a class="foot-app" href="app/">▶ Try the Hnahsin app</a>
-    <div class="foot-base">
-      <p class="dev">Developed by <b>Maloma Thado</b></p>
-      <p class="ver">Version 1.38.2 · <a href="https://github.com/thadomaloma/hnahsin-play/releases">What's new</a></p>
-    </div>
+    <nav class="foot-col" aria-labelledby="foot-play">
+      <h2 id="foot-play">Play</h2>
+      <ul>
+        <li><a href="journey.html">Rova's Journey</a></li>
+        <li><a href="playground.html">Hnahsin Playground</a></li>
+        <li><a href="things.html">Touch and learn</a></li>
+        <li><a href="ride.html">Aizawl Ride</a></li>
+        <li><a href="app/">The Hnahsin app <span class="tag">Preview</span></a></li>
+      </ul>
+    </nav>
+  </div>
+  <div class="wrap foot-bar">
+    <p>Developed by <b>Maloma Thado</b></p>
+    <p>Version 1.38.3 · <a href="https://github.com/thadomaloma/hnahsin-play/releases">What's new</a></p>
   </div>
 </footer>
 
@@ -487,7 +511,7 @@
 
 <script src="stats.js?v=ff1d2eba" async></script>
 <script src="rova.js?v=f35ca6fa" defer></script>
-<script src="home.js?v=e52aa3b6" defer></script>
+<script src="home.js?v=073c2047" defer></script>
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js'));</script>
 
 </body>

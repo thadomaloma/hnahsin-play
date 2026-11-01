@@ -155,6 +155,14 @@
     };
   }
 
+  // ------------------------------------------------ the logo at the foot: back to the top
+  const footLogo = $('.foot-logo-link');
+  if (footLogo) footLogo.addEventListener('click', e => {
+    e.preventDefault();
+    scrollTo({ top: 0, behavior: calm ? 'auto' : 'smooth' });
+    $('h1').setAttribute('tabindex', '-1'); $('h1').focus({ preventScroll: true });
+  });
+
   // ------------------------------------------------ Touch and learn card: name tags on the pictures
   // The card shows the house, pi at her loom and the market stall in turn. The .json files say where each part is
   // in the pictures (written by source/things/snapshot.js). A tap opens the one on show.

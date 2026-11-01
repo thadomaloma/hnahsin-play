@@ -4,6 +4,17 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.38.3 (1 November 2026)
+
+### Home page: a finer foot
+
+- The foot of the page is quieter and richer: the hills fall into a deep
+  forest green, with one cosmos on the hill. The Hnahsin flower, the tiles and
+  Mizo Thumal Infiamna sit on one side, a list of the games (and the Hnahsin
+  app) on the other, and who made it, the version and What's new along the
+  bottom.
+- A tap on the Hnahsin flower takes you back to the top of the page.
+
 ## 1.38.2 (1 November 2026)
 
 ### Home page: a new foot
