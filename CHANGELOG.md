@@ -4,6 +4,27 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.36.0 (1 November 2026)
+
+### Aizawl Ride: thirty badges, and the game in Mizo all through
+
+- Thirty badges to collect, from a first ride to every veng: a delivery in
+  the rain or at night, every coin on a road, three stars past two queues,
+  ten deliveries without a crash, a climb of 100 m, up to Durtlang, north
+  and south Aizawl, three and seven days running, every helmet, every
+  colour, every Mizo word, the Krismas and Chapchar Kut missions, and two
+  secrets found on the road.
+- Each badge has a rarity (common, rare, epic, legend) and gives XP by it,
+  says how it is won, and shows how far along you are. New ones are marked,
+  and the Missions button shows a dot until you have seen them.
+- Fixed: a delivery on the Aizawl map did not give the Delivered badge;
+  something bought in the shop did not count for A new look; the one-ride
+  coin mission counted the bonus coins for queues and crossings; "25 coins
+  saved" counted coins earned, and is now named so.
+- In Mizo, the missions, medals, badges, rank, map, long rides, garage and
+  what is said on the road are all in Mizo now; switching language with a
+  card open changes it at once.
+
 ## 1.35.1 (1 November 2026)
 
 ### Aizawl Ride: a brake to lean on

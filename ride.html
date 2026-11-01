@@ -190,12 +190,21 @@
   .meter i { display: block; height: 100%; background: var(--leaf); }
   .claim { min-height: 40px; padding: 4px 12px; border-radius: 99px; border: 1.5px solid var(--ink); background: #2e7d32; color: #fff; font-weight: 800; font-size: 14px; }
   .claim[disabled] { background: transparent; color: var(--muted); border-color: color-mix(in srgb, var(--ink) 30%, transparent); }
-  .badges { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-  .badge { padding: 8px 4px; border-radius: 12px; border: 1.5px dashed color-mix(in srgb, var(--ink) 35%, transparent); font-size: 13px; font-weight: 700; color: var(--muted); line-height: 1.25; }
-  .badge span { display: block; font-size: 22px; filter: grayscale(1); opacity: .45; }
-  .badge.got { border-style: solid; border-color: var(--ink); color: var(--ink); background: #fff8e1; }
-  .badge.got { color: #231e16; }
-  .badge.got span { filter: none; opacity: 1; }
+  /* the badges: a tile each, its rarity in its colour (common bronze, rare blue, epic purple, legend gold) */
+  .badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 7px; text-align: left; }
+  .badge { --rc: #a1887f; display: grid; gap: 5px; align-content: start; padding: 8px 9px; border-radius: 14px; border: 1.5px dashed color-mix(in srgb, var(--ink) 30%, transparent); color: var(--muted); line-height: 1.25; }
+  .badge.r1 { --rc: #1e88e5; } .badge.r2 { --rc: #8e24aa; } .badge.r3 { --rc: #e0a000; }
+  .badge .bi { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; font-size: 19px; background: color-mix(in srgb, var(--ink) 6%, transparent); filter: grayscale(1); opacity: .5; }
+  .badge .bt { display: grid; gap: 2px; min-width: 0; }
+  .badge b { font-size: 13.5px; color: var(--ink); opacity: .75; }
+  .badge small { font-size: 11.5px; font-weight: 600; }
+  .badge .meter { height: 5px; margin-top: 3px; }
+  .badge .rar { font-style: normal; font-size: 10.5px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; color: var(--rc); }
+  .badge .new { padding: 1px 6px; border-radius: 99px; background: #e53935; color: #fff; }
+  .badge.got { border-style: solid; border-color: var(--rc); background: color-mix(in srgb, var(--rc) 10%, var(--panel)); box-shadow: 0 2px 0 var(--rc); }
+  .badge.got b { opacity: 1; }
+  .badge.got .bi { filter: none; opacity: 1; background: color-mix(in srgb, var(--rc) 22%, var(--panel)); box-shadow: 0 0 0 2px var(--rc); }
+  .badge.r3.got .bi { box-shadow: 0 0 0 2px var(--rc), 0 0 12px color-mix(in srgb, var(--rc) 60%, transparent); }
   .news { display: grid; gap: 4px; font-size: 15px; font-weight: 700; }
   .news:empty { display: none; }
   .link { background: none; border: 0; color: var(--muted); text-decoration: underline; font-size: 14px; min-height: 36px; }
@@ -451,7 +460,7 @@
           <h3 class="sub" data-t="medals">Medals</h3>
           <div class="list" id="missions"></div>
           <p class="fine" id="starsLine"></p>
-          <h3 data-t="badges">Badges</h3>
+          <h3 class="sub"><span data-t="badges">Badges</span> <small class="fine" id="badgeCount"></small></h3>
           <div class="badges" id="badges"></div>
           <button class="go" type="button" data-close data-t="done">Done</button>
           <button class="link" id="resetBtn" type="button" data-t="reset">Reset my progress</button>
@@ -578,23 +587,23 @@
     { id: 'eng', name: 'eng', en: 'yellow', need: 10000, body: ['#fff1a8', '#f2c230', '#b88a12'] },
   ];
   const DESIGNS = [
-    { id: 'everyday', name: 'Everyday', en: 'the town scooter, as Aizawl rides it', need: 0 },
-    { id: 'classic', name: 'Classic', en: 'round and chrome, a round lamp, the old Italian way', need: 3000 },
-    { id: 'sport', name: 'Sport', en: 'sharp lines, twin lights, a raised tail', need: 8000 },
-    { id: 'electric', name: 'Electric', en: 'smooth and quiet, LED lights and a screen', need: 14000 },
+    { id: 'everyday', name: 'Everyday', en: 'the town scooter, as Aizawl rides it', mz: 'khawpui scooter, Aizawl-in a chuan ang chiah', need: 0 },
+    { id: 'classic', name: 'Classic', en: 'round and chrome, a round lamp, the old Italian way', mz: 'a hmel bial leh chrome, light bial, Italy hmanlai dan', need: 3000 },
+    { id: 'sport', name: 'Sport', en: 'sharp lines, twin lights, a raised tail', mz: 'a hmel hriam, light kawp, a mei chawi sang', need: 8000 },
+    { id: 'electric', name: 'Electric', en: 'smooth and quiet, LED lights and a screen', mz: 'a nem a, a ri lo, LED light leh screen nen', need: 14000 },
   ];
   // Medals for what you do over many rides, each in bronze, silver and gold. Medals, stars and
   // today's missions make your XP; XP makes your rider rank, and each rank adds a tenth to your scores.
   const ACH = [
-    { id: 'km', icon: '🛣️', name: 'Kilometres ridden', tiers: [1, 10, 50], have: () => Math.floor(S.metres / 1000) },
-    { id: 'deliveries', icon: '📦', name: 'Deliveries made', tiers: [3, 15, 50], have: () => Object.values(S.deliveries).reduce((a, b) => a + b, 0) + S.cityDone },
-    { id: 'coins', icon: '<i class="coin"></i>', name: 'Coins earned', tiers: [100, 500, 2000], have: () => S.lifetime },
-    { id: 'jams', icon: '🚦', name: 'Queues waited in', tiers: [3, 15, 40], have: () => S.jams },
-    { id: 'crossed', icon: '🚸', name: 'People let across', tiers: [3, 10, 30], have: () => S.crossed },
-    { id: 'veng', icon: '🏘️', name: 'Veng visited', tiers: [5, 13, 26], have: () => S.visited.length },
-    { id: 'stars', icon: '⭐', name: 'Stars won', tiers: [10, 50, 150], have: () => totalStars() },
-    { id: 'daily', icon: '🗓️', name: "Today's missions done", tiers: [5, 20, 60], have: () => S.dailyDone },
-    { id: 'quiz', icon: '🗣️', name: 'Mizo words answered right', tiers: [5, 20, 60], have: () => S.quizRight },
+    { id: 'km', icon: '🛣️', name: 'Kilometres ridden', mz: 'Km i tlan zat', tiers: [1, 10, 50], have: () => Math.floor(S.metres / 1000) },
+    { id: 'deliveries', icon: '📦', name: 'Deliveries made', mz: 'Thil i thlen zat', tiers: [3, 15, 50], have: () => Object.values(S.deliveries).reduce((a, b) => a + b, 0) + S.cityDone },
+    { id: 'coins', icon: '<i class="coin"></i>', name: 'Coins earned', mz: 'Coin i hmuh zat', tiers: [100, 500, 2000], have: () => S.lifetime },
+    { id: 'jams', icon: '🚦', name: 'Queues waited in', mz: 'Jam i nghah zat', tiers: [3, 15, 40], have: () => S.jams },
+    { id: 'crossed', icon: '🚸', name: 'People let across', mz: 'Mi kal tlang i nghah zat', tiers: [3, 10, 30], have: () => S.crossed },
+    { id: 'veng', icon: '🏘️', name: 'Veng visited', mz: 'Veng i thlen zat', tiers: [5, 13, 26], have: () => S.visited.length },
+    { id: 'stars', icon: '⭐', name: 'Stars won', mz: 'Arsi i hmuh zat', tiers: [10, 50, 150], have: () => totalStars() },
+    { id: 'daily', icon: '🗓️', name: "Today's missions done", mz: 'Vawiin tihtur i zawh zat', tiers: [5, 20, 60], have: () => S.dailyDone },
+    { id: 'quiz', icon: '🗣️', name: 'Mizo words answered right', mz: 'Mizo thumal i chhan dik zat', tiers: [5, 20, 60], have: () => S.quizRight },
   ];
   const TIERS = [{ name: 'Bronze', medal: '🥉', xp: 100 }, { name: 'Silver', medal: '🥈', xp: 200 }, { name: 'Gold', medal: '🥇', xp: 400 }];
   const RANKS = [
@@ -644,38 +653,72 @@
   // by the date. Some count over one ride, some over the whole day. Each pays points, which open veng,
   // designs and colours just as your best scores do.
   const DAILY = [
-    { id: 'coins25', text: 'Pick up 25 coins in one ride', kind: 'coin', per: 'ride', goal: 25, reward: 250, tier: 0 },
-    { id: 'jam1', text: 'Wait your turn in a traffic jam', kind: 'jam', per: 'day', goal: 1, reward: 250, tier: 0 },
-    { id: 'deliver1', text: 'Make a delivery', kind: 'deliver', per: 'day', goal: 1, reward: 250, tier: 0 },
-    { id: 'coins60', text: 'Pick up 60 coins today', kind: 'coin', per: 'day', goal: 60, reward: 400, tier: 1 },
-    { id: 'city2', text: 'Make 2 deliveries on the Aizawl map today', kind: 'city', per: 'day', goal: 2, reward: 400, tier: 1 },
-    { id: 'km2', text: 'Ride 2 km today', kind: 'metres', per: 'day', goal: 2000, reward: 350, tier: 1 },
-    { id: 'star2', text: 'Earn 2 stars on a delivery', kind: 'stars', per: 'ride', goal: 2, reward: 350, tier: 1 },
-    { id: 'words3', text: 'Meet 3 Mizo road words in one ride', kind: 'words', per: 'ride', goal: 3, reward: 350, tier: 1 },
-    { id: 'quiz2', text: 'Answer 2 Mizo word questions right today', kind: 'quiz', per: 'day', goal: 2, reward: 350, tier: 1 },
-    { id: 'jam3', text: 'Wait your turn in 3 traffic jams today', kind: 'jam', per: 'day', goal: 3, reward: 500, tier: 2 },
-    { id: 'cross2', text: 'Stop and let people cross 2 times today', kind: 'cross', per: 'day', goal: 2, reward: 500, tier: 2 },
-    { id: 'deliver3', text: 'Make 3 deliveries today', kind: 'deliver', per: 'day', goal: 3, reward: 500, tier: 2 },
-    { id: 'star3', text: 'Earn 3 stars on a delivery', kind: 'stars', per: 'ride', goal: 3, reward: 600, tier: 2 },
+    { id: 'coins25', text: 'Pick up 25 coins in one ride', mz: 'Ride khatah coin 25 la rawh', kind: 'coin', per: 'ride', goal: 25, reward: 250, tier: 0 },
+    { id: 'jam1', text: 'Wait your turn in a traffic jam', mz: 'Traffic jam-ah i chan nghak rawh', kind: 'jam', per: 'day', goal: 1, reward: 250, tier: 0 },
+    { id: 'deliver1', text: 'Make a delivery', mz: 'Thil pakhat thlen rawh', kind: 'deliver', per: 'day', goal: 1, reward: 250, tier: 0 },
+    { id: 'coins60', text: 'Pick up 60 coins today', mz: 'Vawiinah coin 60 la rawh', kind: 'coin', per: 'day', goal: 60, reward: 400, tier: 1 },
+    { id: 'city2', text: 'Make 2 deliveries on the Aizawl map today', mz: 'Vawiinah Aizawl map-ah thil 2 thlen rawh', kind: 'city', per: 'day', goal: 2, reward: 400, tier: 1 },
+    { id: 'km2', text: 'Ride 2 km today', mz: 'Vawiinah km 2 tlan rawh', kind: 'metres', per: 'day', goal: 2000, reward: 350, tier: 1 },
+    { id: 'star2', text: 'Earn 2 stars on a delivery', mz: 'Delivery pakhatah arsi 2 hmu rawh', kind: 'stars', per: 'ride', goal: 2, reward: 350, tier: 1 },
+    { id: 'words3', text: 'Meet 3 Mizo road words in one ride', mz: 'Ride khatah Mizo kawng thumal 3 hmu rawh', kind: 'words', per: 'ride', goal: 3, reward: 350, tier: 1 },
+    { id: 'quiz2', text: 'Answer 2 Mizo word questions right today', mz: 'Vawiinah Mizo thumal zawhna 2 dik takin chhang rawh', kind: 'quiz', per: 'day', goal: 2, reward: 350, tier: 1 },
+    { id: 'jam3', text: 'Wait your turn in 3 traffic jams today', mz: 'Vawiinah traffic jam 3-ah i chan nghak rawh', kind: 'jam', per: 'day', goal: 3, reward: 500, tier: 2 },
+    { id: 'cross2', text: 'Stop and let people cross 2 times today', mz: 'Vawiinah vawi 2 ding la, mi kal tlang nghak rawh', kind: 'cross', per: 'day', goal: 2, reward: 500, tier: 2 },
+    { id: 'deliver3', text: 'Make 3 deliveries today', mz: 'Vawiinah thil 3 thlen rawh', kind: 'deliver', per: 'day', goal: 3, reward: 500, tier: 2 },
+    { id: 'star3', text: 'Earn 3 stars on a delivery', mz: 'Delivery pakhatah arsi 3 hmu rawh', kind: 'stars', per: 'ride', goal: 3, reward: 600, tier: 2 },
   ];
+  const said = x => L(x.text || x.name, x.mz || x.text || x.name);
   const totalStars = () => Object.values(S.stars).reduce((a, b) => a + b, 0);
   const tierOf = a => a.tiers.filter(t => a.have() >= t).length;
-  // XP: 100 a star, 150 for each of today's missions done, and each medal's own
-  const xp = () => totalStars() * 100 + (S.dailyDone || 0) * 150 + ACH.reduce((t, a) => t + TIERS.slice(0, tierOf(a)).reduce((u, x) => u + x.xp, 0), 0);
+  // XP: 100 a star, 150 for each of today's missions done, each medal's own, and each badge's by its rarity
+  const xp = () => totalStars() * 100 + (S.dailyDone || 0) * 150 + ACH.reduce((t, a) => t + TIERS.slice(0, tierOf(a)).reduce((u, x) => u + x.xp, 0), 0) +
+    S.badges.reduce((t, id) => { const x = BADGES.find(y => y.id === id); return t + (x ? RARITY[x.rare].xp : 0); }, 0);
   const rankOf = (x = xp()) => { let i = 0; while (i + 1 < RANKS.length && x >= RANKS[i + 1].xp) i++; return i; };
   const multOf = r => +(1 + r * 0.1).toFixed(1);
+  // Badges: thirty to collect, from a first ride to every veng. Each has a rarity (and XP by it), says
+  // how it is won, and shows how far along you are; two are secret until found. A ride's own feats
+  // (every coin, rain, a climb...) are judged at its end from what happened on it (r); the rest from the save.
+  const RARITY = [{ name: 'Common', mz: 'Awlsam', xp: 50 }, { name: 'Rare', mz: 'Rare', xp: 100 }, { name: 'Epic', mz: 'Epic', xp: 200 }, { name: 'Legend', mz: 'Legend', xp: 400 }];
+  const NORTH = ['bawngkawn', 'zemabawk', 'durtlang'], SOUTH = ['kulikawn', 'venghlui', 'khatla', 'mission'];
+  const been = list => list.filter(v => S.visited.includes(v)).length;
+  const helmets = () => COSMETICS.filter(x => x.slot === 'helmet' && !x.event);
   const BADGES = [
-    { id: 'first', icon: '🛵', name: 'First ride', got: () => S.rides >= 1 },
-    { id: 'deliver', icon: '📦', name: 'Delivered', got: () => Object.values(S.deliveries).some(n => n > 0) },
-    { id: 'coins25', icon: '<i class="coin"></i>', name: '25 coins saved', got: () => S.lifetime >= 25 },
-    { id: 'km1', icon: '🛣️', name: '1 km ridden', got: () => S.metres >= 1000 },
-    { id: 'garage', icon: '🔑', name: 'A new look', got: () => S.design !== 'everyday' || S.scooter !== 'hring' },
-    { id: 'words', icon: '🗣️', name: 'All 5 road words', got: () => S.words.length >= SCENE_WORDS.length },
-    { id: 'veng5', icon: '🏘️', name: '5 veng visited', got: () => S.visited.length >= 5 },
-    { id: 'vengall', icon: '🗺️', name: 'Every veng', got: () => CITY && CITY.veng.every(v => S.visited.includes(v.id)) },
-    { id: 'driver', icon: '🚦', name: 'Aizawl driver', got: () => S.jams >= 5 },
-    { id: 'zah', icon: '🚸', name: 'Let people cross', got: () => S.crossed >= 3 },
+    { id: 'first', icon: '🛵', rare: 0, name: 'First ride', mz: 'Ride hmasa ber', how: 'Ride once', howMz: 'Vawi khat tlan rawh', got: () => S.rides >= 1 },
+    { id: 'deliver', icon: '📦', rare: 0, name: 'Delivered', mz: 'Thil thlen hmasa', how: 'Make a delivery', howMz: 'Thil pakhat thlen rawh', got: () => S.cityDone > 0 || Object.values(S.deliveries).some(n => n > 0) },
+    { id: 'coins25', icon: '<i class="coin"></i>', rare: 0, name: '25 coins earned', mz: 'Coin 25 hmu', how: 'Earn 25 coins', howMz: 'Coin 25 hmu rawh', got: () => S.lifetime >= 25, prog: () => [S.lifetime, 25] },
+    { id: 'km1', icon: '🛣️', rare: 0, name: '1 km ridden', mz: 'Km 1 tlan', how: 'Ride 1 km in all', howMz: 'A vaiin km 1 tlan rawh', got: () => S.metres >= 1000, prog: () => [Math.floor(S.metres / 100) / 10, 1] },
+    { id: 'garage', icon: '🔑', rare: 0, name: 'A new look', mz: 'Hmel thar', how: 'Ride a new design or colour, or wear something from the shop', howMz: 'Design emaw rawng thar emaw hmang la, dawr atanga thil hak rawh',
+      got: () => S.design !== 'everyday' || S.scooter !== 'hring' || S.cos.helmet !== 'h-var' || S.cos.jacket !== 'j-dumpawl' || S.cos.box !== 'b-eng' },
+    { id: 'zah', icon: '🚸', rare: 0, name: 'Let people cross', mz: 'Mi kal tlang nghak', how: 'Stop for people crossing 3 times', howMz: 'Mi kal tlang vawi 3 nghak rawh', got: () => S.crossed >= 3, prog: () => [S.crossed, 3] },
+    { id: 'driver', icon: '🚦', rare: 1, name: 'Aizawl driver', mz: 'Aizawl driver', how: 'Wait your turn in 5 queues', howMz: 'Jam 5-ah i chan nghak rawh', got: () => S.jams >= 5, prog: () => [S.jams, 5] },
+    { id: 'words', icon: '🗣️', rare: 1, name: 'All 5 road words', mz: 'Kawng thumal 5 zawng zawng', how: 'Meet all 5 Mizo road words', howMz: 'Mizo kawng thumal 5 zawng zawng hmu rawh', got: () => S.words.length >= SCENE_WORDS.length, prog: () => [S.words.length, SCENE_WORDS.length] },
+    { id: 'veng5', icon: '🏘️', rare: 1, name: '5 veng visited', mz: 'Veng 5 thleng', how: 'Reach 5 veng on the Aizawl map', howMz: 'Aizawl map-ah veng 5 thleng rawh', got: () => S.visited.length >= 5, prog: () => [S.visited.length, 5] },
+    { id: 'durtlang', icon: '⛰️', rare: 1, name: 'Top of Durtlang', mz: 'Durtlang chhip', how: 'Ride up to Durtlang', howMz: 'Durtlang thleng rawh', got: () => S.visited.includes('durtlang') },
+    { id: 'longest', icon: '🧭', rare: 1, name: 'The long way', mz: 'Kawng sei', how: 'Deliver on a road of 3 km or more', howMz: 'Km 3 aia sei kawngah thil thlen rawh', got: r => !!r && r.delivered && route.length >= 3000 },
+    { id: 'rain', icon: '🌧️', rare: 1, name: 'Rain rider', mz: 'Ruah sur rider', how: 'Deliver in the rain', howMz: 'Ruah sur laiin thil thlen rawh', got: r => !!r && r.delivered && cond.rain },
+    { id: 'night', icon: '🌙', rare: 1, name: 'Night rider', mz: 'Zan rider', how: 'Deliver at night (after half past six)', howMz: 'Zanah thil thlen rawh (dar 6:30 hnu)', got: r => !!r && r.delivered && cond.night },
+    { id: 'streak3', icon: '🔥', rare: 1, name: 'Three days running', mz: 'Ni 3 zawn', how: 'Ride on 3 days in a row', howMz: 'Ni 3 zawn tlan rawh', got: () => S.streak.best >= 3, prog: () => [S.streak.n, 3] },
+    { id: 'slow', icon: '🐢', rare: 1, secret: true, name: 'Slow and steady', mz: 'Muang muang', how: 'Wait still at a crossing for 10 seconds', howMz: 'Crossing-ah second 10 ding reng rawh', got: r => !!r && r.slow },
+    { id: 'owl', icon: '🦉', rare: 1, secret: true, name: 'Night owl', mz: 'Zan riak', how: 'Ride after 11 at night', howMz: 'Zan dar 11 hnuah tlan rawh', got: r => !!r && (r.hour >= 23 || r.hour < 4) },
+    { id: 'allcoins', icon: '💰', rare: 2, name: 'Every coin', mz: 'Coin zawng zawng', how: 'Pick up every coin on a delivery', howMz: 'Delivery pakhatah coin zawng zawng la rawh', got: r => !!r && r.delivered && coinsPut > 0 && picked >= coinsPut },
+    { id: 'patience', icon: '🧘', rare: 2, name: 'Patience', mz: 'Dawhtheihna', how: 'Three stars on a road with 2 queues or more', howMz: 'Jam 2 aia tam awmna kawngah arsi 3 hmu rawh', got: r => !!r && r.stars === 3 && jams.length >= 2 },
+    { id: 'careful', icon: '🛡️', rare: 2, name: 'Careful rider', mz: 'Fimkhur', how: 'Deliver 10 times in a row without a crash', howMz: 'Crash lovin vawi 10 zawn thil thlen rawh', got: () => S.cleanBest >= 10, prog: () => [S.cleanRun, 10] },
+    { id: 'climb', icon: '📈', rare: 2, name: 'Hill climber', mz: 'Tlang lawn', how: 'Deliver up a road that climbs 100 m, like Bawngkawn to Durtlang', howMz: 'Kawng m 100 chho-ah thil thlen rawh, Bawngkawn atanga Durtlang ang',
+      got: r => !!r && r.delivered && route.id.startsWith('city:') && (route.height[route.height.length - 1] - route.height[0]) / 10 >= 100 },
+    { id: 'wetnight', icon: '⛈️', rare: 2, name: 'Wet night', mz: 'Zan ruah', how: 'Deliver at night in the rain', howMz: 'Zanah ruah sur laiin thil thlen rawh', got: r => !!r && r.delivered && cond.rain && cond.night },
+    { id: 'north', icon: '⬆️', rare: 2, name: 'North Aizawl', mz: 'Aizawl hmarlam', how: 'Reach Bawngkawn, Zemabawk and Durtlang', howMz: 'Bawngkawn, Zemabawk leh Durtlang thleng vek rawh', got: () => been(NORTH) === NORTH.length, prog: () => [been(NORTH), NORTH.length] },
+    { id: 'south', icon: '⬇️', rare: 2, name: 'South Aizawl', mz: 'Aizawl chhimlam', how: 'Reach Kulikawn, Venghlui, Khatla and Mission Veng', howMz: 'Kulikawn, Venghlui, Khatla leh Mission Veng thleng vek rawh', got: () => been(SOUTH) === SOUTH.length, prog: () => [been(SOUTH), SOUTH.length] },
+    { id: 'helmets', icon: '🪖', rare: 2, name: 'Every helmet', mz: 'Helmet zawng zawng', how: 'Buy every helmet in the shop', howMz: 'Dawr helmet zawng zawng lei rawh', got: () => helmets().every(x => S.cos.owned.includes(x.id)), prog: () => [helmets().filter(x => S.cos.owned.includes(x.id)).length, helmets().length] },
+    { id: 'wordsall', icon: '📖', rare: 2, name: 'Mizo word master', mz: 'Mizo tawng thiam', how: 'Answer every Mizo word right at least once', howMz: 'Mizo thumal zawng zawng vawi khat tal dik takin chhang rawh', got: () => S.quizKnown.length >= QUIZ_WORDS.length, prog: () => [S.quizKnown.length, QUIZ_WORDS.length] },
+    { id: 'xmas', icon: '🎄', rare: 2, name: 'Krismas', mz: 'Krismas', how: 'Finish the Krismas mission (December)', howMz: 'Krismas tihtur zo rawh (December)', got: () => S.cos.owned.includes('h-krismas') },
+    { id: 'chapchar', icon: '🌸', rare: 2, name: 'Chapchar Kut', mz: 'Chapchar Kut', how: 'Finish the Chapchar Kut mission (early March)', howMz: 'Chapchar Kut tihtur zo rawh (March tir)', got: () => S.cos.owned.includes('b-chapchar') },
+    { id: 'vengall', icon: '🗺️', rare: 3, name: 'Every veng', mz: 'Veng zawng zawng', how: 'Reach all 26 veng', howMz: 'Veng 26 zawng zawng thleng rawh', got: () => !!CITY && CITY.veng.every(v => S.visited.includes(v.id)), prog: () => [CITY ? been(CITY.veng.map(v => v.id)) : S.visited.length, CITY ? CITY.veng.length : 26] },
+    { id: 'streak7', icon: '🏆', rare: 3, name: 'A week running', mz: 'Kar khat zawn', how: 'Ride on 7 days in a row', howMz: 'Ni 7 zawn tlan rawh', got: () => S.streak.best >= 7, prog: () => [S.streak.n, 7] },
+    { id: 'colours', icon: '🎨', rare: 3, name: 'Every colour', mz: 'Rawng zawng zawng', how: 'Open every scooter colour', howMz: 'Scooter rawng zawng zawng hawng rawh', got: () => SCOOTERS.every(hasColour), prog: () => [SCOOTERS.filter(hasColour).length, SCOOTERS.length] },
   ];
+  // the badges just won (r: the ride just ended, if any), kept in the save
+  const badgeNews = x => `<span>${x.icon} ${L('New badge', 'Badge thar')}: <b>${said(x)}</b> · ${L(RARITY[x.rare].name, RARITY[x.rare].mz)} · ✨ +${RARITY[x.rare].xp} XP</span>`;
+  const award = r => { const won = BADGES.filter(x => !S.badges.includes(x.id) && x.got(r)); won.forEach(x => S.badges.push(x.id)); return won; };
 
   // ---------- the save: one small versioned record, checked when read ----------
   // If storage is blocked the game keeps everything in memory for this visit.
@@ -686,7 +729,7 @@
   };
   const fresh = () => ({ v: 1, best: {}, wallet: 0, lifetime: 0, metres: 0, rides: 0, deliveries: {}, bestCoins: 0, bestMetres: 0, bestTime: 0,
     owned: ['hring'], scooter: 'hring', design: 'everyday', badges: [], claimed: [], words: [], route: '', sound: true,
-    at: 'dawrpui', visited: [], cityDone: 0, cityBest: {}, jams: 0, crossed: 0, bonus: 0, dailyDone: 0, quizRight: 0, quizAsked: 0, tips: [], lang: 'en', fest: { id: '', year: 0, prog: 0, claimed: false }, cos: { owned: ['h-var', 'j-dumpawl', 'b-eng'], helmet: 'h-var', jacket: 'j-dumpawl', box: 'b-eng' }, stars: {}, daily: { day: '', prog: {}, claimed: [] } });
+    at: 'dawrpui', visited: [], cityDone: 0, cityBest: {}, jams: 0, crossed: 0, bonus: 0, dailyDone: 0, quizRight: 0, quizAsked: 0, quizKnown: [], streak: { day: '', n: 0, best: 0 }, cleanRun: 0, cleanBest: 0, badgesSeen: [], tips: [], lang: 'en', fest: { id: '', year: 0, prog: 0, claimed: false }, cos: { owned: ['h-var', 'j-dumpawl', 'b-eng'], helmet: 'h-var', jacket: 'j-dumpawl', box: 'b-eng' }, stars: {}, daily: { day: '', prog: {}, claimed: [] } });
   function readSave() {
     const f = fresh();
     let d = null;
@@ -705,6 +748,7 @@
     f.scooter = SCOOTERS.some(x => x.id === d.scooter) ? d.scooter : 'hring';     // (one not open yet falls back below)
     f.design = DESIGNS.some(x => x.id === d.design) ? d.design : 'everyday';
     f.badges = ids(d.badges, BADGES.map(x => x.id));
+    f.badgesSeen = Array.isArray(d.badgesSeen) ? ids(d.badgesSeen, f.badges) : [...f.badges];     // (a save from before: what it had is not new)
     f.words = ids(d.words, SCENE_WORDS.map(x => x[0]));
     f.route = typeof d.route === 'string' ? d.route : ''; f.sound = d.sound !== false;
     // The Aizawl map: where you are, the veng you have reached, best scores per delivery
@@ -717,6 +761,8 @@
     f.tips = ids(d.tips, TIPS);
     if (d.fest && typeof d.fest === 'object' && EVENTS.some(e => e.id === d.fest.id)) f.fest = { id: d.fest.id, year: num(d.fest.year), prog: num(d.fest.prog), claimed: d.fest.claimed === true }; f.lang = d.lang === 'mz' ? 'mz' : 'en';
     f.bonus = num(d.bonus); f.dailyDone = num(d.dailyDone); f.quizRight = num(d.quizRight); f.quizAsked = num(d.quizAsked);
+    f.quizKnown = ids(d.quizKnown, QUIZ_WORDS.map(x => x[0])); f.cleanRun = num(d.cleanRun); f.cleanBest = num(d.cleanBest);
+    if (d.streak && typeof d.streak === 'object' && typeof d.streak.day === 'string' && /^(\d{4}-\d{1,2}-\d{1,2})?$/.test(d.streak.day)) f.streak = { day: d.streak.day, n: num(d.streak.n), best: num(d.streak.best) };
     if (d.cos && typeof d.cos === 'object') {     // the rider's look: what was bought, what is worn
       f.cos.owned = [...new Set([...f.cos.owned, ...ids(d.cos.owned, COSMETICS.map(x => x.id))])];
       for (const [slot] of SLOTS) { const w = d.cos[slot]; if (f.cos.owned.includes(w) && COSMETICS.some(x => x.id === w && x.slot === slot)) f.cos[slot] = w; }
@@ -767,7 +813,7 @@
       S.daily.prog[x.id] = now;
       // said on the road, after whatever else is being said: when it is done, or a step of a few
       if (mode === 'playing' && (now >= x.goal || (x.goal <= 5 && kind !== 'coin'))) {
-        const msg = now >= x.goal ? `🎯 <b>Done!</b> ${x.text}` : `🎯 ${x.text} · ${now} of ${x.goal}`;
+        const msg = now >= x.goal ? `🎯 <b>${L('Done!', 'A zo!')}</b> ${said(x)}` : `🎯 ${said(x)} · ${now} / ${x.goal}`;
         setTimeout(() => { if (mode === 'playing') { toast(msg, true); if (now >= x.goal) beep(1180, 0.12); } }, 1900);
       }
     }
@@ -845,7 +891,7 @@
     return { night: /[?&]night\b/.test(q) || (!/[?&]day\b/.test(q) && (h >= 18.5 || h < 5.5)), rain: /[?&]rain\b/.test(q) || (!/[?&]dry\b/.test(q) && Math.random() < (m >= 5 && m <= 8 ? 0.4 : 0.12)) };
   }
   let cars = [], jams = [], braking = false, carT = 0, oncomingT = 0, eventWords = new Set();
-  let peds = [], crossings = [], pedT = 0;
+  let peds = [], crossings = [], pedT = 0, stillT = 0, slowDone = false;     // (how long stopped at a crossing: a secret badge)
   let s, v, px, pvx, pax, laneFrom, laneV, laneA, laneTo, laneT, lane, coins, picked, coinsPut, rideMult, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
   let soundOn = S.sound;
 
@@ -854,7 +900,7 @@
     s = 0; v = 0; lane = 1; px = 0; pvx = 0; pax = 0; laneFrom = laneV = laneA = laneTo = 0; laneT = LANE_T; coins = 0; time = 0; bgX = 0; shake = 0; lean = 0; crashT = 0; crashDir = 1;
     things = []; sparks = []; pops = []; nextRow = 70; lastOpen = 1; passed = new Set();
     cars = []; jams = planJams(); crossings = planCrossings(); peds = []; pedT = 0; buildStrip(); prepMini(); braking = false; carT = 3; oncomingT = 5; eventWords = new Set(); brakeHint(false);
-    best0 = bestOf(route.id); bestShown = false; wordsSeen = new Set(); wordT = 4; picked = 0; coinsPut = 0; rideMult = multOf(rankOf());
+    best0 = bestOf(route.id); bestShown = false; wordsSeen = new Set(); wordT = 4; picked = 0; coinsPut = 0; rideMult = multOf(rankOf()); stillT = 0; slowDone = false;
     plan(); hud(true);
     if (R3) R3.setPlan();
   }
@@ -3854,7 +3900,7 @@
   }
   function syncSound() { $('sound').textContent = soundOn ? '🔊' : '🔈'; $('sound').setAttribute('aria-pressed', soundOn); $('sound').setAttribute('aria-label', soundOn ? 'Sound on' : 'Sound off'); }
   $('sound').onclick = () => { soundOn = !soundOn; S.sound = soundOn; writeSave(); syncSound(); beep(700); };
-  $('langBtn').onclick = () => { S.lang = S.lang === 'mz' ? 'en' : 'mz'; writeSave(); applyLang(); showParcel(); hud(true); syncReady(); if (panel === 'missionsView') drawMissions(); if (panel === 'garageView') drawGarage(); beep(700); };
+  $('langBtn').onclick = () => { S.lang = S.lang === 'mz' ? 'en' : 'mz'; writeSave(); applyLang(); showParcel(); hud(true); syncReady(); drawRoutes(); if (panel === 'missionsView') drawMissions(); if (panel === 'garageView') { $('garageNote').textContent = ''; drawGarage(); } if (panel === 'mapView') drawMap(); beep(700); };
 
   // ---------- the game ----------
   function update(dt) {
@@ -3871,6 +3917,8 @@
     if (braking) v = Math.max(0, v - (cond.rain ? 8 : 12) * dt);   // a firm brake: stops in a few metres (more on a wet road)
     else v += ((top - Math.max(0, climb) * 12) - v) * Math.min(1, dt * 0.9);
     s += v * dt;
+    stillT = v < 0.3 && crossings.some(c => c.state === 'crossing' && c.at - s > -1 && c.at - s < 25) ? stillT + dt : 0;
+    if (stillT >= 10) slowDone = true;
     const was = px;
     // To the new lane on a smooth curve, as lane games do: it arrives in LANE_T seconds, with no
     // creeping at the end. A quintic curve (smootherstep): its speed and its acceleration both start
@@ -3907,10 +3955,10 @@
       // as wide as it is drawn, with the scooter's own half width: a barrier or a log 2.2 m across, a rock about 1.9 m
       if (Math.abs(LANES[t.lane] - px) > (t.kind === 'coin' ? 1.15 : t.kind === 'rock' ? 0.95 + 0.3 : 1.1 + 0.3)) continue;
       if (t.kind === 'coin') {
-        t.got = true; coins++; picked++; dailyAdd('coin', 1, coins); beep(880, 0.06); burst('#ffd34d');
+        t.got = true; coins++; picked++; dailyAdd('coin', 1, picked); beep(880, 0.06); burst('#ffd34d');
         pops.push({ text: '+1', x: riderXY().x + (Math.random() - .5) * 30, y: riderXY().y - 110, life: 1 });
         const b = $('coins'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump');
-        if (coins % 10 === 0) toast(`${coins} coins!`);
+        if (coins % 10 === 0) toast(L(`${coins} coins!`, `Coin ${coins}!`));
       } else {
         crashBy = `${t.kind} in lane ${t.lane}, scooter x ${px.toFixed(1)}`;
         t.hit = true; shake = 1; crashT = 0; crashDir = t.lane < lane || (t.lane === lane && px > LANES[lane]) ? 1 : -1;
@@ -3920,7 +3968,7 @@
     things = things.filter(t => t.at > s - 8 && !t.got);
     tick(dt);
     const score = Math.floor((Math.floor(s) + coins * 25) * rideMult);
-    if (best0 > 0 && !bestShown && score > best0) { bestShown = true; toast('New best!'); }
+    if (best0 > 0 && !bestShown && score > best0) { bestShown = true; toast(L('New best!', 'A tha ber thar!')); }
     // Road names and places, as you pass them
     for (const [i, name] of route.roads) if (!passed.has('r' + i) && s >= i * SEG) { passed.add('r' + i); toast(name); }
     for (const [i, name] of route.places) if (!passed.has('p' + i) && s >= i * SEG) { passed.add('p' + i); if (i > 2) toast(name); }
@@ -3973,8 +4021,11 @@
       if (score > best) S.best[route.id] = score;
     }
     $('nextBtn').hidden = !(city && delivered);
-    const newBadges = BADGES.filter(x => !S.badges.includes(x.id) && x.got());
-    newBadges.forEach(x => S.badges.push(x.id));
+    // days in a row with a ride, and deliveries in a row without a crash
+    const today = todayKey(), y = new Date(); y.setDate(y.getDate() - 1);
+    if (S.streak.day !== today) { S.streak.n = S.streak.day === `${y.getFullYear()}-${y.getMonth() + 1}-${y.getDate()}` ? S.streak.n + 1 : 1; S.streak.day = today; S.streak.best = Math.max(S.streak.best, S.streak.n); }
+    S.cleanRun = delivered ? S.cleanRun + 1 : 0; S.cleanBest = Math.max(S.cleanBest, S.cleanRun);
+    const newBadges = award({ delivered, stars, slow: slowDone, hour: new Date().getHours() });
     writeSave();
     const readyNow = daily().filter(dailyReady).length, xpNow = xp(), rankNow = rankOf(xpNow);
     const medals = ACH.map((a, i) => [a, tiersBefore[i], tierOf(a)]).filter(([, b, n]) => n > b);
@@ -3984,12 +4035,12 @@
       `<small>${stars === 3 ? L('The Aizawl way, and the coins too!', 'Aizawl dan ngei, coin pawh!') : !aizawlWay ? L('Next time wait in every queue and let people cross, for a second star.', 'Arsi pahnihna tan jam zawng zawng nghak la, mi kal tlang te nghak rawh.') : L(`Pick up half the coins (${picked} of ${coinsPut}) for the third star.`, `Arsi pathumna tan coin chanve la rawh (${picked} / ${coinsPut}).`)}${stars > starsBefore && starsBefore ? L(' A new best!', ' A tha ber thar!') : ''}</small>`;
     $('endNews').innerHTML = [
       coins ? `<span><i class="coin"></i> +${coins} ${L(`into your wallet (now ${S.wallet})`, `i wallet ah (tunah ${S.wallet})`)}</span>` : '',
-      ...newBadges.map(x => `<span>${x.icon} ${L('New badge', 'Badge thar')}: ${x.name}</span>`),
+      ...newBadges.map(badgeNews),
       readyNow > readyBefore ? `<span>🎯 ${L('A mission is done: claim it in Missions', 'Tihtur pakhat a zo: Tihtur ah la rawh')}</span>` : '',
-      ...medals.map(([a, , n]) => `<span>${TIERS[n - 1].medal} ${L(`${TIERS[n - 1].name} medal`, `Medal ${TIERS[n - 1].name}`)}: ${a.name} (${a.tiers[n - 1]})</span>`),
+      ...medals.map(([a, , n]) => `<span>${TIERS[n - 1].medal} ${L(`${TIERS[n - 1].name} medal`, `Medal ${TIERS[n - 1].name}`)}: ${said(a)} (${a.tiers[n - 1]})</span>`),
       xpNow > xpBefore ? `<span>✨ +${fmt(xpNow - xpBefore)} XP</span>` : '',
       rankNow > rankBefore ? `<span class="rankup">🏍️ ${L('New rank', 'Rank thar')}: <b>${RANKS[rankNow].name}</b> · score ×${multOf(rankNow)}</span>` : '',
-      ...daily().filter(x => !S.daily.claimed.includes(x.id) && !dailyReady(x) && dailyHave(x) > 0).map(x => `<span>🗓️ ${L('Today', 'Vawiin')}: ${x.text} · ${fmtGoal(x, dailyHave(x))} / ${fmtGoal(x, x.goal)}</span>`),
+      ...daily().filter(x => !S.daily.claimed.includes(x.id) && !dailyReady(x) && dailyHave(x) > 0).map(x => `<span>🗓️ ${L('Today', 'Vawiin')}: ${said(x)} · ${fmtGoal(x, dailyHave(x))} / ${fmtGoal(x, x.goal)}</span>`),
       points() > ptsBefore ? `<span>⭐ +${fmt(points() - ptsBefore)} ${L(`points (now ${fmt(points())})`, `point (tunah ${fmt(points())})`)}</span>` : '',
       ...(openBefore ? CITY.veng.filter(v => isOpen(v.id) && !openBefore.includes(v.id)).map(v => `<span>🔓 ${L(`${v.name} is open on the Aizawl map`, `${v.name} chu Aizawl map ah a inhawng ta`)}</span>`) : []),
     ].join('');
@@ -4027,7 +4078,7 @@
     const right = b.dataset.m === quizWord[0];
     $('quizOpts').querySelectorAll('button').forEach(x => { x.disabled = true; if (x.dataset.m === quizWord[0]) x.classList.add('ok'); });
     S.quizAsked++;
-    if (right) { S.quizRight++; S.wallet += 10; S.lifetime += 10; dailyAdd('quiz', 1); syncWallet(true); beep(990, 0.15); $('quizA').innerHTML = L(`Right! <b>${quizWord[0]}</b> is ${quizWord[1]}`, `A dik! <b>${quizWord[0]}</b> chu ${quizWord[1]} a ni`) + ' · <i class="coin"></i> +10'; }
+    if (right) { S.quizRight++; S.wallet += 10; S.lifetime += 10; dailyAdd('quiz', 1); if (!S.quizKnown.includes(quizWord[0])) S.quizKnown.push(quizWord[0]); $('endNews').insertAdjacentHTML('beforeend', award().map(badgeNews).join('')); syncWallet(true); beep(990, 0.15); $('quizA').innerHTML = L(`Right! <b>${quizWord[0]}</b> is ${quizWord[1]}`, `A dik! <b>${quizWord[0]}</b> chu ${quizWord[1]} a ni`) + ' · <i class="coin"></i> +10'; }
     else { b.classList.add('no'); beep(300, 0.15); $('quizA').innerHTML = L(`<b>${quizWord[0]}</b> is ${quizWord[1]}. Next time!`, `<b>${quizWord[0]}</b> chu ${quizWord[1]} a ni. A dawt lehah!`); }
     writeSave();
   });
@@ -4070,7 +4121,7 @@
     else if (need('steer') && time > 1.2) showTip('steer');
     else if (need('coin') && coinsAhead && !block) showTip('coin');
   }
-  $('howBtn').onclick = () => { S.tips = []; writeSave(); $('howBtn').textContent = 'The tips will show on your next ride'; };
+  $('howBtn').onclick = () => { S.tips = []; writeSave(); $('howBtn').textContent = L('The tips will show on your next ride', 'I ride dawt lehah tip te a lang leh ang'); };
   function frame(now) {
     if (mode !== 'playing' && mode !== 'crashing') { loopId = 0; return; }
     const dt = Math.min(0.04, (now - last) / 1000); last = now;
@@ -4090,7 +4141,7 @@
     if (fe && !S.fest.claimed) setTimeout(() => { if (mode === 'playing') toast(`${fe.icon} ${L(fe.text, fe.mz)} · ${S.fest.prog} / ${fe.goal}`, true); }, 5200);
     if (cond.rain || cond.night) setTimeout(() => { if (mode === 'playing') toast(cond.rain ? L('🌧️ Rain: the road is wet, brake early', '🌧️ Ruah a sur: kawng a hnawng, brake hma takin') : L('🌙 Night: your lamp lights the way', '🌙 Zan a ni: i light in kawng a en ang'), true); }, 2600);
     $('startView').hidden = $('endView').hidden = $('pauseView').hidden = true; syncPause();
-    toast(`${parcel[2]} <b>${parcel[0]}</b> · ${parcel[1]}, to ${route.to}`, true);
+    toast(`${parcel[2]} <b>${parcel[0]}</b> · ${parcel[1]}${L(`, to ${route.to}`, `, ${route.to}-ah`)}`, true);
     run();
     hnStat(`ride/${route.id}`, `Aizawl Ride: ${route.to}`);
   }
@@ -4112,7 +4163,7 @@
 
   // ---------- choosing a road ----------
   function drawRoutes() {
-    $('routes').innerHTML = DATA.routes.map(r => `<button class="route" type="button" data-id="${r.id}" aria-pressed="${r === route}"><b>To ${r.to}</b><span>From ${r.from} · ${(r.length / 1000).toFixed(1)} km${bestOf(r.id) ? ` · best ${bestOf(r.id)}` : ''}${S.stars[r.id] ? ` · <i class="stars">${starText(S.stars[r.id])}</i>` : ''}</span></button>`).join('');
+    $('routes').innerHTML = DATA.routes.map(r => `<button class="route" type="button" data-id="${r.id}" aria-pressed="${r === route}"><b>${L(`To ${r.to}`, `${r.to} lam`)}</b><span>${L(`From ${r.from}`, `${r.from} atangin`)} · ${(r.length / 1000).toFixed(1)} km${bestOf(r.id) ? ` · ${L('best', 'tha ber')} ${bestOf(r.id)}` : ''}${S.stars[r.id] ? ` · <i class="stars">${starText(S.stars[r.id])}</i>` : ''}</span></button>`).join('');
   }
   $('routes').addEventListener('click', e => {
     const b = e.target.closest('.route'); if (!b) return;
@@ -4141,8 +4192,8 @@
     if (bump) { w.classList.remove('bump'); void w.offsetWidth; w.classList.add('bump'); }
   }
   const syncReady = () => {
-    const fe = festMission(); $('readyDot').hidden = !daily().some(dailyReady) && !(fe && !S.fest.claimed && S.fest.prog >= fe.goal);
-    const r = rankOf(); $('rankLine').textContent = `🏍️ ${RANKS[r].name}${r ? ` · scores ×${multOf(r)}` : ''}`;
+    const fe = festMission(); $('readyDot').hidden = !daily().some(dailyReady) && !(fe && !S.fest.claimed && S.fest.prog >= fe.goal) && S.badges.every(b => S.badgesSeen.includes(b));
+    const r = rankOf(); $('rankLine').textContent = `🏍️ ${RANKS[r].name}${r ? ` · ${L('scores', 'score')} ×${multOf(r)}` : ''}`;
     if (CITY) $('mapSub').textContent = vengOpen();
   };
   let panel = null;
@@ -4166,7 +4217,7 @@
     const pts = points(), lock = x => `🔒 ${fmt(x.need)}`;
     $('designs').innerHTML = DESIGNS.map(x => {
       const open = hasDesign(x), on = myDesign() === x;
-      return `<button class="item" type="button" data-design="${x.id}" aria-pressed="${on}" aria-label="${x.name}, ${x.en}${open ? '' : `, opens at ${fmt(x.need)} points`}"${open ? '' : ' aria-disabled="true"'}><span class="sw design ${x.id}" aria-hidden="true">🛵</span><span><b>${x.name}</b><small>${x.en}</small></span><span class="tag">${on ? L('Riding', 'I chuan mek') : open ? L('Ride it', 'Chuang rawh') : lock(x)}</span></button>`;
+      return `<button class="item" type="button" data-design="${x.id}" aria-pressed="${on}" aria-label="${x.name}, ${x.en}${open ? '' : `, opens at ${fmt(x.need)} points`}"${open ? '' : ' aria-disabled="true"'}><span class="sw design ${x.id}" aria-hidden="true">🛵</span><span><b>${x.name}</b><small>${L(x.en, x.mz)}</small></span><span class="tag">${on ? L('Riding', 'I chuan mek') : open ? L('Ride it', 'Chuang rawh') : lock(x)}</span></button>`;
     }).join('');
     $('scooters').innerHTML = SCOOTERS.map(x => {
       const open = hasColour(x), on = myScooter() === x;
@@ -4178,7 +4229,7 @@
       const look = x.puan ? 'repeating-linear-gradient(0deg, #1b1b1b 0 5px, #c8323d 5px 8px, #1b1b1b 8px 11px, #f2c230 11px 12px)' : `linear-gradient(135deg, ${x.c[0]}, ${x.c[1] || x.c[0]})`;
       return `<button class="item" type="button" data-cos="${x.id}" aria-pressed="${on}" aria-label="${label}, ${x.name}, ${x.en}${own ? '' : `, ${x.price} coins`}"><span class="sw" style="background:${look}"></span><span><b>${x.name}</b><small>${x.en}</small></span><span class="tag">${on ? L('Wearing', 'I ha mek') : own ? L('Wear it', 'Ha rawh') : x.event ? `🎁 ${EVENTS.find(e => e.id === x.event).name}` : `<i class="coin"></i> ${x.price}`}</span></button>`;
     }).join('')).join('');
-    if (!$('garageNote').textContent) $('garageNote').textContent = `Your points: ${fmt(pts)} · your coins: ${fmt(S.wallet)}.`;
+    if (!$('garageNote').textContent) $('garageNote').textContent = L(`Your points: ${fmt(pts)} · your coins: ${fmt(S.wallet)}.`, `I point: ${fmt(pts)} · i coin: ${fmt(S.wallet)}.`);
   }
   // pick a design or a colour; one not open yet says how many points it needs
   $('garageView').addEventListener('click', e => {
@@ -4187,27 +4238,28 @@
       const x = COSMETICS.find(y => y.id === b.dataset.cos); if (!x) return;
       if (!S.cos.owned.includes(x.id) && x.event) { $('garageNote').textContent = L(`Won in ${EVENTS.find(e => e.id === x.event).name}: its mission, in Missions while it is on.`, `${EVENTS.find(e => e.id === x.event).name} lai a tihtur zawh a hmuh theih.`); return; }
       if (!S.cos.owned.includes(x.id)) {
-        if (S.wallet < x.price) { $('garageNote').textContent = `You need ${x.price - S.wallet} more coins for the ${x.name} ${x.slot === 'box' ? 'box' : x.slot}.`; return; }
+        if (S.wallet < x.price) { $('garageNote').textContent = L(`You need ${x.price - S.wallet} more coins for the ${x.name} ${x.slot === 'box' ? 'box' : x.slot}.`, `${x.slot === 'box' ? 'Box' : x.slot === 'helmet' ? 'Helmet' : 'Jacket'} ${x.name} tan coin ${x.price - S.wallet} i la mamawh.`); return; }
         S.wallet -= x.price; S.cos.owned.push(x.id); syncWallet(true); beep(990, 0.15);
-        $('garageNote').textContent = `The ${x.name} ${x.slot === 'box' ? 'box' : x.slot} is yours!`;
-      } else $('garageNote').textContent = `Wearing the ${x.name} ${x.slot === 'box' ? 'box' : x.slot}.`;
-      S.cos[x.slot] = x.id; writeSave(); drawGarage(); draw();
+        $('garageNote').textContent = L(`The ${x.name} ${x.slot === 'box' ? 'box' : x.slot} is yours!`, `${x.slot === 'box' ? 'Box' : x.slot === 'helmet' ? 'Helmet' : 'Jacket'} ${x.name} i ta a ni ta!`);
+      } else $('garageNote').textContent = L(`Wearing the ${x.name} ${x.slot === 'box' ? 'box' : x.slot}.`, `${x.slot === 'box' ? 'Box' : x.slot === 'helmet' ? 'Helmet' : 'Jacket'} ${x.name} i ha mek.`);
+      S.cos[x.slot] = x.id; award();
+      writeSave(); drawGarage(); draw();
       const again = $('garageView').querySelector(`[data-cos="${x.id}"]`); if (again) again.focus();
       return;
     }
     const d = b.dataset.design, x = d ? DESIGNS.find(y => y.id === d) : SCOOTERS.find(y => y.id === b.dataset.id);
     if (!x) return;
-    if (!(d ? hasDesign(x) : hasColour(x))) { $('garageNote').textContent = `${x.name} opens at ${fmt(x.need)} points. You have ${fmt(points())}: beat your best scores to get there.`; return; }
+    if (!(d ? hasDesign(x) : hasColour(x))) { $('garageNote').textContent = L(`${x.name} opens at ${fmt(x.need)} points. You have ${fmt(points())}: beat your best scores to get there.`, `${x.name} hi point ${fmt(x.need)}-ah a inhawng ang. Point ${fmt(points())} i nei: i score tha ber te paltlang la, i thleng ang.`); return; }
     if (d) S.design = x.id; else S.scooter = x.id;
-    $('garageNote').textContent = `${x.name}${d ? '' : ` (${x.en})`}: ready to ride.`; beep(990, 0.12);
-    BADGES.filter(y => !S.badges.includes(y.id) && y.got()).forEach(y => S.badges.push(y.id));
-    writeSave(); drawGarage(); draw();
+    $('garageNote').textContent = L(`${x.name}${d ? '' : ` (${x.en})`}: ready to ride.`, `${x.name}: chuan turin a inpeih.`); beep(990, 0.12);
+    award(); writeSave(); drawGarage(); draw();
     const again = $('garageView').querySelector(d ? `[data-design="${x.id}"]` : `[data-id="${x.id}"]`); if (again) again.focus();
   });
 
   function drawMissions() {
     const left = new Date(); left.setHours(24, 0, 0, 0); const mins = Math.max(1, Math.round((left - Date.now()) / 60000));
-    $('dailyLeft').textContent = `· new ones in ${mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`}`;
+    const hm = mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`;
+    $('dailyLeft').textContent = L(`· new ones in ${hm}`, `· ${hm} hnuah a thar`);
     const fe = festMission();
     $('daily').innerHTML = (fe ? (() => {
       const prize = COSMETICS.find(c => c.id === fe.prize), have = S.fest.prog, ready = have >= fe.goal && !S.fest.claimed;
@@ -4215,23 +4267,33 @@
         `<button class="claim" type="button" data-fest="1"${ready ? '' : ' disabled'}>${S.fest.claimed ? L('Claimed', 'I la tawh') : L('Claim', 'La rawh')}</button></div>`;
     })() : '') + daily().map(x => {
       const have = dailyHave(x), done = S.daily.claimed.includes(x.id), ready = dailyReady(x);
-      return `<div class="item today"><span aria-hidden="true">${done ? '✅' : '🗓️'}</span><span>${x.text}<small>${done ? 'Done' : `${fmtGoal(x, have)} of ${fmtGoal(x, x.goal)} · ⭐ ${x.reward} points`}</small><span class="meter"><i style="width:${have / x.goal * 100}%"></i></span></span>` +
+      return `<div class="item today"><span aria-hidden="true">${done ? '✅' : '🗓️'}</span><span>${said(x)}<small>${done ? L('Done', 'A zo') : `${fmtGoal(x, have)} / ${fmtGoal(x, x.goal)} · ⭐ ${L(`${x.reward} points`, `point ${x.reward}`)}`}</small><span class="meter"><i style="width:${have / x.goal * 100}%"></i></span></span>` +
         `<button class="claim" type="button" data-daily="${x.id}"${ready ? '' : ' disabled'}>${done ? L('Claimed', 'I la tawh') : L('Claim', 'La rawh')}</button></div>`;
     }).join('');
     const roads = DATA.routes.length + (CITY ? CITY.jobs.length : 0), won = Object.values(S.stars).reduce((a, b) => a + b, 0);
-    $('starsLine').innerHTML = `<span class="stars">★</span> ${won} of ${roads * 3} stars won on deliveries. Three on a road: the Aizawl way, and half its coins.`;
+    $('starsLine').innerHTML = `<span class="stars">★</span> ` + L(`${won} of ${roads * 3} stars won on deliveries. Three on a road: the Aizawl way, and half its coins.`, `Arsi ${roads * 3} zinga ${won} i hmu. Kawng pakhatah arsi 3: Aizawl dan angin, a coin chanve nen.`);
     // the medals: which of bronze, silver and gold you have, and how far to the next
     $('missions').innerHTML = ACH.map(a => {
       const n = tierOf(a), have = a.have(), next = a.tiers[n], from = n ? a.tiers[n - 1] : 0;
       const pct = next === undefined ? 100 : Math.max(0, Math.min(100, (have - from) / (next - from) * 100));
-      return `<div class="item"><span aria-hidden="true">${a.icon}</span><span>${a.name}<small>${next === undefined ? `${fmt(have)} · every medal` : `${fmt(have)} of ${fmt(next)} for ${TIERS[n].name.toLowerCase()} · ✨ ${TIERS[n].xp} XP`}</small><span class="meter"><i style="width:${pct}%"></i></span></span>` +
+      return `<div class="item"><span aria-hidden="true">${a.icon}</span><span>${said(a)}<small>${next === undefined ? `${fmt(have)} · ${L('every medal', 'medal zawng zawng')}` : `${fmt(have)} / ${fmt(next)} ${L(`for ${TIERS[n].name.toLowerCase()}`, `${TIERS[n].name} tan`)} · ✨ ${TIERS[n].xp} XP`}</small><span class="meter"><i style="width:${pct}%"></i></span></span>` +
         `<span class="medals" aria-label="${n} of 3 medals">${TIERS.map((t, i) => `<span class="${i < n ? '' : 'off'}">${t.medal}</span>`).join('')}</span></div>`;
     }).join('');
     const x = xp(), r = rankOf(x), nx = RANKS[r + 1];
-    $('rankCard').innerHTML = `🏍️ <b>${RANKS[r].name}</b> · rank ${r + 1} of ${RANKS.length} · scores ×${multOf(r)}` +
+    $('rankCard').innerHTML = `🏍️ <b>${RANKS[r].name}</b> · ${L(`rank ${r + 1} of ${RANKS.length} · scores ×${multOf(r)}`, `rank ${RANKS.length} zinga ${r + 1}-na · score ×${multOf(r)}`)}` +
       `<span class="meter"><i style="width:${nx ? (x - RANKS[r].xp) / (nx.xp - RANKS[r].xp) * 100 : 100}%"></i></span>` +
-      `<small>${nx ? `${fmt(x)} of ${fmt(nx.xp)} XP to ${nx.name} (scores ×${multOf(r + 1)})` : `${fmt(x)} XP · the top rank`}. XP: 100 a star, 150 for each of today's missions, and every medal.</small>`;
-    $('badges').innerHTML = BADGES.map(x => `<div class="badge${S.badges.includes(x.id) ? ' got' : ''}"><span aria-hidden="true">${x.icon}</span>${x.name}</div>`).join('');
+      `<small>${L(`${nx ? `${fmt(x)} of ${fmt(nx.xp)} XP to ${nx.name} (scores ×${multOf(r + 1)})` : `${fmt(x)} XP · the top rank`}. XP: 100 a star, 150 for each of today's missions, every medal and every badge.`, `${nx ? `${nx.name} thleng turin XP ${fmt(nx.xp)} zinga ${fmt(x)} (score ×${multOf(r + 1)})` : `XP ${fmt(x)} · rank sang ber`}. XP: arsi pakhatah 100, vawiin tihtur pakhatah 150, medal leh badge tinah.`)}</small>`;
+    // the badges: won first (the newest marked), then by rarity; a secret one shows only once found
+    const has = x => S.badges.includes(x.id), order = [...BADGES].sort((p, q) => has(q) - has(p) || p.rare - q.rare);
+    $('badgeCount').textContent = L(`· ${S.badges.length} of ${BADGES.length}`, `· ${BADGES.length} zinga ${S.badges.length}`);
+    $('badges').innerHTML = order.map(x => {
+      const got = has(x), hide = x.secret && !got, pr = !got && x.prog ? x.prog() : null, fresh = got && !S.badgesSeen.includes(x.id);
+      return `<div class="badge r${x.rare}${got ? ' got' : ''}"><span class="bi" aria-hidden="true">${hide ? '❓' : x.icon}</span><span class="bt"><b>${hide ? L('A secret', 'Thup') : said(x)}</b>` +
+        `<small>${hide ? L('Found on the road, now and then', 'Kawngah a hmuh theih, a chang chuan') : L(x.how, x.howMz)}</small>` +
+        (pr ? `<span class="meter"><i style="width:${Math.min(100, pr[0] / pr[1] * 100)}%"></i></span><small>${fmt(Math.min(pr[0], pr[1]))} / ${fmt(pr[1])}</small>` : '') +
+        `<em class="rar">${fresh ? `<span class="new">${L('New', 'Thar')}</span> ` : ''}${L(RARITY[x.rare].name, RARITY[x.rare].mz)} · ${RARITY[x.rare].xp} XP</em></span></div>`;
+    }).join('');
+    if (S.badges.some(b => !S.badgesSeen.includes(b))) { S.badgesSeen = [...S.badges]; writeSave(); syncReady(); }
   }
   // today's: its points go to your points, for veng, designs and colours
   $('daily').addEventListener('click', e => {
@@ -4239,13 +4301,13 @@
     if (b.dataset.fest) {     // the festival's prize: yours to wear, and worn now
       const fe = festMission(); if (!fe || S.fest.claimed || S.fest.prog < fe.goal) return;
       const prize = COSMETICS.find(c => c.id === fe.prize);
-      S.fest.claimed = true; if (!S.cos.owned.includes(prize.id)) S.cos.owned.push(prize.id); S.cos[prize.slot] = prize.id;
+      S.fest.claimed = true; if (!S.cos.owned.includes(prize.id)) S.cos.owned.push(prize.id); S.cos[prize.slot] = prize.id; award();
       writeSave(); beep(1320, 0.2); syncReady(); drawMissions(); return;
     }
     const x = DAILY.find(y => y.id === b.dataset.daily);
     if (!x || !dailyReady(x)) return;                     // each paid once
     const r0 = rankOf();
-    S.daily.claimed.push(x.id); S.bonus = (S.bonus || 0) + x.reward; S.dailyDone = (S.dailyDone || 0) + 1; writeSave(); beep(990, 0.15); syncReady(); drawMissions();
+    S.daily.claimed.push(x.id); S.bonus = (S.bonus || 0) + x.reward; S.dailyDone = (S.dailyDone || 0) + 1; award(); writeSave(); beep(990, 0.15); syncReady(); drawMissions();
     if (rankOf() > r0) { $('rankCard').insertAdjacentHTML('afterbegin', `<div class="rankup">🎉 New rank!</div>`); beep(1320, 0.2); }
   });
 
@@ -4321,15 +4383,16 @@
   function drawMap() {
     const here = vengOf(S.at);
     const pts = points(), next = CITY.veng.filter(v => !isOpen(v.id)).sort((p, q) => needs()[p.id] - needs()[q.id])[0];
-    $('mapHere').innerHTML = `You are in <b>${here.name}</b>. Pick where to take the next parcel.<br>Your points: <b>${fmt(pts)}</b>` +
-      (next ? ` · ${next.name} opens at ${fmt(needs()[next.id])}` : ' · every veng is open');
+    $('mapHere').innerHTML = L(`You are in <b>${here.name}</b>. Pick where to take the next parcel.<br>Your points: <b>${fmt(pts)}</b>` +
+      (next ? ` · ${next.name} opens at ${fmt(needs()[next.id])}` : ' · every veng is open'), `<b>${here.name}</b>-ah i awm. Thil phurh dawt leh khawi lam nge i thlen ang thlang rawh.<br>I point: <b>${fmt(pts)}</b>` +
+      (next ? ` · ${next.name} hi ${fmt(needs()[next.id])}-ah a inhawng ang` : ' · veng zawng zawng a inhawng vek'));
     // The jobs from here, nearest first; a veng not open yet says how many points it needs
     $('jobs').innerHTML = jobsFrom(S.at).map(j => {
       const best = S.cityBest[j.id], been = S.visited.includes(j.b), open = isOpen(j.b), name = vengOf(j.b).name;
-      if (!open) return `<button class="item job locked" type="button" data-id="${j.id}" aria-disabled="true" aria-label="${name}, opens at ${fmt(needs()[j.b])} points"><span aria-hidden="true">🔒</span><span><b>${name}</b><small>${(j.length / 1000).toFixed(1)} km · opens at ${fmt(needs()[j.b])} points</small></span><span class="tag"></span></button>`;
-      return `<button class="item job" type="button" data-id="${j.id}" aria-pressed="${jobPick === j}"><span aria-hidden="true">${been ? '📍' : '✨'}</span><span><b>${name}</b><small>${(j.length / 1000).toFixed(1)} km${best ? ` · best ${fmt(best)}` : been ? '' : ' · a new veng'}${S.stars['city:' + j.id] ? ` · <i class="stars">${starText(S.stars['city:' + j.id])}</i>` : ''}</small></span><span class="tag">${jobPick === j ? 'Ride ▸' : ''}</span></button>`;
+      if (!open) return `<button class="item job locked" type="button" data-id="${j.id}" aria-disabled="true" aria-label="${name}, opens at ${fmt(needs()[j.b])} points"><span aria-hidden="true">🔒</span><span><b>${name}</b><small>${(j.length / 1000).toFixed(1)} km · ${L(`opens at ${fmt(needs()[j.b])} points`, `point ${fmt(needs()[j.b])}-ah a inhawng ang`)}</small></span><span class="tag"></span></button>`;
+      return `<button class="item job" type="button" data-id="${j.id}" aria-pressed="${jobPick === j}"><span aria-hidden="true">${been ? '📍' : '✨'}</span><span><b>${name}</b><small>${(j.length / 1000).toFixed(1)} km${best ? ` · ${L('best', 'tha ber')} ${fmt(best)}` : been ? '' : ` · ${L('a new veng', 'veng thar')}`}${S.stars['city:' + j.id] ? ` · <i class="stars">${starText(S.stars['city:' + j.id])}</i>` : ''}</small></span><span class="tag">${jobPick === j ? L('Ride ▸', 'Tlan ▸') : ''}</span></button>`;
     }).join('');
-    $('mapNote').textContent = `${S.visited.length} of ${CITY.veng.length} veng visited, ${openVeng().length} open. Beat your best scores to open more. Map data © OpenStreetMap contributors.`;
+    $('mapNote').textContent = L(`${S.visited.length} of ${CITY.veng.length} veng visited, ${openVeng().length} open. Beat your best scores to open more.`, `Veng ${CITY.veng.length} zinga ${S.visited.length} i thleng tawh, ${openVeng().length} a inhawng. A dang hawng turin i score tha ber te paltlang rawh.`) + ' Map data © OpenStreetMap contributors.';
     paintMap();
   }
   // The map picture: the roads (main roads wider), the veng, where you are and the way you would go
@@ -4398,7 +4461,7 @@
   $('jobs').addEventListener('click', e => {
     const b = e.target.closest('.job'); if (!b) return;
     const j = CITY.jobs.find(x => x.id === b.dataset.id);
-    if (!isOpen(j.b)) { $('mapNote').textContent = `${vengOf(j.b).name} opens at ${fmt(needs()[j.b])} points. You have ${fmt(points())}: beat your best scores to get there.`; return; }
+    if (!isOpen(j.b)) { $('mapNote').textContent = L(`${vengOf(j.b).name} opens at ${fmt(needs()[j.b])} points. You have ${fmt(points())}: beat your best scores to get there.`, `${vengOf(j.b).name} hi point ${fmt(needs()[j.b])}-ah a inhawng ang. Point ${fmt(points())} i nei: i score tha ber te paltlang la, i thleng ang.`); return; }
     if (jobPick === j) return startJob(j);
     jobPick = j; drawMap();
     const again = $('jobs').querySelector(`[data-id="${j.id}"]`); if (again) again.focus();
@@ -4411,9 +4474,9 @@
     for (const v of CITY.veng) { const d = Math.hypot(mapBox.X(v.x) - mx, mapBox.Y(v.z) - my); if (d < bd) { bd = d; best = v; } }
     if (!best) return;
     const j = jobsFrom(S.at).find(x => x.b === best.id);
-    if (!isOpen(best.id)) $('mapNote').textContent = `${best.name} opens at ${fmt(needs()[best.id])} points. You have ${fmt(points())}.`;
+    if (!isOpen(best.id)) $('mapNote').textContent = L(`${best.name} opens at ${fmt(needs()[best.id])} points. You have ${fmt(points())}.`, `${best.name} hi point ${fmt(needs()[best.id])}-ah a inhawng ang. Point ${fmt(points())} i nei.`);
     else if (j) { jobPick = j; drawMap(); }
-    else $('mapNote').textContent = best.id === S.at ? `You are in ${best.name}.` : `${best.name}: ride there from a veng nearer to it.`;
+    else $('mapNote').textContent = best.id === S.at ? L(`You are in ${best.name}.`, `${best.name}-ah i awm.`) : L(`${best.name}: ride there from a veng nearer to it.`, `${best.name}: a hnai zawk veng atangin tlan rawh.`);
   });
   function startJob(j, sameParcel) {
     route = routeOf(j); jobPick = null;
