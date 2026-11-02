@@ -4,6 +4,24 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.43.0 (2 November 2026)
+
+### Touch and learn: buttons that fit on a phone, and more to learn in Zokhua
+
+- On a phone, the text in Touch and learn's buttons no longer runs out of
+  them: the places in Zokhua's notes are as wide as their words and wrap onto
+  more rows, and a button's Mizo word drops below its label when both do not
+  fit on one line.
+- Zokhua's notes now give each place its words to learn (tap one to see its
+  English and what it is), who was who in the village (lal, upa, khawnbawl,
+  ramhual, tlangau, thirdeng, puithiam, tlangval, naupang), and where it all
+  comes from (Shakespear, Zokhua at Falkawn, J.F. Laldailova's dictionary).
+- New in the village: the chief's drum, shield and gun, and his elders meeting
+  at his house of an evening; a look inside the zawlbuk, at its hearth and
+  sleeping platform; the blacksmith's rack of tools and a dao glowing on the
+  anvil; a girl fetching water from the spring in bamboo tubes; and gardens of
+  cucumbers and beans behind the houses.
+
 ## 1.42.1 (2 November 2026)
 
 ### Touch and learn: In hlui taken out
