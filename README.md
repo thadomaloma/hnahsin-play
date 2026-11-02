@@ -21,19 +21,17 @@ Learn Mizo words by playing. Free, on any phone, no sign-up.
   - sentences and sayings: Sentence builder, Saying match
   - from the Hnahsin app, just as they are in the app: Picture Match, Spelling,
     Word Search, Word Chain, Tawng Upa, Crossword, Odd One Out, Sentence Builder
-- **Touch and learn.** A Mizo house you can tap, turn and play with. Tap a
-  part to see its Mizo name, look inside, change the time of day, make it rain
-  or blow, meet the family, have Rova and Mami visit, pick up the hen's eggs,
-  or play Find it. Zokhua: an old Mizo village as at Falkawn, with its
-  stockade and gate, the chief's house and the zawlbuk, the adviser's and
-  ordinary houses, the forge and the memorials, each to visit with its story,
-  by day or evening. Also La siam: nu makes thread from cotton in six steps,
-  from the cotton gin to the warp. Puan tah: pi weaves a Mizo puan on her
-  loom, with every tool named, and the five famous Mizo puans to learn about
-  and weave. Bazar dâwr: Rova shops at a market stall from a list in Mizo
-  numbers. And Kumtluang: a year in an old Mizo village as one long picture,
-  January to December, to drag through or play: the forest cut, burnt and
-  sown, the rice weeded in the rains, standing in the mist, harvested and
+- **Touch and learn.** Things you can tap, turn and play with, to learn their
+  Mizo names, with Find it to test yourself. Zokhua: an old Mizo village as at
+  Falkawn, with its stockade and gate, the chief's house and the zawlbuk, the
+  adviser's and ordinary houses, the forge and the memorials, each to visit
+  with its story, by day or evening. Also La siam: nu makes thread from cotton
+  in six steps, from the cotton gin to the warp. Puan tah: pi weaves a Mizo
+  puan on her loom, with every tool named, and the five famous Mizo puans to
+  learn about and weave. Bazar dâwr: Rova shops at a market stall from a list
+  in Mizo numbers. And Kumtluang: a year in an old Mizo village as one long
+  picture, January to December, to drag through or play: the forest cut, burnt
+  and sown, the rice weeded in the rains, standing in the mist, harvested and
   threshed, with each month's weather and festival (Pâwlkut, Chapchar Kut, Mim
   Kut, Khuangchawi), the month's name in English and Mizo at the top, and the
   name of anyone or anything you tap.

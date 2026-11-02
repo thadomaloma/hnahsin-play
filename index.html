@@ -145,7 +145,7 @@
   .game:hover .cover.lab span:nth-child(odd) { transform: rotate(-6deg) scale(1.06); }
   .game:hover .cover.lab span:nth-child(even) { transform: rotate(6deg) scale(1.06); }
 
-  /* Cover: Touch and learn, a still of the Mizo house */
+  /* Cover: Touch and learn, its pictures in turn (the old village, the year, the loom, the market stall) */
   .cover.things { background: #cfe8f6; }
   /* Aizawl Ride cover: the ride itself, a few seconds of it on a loop (a still until it is on the screen,
      and for reduced motion or saving data), the Mizo word for what it passes, and the real road it is */
@@ -163,17 +163,23 @@
   .cover.ride .badge3d { position: absolute; z-index: 1; right: 12px; bottom: 12px; padding: 5px 10px; border-radius: 10px; background: rgba(255, 255, 255, .92); color: #231e16; font-weight: 800; font-size: 13px; letter-spacing: .04em; }
   @media (prefers-reduced-motion: no-preference) { .cover.ride .road i { animation: blink 1.6s ease-in-out infinite; } }
   @keyframes blink { 50% { opacity: .35; } }
-  /* The card shows the house, then the loom, and back: each picture fades in over the other. */
-  .cover.things .scene { position: absolute; inset: 0; background: center / cover no-repeat; transition: opacity .9s ease, transform 6s ease-out; }
-  .cover.things .scene.house { background-image: url(pics/things-house.svg); }
-  .cover.things .scene.loom { background-image: url(pics/things-loom.svg); background-color: #f3efe6; opacity: 0; }
-  .cover.things .scene.bazar { background-image: url(pics/things-bazar.svg); background-color: #bfe0f5; opacity: 0; }
-  .cover.things.on-loom .scene.loom, .cover.things.on-bazar .scene.bazar { opacity: 1; transform: scale(1.04); }
-  .cover.things:not(.on-loom):not(.on-bazar) .scene.house { transform: scale(1.04); }
-  .cover.things .which { position: absolute; z-index: 3; left: 12px; top: 12px; display: flex; gap: 6px; }
-  .cover.things .which span { padding: 5px 11px; border-radius: 99px; background: rgba(255, 255, 255, .85); color: var(--on-light); font-weight: 800; font-size: 14px; transition: background .4s, color .4s; }
+  /* Each picture fades in over the last, and closes in slowly on its parts while it is shown (home.js) */
+  .cover.things .view { position: absolute; inset: 0; }
+  .cover.things .scene { position: absolute; inset: 0; background: center / cover no-repeat; opacity: 0; transition: opacity .9s ease; }
+  .cover.things .scene.on { opacity: 1; }
+  .cover.things .scene[data-s="zokhua"] { background-image: url(pics/things-zokhua.webp); background-color: #a9d67c; }
+  .cover.things .scene[data-s="kumtluang"] { background-image: url(pics/things-kumtluang.webp); background-color: #cfd08a; }
+  .cover.things .scene[data-s="loom"] { background-image: url(pics/things-loom.svg); background-color: #f3efe6; }
+  .cover.things .scene[data-s="bazar"] { background-image: url(pics/things-bazar.webp); background-color: #bfe0f5; }
+  /* Which picture: an icon each, the one on show named, with a bar that fills while it is shown */
+  .cover.things .which { position: absolute; z-index: 4; left: 12px; top: 12px; display: flex; gap: 6px; }
+  .cover.things .which span { position: relative; overflow: hidden; display: flex; align-items: center; gap: 5px; min-height: 30px; padding: 4px 10px; border-radius: 99px; background: rgba(255, 255, 255, .88); color: var(--on-light); font-weight: 800; font-size: 14px; transition: background .4s, color .4s; }
+  .cover.things .which span em { display: none; font-style: normal; }
   .cover.things .which span.on { background: #231e16; color: #fff; }
-  .cover.things .q { left: auto; right: 16px; top: auto; bottom: 16px; }
+  .cover.things .which span.on em { display: inline; }
+  .cover.things .which span::after { content: ""; position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: #ffc94a; transform: scaleX(0); transform-origin: 0 50%; }
+  .cover.things .which span.run::after { animation: fillbar var(--dur, 10s) linear forwards; }
+  @keyframes fillbar { to { transform: scaleX(1); } }
 
 
 
@@ -273,13 +279,16 @@
   .cover.lab { perspective: 700px; }
   .cover.lab span.name { background: #ffc94a; color: #3d2600; font-size: clamp(12px, 2.6vw, 14px); font-weight: 800; line-height: 1.1; text-align: center; padding: 4px; }
 
-  /* Touch and learn cover: a name tag that moves round the picture */
-  .cover.things .pin { position: absolute; z-index: 2; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #c2185b; border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .3); transition: left .7s var(--ease), top .7s var(--ease); }
-  .cover.things .pin::after { content: ""; position: absolute; inset: -9px; border-radius: 50%; border: 3px solid #c2185b; animation: ping 1.4s ease-out infinite; }
-  @keyframes ping { from { transform: scale(.4); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
-  .cover.things .q.moving { transition: left .7s var(--ease), top .7s var(--ease); }
-  .cover.things .q b { color: var(--coral); }
-  .cover.things .q.pop { animation: pop .45s var(--ease); }
+  /* Touch and learn cover: a fingertip glides to a part and taps it, and the part's name shows above it, as in the game */
+  .cover.things .touch { position: absolute; z-index: 3; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: rgba(255, 255, 255, .45); border: 2.5px solid #fff; box-shadow: 0 3px 10px rgba(0, 0, 0, .35); transition: left .7s var(--ease), top .7s var(--ease); }
+  .cover.things .touch.press { animation: press .45s ease; }
+  .cover.things .touch.press::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; border: 3px solid #fff; animation: ripple .8s ease-out forwards; }
+  @keyframes press { 40% { transform: scale(.7); } }
+  @keyframes ripple { from { transform: scale(.6); opacity: 1; } to { transform: scale(2.3); opacity: 0; } }
+  .cover.things .tag { position: absolute; z-index: 3; display: grid; padding: 5px 12px 6px; border-radius: 12px; background: #fffdf8; border: 1.5px solid #231e16; box-shadow: 0 3px 0 #231e16; line-height: 1.15; white-space: nowrap; }
+  .cover.things .tag b { font-family: var(--font-display); font-size: 18px; color: #1565c0; }
+  .cover.things .tag small { font-size: 12px; font-weight: 700; color: #5d5547; }
+  .cover.things .tag.pop { animation: pop .45s var(--ease); }
 
 
   @keyframes float { 50% { transform: translateY(-8px) rotate(2deg); } }   /* the word doors bob */
@@ -293,7 +302,7 @@
 
 
   @media (prefers-reduced-motion: reduce) {
-    .btn.gold::before, .cover.things .pin::after, .stars i { animation: none; }
+    .btn.gold::before, .cover.things .touch, .cover.things .touch::after, .cover.things .tag, .stars i { animation: none !important; }
   }
 
   /* ------------------------------------------------ the tagline: flowers that spin and burst, letters that wave */
@@ -476,9 +485,13 @@
       </a>
 
       <a class="card game" href="things.html">
-        <div class="cover things" aria-hidden="true"><span class="scene house"></span><span class="scene loom"></span><span class="scene bazar"></span><span class="which"><span class="on">🏠 In</span><span>🧶 Puan tah</span><span>🛒 Bazar</span></span><span class="pin" hidden></span><span class="q">tukverh · window</span></div>
+        <div class="cover things" aria-hidden="true">
+          <div class="view"><span class="scene on" data-s="zokhua"></span><span class="scene" data-s="kumtluang"></span><span class="scene" data-s="loom"></span><span class="scene" data-s="bazar"></span>
+            <span class="touch" hidden></span><span class="tag" hidden></span></div>
+          <span class="which"><span class="on">🏘️<em>Zokhua</em></span><span>🌾<em>Kumtluang</em></span><span>🧶<em>Puan tah</em></span><span>🛒<em>Bazar</em></span></span>
+        </div>
         <div class="body">
-          <div><h3>Touch and learn</h3><p>Tap a Mizo house, a loom and a bazar stall to learn their names.</p></div>
+          <div><h3>Touch and learn</h3><p>Tap an old Mizo village, a loom and a bazar stall, and walk through a Mizo year, to learn their names.</p></div>
           <span class="btn play">▶ Play</span>
         </div>
       </a>
@@ -537,7 +550,7 @@
   </div>
   <div class="wrap foot-bar">
     <p>Developed by <b>Maloma Thado</b></p>
-    <p>Version 1.44.0 · <a href="https://github.com/thadomaloma/hnahsin-play/releases">What's new</a></p>
+    <p>Version 1.45.0 · <a href="https://github.com/thadomaloma/hnahsin-play/releases">What's new</a></p>
   </div>
 </footer>
 
@@ -567,7 +580,7 @@
 
 <script src="stats.js?v=ff1d2eba" async></script>
 <script src="rova.js?v=f35ca6fa" defer></script>
-<script src="home.js?v=4cc9be4f" defer></script>
+<script src="home.js?v=33e9af6c" defer></script>
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js'));</script>
 
 </body>

@@ -163,45 +163,61 @@
     $('h1').setAttribute('tabindex', '-1'); $('h1').focus({ preventScroll: true });
   });
 
-  // ------------------------------------------------ Touch and learn card: name tags on the pictures
-  // The card shows the house, pi at her loom and the market stall in turn. The .json files say where each part is
-  // in the pictures (written by source/things/snapshot.js). A tap opens the one on show.
-  const thingsCover = $('.cover.things'), thingsCard = thingsCover.closest('a'), pin = $('.pin', thingsCover), tag = $('.q', thingsCover);
-  const which = $$('.which span', thingsCover);
-  const SCENES = ['house', 'loom', 'bazar'];
-  Promise.all(SCENES.map(n => fetch(`pics/things-${n}.json`).then(r => r.json()))).then(scenes => {
-    let si = 0, ti = 0;
-    const PER = 4;   // name tags shown on each picture before it changes
+  // ------------------------------------------------ Touch and learn card: a finger shows the names
+  // The card shows the old village, the year, pi at her loom and the market stall in turn. While each is shown it
+  // closes in slowly, and a fingertip glides to one part after another and taps it, and its name shows above it,
+  // as in the game. The .json files say where each part is in its picture (source/things/snapshot.js).
+  // A tap on the card opens the one on show.
+  const thingsCover = $('.cover.things'), thingsCard = thingsCover.closest('a'), view = $('.view', thingsCover);
+  const touchEl = $('.touch', thingsCover), tagEl = $('.tag', thingsCover), chips = $$('.which span', thingsCover), pics = $$('.scene', thingsCover);
+  const SCENES = [['zokhua', 'zokhua'], ['kumtluang', 'zonun'], ['loom', 'loom'], ['bazar', 'bazar']];   // the picture, and the page's #
+  const PER = 4, STEP = calm ? 5000 : 2600;   // names shown on each picture, and how long each stays
+  thingsCover.style.setProperty('--dur', PER * STEP + 'ms');
+  Promise.all(SCENES.map(([n]) => fetch(`pics/things-${n}.json`).then(r => r.json()))).then(scenes => {
+    let si = 0, ti = 0, n = 0, timer = 0;
+    // A point of the picture → where it is on the card (the picture covers the card, cropped in the middle)
+    const at = (x, y) => {
+      const { box } = scenes[si], w = thingsCover.clientWidth, h = thingsCover.clientHeight, k = Math.max(w / box[2], h / box[3]);
+      return [(w - box[2] * k) / 2 + (x - box[0]) * k, (h - box[3] * k) / 2 + (y - box[1]) * k];
+    };
     const show = () => {
-      thingsCover.classList.toggle('on-loom', si === 1);
-      thingsCover.classList.toggle('on-bazar', si === 2);
-      which.forEach((w, i) => w.classList.toggle('on', i === si));
-      thingsCard.href = si ? `things.html#${SCENES[si]}` : 'things.html';
+      pics.forEach((p, i) => p.classList.toggle('on', i === si));
+      chips.forEach((c, i) => { c.classList.toggle('on', i === si); c.classList.remove('run'); });
+      if (!calm) { void chips[si].offsetWidth; chips[si].classList.add('run'); }
+      thingsCard.href = `things.html#${SCENES[si][1]}`;
+      tagEl.hidden = true;
+      if (calm) return;
+      // close in slowly on the middle of the picture's parts
+      const tags = scenes[si].tags, mid = at(tags.reduce((a, t) => a + t[2], 0) / tags.length, tags.reduce((a, t) => a + t[3], 0) / tags.length);
+      view.style.transition = 'none'; view.style.transform = 'none'; view.style.transformOrigin = `${mid[0]}px ${mid[1]}px`;
+      void view.offsetWidth;
+      view.style.transition = `transform ${PER * STEP}ms linear`; view.style.transform = 'scale(1.08)';
     };
-    const place = () => {
-      const { box, tags } = scenes[si], w = thingsCover.clientWidth, h = thingsCover.clientHeight;
-      if (!w) return;
-      const k = Math.max(w / box[2], h / box[3]);   // the picture covers the card, cropped in the middle
-      const [m, en, x, y] = tags[ti % tags.length];
-      const px = (w - box[2] * k) / 2 + (x - box[0]) * k, py = (h - box[3] * k) / 2 + (y - box[1]) * k;
-      pin.hidden = false;
-      pin.style.left = px + 'px'; pin.style.top = py + 'px';
-      tag.innerHTML = `<b>${m}</b> · ${en}`;
-      tag.classList.add('moving');
-      const tw = tag.offsetWidth, th = tag.offsetHeight;
-      tag.style.right = 'auto'; tag.style.bottom = 'auto';
-      tag.style.left = Math.max(8, Math.min(w - tw - 8, px - tw / 2)) + 'px';
-      tag.style.top = (py - th - 16 < 48 ? py + 16 : py - th - 16) + 'px';   // keep clear of the In / Puan tah labels
-      if (!calm) { tag.classList.remove('pop'); void tag.offsetWidth; tag.classList.add('pop'); }
+    const point = () => {
+      const tags = scenes[si].tags;
+      if (!tags.length || !thingsCover.clientWidth) return;
+      const [m, en, x, y] = tags[ti % tags.length], [px, py] = at(x, y);
+      touchEl.hidden = false; touchEl.classList.remove('press');
+      touchEl.style.left = px + 'px'; touchEl.style.top = py + 'px';
+      tagEl.hidden = true; tagEl.classList.remove('pop');
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (!calm) touchEl.classList.add('press');
+        tagEl.innerHTML = `<b>${m}</b><small>${en}</small>`;
+        tagEl.hidden = false;
+        const w = thingsCover.clientWidth, tw = tagEl.offsetWidth, th = tagEl.offsetHeight;
+        tagEl.style.left = Math.max(8, Math.min(w - tw - 8, px - tw / 2)) + 'px';
+        tagEl.style.top = (py - th - 22 < 50 ? py + 22 : py - th - 22) + 'px';   // above the finger, or below it near the top
+        if (!calm) tagEl.classList.add('pop');
+      }, calm ? 0 : 750);
     };
-    show(); place();
-    addEventListener('resize', place);
-    let n = 0;
+    show(); point();
+    addEventListener('resize', () => { show(); point(); });
     setInterval(() => {
-      if (document.hidden || thingsCover.getBoundingClientRect().bottom < 0) return;
+      if (document.hidden || thingsCover.getBoundingClientRect().bottom < 0 || thingsCover.getBoundingClientRect().top > innerHeight) return;
       if (++n % PER === 0) { si = (si + 1) % scenes.length; ti = 0; show(); } else ti++;
-      place();
-    }, calm ? 5000 : 2600);
+      point();
+    }, STEP);
   }).catch(() => {});
 
   // ------------------------------------------------ the games people play, as bars

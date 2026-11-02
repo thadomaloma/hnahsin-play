@@ -4,6 +4,21 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.45.0 (2 November 2026)
+
+### Touch and learn: In taken out, and a new card on the home page
+
+- In, the Mizo house of today, has been taken out of Touch and learn, which now
+  opens on Zokhua, the old village.
+- The Touch and learn card on the home page shows four pictures in turn: the
+  old village, the year (Chapchar Kut in March), pi at her loom and the
+  market stall. While each is shown it closes in slowly, and a fingertip
+  glides to one part after another and taps it, and its name shows above it,
+  in Mizo and English, as in the game. A bar under the picture's name fills
+  while it is shown, and a tap on the card opens the one on show.
+- The card's pictures are lighter: about 270 KB for four, where three came to
+  about 385 KB.
+
 ## 1.44.0 (2 November 2026)
 
 ### Touch and learn: Kumtluang, the year as one long picture
