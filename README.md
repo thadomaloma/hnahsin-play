@@ -22,18 +22,17 @@ Learn Mizo words by playing. Free, on any phone, no sign-up.
   - from the Hnahsin app, just as they are in the app: Picture Match, Spelling,
     Word Search, Word Chain, Tawng Upa, Crossword, Odd One Out, Sentence Builder
 - **Touch and learn.** A Mizo house you can tap, turn and play with. Tap a
-  part to see its Mizo name, look inside, change the time of day, make it
-  rain or blow, meet the family, have Rova and Mami visit, pick up the hen's
-  eggs, or play Find it. In hlui: an old Mizo house as at Zokhua, Falkawn,
-  to look inside, with every part named and things to do in it. Zokhua: an
-  old Mizo village as at Falkawn, with its stockade and gate, the chief's
-  house and the zawlbuk, the adviser's and ordinary houses, the forge and the
-  memorials, each to visit with its story, by day or evening. Also La
-  siam: nu makes thread from cotton in six steps, from the cotton gin to the
-  warp. Puan tah: pi weaves a Mizo puan on her loom, with every tool named, and the five famous Mizo puans to learn
-  about and weave. Bazar dâwr: Rova shops at a market stall from a list
-  in Mizo numbers. And Zonun: a year of life in an old Mizo village, January
-  to December. Walk from the homes past the spring and the square to the jhum
+  part to see its Mizo name, look inside, change the time of day, make it rain
+  or blow, meet the family, have Rova and Mami visit, pick up the hen's eggs,
+  or play Find it. Zokhua: an old Mizo village as at Falkawn, with its
+  stockade and gate, the chief's house and the zawlbuk, the adviser's and
+  ordinary houses, the forge and the memorials, each to visit with its story,
+  by day or evening. Also La siam: nu makes thread from cotton in six steps,
+  from the cotton gin to the warp. Puan tah: pi weaves a Mizo puan on her
+  loom, with every tool named, and the five famous Mizo puans to learn about
+  and weave. Bazar dâwr: Rova shops at a market stall from a list in Mizo
+  numbers. And Zonun: a year of life in an old Mizo village, January to
+  December. Walk from the homes past the spring and the square to the jhum
   field, and watch it cut, burnt, sown, weeded, harvested and left in straw,
   with each month's weather, work and festival (Pâwlkut, Chapchar Kut, Mim
   Kut, Khuangchawi), and the notes on every month in Mizo and English.

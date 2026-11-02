@@ -4,6 +4,14 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.42.1 (2 November 2026)
+
+### Touch and learn: In hlui taken out
+
+- In hlui, the old Mizo house, has been taken out of Touch and learn. Its
+  old address now opens In. The old village, Zokhua, keeps the words it
+  shared with it (sum, suk, kailawn, lu ruh).
+
 ## 1.42.0 (2 November 2026)
 
 ### Touch and learn: Zokhua, an old Mizo village
