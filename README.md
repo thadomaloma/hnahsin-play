@@ -24,9 +24,10 @@ Learn Mizo words by playing. Free, on any phone, no sign-up.
 - **Touch and learn.** A Mizo house you can tap, turn and play with. Tap a
   part to see its Mizo name, look inside, change the time of day, make it
   rain or blow, meet the family, have Rova and Mami visit, pick up the hen's
-  eggs, or play Find it. Also La siam: nu makes thread from cotton in six
-  steps, from the cotton gin to the warp. Puan tah: pi weaves a Mizo puan on
-  her loom, with every tool named, and the five famous Mizo puans to learn
+  eggs, or play Find it. In hlui: an old Mizo house as at Zokhua, Falkawn,
+  to look inside, with every part named and things to do in it. Also La
+  siam: nu makes thread from cotton in six steps, from the cotton gin to the
+  warp. Puan tah: pi weaves a Mizo puan on her loom, with every tool named, and the five famous Mizo puans to learn
   about and weave. Bazar dâwr: Rova shops at a market stall from a list
   in Mizo numbers. And Zonun: a year of life in an old Mizo village, January
   to December. Walk from the homes past the spring and the square to the jhum

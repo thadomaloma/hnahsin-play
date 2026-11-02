@@ -4,6 +4,24 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.41.0 (2 November 2026)
+
+### Touch and learn: In hlui, an old Mizo house
+
+- A new thing to play with, next to In: In hlui, an old Mizo house as at
+  Zokhua, the Mizo typical village at Falkawn, built to the plan of a Lushai
+  house in J. Shakespear's The Lushei Kuki Clans (1912).
+- Climb the log ladder (kailawn) to the sumhmun, where the rice mortar (sum)
+  and the firewood are, with the hunter's skulls and the hens' baskets on the
+  front wall. Pi weaves on the luhkapui beside it.
+- Look inside: the water tubes (tuium) and the paddy bin by the door, then
+  along the uphill side the children's bed (khumai), the hearth (tap) with its
+  three stones and the shelves over it, and the parents' bed (khumpui), and
+  the closet and back door (kawmchar) at the far end.
+- Pound the paddy, light the hearth, open the sliding door, let the hens out,
+  and see the window that only a Thangchhuah could have. Every part has a note
+  on what it is.
+
 ## 1.40.0 (2 November 2026)
 
 ### Touch and learn: smoother, and finer to look at

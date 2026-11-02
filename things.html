@@ -3182,11 +3182,281 @@ const ZONUN = (() => {
 })();
 </script>
 <script>
+// In hlui: an old Mizo house, as at Zokhua, the Mizo typical village at Falkawn, drawn with Ink3D. It follows
+// the plan of a Lushai house in J. Shakespear's The Lushei Kuki Clans (1912) and the Mizo article Hmanlai
+// Mizo In Sak Dan: a log ladder and platform up to the sumhmun (the verandah with the rice mortar, the
+// firewood, and hens and hunting trophies on the front wall), a small sliding door with a high sill, and in the
+// main room, along the uphill side, the water tubes, the paddy bin, the children's bed, the hearth and the
+// parents' bed, then a closet with the back door. Walls of woven bamboo, a thick thatch held down by bamboo
+// bands; no window unless the man of the house is Thangchhuah. The street (the front) is toward +x and the
+// hill toward -y. Words that are not in the Hnahsin content are in inhlui_words.json.
+const INHLUI = (() => {
+  const { box, ball, cyl, line, poly, group, solid, spot, mix } = Ink3D;
+
+  const WALL = { l: '#e6cf98', m: '#c9ac6c', d: '#6e5630' }, WEAVE = '#a58950';
+  const WOOD = { l: '#c98d55', m: '#a46c3c', d: '#55361d' }, LOG = { l: '#a98258', m: '#86623e', d: '#43301c' }, POST = { l: '#9a6a40', m: '#7a5230', d: '#3e2918' };
+  const THATCH = { l: '#d9c08a', m: '#b89a5e', d: '#5e4a2a' }, MAT = { l: '#e8d6a2', m: '#cdb57a', d: '#6b5a33' }, BAMBOO = { l: '#d8d27e', m: '#b5ad55', d: '#5c5626' };
+  const GRASS = { l: '#a9d67c', m: '#8cc063', d: '#4b6b33' }, EARTH = { l: '#c99a6b', m: '#a8774b', d: '#5a3d26' }, CLAY = { l: '#c89f78', m: '#a77d58', d: '#5a412c' };
+  const LEAF = { l: '#86c86e', m: '#5fa451', d: '#2f5a28' }, BARK = { l: '#9b7350', m: '#7a5636', d: '#3b2817' }, STONE = { l: '#b9b6b0', m: '#8f8b85', d: '#4a4743' };
+  const CANE = { l: '#e8c584', m: '#c9a05a', d: '#6b5126' }, IRON = { l: '#8d8a86', m: '#5a5754', d: '#2d2b29' }, GOLD = { l: '#f2d36b', m: '#d9b13d', d: '#7a6018' };
+  const HEN = { l: '#e39a57', m: '#c0733a', d: '#5c3417' }, PIG = { l: '#5f5752', m: '#463f3b', d: '#1f1b19' }, DOG = { l: '#d9b98a', m: '#b8915e', d: '#5c4426' };
+  const BONE = { l: '#f4efe2', m: '#ddd4bd', d: '#7d7562' }, INSIDE = '#3a2c22', FLAME = ['#ffd84a', '#ff9a3c', '#e2483d'];
+  const HAIR = '#1d1b22', GREY = '#cfcac2', PUAN = { l: '#d9474f', m: '#b8343d', d: '#5c1a1f' };
+  const NU = { h: 22, shirt: { l: '#f4e7d0', m: '#dccbb0', d: '#6d604c' }, lower: 'skirt', lowerPal: PUAN, bands: [0.24, 0.32, 0.4], hair: HAIR, bun: true };
+  const PA = { h: 24, shirt: { l: '#fbf7ee', m: '#e6e0d2', d: '#8f887a' }, lower: 'shorts', lowerPal: { l: '#5a5f6b', m: '#41454f', d: '#1f2128' }, hair: HAIR };
+  const PI = { h: 21, shirt: { l: '#e9e4f5', m: '#c9c0e0', d: '#5c5478' }, lower: 'skirt', lowerPal: { l: '#3f3f4a', m: '#26262e', d: '#101014' }, bands: [0.2, 0.28], hair: GREY, bun: true };
+  const NAUPANG = { h: 14, shirt: { l: '#ffe08a', m: '#f2b431', d: '#6b4d12' }, lower: 'shorts', lowerPal: { l: '#5a5f6b', m: '#41454f', d: '#1f2128' }, hair: HAIR };
+
+  // The house: the main room from X0 to XF, the sumhmun from XF to X1; the floor at FL, the wall plate at WT
+  const X0 = -40, XC = -29, XF = 14, X1 = 34, Y0 = -16, Y1 = 16, FL = 8, WT = 26, RIDGE = 48;
+  const toward = (v, t, step) => v < t ? Math.min(t, v + step) : Math.max(t, v - step);
+
+  function init() { return { t: 0, inside: 0, insideT: 0, pound: false, fire: false, door: 0, doorT: 0, hens: 0, hensT: 0, window: false, said: null }; }
+  function step(s, dt) {
+    s.t += dt;
+    s.inside = toward(s.inside, s.insideT, dt * 2);
+    s.door = toward(s.door, s.doorT, dt * 1.6);
+    s.hens = toward(s.hens, s.hensT, dt / 2.5);
+  }
+
+  // ---------- the house ----------
+  // Woven bamboo (bawhtah): short slanting strokes in rows, the slant turning each row, on the wall at y or x
+  function weave(face, a0, a1, z0, z1) {
+    const out = [];
+    for (let z = z0 + 1.5, row = 0; z < z1 - 0.5; z += 3, row++) for (let a = a0 + 1; a < a1 - 1; a += 3) {
+      const k = row % 2 ? 1 : -1, P = (u, v) => face[0] === 'y' ? [u, face[1], v] : [face[1], u, v];
+      out.push({ pts: [P(a + (k < 0 ? 1.6 : 0), z - 1.1), P(a + (k < 0 ? 0 : 1.6), z + 1.1)], stroke: WEAVE, w: 0.35, open: true });
+    }
+    return out;
+  }
+  // A thick thatched roof, rounded by the bamboo bands laid over it from eave to eave and tied down along it
+  function roof(x0, x1) {
+    const E = Y1 + 5, M = 11, ZE = WT - 2, ZM = 40;
+    const fa = [[x0, E, ZE], [x1, E, ZE], [x1, M, ZM], [x0, M, ZM]], fb = [[x0, M, ZM], [x1, M, ZM], [x1, 0, RIDGE], [x0, 0, RIDGE]];
+    const ba = fa.map(p => [p[0], -p[1], p[2]]), bb = fb.map(p => [p[0], -p[1], p[2]]);
+    const bands = (lo, hi) => {
+      const d = [];
+      for (let x = x0 + 3; x < x1 - 1; x += 7) d.push({ pts: [[x, lo[1], lo[2]], [x, hi[1], hi[2]]], stroke: BAMBOO.m, w: 0.9, open: true });
+      d.push({ pts: [[x0, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2], [x1, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2]], stroke: BAMBOO.d, w: 0.7, open: true });
+      return d;
+    };
+    const end = x => [[x, E, ZE], [x, M, ZM], [x, 0, RIDGE], [x, -M, ZM], [x, -E, ZE]];
+    const fringe = [];
+    for (let x = x0 + 1; x < x1; x += 2.2) fringe.push({ pts: [[x, E, ZE], [x + 0.6, E + 0.6, ZE - 2.2]], stroke: THATCH.d, w: 0.45, open: true });
+    return solid([
+      { pts: fa, decals: [...bands([0, E, ZE], [0, M, ZM]), ...fringe] }, { pts: fb, decals: bands([0, M, ZM], [0, 0, RIDGE]) },
+      { pts: ba.slice().reverse() }, { pts: bb.slice().reverse() }, { pts: end(x0) }, { pts: end(x1) },
+      { pts: [[x0, E, ZE], [x1, E, ZE], [x1, -E, ZE], [x0, -E, ZE]] },
+    ], { pal: THATCH, part: 'in' });
+  }
+  // A skull from the hunt with its horns (a mithun's, wide; a barking deer's, short and spiky)
+  function skull(x, y, z, kind) {
+    const out = [ball([x, y, z], 1.7, { pal: BONE }), ball([x + 0.4, y, z - 1.6], 1, { pal: BONE })];
+    if (kind === 'sial') out.push(line([[x, y - 1.2, z + 0.8], [x, y - 3.4, z + 1.2], [x, y - 4.4, z + 3.2]], { col: '#3a3330', w: 0.9, part: 'ki' }), line([[x, y + 1.2, z + 0.8], [x, y + 3.4, z + 1.2], [x, y + 4.4, z + 3.2]], { col: '#3a3330', w: 0.9, part: 'ki' }));
+    else out.push(line([[x, y - 0.8, z + 1.2], [x, y - 1.8, z + 4], [x, y - 2.8, z + 4.8]], { col: '#8d6a44', w: 0.6, part: 'ki' }), line([[x, y + 0.8, z + 1.2], [x, y + 1.8, z + 4], [x, y + 2.8, z + 4.8]], { col: '#8d6a44', w: 0.6, part: 'ki' }));
+    return group(out, { part: 'lu ruh', at: [x, y, z] });
+  }
+  function hen(s, x, y, z, i) {
+    const peck = Math.max(0, Math.sin(s.t * 2.4 + i)) ** 4, d = Math.sin(i * 1.7) > 0 ? 1 : -1;
+    return group([spot([x, y, z], 3.4, { opacity: 0.3 }), ball([x, y, z + 3.4], 3, { pal: HEN }), ball([x + 2.4 * d, y, z + 6 - peck * 3.2], 1.8, { pal: HEN }), ball([x + 2.5 * d, y, z + 7.8 - peck * 3.2], 0.8, { fill: '#e2483d', w: 0.4 })],
+      { part: 'arpui', at: [x, y, z + 3] });
+  }
+  function fire(s, x, y, z, k = 1) {
+    const out = [];
+    for (let i = 0; i < 3; i++) {
+      const f = 0.75 + 0.25 * Math.sin(s.t * 11 + i * 2.1), h = (6 - i * 1.6) * k * f, w = (2.6 - i * 0.7) * k, lean = Math.sin(s.t * 6 + i) * 0.8 * k;
+      const P = (u, v) => [x + u, y + 0.3 + i * 0.1, z + v];
+      out.push(poly([P(-w, 0), P(-w * 0.7, h * 0.45), P(-w * 0.2 + lean * 0.5, h * 0.6), P(lean, h), P(w * 0.5 + lean * 0.5, h * 0.55), P(w, 0)], { fill: FLAME[2 - i], glow: true, part: 'mei', w: 0.5 }));
+    }
+    return out;
+  }
+
+  function scene(s, cam) {
+    const inside = s.inside > 0.5, items = [];
+    const slab = box(-110, 110, -90, 90, -12, 0, { pal: EARTH, pals: { zp: GRASS }, shadow: false });
+    const path = poly([[X1 + 10, -6, 0.05], [110, -14, 0.05], [110, 14, 0.05], [X1 + 10, 10, 0.05]], { fill: '#dcc596', part: 'kawng', w: 0.7 });
+    // Posts, and the floor: split bamboo inside, logs on the sumhmun
+    for (const x of [-39, -27, -15, -3, 9, 21, 33]) for (const y of [Y0 + 1, Y1 - 1]) items.push(box(x - 1.1, x + 1.1, y - 1.1, y + 1.1, 0, FL - 1, { pal: POST, part: 'in' }));
+    items.push(box(X0, XF, Y0, Y1, FL - 1, FL, { pal: MAT, part: 'chhuat' }), box(XF, X1, Y0, Y1, FL - 1.4, FL, { pal: LOG, part: 'sumhmun' }));
+    // The walls, open on the near sides when you look inside
+    const doorW = 6, dz0 = FL + 3, dz1 = FL + 12, dy0 = 5, slide = s.door * doorW;
+    const front = [...weave(['x', XF + 0.1], Y0, Y1, FL, WT),
+      { pts: [[XF + 0.12, dy0, dz0], [XF + 0.12, dy0 + doorW, dz0], [XF + 0.12, dy0 + doorW, dz1], [XF + 0.12, dy0, dz1]], fill: INSIDE, part: 'kawngkhar' },
+      { pts: [[XF + 0.14, dy0 - slide, dz0], [XF + 0.14, dy0 + doorW - slide, dz0], [XF + 0.14, dy0 + doorW - slide, dz1], [XF + 0.14, dy0 - slide, dz1]], fill: WALL.m, part: 'kawngkhar' }];
+    const side = [...weave(['y', Y1 + 0.1], X0, XF, FL, WT)];
+    if (s.window) side.push({ pts: [[-10, Y1 + 0.12, FL + 7], [-2, Y1 + 0.12, FL + 7], [-2, Y1 + 0.12, FL + 13], [-10, Y1 + 0.12, FL + 13]], fill: INSIDE, part: 'tukverh' });
+    items.push(box(X0, XF, Y0, Y1, FL, WT, { pal: WALL, part: 'bang', skip: inside ? ['zp', 'zn', 'yp', 'xp'] : ['zp', 'zn'], decals: { xp: front, yp: side } }));
+    if (!inside) items.push(roof(X0 - 4, X1 + 3));
+    // Smoke from the hearth seeps out through the thatch
+    if (s.fire) for (let i = 0; i < 4; i++) {
+      const r = (s.t * 0.22 + i / 4) % 1;
+      items.push(ball([-9 + r * 10, -4, (inside ? WT : RIDGE - 2) + r * 34], 2.5 + r * 6, { fill: '#e2ded6', ink: false, opacity: 0.6 * (1 - r), part: 'meikhu', shadow: false }));
+    }
+
+    // ---------- the sumhmun ----------
+    // The log platform and ladder up from the street, the firewood stack, and the mortar
+    items.push(box(X1, X1 + 8, -5, 8, FL - 2.6, FL - 1.4, { pal: LOG, part: 'sumhmun' }));
+    for (const x of [X1 + 1, X1 + 7]) for (const y of [-4, 7]) items.push(box(x - 0.8, x + 0.8, y - 0.8, y + 0.8, 0, FL - 2.6, { pal: POST, part: 'sumhmun' }));
+    const lad = [];
+    for (let i = 1; i < 4; i++) lad.push(line([[X1 + 18 - i * 2.6, 0.6, i * 1.6], [X1 + 18 - i * 2.6, 3.4, i * 1.6]], { col: BARK.d, w: 0.5, ink: false }));
+    items.push(group([line([[X1 + 19, 2, 0], [X1 + 8, 2, FL - 1.4]], { col: BARK.m, w: 3.4 }), ...lad], { part: 'kailawn', at: [X1 + 13, 2, 3] }));
+    for (let i = 0; i < 4; i++) items.push(line([[XF + 3, Y0 + 1.5 + (i % 2) * 2.4, FL + 1 + i * 1.6], [X1 - 4, Y0 + 1.5 + (i % 2) * 2.4, FL + 1 + i * 1.6]], { col: BARK.m, w: 2.2, part: 'thingtuah' }));
+    const sumAt = [XF + 13, 4];
+    items.push(cyl(sumAt, FL, FL + 6, 3, 2.6, { pal: WOOD, capFill: '#4a3424', bands: [FL + 2], part: 'sum' }));
+    // Nu pounds the paddy: the heavy pole up, and down into the mortar
+    const nAt = [sumAt[0] + 6.5, sumAt[1] - 1, FL], beat = s.pound ? (Math.sin(s.t * 5.5) + 1) / 2 : 0.15;
+    const top = FL + 9 + beat * 12, hands = [[sumAt[0] + 2.4, sumAt[1] - 0.6, top - 3.5], [sumAt[0] + 2.4, sumAt[1] + 0.6, top - 7]];
+    items.push(group(Ink3DPeople.person(nAt, Math.PI + 0.25, { t: s.t, ...NU, pose: 'stand', hands }), { part: 'nu', at: [nAt[0], nAt[1], FL + 11] }));
+    items.push(line([[sumAt[0], sumAt[1], top], [sumAt[0], sumAt[1], top - 16]], { col: WOOD.m, w: 1.6, part: 'suk' }));
+    if (s.pound && beat < 0.2) for (let i = 0; i < 4; i++) items.push(ball([sumAt[0] + Math.cos(i * 1.6 + s.t) * 3, sumAt[1] + Math.sin(i * 1.6 + s.t) * 3, FL + 6.5 + (0.2 - beat) * 12], 0.45, { fill: '#e8d9a8', ink: false, shadow: false }));
+    // On the front wall: the hunter's trophies, and the hens' laying baskets; a long roost basket under the eaves
+    if (!inside) {
+      items.push(skull(XF + 0.8, -11, 21, 'sial'), skull(XF + 0.8, -3.5, 22, 'sakhi'), skull(XF + 0.8, 3, 22.5, 'sial'));
+      for (const y of [-12.5, -6.5]) items.push(cyl([XF + 1.8, y], 13, 16.5, 1.7, 2.3, { pal: CANE, bands: [14.5], part: 'arbawm' }));
+      items.push(line([[XF + 1, Y0 - 3, WT - 1], [X1 - 2, Y0 - 3, WT - 1]], { col: CANE.m, w: 2.6, part: 'arbawm' }), line([[X1 - 6, Y0 + 1, FL], [X1 - 4, Y0 - 3, WT - 1.5]], { col: BAMBOO.m, w: 0.8, part: 'arbawm' }));
+    }
+    // The hens: in their baskets, or out pecking in the yard
+    for (let i = 0; i < 3; i++) {
+      const out = Math.min(1, Math.max(0, s.hens * 3 - i));
+      if (out > 0.02) items.push(hen(s, X1 + 6 + i * 9 + Math.sin(s.t * 0.4 + i) * 3 * out, 26 + i * 6, 0, i));
+      else items.push(ball([XF + 2.6, i % 2 ? -6.5 : -12.5, 17.2], 1.4, { pal: HEN, part: 'arpui', w: 0.5 }));
+    }
+
+    // ---------- the luhkapui: the platform beside the front, where pi weaves ----------
+    for (const x of [XF + 3, X1 - 1]) for (const y of [Y1 + 2, Y1 + 18]) items.push(box(x - 0.8, x + 0.8, y - 0.8, y + 0.8, 0, FL - 2, { pal: POST, part: 'luhkapui' }));
+    items.push(box(XF + 2, X1, Y1, Y1 + 19, FL - 2.6, FL - 2, { pal: BAMBOO, part: 'luhkapui' }));
+    const piAt = [XF + 8, Y1 + 10, FL - 2], k = Math.sin(s.t * 2.2) * 1.4;
+    items.push(group(Ink3DPeople.person(piAt, 0, { t: s.t, ...PI, pose: 'sit', hands: [[piAt[0] + 7 + k, piAt[1] - 3, piAt[2] + 6], [piAt[0] + 7 + k, piAt[1] + 3, piAt[2] + 6]] }), { part: 'pi', at: [piAt[0], piAt[1], piAt[2] + 8] }));
+    // her backstrap loom: the warp stretched from her lap to a post, the woven part striped
+    const warp = [];
+    for (let i = -3; i <= 3; i++) warp.push(line([[piAt[0] + 8, piAt[1] + i, piAt[2] + 5.4], [X1 - 1, piAt[1] + i * 0.8, piAt[2] + 9]], { col: '#f4efe4', w: 0.35, ink: false }));
+    items.push(group([...warp, poly([[piAt[0] + 6, piAt[1] - 3.4, piAt[2] + 5.4], [piAt[0] + 11, piAt[1] - 3.2, piAt[2] + 6.2], [piAt[0] + 11, piAt[1] + 3.2, piAt[2] + 6.2], [piAt[0] + 6, piAt[1] + 3.4, piAt[2] + 5.4]], { fill: PUAN.m })],
+      { part: 'puan', at: [piAt[0] + 12, piAt[1], piAt[2] + 7] }));
+
+    // ---------- the back: the kawmchar door's platform and its notched log ----------
+    items.push(box(X0 - 6, X0, -5, 6, FL - 1.4, FL - 0.6, { pal: LOG, part: 'kawmchar' }), line([[X0 - 15, 0, 0], [X0 - 6, 0, FL - 1]], { col: BARK.m, w: 3, part: 'kawmchar' }));
+
+    // ---------- inside, when the roof and the near walls are off ----------
+    if (inside) {
+      const yb = Y0, yf = -5;   // the beds and the hearth along the uphill side
+      // the inner faces of the far walls (the uphill side and the back), woven like the outside
+      const inner = (pts, a0, a1, face) => group([poly(pts, { fill: mix(WALL.m, WALL.d, 0.18), part: 'bang', w: 0.8 }),
+        ...weave(face, a0, a1, FL, WT).map(d => line(d.pts, { col: WEAVE, w: 0.35, ink: false, shadow: false }))], { at: Ink3D.centroid(pts), bias: -40 });
+      items.push(inner([[X0, Y0 + 0.2, FL], [XF, Y0 + 0.2, FL], [XF, Y0 + 0.2, WT], [X0, Y0 + 0.2, WT]], X0, XF, ['y', Y0 + 0.3]));
+      items.push(inner([[X0 + 0.2, Y0, FL], [X0 + 0.2, Y1, FL], [X0 + 0.2, Y1, WT], [X0 + 0.2, Y0, WT]], Y0, Y1, ['x', X0 + 0.3]));
+      // water tubes in the corner by the door, and the paddy bin
+      for (let i = 0; i < 5; i++) items.push(cyl([XF - 2.4 - (i % 3) * 1.9, Y1 - 2.2 - Math.floor(i / 3) * 1.9], FL, FL + 9 + (i % 2), 0.85, 0.85, { pal: BAMBOO, bands: [FL + 3.5, FL + 7], part: 'tuium' }));
+      items.push(cyl([XF - 3.6, Y0 + 4], FL, FL + 8, 3.4, 3.8, { pal: CANE, bands: [FL + 2.5, FL + 5.5], capFill: GOLD.m, part: 'buh zem' }));
+      // the children's bed, the hearth, the parents' bed
+      items.push(box(-2, XF - 8, yb, yf, FL, FL + 2.4, { pal: MAT, part: 'khumai' }));
+      items.push(box(-15, -4, yb, yf, FL, FL + 2, { pal: CLAY, part: 'tap' }), box(-15, -4, yf, yf + 1.4, FL, FL + 2.6, { pal: WOOD, part: 'tap' }));
+      for (const [dx, dy] of [[-1.6, -1], [1.6, -1], [0, 1.4]]) items.push(ball([-9.5 + dx, -10.5 + dy, FL + 2.8], 1.1, { pal: STONE, part: 'tap', w: 0.5 }));
+      items.push(cyl([-9.5, -10.5], FL + 3.4, FL + 7.4, 2.6, 3.2, { pal: IRON, capFill: '#5a4a3a', part: 'bel' }));
+      if (s.fire) items.push(...fire(s, -9.5, -9.4, FL + 2, 0.7));
+      // the two shelves hanging over the hearth, paddy drying on the lower one
+      items.push(box(-15, -4, yb + 1, yf - 1, FL + 15, FL + 15.6, { pal: BAMBOO, part: 'tap' }), box(-15, -4, yb + 1, yf - 1, FL + 20, FL + 20.6, { pal: BAMBOO, part: 'tap' }));
+      for (let i = 0; i < 5; i++) items.push(ball([-13.5 + i * 2.2, -10 + (i % 2), FL + 16.2], 1, { pal: GOLD, w: 0.4, part: 'buh', shadow: false }));
+      items.push(box(XC + 1, -16, yb, yf, FL, FL + 2.4, { pal: MAT, part: 'khumpui' }), poly([[XC + 3, yb + 1, FL + 2.5], [-18, yb + 1, FL + 2.5], [-18, yf - 1, FL + 2.5], [XC + 3, yf - 1, FL + 2.5]], { fill: PUAN.m, part: 'puan' }));
+      // the closet's partition, the shelf along the downhill wall, the ridge posts
+      items.push(box(XC - 0.6, XC, Y0, Y1 - 8, FL, WT, { pal: WALL, part: 'kawmchar' }));
+      items.push(box(-36, -14, Y1 - 3, Y1, FL + 13, FL + 13.6, { pal: BAMBOO, part: 'chhuar' }));
+      for (let i = 0; i < 4; i++) items.push(cyl([-33 + i * 5, Y1 - 1.6], FL + 13.6, FL + 17, 1.2, 1.6, { pal: i % 2 ? CANE : IRON, part: 'chhuar' }));
+      for (const x of [-16, -4, XF - 1]) items.push(cyl([x, yf + 0.6], FL, WT + 8, 0.9, 0.8, { pal: POST, part: 'sut', cap: false }));
+      // pa sits on the plank by the hearth; the child plays on the open floor
+      const pAt = [-9.5, yf + 3.4, FL];
+      items.push(group(Ink3DPeople.person(pAt, -Math.PI / 2, { t: s.t, ...PA, pose: 'sit' }), { part: 'pa', at: [pAt[0], pAt[1], FL + 9] }));
+      const a = s.t * 1.2;
+      items.push(group(Ink3DPeople.person([-20 + Math.cos(a) * 6, 6 + Math.sin(a) * 4, FL], a + Math.PI / 2, { t: s.t, ...NAUPANG, pose: 'walk', phase: s.t * 5 }), { part: 'naupang', at: [-20, 6, FL + 6] }));
+    }
+
+    // ---------- the yard ----------
+    // The pig under the house, the dog, bamboo and a tree; posts in front with the skulls of feast animals
+    const px = -20 + Math.sin(s.t * 0.3) * 12;
+    items.push(group([spot([px, 0, 0], 6, { opacity: 0.3 }), ball([px, 0, 4], 4.2, { pal: PIG }), ball([px + 4.8, 0, 4.6], 2.6, { pal: PIG }), ball([px + 7, 0, 4.2], 1.1, { fill: PIG.m, w: 0.5 })], { part: 'vawk', at: [px, 0, 4] }));
+    const dx = X1 + 22 + Math.sin(s.t * 0.5) * 6;
+    items.push(group([spot([dx, -26, 0], 5, { opacity: 0.3 }), ball([dx, -26, 4.4], 3.6, { pal: DOG }), ball([dx + 4.4, -26, 6.8], 2.5, { pal: DOG }), ball([dx + 6.6, -26, 6.3], 1, { fill: '#231e16', ink: false })], { part: 'ui', at: [dx, -26, 4] }));
+    for (const [x, y] of [[X1 + 30, -30], [X1 + 38, -18]]) items.push(line([[x, y, 0], [x, y, 26]], { col: BARK.m, w: 1.8, part: 'lu ruh' }), skull(x + 0.6, y, 27, 'sial'));
+    const bam = [];
+    for (let i = 0; i < 5; i++) { const sway = Math.sin(s.t * 1.3 + i) * 1.2, tp = [-62 + (i - 2) * 4 + sway, -70, 38 + (i % 3) * 5]; bam.push(line([[-62 + i - 2, -70, 0], tp], { col: BAMBOO.m, w: 1.6 }), line([tp, [tp[0] + 5, -70, tp[2] - 4]], { col: LEAF.m, w: 1.3 }), line([tp, [tp[0] - 5, -70, tp[2] - 3]], { col: LEAF.m, w: 1.3 })); }
+    items.push(group(bam, { part: 'mau', at: [-62, -70, 16] }));
+    items.push(group([spot([70, -50, 0], 10, { opacity: 0.3 }), cyl([70, -50], 0, 18, 2.4, 1.8, { pal: BARK }), ball([70, -50, 27], 12, { pal: LEAF }), ball([62, -48, 21], 8, { pal: LEAF }), ball([78, -49, 22], 8.5, { pal: LEAF })], { part: 'thingkung', at: [70, -50, 12] }));
+
+    return { ground: [slab], groundDecals: [path], clip: [[-110, -90, 0], [110, -90, 0], [110, 90, 0], [-110, 90, 0]], items };
+  }
+
+  // ---------- sky ----------
+  function sky() {
+    let o = '<defs><linearGradient id="hsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fd3ff"/><stop offset="1" stop-color="#e8f6ff"/></linearGradient></defs>';
+    o += '<rect x="-140" y="-150" width="280" height="240" fill="url(#hsky)" data-p="vân"/>';
+    o += '<g data-p="ni"><circle cx="-56" cy="-66" r="11" fill="#ffe28a" opacity=".45"/><circle cx="-56" cy="-66" r="7" fill="#ffd84a" stroke="#231e16" stroke-width=".8"/></g>';
+    const hill = (pts, fill) => `<path data-p="tlang" d="M-140 90${pts}L140 90Z" fill="${fill}" stroke="#231e16" stroke-width=".8" stroke-opacity=".35"/>`;
+    o += hill('L-140 -40Q-80 -62 -50 -50Q-20 -70 10 -54Q40 -72 70 -52Q100 -64 140 -46', '#a8cfb4') + hill('L-140 -26Q-70 -48 -40 -34Q0 -52 34 -36Q70 -54 140 -28', '#86b996');
+    return o;
+  }
+  const over = () => '';
+
+  // ---------- labels ----------
+  const LABEL_GROUPS = ['House', 'Inside', 'Yard'];
+  function anchors(s) {
+    const a = [], H = (part, p) => a.push({ part, p, g: 'House' }), I = (part, p) => a.push({ part, p, g: 'Inside' }), Y = (part, p) => a.push({ part, p, g: 'Yard' });
+    if (s.inside > 0.5) {
+      I('tuium', [XF - 3, Y1 - 3, FL + 10]); I('buh zem', [XF - 3.6, Y0 + 4, FL + 8]); I('khumai', [4, -10, FL + 2.4]); I('tap', [-9.5, -6, FL + 2]); I('bel', [-9.5, -10.5, FL + 7.4]);
+      I('khumpui', [-22, -10, FL + 2.6]); I('kawmchar', [XC, 0, FL + 14]); I('chhuar', [-28, Y1 - 1.5, FL + 16]); I('sut', [-4, -4.4, WT + 4]); I('pa', [-9.5, -1.6, FL + 18]);
+      I('chhuat', [0, 8, FL]);
+    } else {
+      H('in', [-12, 0, RIDGE]); H('bang', [-14, Y1, 18]); H('kawngkhar', [XF, 8, 18]); H('lu ruh', [XF + 1, -3.5, 23]); H('arbawm', [XF + 2, -12.5, 15]);
+      if (s.window) H('tukverh', [-6, Y1, FL + 10]);
+    }
+    H('sumhmun', [XF + 8, -6, FL]); H('sum', [XF + 13, 4, FL + 6]); H('suk', [XF + 13, 4, FL + 18]); H('thingtuah', [XF + 10, Y0 + 2, FL + 6]); H('kailawn', [X1 + 13, 2, 3]);
+    H('luhkapui', [X1 - 4, Y1 + 16, FL - 2]); H('nu', [XF + 19, 3, FL + 22]); H('pi', [XF + 8, Y1 + 10, FL + 16]); H('puan', [XF + 14, Y1 + 10, FL + 5]); H('kawmchar', [X0 - 4, 0, FL]);
+    Y('vawk', [-20 + Math.sin(s.t * 0.3) * 12, 0, 9]); Y('ui', [X1 + 22 + Math.sin(s.t * 0.5) * 6, -26, 9]); Y('mau', [-62, -70, 40]); Y('thingkung', [70, -50, 38]); Y('kawng', [80, 0, 0]);
+    if (s.hens > 0.3) Y('arpui', [X1 + 6, 26, 8]);
+    return a;
+  }
+
+  function tap(s, part) {
+    if (part === 'nu') return s.pound ? 'sum' : null;
+    if (part === 'pi' || part === 'puan') return 'tah';
+    if (part === 'pa') return 'ṭhu';
+    if (part === 'naupang') return 'infiam';
+    if (part === 'kawngkhar') { s.doorT = s.doorT ? 0 : 1; return s.doorT ? 'hawng' : 'khar'; }
+    if (part === 'arbawm' && !s.hensT) { s.hensT = 1; return 'arpui'; }
+    return null;
+  }
+
+  function info() {
+    return '<div class="mhead"><b>In hlui</b><span>an old Mizo house</span></div>' +
+      '<p class="en">Built as at Zokhua, the Mizo typical village at Falkawn near Aizawl, and as in the plan of a Lushai house in J. Shakespear\'s <i>The Lushei Kuki Clans</i> (1912): ' +
+      'the sumhmun in front, with the rice mortar; inside, along the uphill side, the water tubes and the paddy bin, the children\'s bed, the hearth and the parents\' bed; then a closet and the back door. ' +
+      'Walls of woven bamboo, a thatched roof held down by bamboo bands, and no window unless the man of the house had become Thangchhuah.</p>';
+  }
+
+  return {
+    id: 'inhlui', name: 'In hlui', sub: 'an old Mizo house, as at Falkawn',
+    view: { yaw: 55, pitch: 30, box: '-68 -86 134 114', centre: [0, -22], ink: 0.85 },   // close in, so the house fills a phone
+    words: ['in', 'sumhmun', 'sum', 'suk', 'tap', 'khumai', 'khumpui', 'luhkapui', 'kailawn', 'tuium', 'buh zem', 'kawmchar', 'sut', 'lu ruh', 'ki',
+      'bang', 'chhuat', 'chhuar', 'kawngkhar', 'tukverh', 'thingtuah', 'arbawm', 'arpui', 'vawk', 'ui', 'mau', 'thingkung', 'kawng', 'puan', 'bel', 'buh', 'mei', 'meikhu',
+      'nu', 'pa', 'pi', 'naupang', 'tlang', 'ni', 'vân', 'hawng', 'khar', 'chhûngah', 'tah', 'ṭhu', 'infiam'],
+    // Looking inside, the camera comes in close over the hearth and the beds
+    focus: s => s.inside > 0.5 ? { p: [-10, -6, FL + 6], zoom: 1.6 } : null,
+    init, step, tint: () => c => c, smooth: true, scene, sky, over, anchors, tap, info, labelGroups: LABEL_GROUPS,
+    actions: [
+      { label: s => s.insideT ? 'Roof back on' : 'Look inside', word: s => s.insideT ? null : 'chhûngah', run: s => { s.insideT = s.insideT ? 0 : 1; } },
+      { label: s => s.pound ? 'Stop pounding' : 'Pound the paddy', word: s => s.pound ? null : 'sum', run: s => { s.pound = !s.pound; } },
+      { label: s => s.fire ? 'Put the fire out' : 'Light the hearth', word: s => s.fire ? null : 'tap', run: s => { s.fire = !s.fire; } },
+      { label: s => s.doorT ? 'Close the door' : 'Open the door', word: s => s.doorT ? 'khar' : 'hawng', run: s => { s.doorT = s.doorT ? 0 : 1; } },
+      { label: s => s.hensT ? 'Hens back in' : 'Let the hens out', word: s => s.hensT ? null : 'arpui', run: s => { s.hensT = s.hensT ? 0 : 1; } },
+      { label: s => s.window ? 'No window' : 'Thangchhuah: a window', word: s => s.window ? null : 'tukverh', run: s => { s.window = !s.window; } },
+    ],
+  };
+})();
+</script>
+<script>
 (() => {
-  const WORDS = {"in": "house", "kawngkhar": "door", "tukverh": "window", "bang": "wall", "chhuat": "floor", "chungkhuh": "roof", "khawnvâr": "lamp", "zawhte": "cat", "arpui": "hen", "êm": "carrying basket", "kawng": "road", "pal": "fence", "thing": "tree", "mau": "bamboo", "pangpâr": "flower", "tlang": "hill", "ni": "sun", "thla": "moon", "arsi": "star", "chhum": "cloud", "ruah": "rain", "vân": "sky", "meikhu": "smoke", "mei": "fire", "hawng": "open", "khar": "close", "zân": "night", "zîng": "morning", "harh": "wake", "muhil": "sleep", "chhûngah": "inside", "choka": "kitchen", "bel": "pot", "khum": "bed", "puan": "cloth", "dawhkân": "table", "ṭhutthlêng": "chair", "chhuatphah": "mat", "arbawm": "chicken coop", "artui": "hen's egg", "vawk": "pig", "chhun": "daytime", "tlai": "evening", "thli": "wind", "chhimbâl": "rainbow", "nu": "mother", "pa": "father", "pi": "grandmother", "naupang": "child", "phiat": "to sweep", "hmunphiah": "broom", "su": "to wash clothes", "tui": "water", "kal": "go", "tlân": "run", "ṭhian": "friend", "tlawh": "to visit", "chibai": "hello", "infiam": "to play", "la": "cotton", "lapua": "raw cotton", "la mu": "cotton seeds", "herawt": "cotton gin", "herawt ban": "gin handle", "lasai": "cotton bow", "lasai thal": "bow string", "lachawn": "cotton roll", "hmui": "spinning wheel", "hmuithlur": "spindle", "la zai": "thread", "ladawhkilh": "skein pegs", "lamuai": "skein", "buhhawp tui": "rice starch water", "suvel": "yarn swift", "lazarna": "warping posts", "sutpui": "warp", "tah": "weave", "puan chei": "decorated cloth", "rawng": "colour", "sen": "red", "dum": "black", "vâr": "white", "hring": "green", "dumpâwl": "blue", "sendang": "pink", "ziarâng": "pattern", "hrui": "rope", "kawngvawn": "backstrap", "themkhawl": "breast beam", "thempui": "beater (weaving sword)", "thembupui": "shed stick", "hnahchawi": "heddle rod", "themte": "pattern rods", "tuirek": "reed (spacer bar)", "khawhtlang": "shuttle", "themtlang": "warp beam", "kaihbu": "lease rods", "ṭhu": "sit", "fawng": "basket", "thingrem": "wooden chest", "êng": "light", "zo": "finish", "mawi": "beautiful", "eng": "yellow", "puanchei": "the finest Mizo puan", "pawndum": "the black and red puan", "ngotekherh": "the white checked puan", "hmaram": "the girls' short puan", "tawlhlohpuan": "the puan of the brave", "bazar": "market", "dâwr": "shop", "dâwrkai": "shopkeeper", "zuar": "sell", "pawisa": "money", "thei": "fruit", "thlai": "vegetable", "balhla": "banana", "serthlum": "orange (fruit)", "theihai": "mango", "alu": "potato", "purun": "onion", "hmarcha": "chilli pepper", "fanghma": "cucumber", "zikhlum": "cabbage", "mâi": "pumpkin", "bawkbawn": "eggplant", "sawhthing": "ginger", "kho": "basket", "sangha": "fish", "hnah": "leaf", "buhfai": "husked rice", "rit": "heavy", "zâng": "light in weight", "lawmthu": "thanks", "pakhat": "one", "pahnih": "two", "pathum": "three", "khua": "village", "buh in": "granary", "thingkung": "tree", "tuikhur": "spring", "kawtchhuah": "gateway", "lo": "cultivated field", "ngaw": "forest", "buk": "field hut", "buh": "paddy", "vaimim": "maize", "bal": "taro", "hlo": "weeds", "pâwl": "straw", "sava hlauh": "scarecrow", "hreipui": "large axe", "favah": "sickle", "vut": "ash", "thingtuah": "firewood", "tapchhak": "hearth", "pher": "mat", "khuang": "drum", "pu": "grandfather", "nula": "young woman", "tlangval": "young man", "lal": "chief", "ui": "dog", "chirh": "mud", "sava": "bird", "lui": "river", "tiauchhum": "fog", "phur": "to carry a load", "vua": "strike", "thlei": "to winnow", "lâm": "to dance", "ei": "eat", "chawl": "rest", "hal": "to burn", "tuh": "to sow", "seng": "harvest", "thlasik": "winter", "nipui": "summer", "favâng": "autumn"};   // Mizo → English, from the Hnahsin content
-  const NOTES = {"kawngvawn": "A strong strap of hide or cord round the weaver's back; leaning back pulls the warp tight.", "themkhawl": "The bar right in front of the weaver: the woven cloth rolls onto it, and the backstrap ties to it.", "thempui": "A long flat stick, thin and a little sharp, that beats each new row of weft tight.", "thembupui": "A wide flat bamboo bar that parts the upper and lower warp threads, opening the way for the shuttle.", "hnahchawi": "A thin straight rod tied with loops to every other warp thread; lifting it lifts them, so the threads cross.", "themte": "Thin rods added past the heddle to raise threads for the puan's design; four to seven for a fine pattern.", "tuirek": "A comb of bamboo or wood that keeps the warp threads evenly spaced.", "khawhtlang": "A slim stick with the weft wound on it, passed back and forth through the open shed.", "themtlang": "The big bar at the far end, tied to a wall or post, that holds every warp thread.", "kaihbu": "Two thin split bamboos near the warp beam that keep the warp threads from tangling.", "la": "Cotton grown in the jhum field, made into thread by hand before any weaving.", "lapua": "The cotton bolls picked from the plant and dried in the sun, with the seeds still inside.", "la mu": "The hard seeds, too big to pass between the gin's rollers; they drop out on the weaver's side.", "herawt": "Two hardwood rollers on an upright frame, geared together by carved spiral grooves. The cotton fibres are pulled through the gap; the seeds stay behind.", "lasai": "A strip of mature bamboo bent into an arch with a tight string. Held in the heap and plucked, it shakes the clumps into soft, airy fluff and the dust out.", "lasai thal": "The bow's tight cord, twisted from tough bark fibre or cane. Plucked with a little wooden striker, it buzzes \"per ri tek tek\".", "lachawn": "A handful of the fluffed cotton rolled round a thin bamboo stick into a soft hollow roll, ready to spin.", "hmui": "A low wheel on a heavy wooden base, used sitting on the floor. The right hand turns the wheel; a cord loop drives the spindle.", "hmuithlur": "The sharp, thin iron spindle. It twists the cotton into thread, then the thread is wound onto it into a full cone.", "la zai": "The cotton spun into a long, strong strand.", "ladawhkilh": "Upright wooden pegs. The thread from the spindle is wound round them into loose skeins (lamuai), so water, dye and starch reach every part.", "suvel": "A bamboo cage that turns on an upright pivot. The dried skein goes round it, and as the thread is pulled the cage spins, so it winds into a ball without tangling.", "lazarna": "Posts set apart as long as the puan will be. Walking back and forth, the weaver lays the starched thread round them in a figure-eight cross, counting each thread and placing the colour stripes.", "sutpui": "The long threads of the puan, laid out on the lazarna; the cross is later held by the kaihbu, and the warp goes onto the themkhawl and themtlang.", "buhhawp tui": "Thick rice water. The skeins are boiled in it, so the starch coats the thread and it does not fray or break on the loom; then they dry in the sun.", "eng": "The colour of turmeric and ripe rice; a bright thread in many puans.", "puanchei": "White, with red and black stripes and rows of patterns in green, yellow and black: sakei ha (tiger's teeth), disul (sungrass in the wind), kawkpuizikzial (the fern shoot), lenbuangthuam (forked branches) and fanghma mu. Once called \"Puan Lallukhum\". Worn at the big festivals, for the Cheraw (bamboo dance), and by a bride.", "pawndum": "Black, with bold red, yellow and white stripes across. A puan of mourning and of love for life: a bride takes one into marriage as her zawlken puan (\"I will cover you all your life, and wrap you in this at your death\"), and people bring one when someone dies, to share the family's sorrow.", "ngotekherh": "White and black. \"Ngo\" is white, and \"kherh\" the black lines woven both ways into a grid, with a wide black band in the middle (puanhruikhau). Once only for chiefs' and rich families; now men and women both wear it at festivals and big days.", "hmaram": "Deep indigo-black, dyed with ting (Assam indigo), with fine white patterns: fern shoots (kawkpuizikzial), stars and small flower borders. A short wrap worn by girls and young women, from the waist to the calves. A girl who could weave her own was counted a grown woman.", "tawlhlohpuan": "\"Tawlh lo\" means never stepping back. Black, with bold red, white and yellow stripes in the middle and sawtooth edges beside them. Once worn only by pasalṭha, the bravest warriors who never ran from a fight; now given to honour people who served the land.", "herawt ban": "The crank that turns the gin's rollers in opposite directions.", "lamuai": "A loose loop of thread, bundled so it can be boiled, dyed with ting or starched without tangling.", "hlo": "Weeds that grow up among the rice. Hlo thlawh, weeding, is the hardest work of June and July. (JF: weed → hlo thlo)", "buk": "A hut on posts in the jhum field. In August people sleep in it (buk riah) to guard the rice from wild animals and birds. (JF: hut → buk)", "sava hlauh": "Set up in the field to frighten the birds away from the rice. (JF: scarecrow → sava hlauh)", "pher": "A woven mat: the paddy is beaten (vua) on it to thresh it. (JF: mat → pher)", "thlei": "To toss the grain in a flat basket, so the light husks blow away. (JF: winnow → thlei)", "tiak": "What the rice and the jungle do when the first rains come in May. (JF: sprout → tiak)", "tapchhak": "The fireplace in the house, where the family sit in the cold months. (JF: hearth → tap, tapchhak)", "hal": "Lo hal: burning the dried jhum in April, before the sowing. (JF: fire → hal)", "buh in": "The house where the harvested paddy is kept. (JF: barn → chhêk in, buh in)", "pâwl": "What is left of the rice in the field after the harvest. Pâwlkut and Pâwltlak are named for it. (From the notes on the months)"};   // what some things do (the loom's parts)
-  // The things you can play with; #la, #loom, #bazar or #zonun in the address opens that one.
-  const FIGS = [HOUSE, LA, LOOM, BAZAR, ZONUN];
+  const WORDS = {"in": "house", "kawngkhar": "door", "tukverh": "window", "bang": "wall", "chhuat": "floor", "chungkhuh": "roof", "khawnvâr": "lamp", "zawhte": "cat", "arpui": "hen", "êm": "carrying basket", "kawng": "road", "pal": "fence", "thing": "tree", "mau": "bamboo", "pangpâr": "flower", "tlang": "hill", "ni": "sun", "thla": "moon", "arsi": "star", "chhum": "cloud", "ruah": "rain", "vân": "sky", "meikhu": "smoke", "mei": "fire", "hawng": "open", "khar": "close", "zân": "night", "zîng": "morning", "harh": "wake", "muhil": "sleep", "chhûngah": "inside", "choka": "kitchen", "bel": "pot", "khum": "bed", "puan": "cloth", "dawhkân": "table", "ṭhutthlêng": "chair", "chhuatphah": "mat", "arbawm": "chicken coop", "artui": "hen's egg", "vawk": "pig", "chhun": "daytime", "tlai": "evening", "thli": "wind", "chhimbâl": "rainbow", "nu": "mother", "pa": "father", "pi": "grandmother", "naupang": "child", "phiat": "to sweep", "hmunphiah": "broom", "su": "to wash clothes", "tui": "water", "kal": "go", "tlân": "run", "ṭhian": "friend", "tlawh": "to visit", "chibai": "hello", "infiam": "to play", "sumhmun": "front verandah", "sum": "rice mortar", "suk": "pestle", "tap": "hearth", "khumai": "children's bed", "khumpui": "big bed", "luhkapui": "the big platform", "kailawn": "log ladder", "tuium": "water tube", "buh zem": "paddy bin", "kawmchar": "back door", "sut": "ridge post", "lu ruh": "skull", "ki": "horn", "chhuar": "shelf", "thingtuah": "firewood", "ui": "dog", "thingkung": "tree", "buh": "paddy", "tah": "weave", "ṭhu": "sit", "la": "cotton", "lapua": "raw cotton", "la mu": "cotton seeds", "herawt": "cotton gin", "herawt ban": "gin handle", "lasai": "cotton bow", "lasai thal": "bow string", "lachawn": "cotton roll", "hmui": "spinning wheel", "hmuithlur": "spindle", "la zai": "thread", "ladawhkilh": "skein pegs", "lamuai": "skein", "buhhawp tui": "rice starch water", "suvel": "yarn swift", "lazarna": "warping posts", "sutpui": "warp", "puan chei": "decorated cloth", "rawng": "colour", "sen": "red", "dum": "black", "vâr": "white", "hring": "green", "dumpâwl": "blue", "sendang": "pink", "ziarâng": "pattern", "hrui": "rope", "kawngvawn": "backstrap", "themkhawl": "breast beam", "thempui": "beater (weaving sword)", "thembupui": "shed stick", "hnahchawi": "heddle rod", "themte": "pattern rods", "tuirek": "reed (spacer bar)", "khawhtlang": "shuttle", "themtlang": "warp beam", "kaihbu": "lease rods", "fawng": "basket", "thingrem": "wooden chest", "êng": "light", "zo": "finish", "mawi": "beautiful", "eng": "yellow", "puanchei": "the finest Mizo puan", "pawndum": "the black and red puan", "ngotekherh": "the white checked puan", "hmaram": "the girls' short puan", "tawlhlohpuan": "the puan of the brave", "bazar": "market", "dâwr": "shop", "dâwrkai": "shopkeeper", "zuar": "sell", "pawisa": "money", "thei": "fruit", "thlai": "vegetable", "balhla": "banana", "serthlum": "orange (fruit)", "theihai": "mango", "alu": "potato", "purun": "onion", "hmarcha": "chilli pepper", "fanghma": "cucumber", "zikhlum": "cabbage", "mâi": "pumpkin", "bawkbawn": "eggplant", "sawhthing": "ginger", "kho": "basket", "sangha": "fish", "hnah": "leaf", "buhfai": "husked rice", "rit": "heavy", "zâng": "light in weight", "lawmthu": "thanks", "pakhat": "one", "pahnih": "two", "pathum": "three", "khua": "village", "buh in": "granary", "tuikhur": "spring", "kawtchhuah": "gateway", "lo": "cultivated field", "ngaw": "forest", "buk": "field hut", "vaimim": "maize", "bal": "taro", "hlo": "weeds", "pâwl": "straw", "sava hlauh": "scarecrow", "hreipui": "large axe", "favah": "sickle", "vut": "ash", "tapchhak": "hearth", "pher": "mat", "khuang": "drum", "pu": "grandfather", "nula": "young woman", "tlangval": "young man", "lal": "chief", "chirh": "mud", "sava": "bird", "lui": "river", "tiauchhum": "fog", "phur": "to carry a load", "vua": "strike", "thlei": "to winnow", "lâm": "to dance", "ei": "eat", "chawl": "rest", "hal": "to burn", "tuh": "to sow", "seng": "harvest", "thlasik": "winter", "nipui": "summer", "favâng": "autumn"};   // Mizo → English, from the Hnahsin content
+  const NOTES = {"kawngvawn": "A strong strap of hide or cord round the weaver's back; leaning back pulls the warp tight.", "themkhawl": "The bar right in front of the weaver: the woven cloth rolls onto it, and the backstrap ties to it.", "thempui": "A long flat stick, thin and a little sharp, that beats each new row of weft tight.", "thembupui": "A wide flat bamboo bar that parts the upper and lower warp threads, opening the way for the shuttle.", "hnahchawi": "A thin straight rod tied with loops to every other warp thread; lifting it lifts them, so the threads cross.", "themte": "Thin rods added past the heddle to raise threads for the puan's design; four to seven for a fine pattern.", "tuirek": "A comb of bamboo or wood that keeps the warp threads evenly spaced.", "khawhtlang": "A slim stick with the weft wound on it, passed back and forth through the open shed.", "themtlang": "The big bar at the far end, tied to a wall or post, that holds every warp thread.", "kaihbu": "Two thin split bamboos near the warp beam that keep the warp threads from tangling.", "la": "Cotton grown in the jhum field, made into thread by hand before any weaving.", "lapua": "The cotton bolls picked from the plant and dried in the sun, with the seeds still inside.", "la mu": "The hard seeds, too big to pass between the gin's rollers; they drop out on the weaver's side.", "herawt": "Two hardwood rollers on an upright frame, geared together by carved spiral grooves. The cotton fibres are pulled through the gap; the seeds stay behind.", "lasai": "A strip of mature bamboo bent into an arch with a tight string. Held in the heap and plucked, it shakes the clumps into soft, airy fluff and the dust out.", "lasai thal": "The bow's tight cord, twisted from tough bark fibre or cane. Plucked with a little wooden striker, it buzzes \"per ri tek tek\".", "lachawn": "A handful of the fluffed cotton rolled round a thin bamboo stick into a soft hollow roll, ready to spin.", "hmui": "A low wheel on a heavy wooden base, used sitting on the floor. The right hand turns the wheel; a cord loop drives the spindle.", "hmuithlur": "The sharp, thin iron spindle. It twists the cotton into thread, then the thread is wound onto it into a full cone.", "la zai": "The cotton spun into a long, strong strand.", "ladawhkilh": "Upright wooden pegs. The thread from the spindle is wound round them into loose skeins (lamuai), so water, dye and starch reach every part.", "suvel": "A bamboo cage that turns on an upright pivot. The dried skein goes round it, and as the thread is pulled the cage spins, so it winds into a ball without tangling.", "lazarna": "Posts set apart as long as the puan will be. Walking back and forth, the weaver lays the starched thread round them in a figure-eight cross, counting each thread and placing the colour stripes.", "sutpui": "The long threads of the puan, laid out on the lazarna; the cross is later held by the kaihbu, and the warp goes onto the themkhawl and themtlang.", "buhhawp tui": "Thick rice water. The skeins are boiled in it, so the starch coats the thread and it does not fray or break on the loom; then they dry in the sun.", "eng": "The colour of turmeric and ripe rice; a bright thread in many puans.", "puanchei": "White, with red and black stripes and rows of patterns in green, yellow and black: sakei ha (tiger's teeth), disul (sungrass in the wind), kawkpuizikzial (the fern shoot), lenbuangthuam (forked branches) and fanghma mu. Once called \"Puan Lallukhum\". Worn at the big festivals, for the Cheraw (bamboo dance), and by a bride.", "pawndum": "Black, with bold red, yellow and white stripes across. A puan of mourning and of love for life: a bride takes one into marriage as her zawlken puan (\"I will cover you all your life, and wrap you in this at your death\"), and people bring one when someone dies, to share the family's sorrow.", "ngotekherh": "White and black. \"Ngo\" is white, and \"kherh\" the black lines woven both ways into a grid, with a wide black band in the middle (puanhruikhau). Once only for chiefs' and rich families; now men and women both wear it at festivals and big days.", "hmaram": "Deep indigo-black, dyed with ting (Assam indigo), with fine white patterns: fern shoots (kawkpuizikzial), stars and small flower borders. A short wrap worn by girls and young women, from the waist to the calves. A girl who could weave her own was counted a grown woman.", "tawlhlohpuan": "\"Tawlh lo\" means never stepping back. Black, with bold red, white and yellow stripes in the middle and sawtooth edges beside them. Once worn only by pasalṭha, the bravest warriors who never ran from a fight; now given to honour people who served the land.", "herawt ban": "The crank that turns the gin's rollers in opposite directions.", "lamuai": "A loose loop of thread, bundled so it can be boiled, dyed with ting or starched without tangling.", "hlo": "Weeds that grow up among the rice. Hlo thlawh, weeding, is the hardest work of June and July. (JF: weed → hlo thlo)", "buk": "A hut on posts in the jhum field. In August people sleep in it (buk riah) to guard the rice from wild animals and birds. (JF: hut → buk)", "sava hlauh": "Set up in the field to frighten the birds away from the rice. (JF: scarecrow → sava hlauh)", "pher": "A woven mat: the paddy is beaten (vua) on it to thresh it. (JF: mat → pher)", "thlei": "To toss the grain in a flat basket, so the light husks blow away. (JF: winnow → thlei)", "tiak": "What the rice and the jungle do when the first rains come in May. (JF: sprout → tiak)", "tapchhak": "The fireplace in the house, where the family sit in the cold months. (JF: hearth → tap, tapchhak)", "hal": "Lo hal: burning the dried jhum in April, before the sowing. (JF: fire → hal)", "buh in": "The house where the harvested paddy is kept. (JF: barn → chhêk in, buh in)", "pâwl": "What is left of the rice in the field after the harvest. Pâwlkut and Pâwltlak are named for it. (From the notes on the months)", "sumhmun": "The open front of the house, named for the sum, the mortar where the paddy is pounded. Firewood is stacked here, and hens lay in baskets on the front wall. (JF: porch → sumhmun)", "sum": "A thick block of wood hollowed out at the top, set in the sumhmun. The paddy is pounded in it with the suk to take off the husks. (JF: mortar → sum)", "suk": "The long heavy pole the paddy is pounded with in the sum. (JF: pestle → suk)", "tap": "A box of earth on the floor, kneaded wet until it set hard as brick, with three stones in the middle for the cooking pot and a smooth plank in front to sit on in the cold. Two bamboo shelves hang over it, where tomorrow's paddy is dried. (JF: hearth → tap)", "khumai": "The sleeping platform between the door and the hearth, for the small children and the unmarried girls. (Shakespear: kum-ai)", "khumpui": "The parents' sleeping platform, beyond the hearth. The beds and the hearth are always on the uphill side of the house. (Shakespear: kum-pui)", "luhkapui": "A raised bamboo platform beside the front of the house, where the women weave and things are put out to dry. (Shakespear: luka-pui)", "kailawn": "A log with steps cut into it, leading up to the house. (JF: stair → kailawn)", "tuium": "A length of thick bamboo used as a water pot. They stand together in a corner just inside the door. (Shakespear: tui-um)", "buh zem": "A big round bin of woven bamboo with the household's paddy, just inside the door. (JF: granary → buh zem)", "kawmchar": "The door at the far end of the house, opening onto a small platform with a notched log down to the garden. (Hmanlai Mizo In Sak Dan)", "sut": "The tallest and thickest posts, set deepest in the ground, holding up the ridge of the roof. (Hmanlai Mizo In Sak Dan: Sut hi In sezang an ti a)", "lu ruh": "The skulls of animals a hunter has killed, hung on the front wall of his house. (JF: skull → lu ruh)"};   // what some things do (the loom's parts)
+  // The things you can play with; #inhlui, #la, #loom, #bazar or #zonun in the address opens that one.
+  const FIGS = [HOUSE, INHLUI, LA, LOOM, BAZAR, ZONUN];
   let fig = FIGS.find(f => '#' + f.id === location.hash) || FIGS[0];
   const $ = id => document.getElementById(id);
   const svg = $('svg'), skyEl = $('sky'), cvs = $('cvs'), ctx = cvs.getContext('2d'), stage = $('stage'), wordEl = $('word');
