@@ -4,6 +4,29 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.40.0 (2 November 2026)
+
+### Touch and learn: smoother, and finer to look at
+
+- Everything in Touch and learn (In, La siam, Puan tah, Bazar dâwr and
+  Zonun) is now drawn on a canvas, 60 times a second on a phone that keeps
+  up (30 before), and fewer times on a slow one so it never stutters.
+  Tapping a part works as before.
+- A paper grain over the picture, as if it were printed.
+- The people are drawn with more care: knees that bend as they walk, feet,
+  short sleeves over bare forearms, round shoulders, a neck, ears and a
+  small mouth, a step that rises and falls, and a soft shadow where they
+  stand.
+- Zonun: thatched roofs show their rows of grass, the walls their woven
+  bamboo, and tufts of grass line the road. Far things fade into the air,
+  more in the mist and the haze. Houses, trees and animals have a soft
+  shadow where they meet the ground. The ink lines are bolder.
+- Zonun: a new month comes in gently, with the sky, the grass and the
+  weather changing over a moment and the rice growing and turning gold. The
+  walkers' feet keep pace with the ground. Rain splashes on the ground,
+  sparks fly up from the fires, and petals, ash or dry leaves blow by in
+  their months.
+
 ## 1.39.0 (2 November 2026)
 
 ### Touch and learn: Zonun, a year in a Mizo village

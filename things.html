@@ -110,8 +110,15 @@
   .fig-title span { color: var(--muted); font-weight: 600; font-size: 15px; }
   .stage { position: relative; touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: grab; }
   .stage.dragging { cursor: grabbing; }
-  .stage svg { display: block; width: 100%; height: auto; aspect-ratio: 260 / 222; }
+  /* Three layers: the sky (SVG) behind, the thing itself on a canvas, and labels, the map and what is said (SVG) in front.
+     The front picture sets the size; only its named parts take taps, the rest falls through to the canvas. */
+  .stage svg#svg { position: relative; display: block; width: 100%; height: auto; aspect-ratio: 260 / 222; pointer-events: none; }
+  .stage svg#svg [data-p] { pointer-events: auto; }
+  .stage #sky, .stage #cvs { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .stage svg [data-p] { cursor: pointer; }
+  /* Paper grain over the whole picture, as if printed: a still texture, so it costs nothing as things move */
+  .stage::after { content: ""; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; opacity: .55;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='3' stitchTiles='stitch' seed='7'/><feColorMatrix values='0 0 0 0 .55  0 0 0 0 .5  0 0 0 0 .42  0 0 0 .32 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>"); background-size: 180px 180px; }
   .stage svg .hl { stroke: var(--gold-deep) !important; stroke-width: 2.6px !important; }
   .stage svg g.hl > * { stroke: var(--gold-deep) !important; stroke-width: 2.2px !important; }
   .hint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); background: rgba(35, 30, 22, .78); color: #fff; font-size: 14px; font-weight: 700; padding: 6px 12px; border-radius: 99px; pointer-events: none; transition: opacity .5s; white-space: nowrap; }
@@ -178,6 +185,8 @@
     <div class="tabs" id="tabs" role="tablist" aria-label="Things to play with"></div>
     <div class="fig-title"><b id="fname"></b><span id="fsub"></span></div>
     <div class="stage" id="stage">
+      <svg id="sky" aria-hidden="true"></svg>
+      <canvas id="cvs" aria-hidden="true"></canvas>
       <svg id="svg" role="img"></svg>
       <div class="hint" id="hint">Tap anything · drag to turn</div>
     </div>
@@ -346,6 +355,7 @@
       case 'solid': v = p.faces.flatMap(f => f.pts); break;
       case 'ball': { v = []; const r = p.r; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, c = Math.cos(a) * r, s = Math.sin(a) * r; v.push(add(p.c, [c, s, 0]), add(p.c, [c, 0, s]), add(p.c, [0, c, s])); } break; }
       case 'cyl': { v = []; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; v.push([p.c[0] + Math.cos(a) * p.r0, p.c[1] + Math.sin(a) * p.r0, p.z0], [p.c[0] + Math.cos(a) * p.r1, p.c[1] + Math.sin(a) * p.r1, p.z1]); } break; }
+      case 'spot': v = [p.c]; break;
       case 'group': v = p.kids.flatMap(vertsOf); break;
       default: v = p.pts;
     }
@@ -378,47 +388,39 @@
     if (open) out.push(pts[n - 1]);
     return out.map(p => { const v = nz(p[0], p[1]); return [p[0] + v[0] * WOB, p[1] + v[1] * WOB]; });
   }
-  const d2 = (pts, open) => 'M' + (WOB ? wobble(pts, open) : pts).map(s => f1(s[0]) + ' ' + f1(s[1])).join('L') + (open ? '' : 'Z');
-  // A circle, or with the pen look a wobbly ring.
-  function circ(x, y, r, attrs) {
-    if (!WOB) return `<circle cx="${f1(x)}" cy="${f1(y)}" r="${f1(r)}"${attrs}/>`;
-    const n = Math.max(14, Math.min(32, Math.round(r * 2.6)));
-    return `<path d="${d2(Array.from({ length: n }, (_, i) => [x + r * Math.cos(i / n * 2 * Math.PI), y + r * Math.sin(i / n * 2 * Math.PI)]))}"${attrs}/>`;
-  }
-
   // ---------- render ----------
+  // Rendering builds a display list once (paths and circles in picture units, already projected and
+  // wobbled), then writes it as SVG (render) or paints it on a canvas (paint), which is quicker on phones.
   // scene: { ground: [shapes drawn first, in order], groundDecals: [...], clip: [3D points of the ground top],
   //          items: [shapes sorted far to near] }
   // o: { tint(colour) → colour, hl: part to highlight, ink: line weight, wobble: pen look strength,
-  //      light: direction toward the sun (unit vector) }
-  function render(sc, cam, o = {}) {
+  //      light: direction toward the sun (unit vector), smooth: shade flat faces smoothly, not in three steps,
+  //      haze: { col, near, far, max } far things fade toward col (depth near → none, far → max),
+  //      shadowOpacity, shadowColour }
+  // Ops: { k: 'p', pts, open, fill, stroke, w, op, part, round } a path · { k: 'c', x, y, r, fill | grad, stroke, w, op, part }
+  //      { k: 'sh', hulls, col, op, clip } the cast shadows · { k: 'spot', x, y, rx, ry, op } a soft dark patch where a thing meets the ground
+  const spot = (c, r, o = {}) => ({ shadow: false, ...o, t: 'spot', c, r });
+  function build(sc, cam, o = {}) {
     WOB = o.wobble || 0;
     const Lt = o.light || LIGHT;   // where the sun is: shading and shadows follow it
-    const T = o.tint || (c => c), W = o.ink || 1, out = [];
-    const P = cam.P, d3 = (pts, open) => d2(pts.map(P), open);
-    const tag = part => part ? ` data-p="${part}"${part === o.hl ? ' class="hl"' : ''}` : '';
+    const T0 = o.tint || (c => c), W = o.ink || 1, ops = [];
+    const P = cam.P, pp = (pts, open) => { const q = pts.map(P); return WOB ? wobble(q, open) : q; };
+    const shade = o.smooth ? smoothTone : tone;
+    // Far things fade into the air: FOG is set for each thing drawn, from how far back it is
+    let FOG = 0;
+    const H = o.haze, T = H ? (c => FOG > 0.004 ? mix(T0(c), H.col, FOG) : T0(c)) : T0;
     const col = (c, glow) => glow ? c : T(c);
-    // A shape sorts by its centre, or by `at` when given (a group that should sort as one point).
     const depthOf = p => p._d ?? (p._d = cam.depth(p.at || (p.c && p.t === 'ball' ? p.c : centroid(vertsOf(p)))) + (p.bias || 0));
+    const fogAt = d => H ? Math.max(0, Math.min(1, (H.near - d) / (H.near - H.far))) * H.max : 0;
     const light2 = (() => { const s = P(Lt), l = Math.hypot(s[0], s[1]) || 1; return [s[0] / l, s[1] / l]; })();
-    // A round thing is lit by a soft radial gradient, its bright side toward the light; one per palette.
-    const grads = new Map();
-    const fx = (0.5 + light2[0] * 0.26).toFixed(2), fy = (0.5 + light2[1] * 0.26).toFixed(2);
-    const gradOf = pal => {
-      const l = T(pal.l), m = T(pal.m), d = mix(m, T(pal.d), 0.45), key = l + m + d;
-      let id = grads.get(key);
-      if (!id) { id = 'rg' + grads.size; grads.set(key, id); gdefs.push(`<radialGradient id="${id}" cx="${fx}" cy="${fy}" r=".62"><stop offset="0" stop-color="${l}"/><stop offset=".5" stop-color="${m}"/><stop offset="1" stop-color="${d}"/></radialGradient>`); }
-      return id;
-    };
-    const gdefs = [];
+    const fx = 0.5 + light2[0] * 0.26, fy = 0.5 + light2[1] * 0.26;
+    const hlOf = part => part && part === o.hl;
 
     function decal(d, part) {
-      const fill = d.fill ? col(d.fill, d.glow) : 'none';
-      const stroke = d.stroke ? col(d.stroke, d.glow) : d.fill ? INK : 'none';
-      const sw = d.w ?? (d.fill ? W : 0.6 * W);
-      out.push(`<path d="${d3(d.pts, d.open)}" fill="${fill}" stroke="${stroke}" stroke-width="${f1(sw)}"${d.opacity != null ? ` opacity="${d.opacity.toFixed(2)}"` : ''}${tag(d.part ?? part)}/>`);
+      const pt = d.part ?? part;
+      ops.push({ k: 'p', pts: pp(d.pts, d.open), open: d.open, fill: d.fill ? col(d.fill, d.glow) : null,
+        stroke: d.stroke ? col(d.stroke, d.glow) : d.fill ? INK : null, w: d.w ?? (d.fill ? W : 0.6 * W), op: d.opacity, part: pt, hl: hlOf(pt) });
     }
-
     function draw(p) {
       switch (p.t) {
         case 'solid': {
@@ -426,59 +428,57 @@
           for (const f of p.faces) if (f.both || dot(f.n, cam.view) > 1e-4) vis.push([cam.depth(centroid(f.pts)), f]);
           vis.sort((a, b) => a[0] - b[0]);
           for (const [, f] of vis) {
-            const fill = f.fill ? col(f.fill, f.glow) : T(tone(f.pal, dot(f.n, Lt)));
+            const fill = f.fill ? col(f.fill, f.glow) : T(shade(f.pal, dot(f.n, Lt)));
             const part = f.part ?? p.part;   // a face takes its group's name when it has none
-            out.push(`<path d="${d3(f.pts)}" fill="${fill}" stroke="${INK}" stroke-width="${f1(W * (p.w || 1))}" stroke-linejoin="round"${tag(part)}/>`);
+            ops.push({ k: 'p', pts: pp(f.pts), fill, stroke: INK, w: W * (p.w || 1), part, hl: hlOf(part), round: true });
             if (f.decals) for (const d of f.decals) decal(d, part);
           }
           break;
         }
         case 'ball': {
-          const [x, y] = P(p.c), r = p.r, op = p.opacity != null ? ` opacity="${p.opacity.toFixed(2)}"` : '';
-          if (p.fill) {
-            const ink = p.ink === false ? '' : ` stroke="${INK}" stroke-width="${f1(W * (p.w || 0.8))}"`;
-            out.push(circ(x, y, r, ` fill="${col(p.fill, p.glow)}"${ink}${op}${tag(p.part)}`));
-            break;
-          }
-          out.push(circ(x, y, r, ` fill="url(#${gradOf(p.pal)})" stroke="${INK}" stroke-width="${f1(W * (p.w || 1))}"${op}${tag(p.part)}`));
+          const [x, y] = P(p.c), r = p.r, op = p.opacity;
+          const stroke = p.fill && p.ink === false ? null : INK, w = W * (p.w || (p.fill ? 0.8 : 1));
+          const base = { stroke, w, op, part: p.part, hl: hlOf(p.part) };
+          const fill = p.fill ? col(p.fill, p.glow) : null, grad = p.fill ? null : { l: T(p.pal.l), m: T(p.pal.m), d: mix(T(p.pal.m), T(p.pal.d), 0.45), fx, fy };
+          if (WOB) {   // with the pen look, a wobbly ring
+            const n = Math.max(14, Math.min(32, Math.round(r * 2.6)));
+            ops.push({ k: 'p', pts: wobble(Array.from({ length: n }, (_, i) => [x + r * Math.cos(i / n * 2 * Math.PI), y + r * Math.sin(i / n * 2 * Math.PI)])), fill, grad, x, y, r, ...base });
+          } else ops.push({ k: 'c', x, y, r, fill, grad, ...base });
           break;
         }
         case 'cyl': {
-          const N = 18, [cx, cy] = p.c, slope = (p.r0 - p.r1) / (p.z1 - p.z0);
+          const N = 18, [cx, cy] = p.c, slope = (p.r0 - p.r1) / (p.z1 - p.z0), hl = hlOf(p.part);
           const ring = (z, r) => Array.from({ length: N }, (_, i) => { const a = i / N * 2 * Math.PI; return [cx + r * Math.cos(a), cy + r * Math.sin(a), z]; });
           const B = ring(p.z0, p.r0), U = ring(p.z1, p.r1);
-          let s = `<g${tag(p.part)}>`;
           for (let i = 0; i < N; i++) {
             const a = (i + 0.5) / N * 2 * Math.PI, n = norm([Math.cos(a), Math.sin(a), slope]);
             if (dot(n, cam.view) <= 0) continue;
             const fill = T(smoothTone(p.pal, dot(n, Lt))), j = (i + 1) % N;
-            s += `<path d="${d3([B[i], B[j], U[j], U[i]])}" fill="${fill}" stroke="${fill}" stroke-width=".6"/>`;
+            ops.push({ k: 'p', pts: pp([B[i], B[j], U[j], U[i]]), fill, stroke: fill, w: 0.6, part: p.part, hl: false });
           }
           for (const z of p.bands || []) {
             const r = p.r0 + (p.r1 - p.r0) * (z - p.z0) / (p.z1 - p.z0), R = ring(z, r);
             for (let i = 0; i < N; i++) {
               const a = (i + 0.5) / N * 2 * Math.PI;
               if (dot([Math.cos(a), Math.sin(a), 0], cam.view) <= 0.05) continue;
-              s += `<path d="${d3([R[i], R[(i + 1) % N]], true)}" stroke="${INK}" stroke-width="${f1(0.6 * W)}" fill="none"/>`;
+              ops.push({ k: 'p', pts: pp([R[i], R[(i + 1) % N]], true), open: true, stroke: INK, w: 0.6 * W, part: p.part });
             }
           }
-          s += `<path d="${d2(hull(B.concat(U).map(P)))}" fill="none" stroke="${INK}" stroke-width="${f1(W)}" stroke-linejoin="round"/>`;
-          if (p.cap !== false) s += `<path d="${d3(U)}" fill="${T(p.capFill || p.pal.l)}" stroke="${INK}" stroke-width="${f1(W)}"/>`;
-          out.push(s + '</g>');
+          const h = hull(B.concat(U).map(P));
+          ops.push({ k: 'p', pts: WOB ? wobble(h) : h, stroke: INK, w: W, part: p.part, hl, round: true });
+          if (p.cap !== false) ops.push({ k: 'p', pts: pp(U), fill: T(p.capFill || p.pal.l), stroke: INK, w: W, part: p.part, hl });
           break;
         }
         case 'line': {
-          const d = d3(p.pts, true), w = p.w || 1;
-          const op = p.opacity != null ? ` opacity="${p.opacity.toFixed(2)}"` : '';
-          out.push(`<g fill="none" stroke-linecap="round" stroke-linejoin="round"${op}${tag(p.part)}>` +
-            (p.ink === false ? '' : `<path d="${d}" stroke="${INK}" stroke-width="${f1(w + 1.3 * W)}"/>`) +
-            `<path d="${d}" stroke="${col(p.col, p.glow)}" stroke-width="${f1(w)}"/></g>`);
+          const pts = pp(p.pts, true), w = p.w || 1, hl = hlOf(p.part);
+          if (p.ink !== false) ops.push({ k: 'p', pts, open: true, stroke: INK, w: w + 1.3 * W, op: p.opacity, part: p.part, hl, line: true });
+          ops.push({ k: 'p', pts, open: true, stroke: col(p.col, p.glow), w, op: p.opacity, part: p.part, line: true });
           break;
         }
         case 'poly': {
           let n = newell(p.pts); if (dot(n, cam.view) < 0) n = mul(n, -1);
-          const fill = p.fill ? col(p.fill, p.glow) : T(tone(p.pal, dot(n, Lt)));
-          out.push(`<path d="${d3(p.pts)}" fill="${fill}" stroke="${p.ink === false ? fill : INK}" stroke-width="${f1(W * (p.w || 0.9))}" stroke-linejoin="round"${p.opacity != null ? ` opacity="${p.opacity.toFixed(2)}"` : ''}${tag(p.part)}/>`);
+          const fill = p.fill ? col(p.fill, p.glow) : T(shade(p.pal, dot(n, Lt)));
+          ops.push({ k: 'p', pts: pp(p.pts), fill, stroke: p.ink === false ? fill : INK, w: W * (p.w || 0.9), op: p.opacity, part: p.part, hl: hlOf(p.part), round: true });
           break;
         }
         case 'group': {
@@ -489,29 +489,121 @@
       }
     }
 
-    // Shadows fall along the light onto the ground (z = 0).
-    function shadow(p) {
-      if (p.shadow === false) return '';
-      if (p.t === 'group') return p.kids.map(shadow).join('');
+    // Shadows fall along the light onto the ground (z = 0); spots darken where a thing stands.
+    const hulls = [], spots = [], sp = Math.sin(cam.pitch * D2R);
+    (function shadow(p) {
+      if (p.t === 'group') { p.kids.forEach(shadow); return; }
+      if (p.t === 'spot') { const [x, y] = P(p.c); spots.push({ k: 'spot', x, y, rx: p.r, ry: p.r * Math.max(0.2, sp), op: p.opacity ?? 0.35 }); return; }
+      if (p.shadow === false) return;
       const pts = vertsOf(p).map(v => { const z = Math.max(0, v[2]); return P([v[0] - Lt[0] * z / Lt[2], v[1] - Lt[1] * z / Lt[2], 0]); });
       const h = hull(pts);
-      return h.length > 2 ? `<path d="${d2(h)}"/>` : '';
-    }
+      if (h.length > 2) hulls.push(WOB ? wobble(h) : h);
+    }({ t: 'group', kids: sc.items || [] }));
 
     for (const g of sc.ground || []) draw(g);
     for (const g of sc.groundDecals || []) draw(g);
-    if (sc.clip) out.push(`<defs><clipPath id="gclip"><path d="${d3(sc.clip)}"/></clipPath></defs>`);
-    // Soft shadows: a wide faint edge round a darker middle (cheaper on a phone than a blur filter).
-    const sh = (sc.items || []).map(shadow).join(''), sop = (o.shadowOpacity ?? 0.24) * 0.56, scol = o.shadowColour || '#41538f';
-    out.push(`<g${sc.clip ? ' clip-path="url(#gclip)"' : ''} fill="${scol}" pointer-events="none"><g opacity="${sop.toFixed(2)}" stroke="${scol}" stroke-width="2.2" stroke-linejoin="round">${sh}</g><g opacity="${sop.toFixed(2)}">${sh}</g></g>`);
+    ops.push({ k: 'sh', hulls, col: o.shadowColour || '#41538f', op: (o.shadowOpacity ?? 0.24) * 0.56, clip: sc.clip ? pp(sc.clip) : null });
+    ops.push(...spots);
     const items = (sc.items || []).slice().sort((a, b) => depthOf(a) - depthOf(b));
-    for (const p of items) draw(p);
-    WOB = 0;
-    if (gdefs.length) out.push(`<defs>${gdefs.join('')}</defs>`);
-    return out.join('');
+    for (const p of items) { FOG = fogAt(depthOf(p)); draw(p); }
+    FOG = 0; WOB = 0;
+    return ops;
   }
 
-  global.Ink3D = { INK, LIGHT, add, sub, mul, dot, norm, lerp3, centroid, mix, tone, smoothTone, camera, solid, hexa, box, panel, ball, cyl, line, poly, group, hull, render };
+  // ---------- as SVG ----------
+  const pathD = (pts, open) => 'M' + pts.map(s => f1(s[0]) + ' ' + f1(s[1])).join('L') + (open ? '' : 'Z');
+  function toSVG(ops) {
+    const out = [], defs = [], grads = new Map();
+    const gradId = g => {
+      const key = g.l + g.m + g.d;
+      let id = grads.get(key);
+      if (!id) { id = 'rg' + grads.size; grads.set(key, id); defs.push(`<radialGradient id="${id}" cx="${g.fx.toFixed(2)}" cy="${g.fy.toFixed(2)}" r=".62"><stop offset="0" stop-color="${g.l}"/><stop offset=".5" stop-color="${g.m}"/><stop offset="1" stop-color="${g.d}"/></radialGradient>`); }
+      return id;
+    };
+    const tag = op => op.part ? ` data-p="${op.part}"${op.hl ? ' class="hl"' : ''}` : '';
+    const opa = op => op.op != null ? ` opacity="${op.op.toFixed(2)}"` : '';
+    let spotDef = false;
+    for (const op of ops) {
+      if (op.k === 'p') {
+        const fill = op.grad ? `url(#${gradId(op.grad)})` : op.fill || 'none';
+        out.push(`<path d="${pathD(op.pts, op.open)}" fill="${fill}"${op.stroke ? ` stroke="${op.stroke}" stroke-width="${f1(op.w)}"` : ''}${op.round || op.line ? ' stroke-linejoin="round"' : ''}${op.line ? ' stroke-linecap="round"' : ''}${opa(op)}${tag(op)}/>`);
+      } else if (op.k === 'c') {
+        const fill = op.grad ? `url(#${gradId(op.grad)})` : op.fill;
+        out.push(`<circle cx="${f1(op.x)}" cy="${f1(op.y)}" r="${f1(op.r)}" fill="${fill}"${op.stroke ? ` stroke="${op.stroke}" stroke-width="${f1(op.w)}"` : ''}${opa(op)}${tag(op)}/>`);
+      } else if (op.k === 'sh') {
+        // Soft shadows: a wide faint edge round a darker middle (cheaper on a phone than a blur filter).
+        if (op.clip) out.push(`<defs><clipPath id="gclip"><path d="${pathD(op.clip)}"/></clipPath></defs>`);
+        const sh = op.hulls.map(h => `<path d="${pathD(h)}"/>`).join('');
+        out.push(`<g${op.clip ? ' clip-path="url(#gclip)"' : ''} fill="${op.col}" pointer-events="none"><g opacity="${op.op.toFixed(2)}" stroke="${op.col}" stroke-width="2.2" stroke-linejoin="round">${sh}</g><g opacity="${op.op.toFixed(2)}">${sh}</g></g>`);
+      } else if (op.k === 'spot') {
+        if (!spotDef) { spotDef = true; defs.push('<radialGradient id="spot"><stop offset="0" stop-color="#231e16"/><stop offset="1" stop-color="#231e16" stop-opacity="0"/></radialGradient>'); }
+        out.push(`<ellipse cx="${f1(op.x)}" cy="${f1(op.y)}" rx="${f1(op.rx)}" ry="${f1(op.ry)}" fill="url(#spot)" opacity="${op.op.toFixed(2)}" pointer-events="none"/>`);
+      }
+    }
+    if (defs.length) out.push(`<defs>${defs.join('')}</defs>`);
+    return out.join('');
+  }
+  const render = (sc, cam, o) => toSVG(build(sc, cam, o));
+
+  // ---------- on a canvas ----------
+  // The context's transform must already map picture units to the canvas. Returns what was drawn with a
+  // name, last on top, so a tap can find the part under it (see hit).
+  const HL = '#e39b00';
+  function paintOps(ctx, ops) {
+    const hits = [];
+    ctx.lineJoin = 'round';
+    for (const op of ops) {
+      if (op.k === 'p' || op.k === 'c') {
+        const path = new Path2D();
+        if (op.k === 'c') path.arc(op.x, op.y, op.r, 0, Math.PI * 2);
+        else { const q = op.pts; path.moveTo(q[0][0], q[0][1]); for (let i = 1; i < q.length; i++) path.lineTo(q[i][0], q[i][1]); if (!op.open) path.closePath(); }
+        ctx.globalAlpha = op.op ?? 1;
+        if (op.grad) {
+          const g = op.grad, r = op.r, gx = op.x - r + g.fx * 2 * r, gy = op.y - r + g.fy * 2 * r, G = ctx.createRadialGradient(gx, gy, 0, gx, gy, 1.24 * r);
+          G.addColorStop(0, g.l); G.addColorStop(0.5, g.m); G.addColorStop(1, g.d);
+          ctx.fillStyle = G; ctx.fill(path);
+        } else if (op.fill) { ctx.fillStyle = op.fill; ctx.fill(path); }
+        if (op.stroke) {
+          ctx.lineCap = op.line ? 'round' : 'butt';
+          ctx.strokeStyle = op.hl ? HL : op.stroke; ctx.lineWidth = op.hl ? Math.max(2.4, op.w) : op.w;
+          ctx.stroke(path);
+        }
+        if (op.part) hits.push({ path, part: op.part, fill: !!(op.fill || op.grad), w: op.w });
+      } else if (op.k === 'sh') {
+        if (!op.hulls.length) continue;
+        ctx.save();
+        if (op.clip) { const c = new Path2D(); c.moveTo(op.clip[0][0], op.clip[0][1]); for (const q of op.clip.slice(1)) c.lineTo(q[0], q[1]); c.closePath(); ctx.clip(c); }
+        const all = new Path2D();
+        for (const h of op.hulls) { all.moveTo(h[0][0], h[0][1]); for (let i = 1; i < h.length; i++) all.lineTo(h[i][0], h[i][1]); all.closePath(); }
+        // Drawn on its own layer, so overlapping shadows do not darken each other (as one SVG group)
+        ctx.globalAlpha = op.op; ctx.fillStyle = op.col; ctx.strokeStyle = op.col; ctx.lineWidth = 2.2;
+        ctx.stroke(all); ctx.fill(all); ctx.fill(all, 'nonzero');
+        ctx.restore();
+      } else if (op.k === 'spot') {
+        ctx.save(); ctx.globalAlpha = op.op;
+        ctx.translate(op.x, op.y); ctx.scale(1, op.ry / op.rx);
+        const G = ctx.createRadialGradient(0, 0, 0, 0, 0, op.rx);
+        G.addColorStop(0, 'rgba(35,30,22,1)'); G.addColorStop(1, 'rgba(35,30,22,0)');
+        ctx.fillStyle = G; ctx.beginPath(); ctx.arc(0, 0, op.rx, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+    }
+    ctx.globalAlpha = 1;
+    return hits;
+  }
+  const paint = (ctx, sc, cam, o) => paintOps(ctx, build(sc, cam, o));
+  // The named part at canvas pixel (x, y), with the context's transform as it was painted
+  function hit(ctx, hits, x, y, slop = 3) {
+    for (let i = hits.length - 1; i >= 0; i--) {
+      const h = hits[i];
+      if (h.fill && ctx.isPointInPath(h.path, x, y)) return h.part;
+      ctx.lineWidth = h.w + slop;
+      if (!h.fill && ctx.isPointInStroke(h.path, x, y)) return h.part;
+    }
+    return null;
+  }
+
+  global.Ink3D = { INK, LIGHT, add, sub, mul, dot, norm, lerp3, centroid, mix, tone, smoothTone, camera, solid, hexa, box, panel, ball, cyl, line, poly, group, spot, hull, render, build, toSVG, paint, hit };
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
 <script>
@@ -523,7 +615,7 @@
 //    phase (walk cycle), t (clock, for moving hands), hands ([left, right] points to reach for).
 // With a clock they breathe and blink, and look toward their hands while they work.
 const Ink3DPeople = (() => {
-  const { ball, cyl, line, add, mul } = Ink3D;
+  const { ball, cyl, line, spot, add, mul } = Ink3D;
   const SKIN = { l: '#efc29b', m: '#d9a47c', d: '#7a4f33' };
 
   function person(at, dir, o) {
@@ -533,18 +625,31 @@ const Ink3DPeople = (() => {
     // How far the upper body is lowered (kneeling to wash, sitting on the floor), and leaned forward.
     const crouch = o.pose === 'wash' ? 0.32 * h : sit ? 0.27 * h : 0;
     const lean = o.pose === 'sweep' ? 0.06 * h : o.pose === 'wash' ? 0.1 * h : sit ? (o.lean || 0) * h : 0;
-    const hip = 0.46 * h - crouch, run = o.pose === 'run' ? 1.6 : 1;
+    const walking = o.pose === 'walk' || o.pose === 'run', run = o.pose === 'run' ? 1.6 : 1;
+    // Walking, the body rises a little over each step (twice a stride) and dips as a foot lands
+    const bob = walking ? Math.abs(Math.cos(ph)) * 0.022 * h * run : 0;
+    const hip = 0.46 * h - crouch + bob;
     const kids = [];
-    // Legs
+    // A soft dark patch on the ground where they stand or sit
+    kids.push(spot(at, (sit ? 0.3 : 0.2) * h, { opacity: 0.32 }));
+    const foot = (heel, side, col) => kids.push(line([heel, add(heel, add(mul(d, 0.075 * h), mul(sd, side * 0.01 * h)))], { col: col || o.shoes || SKIN.d, w: 2.1 }));
+    // Legs: hip, knee and foot, the knee bending as the leg swings through; a foot pointing the way they face
     for (const side of [-1, 1]) {
-      if (o.pose === 'wash') kids.push(line([P(0, side * 0.08 * h, hip), P(0.2 * h, side * 0.09 * h, 0.12 * h), P(-0.05 * h, side * 0.09 * h, 0.4)], { col: SKIN.m, w: 1.5 }));
-      else if (sit) {   // straight out in front, knees a little up
-        kids.push(line([P(0, side * 0.08 * h, hip), P(0.22 * h, side * 0.09 * h, 0.1 * h), P(0.44 * h, side * 0.09 * h, 0.5)], { col: SKIN.m, w: 1.7 }));
-        kids.push(ball(P(0.46 * h, side * 0.09 * h, 0.9), 0.055 * h, { fill: SKIN.m, w: 0.5 }));
+      if (o.pose === 'wash') {
+        kids.push(line([P(0, side * 0.08 * h, hip), P(0.2 * h, side * 0.09 * h, 0.12 * h), P(-0.05 * h, side * 0.09 * h, 0.4)], { col: SKIN.m, w: 1.7 }));
+        foot(P(-0.07 * h, side * 0.09 * h, 0.5), side);
+      } else if (sit) {   // straight out in front, knees a little up
+        kids.push(line([P(0, side * 0.08 * h, hip), P(0.22 * h, side * 0.09 * h, 0.1 * h), P(0.44 * h, side * 0.09 * h, 0.5)], { col: SKIN.m, w: 1.8 }));
+        kids.push(ball(P(0.46 * h, side * 0.09 * h, 0.9), 0.055 * h, { fill: o.shoes || SKIN.m, w: 0.5 }));
       } else {
-        const sw = (o.pose === 'walk' || o.pose === 'run') ? Math.sin(ph + (side > 0 ? 0 : Math.PI)) * 0.16 * h * run : 0;
-        kids.push(line([P(0, side * 0.07 * h, hip), P(sw, side * 0.08 * h, 0.4)], { col: SKIN.m, w: 1.6 }));
-        if (o.shoes) kids.push(ball(P(sw + 0.03 * h, side * 0.08 * h, 0.6), 0.06 * h, { fill: o.shoes, w: 0.6 }));
+        const p2 = ph + (side > 0 ? 0 : Math.PI);
+        const sw = walking ? Math.sin(p2) * 0.16 * h * run : 0;
+        const lift = walking ? Math.max(0, Math.cos(p2)) * 0.06 * h * run : 0;   // the foot lifts as it swings forward
+        const bend = walking ? (0.02 + 0.05 * Math.max(0, Math.cos(p2))) * h * run : 0.012 * h;
+        const ft = P(sw, side * 0.08 * h, 0.4 + lift), hp = P(0, side * 0.07 * h, hip);
+        const kn = add(mul(add(hp, ft), 0.5), mul(d, bend));
+        kids.push(line([hp, kn, ft], { col: SKIN.m, w: 1.8 }));
+        foot(add(ft, mul(d, -0.02 * h)), side);
       }
     }
     // Lower body: a puan skirt with stripes, or shorts
@@ -559,9 +664,11 @@ const Ink3DPeople = (() => {
     let look = 0;
     if (o.hands && t) { const m = mul(add(o.hands[0], o.hands[1]), 0.5), v = [m[0] - at[0], m[1] - at[1]], l = Math.hypot(v[0], v[1]) || 1; look = Math.max(-0.35, Math.min(0.35, (v[0] * sd[0] + v[1] * sd[1]) / l)); }
     const body = P(lean, 0, 0);
-    kids.push(cyl(body.slice(0, 2), Z + 0.5 * h - crouch, Z + 0.79 * h - crouch + breath, 0.14 * h, 0.115 * h, { pal: o.shirt }));
+    kids.push(cyl(body.slice(0, 2), Z + 0.5 * h - crouch + bob, Z + 0.79 * h - crouch + breath + bob, 0.14 * h, 0.115 * h, { pal: o.shirt }));
+    kids.push(cyl(P(lean * 1.2, 0, 0).slice(0, 2), Z + 0.78 * h - crouch + bob, Z + 0.84 * h - crouch + bob, 0.045 * h, 0.04 * h, { pal: SKIN, cap: false }));   // the neck
     if (o.stripe) kids.push(cyl(body.slice(0, 2), Z + 0.6 * h - crouch, Z + 0.645 * h - crouch, 0.137 * h, 0.134 * h, { pal: o.stripe, cap: false }));
-    const r = 0.13 * h, head = add(P(lean * 1.4, look * 0.25 * r, 0.9 * h - crouch), [0, 0, breath]);
+    const r = 0.13 * h, head = add(P(lean * 1.4, look * 0.25 * r, 0.9 * h - crouch + bob), [0, 0, breath]);
+    for (const e of [-1, 1]) kids.push(ball(add(head, add(mul(sd, e * 0.98 * r), mul(d, -0.05 * r))), 0.24 * r, { pal: SKIN, w: 0.5 }));   // ears
     kids.push(ball(add(head, add(mul(d, -0.22 * r), [0, 0, 0.18 * r])), r * 1.04, { fill: o.hair }));
     kids.push(ball(add(head, mul(d, 0.12 * r)), r, { pal: SKIN }));
     if (o.bun) kids.push(ball(add(head, add(mul(d, -0.95 * r), [0, 0, 0.35 * r])), 0.45 * r, { fill: o.hair }));
@@ -578,17 +685,20 @@ const Ink3DPeople = (() => {
       if (blink) kids.push(line([add(c, mul(sd, -0.13 * r)), add(c, mul(sd, 0.13 * r))], { col: '#231e16', w: 0.45, ink: false }));
       else kids.push(ball(c, 0.09 * r + 0.15, { fill: '#231e16', ink: false }));
     }
-    // Arms: to the given hand points, or as the pose says
+    // A small mouth under the eyes
+    kids.push(line([add(head, add(add(mul(d, 0.93 * r), mul(sd, (look - 0.17) * r)), [0, 0, -0.38 * r])), add(head, add(add(mul(d, 0.97 * r), mul(sd, look * r)), [0, 0, -0.44 * r])), add(head, add(add(mul(d, 0.93 * r), mul(sd, (look + 0.17) * r)), [0, 0, -0.38 * r]))], { col: '#8a3a2e', w: 0.5, ink: false }));
+    // Arms: to the given hand points, or as the pose says; a short sleeve over the shoulder, the forearm bare
     for (const side of [-1, 1]) {
-      const sh = P(lean, side * 0.15 * h, 0.75 * h - crouch);
+      const sh = P(lean, side * 0.15 * h, 0.75 * h - crouch + bob);
       let hand;
       if (o.hands) hand = o.hands[side < 0 ? 0 : 1];
       else if (o.pose === 'sweep') hand = P(lean + 0.2 * h, side * 0.04 * h, 0.5 * h + side * 0.06 * h);
       else if (o.pose === 'wash') hand = P(0.36 * h, side * 0.07 * h, 0.3 * h - crouch * 0.4 + 0.05 * h * Math.sin(t * 7 + side));
       else { const sw = (o.pose === 'walk' || o.pose === 'run') ? -Math.sin(ph + (side > 0 ? 0 : Math.PI)) * 0.14 * h * run : 0; hand = P(lean + sw, side * 0.19 * h, 0.45 * h - crouch); }
       // An elbow, so a reaching arm bends rather than stretching
-      const mid = add(mul(add(sh, hand), 0.5), [0, 0, -0.05 * h]);
-      kids.push(line([sh, mid, hand], { col: o.shirt.m, w: 1.5 }));
+      const mid = add(mul(add(sh, hand), 0.5), [0, 0, -0.05 * h]), elbow = add(mul(sh, 0.45), mul(mid, 0.55));
+      kids.push(ball(sh, 0.07 * h, { pal: o.shirt, w: 0.6 }));   // the shoulder, round under the shirt
+      kids.push(line([sh, elbow], { col: o.shirt.m, w: 1.9 }), line([elbow, mid, hand], { col: SKIN.m, w: 1.4 }));
       kids.push(ball(hand, 0.06 * h, { fill: SKIN.m, w: 0.5 }));
     }
     return kids;
@@ -2336,7 +2446,7 @@ const LA = (() => {
 // lies in straw (December, January); the festivals come in their months. Drag to walk along the road;
 // tap anyone to see what they are doing. Words not in the Hnahsin content come from zonun_words.json.
 const ZONUN = (() => {
-  const { hexa, ball, cyl, line, poly, group, solid, mix } = Ink3D;
+  const { hexa, ball, cyl, line, poly, group, solid, spot, mix } = Ink3D;
 
   const WALL = { l: '#e9cf98', m: '#cdb070', d: '#7d6236' }, WOOD = { l: '#c98d55', m: '#a46c3c', d: '#55361d' }, POST = { l: '#9a6a40', m: '#7a5230', d: '#3e2918' };
   const EARTH = { l: '#c99a6b', m: '#a8774b', d: '#5a3d26' }, LEAF = { l: '#86c86e', m: '#5fa451', d: '#2f5a28' }, DARK_LEAF = { l: '#6fb35e', m: '#4c8c44', d: '#244a22' };
@@ -2441,6 +2551,22 @@ const ZONUN = (() => {
     green: { l: '#a9d67c', m: '#8cc063', d: '#4b6b33' }, dry: { l: '#cfd08a', m: '#b5b56a', d: '#5f6136' }, fall: { l: '#c4cf7c', m: '#a6b35c', d: '#56602f' },
   };
 
+  // How the month looks right now: while one month turns into the next, its colours, weather and rice
+  // height move smoothly from the last month's to its own.
+  const lerp = (a, b, k) => a + (b - a) * k, ease = k => k * k * (3 - 2 * k);
+  const DRY = { green: 0, fall: 0.5, dry: 1 };
+  const RICE = { tiak: 1, hring: 1, par: 1, hmin: 1, seng: 1, pawl: 1 };
+  function look(s) {
+    const A = MONTHS[s.prev], B = MONTHS[s.m], k = ease(s.blend), G0 = GRASS[A.grass], G1 = GRASS[B.grass];
+    return {
+      sky: [mix(A.sky[0], B.sky[0], k), mix(A.sky[1], B.sky[1], k)],
+      grass: { l: mix(G0.l, G1.l, k), m: mix(G0.m, G1.m, k), d: mix(G0.d, G1.d, k) },
+      dry: lerp(DRY[A.grass], DRY[B.grass], k), rain: lerp(A.rain || 0, B.rain || 0, k), mist: lerp(A.mist || 0, B.mist || 0, k),
+      haze: lerp(A.haze || 0, B.haze || 0, k), cold: lerp(A.cold ? 1 : 0, B.cold ? 1 : 0, k),
+      h: RICE[A.lo] && RICE[B.lo] ? lerp(A.h || 0, B.h || 0, k) : B.h || 0, k, A, B,
+    };
+  }
+
   // The places along the road (x is how far along it), and how far you can walk.
   const PLACES = [{ id: 'in', x: 0, en: 'Homes' }, { id: 'tuikhur', x: 230, en: 'Spring' }, { id: 'kawtchhuah', x: 470, en: 'Village square' }, { id: 'lo', x: 740, en: 'Jhum field' }];
   const placeX = id => PLACES.find(p => p.id === id).x;
@@ -2452,16 +2578,18 @@ const ZONUN = (() => {
 
   function init() {
     const m = 0;
-    return { t: 0, m, pan: placeX(MONTHS[m].at), panT: placeX(MONTHS[m].at), v: 0, held: false, tour: false, play: false, playClock: 0,
+    return { t: 0, m, prev: m, blend: 1, pan: placeX(MONTHS[m].at), panT: placeX(MONTHS[m].at), v: 0, held: false, tour: false, play: false, playClock: 0,
       bubble: null, cam: null, anchors: [], heads: {}, says: {} };
   }
   function goMonth(s, m) {
+    s.prev = s.m; s.blend = 0;   // the sky, the colours and the rice change over a moment, not at once
     s.m = (m + 12) % 12; s.bubble = null; s.v = 0; s.tour = false;
     s.panT = placeX(MONTHS[s.m].at);
   }
 
   function step(s, dt) {
     s.t += dt;
+    s.blend = Math.min(1, s.blend + dt / 1.8);
     if (s.play && (s.playClock -= dt) <= 0) { s.playClock = 9; goMonth(s, s.m + 1); }
     if (s.tour) { s.panT = Math.min(MAX, s.panT + dt * 40); if (s.panT >= MAX) s.tour = false; }
     if (!s.held) {
@@ -2481,7 +2609,10 @@ const ZONUN = (() => {
   function roof(T, x0, x1, y0, y1, zt, rh, o, pal, part) {
     const ym = (y0 + y1) / 2, X0 = x0 - o, X1 = x1 + o, Y0 = y0 - o, Y1 = y1 + o;
     const a = T(X0, Y1, zt), b = T(X1, Y1, zt), c = T(X1, ym, zt + rh), d = T(X0, ym, zt + rh), e = T(X0, Y0, zt), f = T(X1, Y0, zt);
-    return solid([{ pts: [a, b, c, d] }, { pts: [f, e, d, c] }, { pts: [a, d, e] }, { pts: [b, f, c] }, { pts: [a, e, f, b] }], { pal, part });
+    // A thatched roof shows its rows of grass: lines along each slope, and a ragged eave
+    const rows = (p0, p1, q0, q1) => pal === THATCH ? [1, 2, 3, 4].map(i => ({ pts: [Ink3D.lerp3(p0, q0, i / 5), Ink3D.lerp3(p1, q1, i / 5)], stroke: THATCH.d, w: 0.5, open: true }))
+      .concat(Array.from({ length: 9 }, (_, i) => { const u = (i + 0.5) / 9, top = Ink3D.lerp3(Ink3D.lerp3(p0, q0, 0.12), Ink3D.lerp3(p1, q1, 0.12), u); return { pts: [Ink3D.lerp3(p0, p1, u), top], stroke: THATCH.d, w: 0.4, open: true }; })) : undefined;
+    return solid([{ pts: [a, b, c, d], decals: rows(a, b, d, c) }, { pts: [f, e, d, c], decals: rows(f, e, c, d) }, { pts: [a, d, e] }, { pts: [b, f, c] }, { pts: [a, e, f, b] }], { pal, part });
   }
   const onFront = (y1, u0, u1, v0, v1, fill, part) => ({ pts: [[u0, y1 + 0.1, v0], [u1, y1 + 0.1, v0], [u1, y1 + 0.1, v1], [u0, y1 + 0.1, v1]], fill, part });
   const flat = (pts, fill, part, o = {}) => poly(pts.map(([x, y]) => [x, y, 0.06]), { fill, part, w: 0.6, ...o });
@@ -2489,9 +2620,12 @@ const ZONUN = (() => {
   // An old Mizo house on stilts, its walls of split bamboo and a thatched roof, with smoke from the hearth in the cold
   function house(s, ox, oy, ang, w = 50, dpt = 26, part = 'in') {
     const T = frame(ox, oy, ang), x0 = -w / 2, x1 = w / 2, y0 = -dpt / 2, y1 = dpt / 2, out = [];
+    out.push(spot(T(0, 0, 0), w * 0.62, { opacity: 0.22 }));
     for (const x of [x0 + 2, 0, x1 - 2]) for (const y of [y0 + 2, y1 - 2]) out.push(rbox(T, x - 1.2, x + 1.2, y - 1.2, y + 1.2, 0, 9, { pal: POST, part }));
     out.push(rbox(T, x0 - 3, x1 + 3, y0 - 1, y1 + 5, 9, 11, { pal: WOOD, part }));
-    out.push(rbox(T, x0, x1, y0, y1, 11, 29, { pal: WALL, part, decals: { yp: [onFront(y1, -4, 5, 11, 25, INSIDE, 'kawngkhar'), onFront(y1, 10, 18, 17, 24, INSIDE, 'tukverh')] } }));
+    const weave = [14, 17, 20, 23, 26].map(z => ({ pts: [[x0 + 0.4, y1 + 0.1, z], [x1 - 0.4, y1 + 0.1, z]], stroke: WALL.d, w: 0.35, open: true }))
+      .concat(Array.from({ length: Math.floor(w / 6) }, (_, i) => ({ pts: [[x0 + 3 + i * 6, y1 + 0.1, 11.5], [x0 + 3 + i * 6, y1 + 0.1, 28.5]], stroke: WALL.d, w: 0.25, open: true })));
+    out.push(rbox(T, x0, x1, y0, y1, 11, 29, { pal: WALL, part, decals: { yp: [...weave, onFront(y1, -4, 5, 11, 25, INSIDE, 'kawngkhar'), onFront(y1, 10, 18, 17, 24, INSIDE, 'tukverh')] } }));
     out.push(roof(T, x0, x1, y0, y1, 29, 15, 5, THATCH, part));
     out.push(line([T(0, y1 + 5, 10), T(1, y1 + 12, 0)], { col: WOOD.m, w: 3.2, part }));
     return group(out, { at: T(0, 0, 10) });
@@ -2506,7 +2640,7 @@ const ZONUN = (() => {
   }
   function tree(s, x, y, k = 1, pal = LEAF, bloom = false) {
     const M = MONTHS[s.m], sway = Math.sin(s.t * (M.wind ? 2.2 : 1) + x) * (M.wind ? 1.6 : 0.4) * k;
-    const kids = [cyl([x, y], 0, 16 * k, 2.2 * k, 1.6 * k, { pal: BARK }), ball([x + sway, y, 24 * k], 11 * k, { pal }), ball([x - 7 * k + sway * 0.6, y + 2, 18 * k], 7.5 * k, { pal }), ball([x + 7 * k + sway * 0.6, y + 1, 19 * k], 8 * k, { pal })];
+    const kids = [spot([x, y, 0], 9 * k, { opacity: 0.3 }), cyl([x, y], 0, 16 * k, 2.2 * k, 1.6 * k, { pal: BARK }), ball([x + sway, y, 24 * k], 11 * k, { pal }), ball([x - 7 * k + sway * 0.6, y + 2, 18 * k], 7.5 * k, { pal }), ball([x + 7 * k + sway * 0.6, y + 1, 19 * k], 8 * k, { pal })];
     if (bloom) for (let i = 0; i < 9; i++) kids.push(ball([x + (rnd(i, x) - 0.5) * 20 * k + sway, y + 6 + rnd(i, 2) * 3, (14 + rnd(i, 3) * 18) * k], 1.5 * k, { fill: i % 3 ? '#f7a8c4' : '#ffffff', w: 0.4, part: 'pangpâr' }));
     return group(kids, { part: 'thingkung', at: [x, y, 10] });
   }
@@ -2529,6 +2663,10 @@ const ZONUN = (() => {
       out.push(poly([P(-w, 0), P(-w * 0.75, h * 0.4), P(-w * 0.3 + lean * 0.5, h * 0.62), P(-w * 0.15 + lean * 0.4, h * 0.5), P(lean, h), P(w * 0.4 + lean * 0.6, h * 0.55), P(w * 0.55 + lean * 0.3, h * 0.68), P(w * 0.8, h * 0.32), P(w, 0)],
         { fill: FLAME[2 - i], glow: true, part, w: 0.5 }));
     }
+    for (let i = 0; i < 3; i++) {   // sparks fly up and go out
+      const r = (s.t * 0.9 + i / 3 + x * 0.01) % 1;
+      out.push(ball([x + Math.sin(s.t * 3 + i * 2) * 2.5 * k, y, 4 * k + r * 16 * k], 0.45 * (1 - r) + 0.15, { fill: r < 0.5 ? '#ffd84a' : '#ff9a3c', glow: true, ink: false, opacity: 1 - r, shadow: false }));
+    }
     for (let i = 0; i < smoke; i++) {
       const r = (s.t * 0.35 + i / smoke) % 1;
       out.push(ball([x + Math.sin(r * 5 + i) * 3 + r * 6, y, 9 * k + r * 34 * k], (2 + r * 5) * k, { fill: '#d8d4cc', ink: false, opacity: 0.55 * (1 - r), part: 'meikhu', shadow: false }));
@@ -2541,6 +2679,10 @@ const ZONUN = (() => {
     if (say) s.says[id] = say;
     return group(Ink3DPeople.person(at, dir, { t: s.t, ...o }), { part: id, at: [at[0], at[1], at[2] + o.h / 2] });
   }
+  // Where a walker's legs are in their stride, from how fast they move (scene units a second), so the feet
+  // keep pace with the ground instead of sliding: a stride (two steps) covers 0.8 of their height, more running.
+  const pace = (s, speed, h, run = 1) => s.t * speed / (0.8 * h * run) * 2 * Math.PI;
+
   // Hands for a swinging tool (an axe, a threshing stick): raised behind the head, then down in front
   function swingHands(at, dir, h, w) {
     const c = Math.cos(dir), sn = Math.sin(dir), f = -3 + 12 * w, z = h * (1.15 - 0.7 * w);
@@ -2555,19 +2697,19 @@ const ZONUN = (() => {
   function dog(s, x, y, dir, k) {
     const c = Math.cos(dir), sn = Math.sin(dir), P = (f, sd, z) => [x + c * f - sn * sd, y + sn * f + c * sd, z], out = [], fur = MONTHS[s.m].fur ? 1.25 : 1;
     for (const [f, sd, ph] of [[3, -1.4, 0], [3, 1.4, Math.PI], [-3, -1.4, Math.PI], [-3, 1.4, 0]]) out.push(line([P(f, sd, 4), P(f + Math.sin(s.t * 9 + ph) * 1.6 * k, sd, 0.3)], { col: DOG.d, w: 1.1 }));
-    out.push(ball(P(0, 0, 5), 4 * fur, { pal: DOG }), ball(P(5, 0, 7.5), 2.8 * fur, { pal: DOG }), ball(P(7.4 * fur, 0, 7), 1.1, { fill: '#231e16', ink: false }));
+    out.push(spot(P(0, 0, 0), 6, { opacity: 0.3 }), ball(P(0, 0, 5), 4 * fur, { pal: DOG }), ball(P(5, 0, 7.5), 2.8 * fur, { pal: DOG }), ball(P(7.4 * fur, 0, 7), 1.1, { fill: '#231e16', ink: false }));
     if (fur > 1) for (let i = 0; i < 4; i++) out.push(ball(P(-3 + i * 2, (i % 2 ? 1 : -1) * 2.8, 6.5), 1.6, { pal: DOG, w: 0.5 }));   // a thick winter coat
     out.push(line([P(-4, 0, 6), P(-7, 0, 9 + Math.sin(s.t * 12) * 1)], { col: DOG.m, w: 1.2 * fur }));
     return group(out, { part: 'ui', at: P(0, 0, 4) });
   }
   function hen(s, x, y) {
     const peck = Math.max(0, Math.sin(s.t * 2.4 + x)) ** 4;
-    return group([ball([x, y, 3.6], 3.2 * (MONTHS[s.m].fur ? 1.15 : 1), { pal: HEN }), ball([x + 2.6, y, 6.4 - peck * 3.4], 1.9, { pal: HEN }), ball([x + 2.7, y, 8.2 - peck * 3.4], 0.8, { fill: '#e2483d', w: 0.4 }),
+    return group([spot([x, y, 0], 4, { opacity: 0.3 }), ball([x, y, 3.6], 3.2 * (MONTHS[s.m].fur ? 1.15 : 1), { pal: HEN }), ball([x + 2.6, y, 6.4 - peck * 3.4], 1.9, { pal: HEN }), ball([x + 2.7, y, 8.2 - peck * 3.4], 0.8, { fill: '#e2483d', w: 0.4 }),
       line([[x - 0.6, y, 1.2], [x - 0.6, y, 0]], { col: '#c98a2a', w: 0.7 }), line([[x + 0.8, y, 1.2], [x + 0.8, y, 0]], { col: '#c98a2a', w: 0.7 })], { part: 'arpui', at: [x, y, 3] });
   }
   function pig(s, x, y, root = 0) {
     const nose = Math.sin(s.t * 3) * root;
-    return group([ball([x, y, 4.6], 4.6 * (MONTHS[s.m].fur ? 1.12 : 1), { pal: PIG }), ball([x + 5.2, y, 5.4 - nose], 3, { pal: PIG }), ball([x + 7.8, y, 5 - nose * 1.4], 1.3, { fill: PIG.m, w: 0.5 })], { part: 'vawk', at: [x, y, 4] });
+    return group([spot([x, y, 0], 7, { opacity: 0.3 }), ball([x, y, 4.6], 4.6 * (MONTHS[s.m].fur ? 1.12 : 1), { pal: PIG }), ball([x + 5.2, y, 5.4 - nose], 3, { pal: PIG }), ball([x + 7.8, y, 5 - nose * 1.4], 1.3, { fill: PIG.m, w: 0.5 })], { part: 'vawk', at: [x, y, 4] });
   }
 
   // ---------- the homes ----------
@@ -2611,8 +2753,8 @@ const ZONUN = (() => {
       out.push(ball(T(9, 1, 8.4), 1.8, { pal: { l: '#b49a7a', m: '#8d7458', d: '#4a3a2a' }, part: 'bal', w: 0.5 }));
       out.push(who(s, 'pi#in', [ox - 20, -8, 0], Math.PI / 2 - 0.9, { ...PI, pose: 'sit' }, { act: 'Mim Kut', verb: null }));
       out.push(who(s, 'nu#in', [ox + 12, -10, 0], Math.PI / 2 + 0.9, { ...NU, pose: 'stand' }, { act: 'Mim Kut', verb: null }));
-      const cAt = [ox + 40 + Math.sin(s.t * 0.3) * 6, 6, 0];
-      out.push(who(s, 'pa#in', cAt, Math.PI, { ...PA, pose: 'walk', phase: s.t * 5 }, { act: 'Vaimim a phur', verb: 'phur' }), emOn(cAt, Math.PI, PA.h, { pal: GOLD, part: 'vaimim' }));
+      const cAt = [ox + 40, 4, 0];
+      out.push(who(s, 'pa#in', cAt, Math.PI, { ...PA, pose: 'stand' }, { act: 'Vaimim a phur', verb: 'phur' }), emOn(cAt, Math.PI, PA.h, { pal: GOLD, part: 'vaimim' }));
       A('Mim Kut', T(0, 0, 12), 'Places'); A('vaimim', T(-8, -1, 9), 'Things'); A('bal', T(9, 1, 9), 'Things'); A('fanghma', T(4, 2, 8), 'Things');
       A('pi', s.heads['pi#in'], 'People'); A('pa', s.heads['pa#in'], 'People');
     } else if (s.m === 9) {
@@ -2644,7 +2786,7 @@ const ZONUN = (() => {
     out.push(bamboo(s, ox - 44, -50), tree(s, ox + 52, -54, 0.9, DARK_LEAF, MONTHS[s.m].bloom));
     out.push(who(s, 'nula#tuikhur', [ox - 4, -14, 0], -Math.PI / 2, { ...NULA2, pose: 'wash' }, { act: 'Puan a su', verb: 'su' }));
     const loop = (s.t * 0.11) % 2, go = loop < 1, f = go ? loop : 2 - loop, tx = ox + 24 + f * 70, dir = go ? 0 : Math.PI, tAt = [tx, 2, 0];
-    out.push(who(s, 'tlangval#tuikhur', tAt, dir, { ...TLANGVAL, pose: 'walk', phase: s.t * 6 }, { act: 'Tui a phur', verb: 'phur' }), emOn(tAt, dir, TLANGVAL.h));
+    out.push(who(s, 'tlangval#tuikhur', tAt, dir, { ...TLANGVAL, pose: 'walk', phase: pace(s, 0.11 * 70, TLANGVAL.h) }, { act: 'Tui a phur', verb: 'phur' }), emOn(tAt, dir, TLANGVAL.h));
     A('tuikhur', T(-16, -6, 15), 'Places'); A('tui', T(8, 4, 5), 'Things'); A('mau', [ox - 44, -50, 44], 'Things');
     A('nula', s.heads['nula#tuikhur'], 'People'); A('tlangval', s.heads['tlangval#tuikhur'], 'People');
     return out;
@@ -2681,7 +2823,7 @@ const ZONUN = (() => {
       out.push(who(s, 'lal#khuangchawi', [ox + 20, -34, 0], Math.PI / 2, { ...LAL, pose: 'stand' }, { act: 'Khuang a chawi', verb: 'khuang' }));
       for (let i = 0; i < 4; i++) {
         const a = s.t * 0.6 + i * Math.PI / 2, x = ox + 30 + Math.cos(a) * 22, y = -16 + Math.sin(a) * 6, hop = Math.abs(Math.sin(s.t * 4 + i)) * 1.8;
-        out.push(who(s, `${i % 2 ? 'nula' : 'tlangval'}#lam${i}`, [x, y, hop], a + Math.PI / 2, { ...(i % 2 ? NULA : TLANGVAL), pose: 'walk', phase: s.t * 5 + i }, { act: 'An lâm', verb: 'lâm' }));
+        out.push(who(s, `${i % 2 ? 'nula' : 'tlangval'}#lam${i}`, [x, y, hop], a + Math.PI / 2, { ...(i % 2 ? NULA : TLANGVAL), pose: 'walk', phase: pace(s, 0.6 * 16, 23) + i }, { act: 'An lâm', verb: 'lâm' }));
       }
       A('Khuangchawi', [ox + 20, -40, 30], 'Places'); A('khuang', [ox - 8, -24, 16], 'Things'); A('bel', [ox - 44, -22, 14], 'Things'); A('lal', s.heads['lal#khuangchawi'], 'People');
     } else if (M.kut === 'pawlkut') {
@@ -2692,7 +2834,7 @@ const ZONUN = (() => {
         out.push(who(s, `naupang#pawlkut${i}`, [x + i * 8 - 10, y, 0], Math.PI / 2 + (i - 2) * 0.25, { ...(i % 2 ? NAUPANG2 : NAUPANG), pose: 'sit' }, { act: 'An ei', verb: 'ei' }));
       }
       const nx = ox + 34 + Math.sin(s.t * 0.7) * 14;
-      out.push(who(s, 'nu#pawlkut', [nx, -14, 0], Math.PI + Math.cos(s.t * 0.7) * 1.2, { ...NU, pose: 'walk', phase: s.t * 5 }, { act: 'Chaw a pe', verb: null }));
+      out.push(who(s, 'nu#pawlkut', [nx, -14, 0], Math.PI + Math.cos(s.t * 0.7) * 1.2, { ...NU, pose: 'walk', phase: pace(s, 0.7 * 14 * 0.64, NU.h) }, { act: 'Chaw a pe', verb: null }));
       A('Pâwlkut', [ox, -34, 20], 'Places'); A('bel', [ox - 40, -26, 12], 'Things'); A('naupang', s.heads['naupang#pawlkut2'], 'People');
     } else {
       // Other months: children play and an old man rests on a log; in the solemn misty month, it is quiet
@@ -2701,8 +2843,8 @@ const ZONUN = (() => {
       A('pu', s.heads['pu#kawtchhuah'], 'People');
       if (s.m !== 7) {
         const a = s.t * 1.4;
-        out.push(who(s, 'naupang#infiam1', [ox - 20 + Math.cos(a) * 14, -22 + Math.sin(a) * 6, 0], a + Math.PI / 2, { ...NAUPANG2, pose: 'run', phase: s.t * 10 }, { act: 'An infiam', verb: 'infiam' }));
-        out.push(who(s, 'naupang#infiam2', [ox - 20 + Math.cos(a - 1.1) * 14, -22 + Math.sin(a - 1.1) * 6, 0], a - 1.1 + Math.PI / 2, { ...NAUPANG, pose: 'run', phase: s.t * 10 + 1 }, { act: 'An infiam', verb: 'infiam' }));
+        out.push(who(s, 'naupang#infiam1', [ox - 20 + Math.cos(a) * 14, -22 + Math.sin(a) * 6, 0], a + Math.PI / 2, { ...NAUPANG2, pose: 'run', phase: pace(s, 1.4 * 10, NAUPANG2.h, 1.6) }, { act: 'An infiam', verb: 'infiam' }));
+        out.push(who(s, 'naupang#infiam2', [ox - 20 + Math.cos(a - 1.1) * 14, -22 + Math.sin(a - 1.1) * 6, 0], a - 1.1 + Math.PI / 2, { ...NAUPANG, pose: 'run', phase: pace(s, 1.4 * 10, NAUPANG.h, 1.6) + 1 }, { act: 'An infiam', verb: 'infiam' }));
         A('naupang', s.heads['naupang#infiam1'], 'People');
       }
     }
@@ -2773,8 +2915,9 @@ const ZONUN = (() => {
       A('tlangval', s.heads['tlangval#hal'], 'People'); A('pa', s.heads['pa#tuh'], 'People');
     } else {
       // The rice, row by row: tiny sprouts, green and growing, flowering, golden, cut, or straw
-      const H = M.h || 0, gold = st === 'hmin' || st === 'seng', straw = st === 'pawl';
-      const green = st === 'par' ? '#8fbf4f' : gold ? '#d9b13d' : straw ? '#d6c48e' : mix('#7fbf4f', '#4f8f3a', H);
+      const Lk = look(s), H = Lk.h, gold = st === 'hmin' || st === 'seng', straw = st === 'pawl';
+      const riceCol = (state, h) => state === 'par' ? '#8fbf4f' : state === 'hmin' || state === 'seng' ? '#d9b13d' : state === 'pawl' ? '#d6c48e' : mix('#7fbf4f', '#4f8f3a', h);
+      const green = RICE[Lk.A.lo] ? mix(riceCol(Lk.A.lo, Lk.A.h || 0), riceCol(st, H), Lk.k) : riceCol(st, H);
       for (let r = 0; r < 5; r++) for (let c = 0; c < 13; c++) {
         const x = ox - 92 + c * 12 + (r % 2) * 5, y = -68 + r * 11, sway = Math.sin(s.t * 1.6 + c * 0.6) * (0.4 + H);
         const cut = st === 'seng' ? x < ox - 10 : straw;
@@ -2799,7 +2942,7 @@ const ZONUN = (() => {
       if (st === 'tiak') {   // May: the first weeding, and carrying seed and tools out in the êm
         out.push(who(s, 'nu#lo', [ox - 30, -24, 0], -Math.PI / 2 - 0.4, { ...NU, pose: 'wash' }, { act: 'Hlo a thlo', verb: 'hlo' }));
         const loop = (s.t * 0.08) % 2, f = loop < 1 ? loop : 2 - loop, at = [ox - 90 + f * 120, 4, 0], dir = loop < 1 ? 0 : Math.PI;
-        out.push(who(s, 'nula#lo', at, dir, { ...NULA, pose: 'walk', phase: s.t * 6 }, { act: 'Lo-ah a kal', verb: 'kal' }), emOn(at, dir, NULA.h));
+        out.push(who(s, 'nula#lo', at, dir, { ...NULA, pose: 'walk', phase: pace(s, 0.08 * 120, NULA.h) }, { act: 'Lo-ah a kal', verb: 'kal' }), emOn(at, dir, NULA.h));
         A('nu', s.heads['nu#lo'], 'People');
       } else if (st === 'hring') {
         if (s.m === 7) {   // August: the rice stands tall in the mist; someone sleeps in the hut to guard it, and a scarecrow waves
@@ -2828,8 +2971,8 @@ const ZONUN = (() => {
           out.push(line([[at[0] - 6, at[1], 6 + Math.sin(s.t * 6 + i) * 1.5], [at[0] - 9, at[1] + 2, 4]], { col: IRON.m, w: 1.2, part: 'favah' }));
         }
         for (let i = 0; i < 5; i++) out.push(cyl([ox - 80 + i * 14, -54 + (i % 2) * 18], 0, 8, 2.6, 1.4, { pal: GOLD, part: 'buh' }));
-        const loop = (s.t * 0.09) % 2, f = loop < 1 ? loop : 2 - loop, at = [ox - 30 - f * 140, 6, 0], dir = loop < 1 ? Math.PI : 0;
-        out.push(who(s, 'tlangval#phur', at, dir, { ...TLANGVAL, pose: 'walk', phase: s.t * 6 }, { act: 'Buh a phur', verb: 'phur' }), emOn(at, dir, TLANGVAL.h, { pal: GOLD, part: 'buh' }));
+        const loop = (s.t * 0.06) % 2, f = loop < 1 ? loop : 2 - loop, at = [ox - 30 - f * 140, 6, 0], dir = loop < 1 ? Math.PI : 0;
+        out.push(who(s, 'tlangval#phur', at, dir, { ...TLANGVAL, pose: 'walk', phase: pace(s, 0.06 * 140, TLANGVAL.h) }, { act: 'Buh a phur', verb: 'phur' }), emOn(at, dir, TLANGVAL.h, { pal: GOLD, part: 'buh' }));
         A('favah', [ox - 15, -42, 5], 'Things'); A('pa', s.heads['pa#seng0'], 'People');
       }
     }
@@ -2845,39 +2988,48 @@ const ZONUN = (() => {
     for (const [x, kind, y] of BETWEEN) { const ox = x - s.pan; if (Math.abs(ox) < 150) items.push(kind === 'tree' ? tree(s, ox, y, 1.1, LEAF, M.bloom) : bamboo(s, ox, y)); }
     // In January, the paddy is carried home from the field along the road
     if (s.m === 0) {
-      const loop = (s.t * 0.05) % 1, wx = 700 - loop * 640, rx = wx - s.pan;
-      if (Math.abs(rx) < 150) { const at = [rx, 12, 0]; items.push(who(s, 'pa#runpui', at, Math.PI, { ...PA, pose: 'walk', phase: s.t * 6 }, { act: 'Buh a phur', verb: 'phur' }), emOn(at, Math.PI, PA.h, { pal: GOLD, part: 'buh' })); A('pa', s.heads['pa#runpui'], 'People'); }
+      const loop = (s.t * 0.013) % 1, wx = 700 - loop * 640, rx = wx - s.pan;
+      if (Math.abs(rx) < 150) { const at = [rx, 12, 0]; items.push(who(s, 'pa#runpui', at, Math.PI, { ...PA, pose: 'walk', phase: pace(s, 0.013 * 640, PA.h) }, { act: 'Buh a phur', verb: 'phur' }), emOn(at, Math.PI, PA.h, { pal: GOLD, part: 'buh' })); A('pa', s.heads['pa#runpui'], 'People'); }
     }
     A('kawng', [-60, 4, 0], 'Things');
     s.anchors = anchors.filter(a => { const q = cam.P(a.p); return q[0] > BOX[0] + 8 && q[0] < BOX[0] + BOX[2] - 8 && q[1] > BOX[1] + 14 && q[1] < BOX[1] + BOX[3] - 18; });
-    const slab = hexa([[-240, -120, -12], [240, -120, -12], [240, 120, -12], [-240, 120, -12], [-240, -120, 0], [240, -120, 0], [240, 120, 0], [-240, 120, 0]], { pal: EARTH, pals: { zp: GRASS[M.grass] }, shadow: false });
+    const slab = hexa([[-240, -120, -12], [240, -120, -12], [240, 120, -12], [-240, 120, -12], [-240, -120, 0], [240, -120, 0], [240, 120, 0], [-240, 120, 0]], { pal: EARTH, pals: { zp: look(s).grass }, shadow: false });
     const road = poly([[-240, -7, 0.05], [240, -7, 0.05], [240, 26, 0.05], [-240, 26, 0.05]], { fill: M.mud ? '#a88b62' : '#dcc596', part: 'kawng', w: 0.7 });
     const stones = [];
     for (let i = 0; i < 16; i++) { const x = ((i * 31 - s.pan) % 480 + 720) % 480 - 240; stones.push(ball([x, i % 2 ? -8 : 27, 0.2], 1.4, { fill: '#b9a57a', w: 0.4, shadow: false })); }
+    // Tufts of grass on both sides of the road, darker than the ground
+    const tuft = mix(look(s).grass.m, '#2f4a22', 0.35);
+    for (let i = 0; i < 46; i++) {
+      const x = ((rnd(i, 11) * 480 - s.pan) % 480 + 720) % 480 - 240, y = i % 3 === 0 ? 32 + rnd(i, 12) * 60 : -100 + rnd(i, 12) * 88;
+      stones.push(line([[x - 1.6, y, 0.1], [x - 0.6, y, 2.6], [x, y, 0.1], [x + 0.8, y, 3], [x + 1.6, y, 0.1]], { col: tuft, w: 0.7, ink: false, shadow: false }));
+    }
     return { ground: [slab], groundDecals: [road, ...stones], clip: [[-240, -120, 0], [240, -120, 0], [240, 120, 0], [-240, 120, 0]], items };
   }
 
   // The weather tints the whole picture: mist greys it, the cold cools it, the burning season warms it.
   function tint(s) {
-    const M = MONTHS[s.m];
+    const L = look(s);
     return c => {
-      if (M.mist) c = mix(c, '#dfe4e6', M.mist * 0.3);
-      if (M.rain) c = mix(c, '#7d8794', M.rain * 0.15);
-      if (M.haze) c = mix(c, '#e0a060', M.haze * 0.14);
-      if (M.cold) c = mix(c, '#c9d6e8', 0.08);
+      if (L.mist) c = mix(c, '#dfe4e6', L.mist * 0.3);
+      if (L.rain) c = mix(c, '#7d8794', L.rain * 0.15);
+      if (L.haze) c = mix(c, '#e0a060', L.haze * 0.14);
+      if (L.cold) c = mix(c, '#c9d6e8', 0.08 * L.cold);
       return c;
     };
   }
 
+  // Far things fade toward the sky's colour, more in the mist and the haze
+  function haze(s) { const L = look(s); return { col: L.sky[1], near: -10, far: -78, max: 0.22 + L.mist * 0.35 + L.haze * 0.15 }; }
+
   // ---------- the sky, far hills, the river, birds ----------
   function sky(s) {
-    const [X, Y, W, H] = BOX, M = MONTHS[s.m];
-    let o = `<defs><linearGradient id="zsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${M.sky[0]}"/><stop offset="1" stop-color="${M.sky[1]}"/></linearGradient></defs>`;
+    const [X, Y, W, H] = BOX, M = MONTHS[s.m], L = look(s);
+    let o = `<defs><linearGradient id="zsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${L.sky[0]}"/><stop offset="1" stop-color="${L.sky[1]}"/></linearGradient></defs>`;
     o += `<rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="url(#zsky)" data-p="vân"/>`;
     // The sun: high and hot at the solstice, low in winter, hidden in the rains and the mist
-    const sunY = s.m === 5 ? -80 : M.cold ? -66 : -74, sunA = 1 - (M.rain || 0) * 0.8 - (M.mist || 0) * 0.7;
+    const sunY = s.m === 5 ? -80 : M.cold ? -66 : -74, sunA = 1 - L.rain * 0.8 - L.mist * 0.7;
     if (sunA > 0.1) o += `<g data-p="ni" opacity="${sunA.toFixed(2)}"><circle cx="72" cy="${sunY}" r="${s.m === 5 ? 15 : 13}" fill="#ffe28a" opacity=".45"/><circle cx="72" cy="${sunY}" r="8" fill="${M.haze ? '#ff9a3c' : '#ffd84a'}" stroke="#231e16" stroke-width=".8"/></g>`;
-    const hillCol = c => mix(mix(c, '#c9b48a', M.grass === 'dry' ? 0.35 : 0), '#dfe4e6', (M.mist || 0) * 0.6);
+    const hillCol = c => mix(mix(c, '#c9b48a', L.dry * 0.35), '#dfe4e6', L.mist * 0.6);
     const ridge = (k, base, amp, fill, part) => {
       let d = `M${X} 40`;
       for (let x = X; x <= X + W; x += 6) { const u = (x + s.pan * k) * 0.035; d += `L${x} ${(base - amp * (0.6 * Math.sin(u) + 0.4 * Math.sin(u * 2.3 + 1.7))).toFixed(1)}`; }
@@ -2891,13 +3043,13 @@ const ZONUN = (() => {
     }
     let r1 = '', r2 = '';
     for (let x = X; x <= X + W; x += 6) { const u = (x + s.pan * 0.14) * 0.02, y = -58 + Math.sin(u) * 1.6; r1 += `${r1 ? 'L' : 'M'}${x} ${y.toFixed(1)}`; r2 = `L${x} ${(y + 2.8).toFixed(1)}` + r2; }
-    o += `<path data-p="lui" d="${r1}${r2}Z" fill="${mix('#9fd0f0', '#dfe4e6', (M.mist || 0) * 0.6)}" stroke="#5f8fb5" stroke-width=".5"/>`;
+    o += `<path data-p="lui" d="${r1}${r2}Z" fill="${mix('#9fd0f0', '#dfe4e6', L.mist * 0.6)}" stroke="#5f8fb5" stroke-width=".5"/>`;
     o += ridge(0.16, -54, 6, '#93c3a3', 'tlang');
     // Clouds: one white one in fine weather, a grey bank in the rains
-    const cloudC = M.rain ? mix('#ffffff', '#8d97a3', M.rain) : '#ffffff', n = M.rain ? 3 : 1;
+    const cloudC = mix('#ffffff', '#8d97a3', L.rain), n = L.rain > 0.1 ? 3 : 1;
     for (let j = 0; j < n; j++) {
       const cx = ((s.t * 4 + j * 70 - s.pan * 0.1) % 280 + 280) % 280 + X - 30, cy = -80 + j * 3;
-      const C = [[0, 0, 7], [8, 2, 6], [-8, 3, 5], [3, -5, 6]].map(([a, b, r]) => [cx + a * (1 + j * 0.2), cy + b, r * (1 + (M.rain || 0) * 0.4)]);
+      const C = [[0, 0, 7], [8, 2, 6], [-8, 3, 5], [3, -5, 6]].map(([a, b, r]) => [cx + a * (1 + j * 0.2), cy + b, r * (1 + L.rain * 0.4)]);
       o += `<g data-p="chhum">${C.map(([a, b, r]) => `<circle cx="${a.toFixed(1)}" cy="${b}" r="${(r + 0.9).toFixed(1)}" fill="#231e16" opacity=".55"/>`).join('')}${C.map(([a, b, r]) => `<circle cx="${a.toFixed(1)}" cy="${b}" r="${r.toFixed(1)}" fill="${cloudC}"/>`).join('')}</g>`;
     }
     // Birds: a few in the sky, more over the field when the rice stands (August, September)
@@ -2914,19 +3066,36 @@ const ZONUN = (() => {
   // ---------- over the scene: rain and mist, what someone says, the month, and the map of the road ----------
   const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
   function over(s) {
-    const [X, Y, W, H] = BOX, M = MONTHS[s.m];
+    const [X, Y, W, H] = BOX, M = MONTHS[s.m], L = look(s);
     let o = '';
-    if (M.mist) {
-      o += `<g data-p="tiauchhum" pointer-events="none">`;
-      for (let i = 0; i < 5; i++) {
-        const x = ((s.t * (3 + i) + i * 60 - s.pan * 0.3) % 320 + 320) % 320 + X - 70, y = -58 + i * 16;
-        o += `<rect x="${x.toFixed(1)}" y="${y}" width="${120 + i * 10}" height="${10 + i * 2}" rx="${6 + i}" fill="#f4f6f7" opacity="${(M.mist * 0.32).toFixed(2)}"/>`;
+    // On the wind: petals in the flowering month, ash in the burning month, dry leaves in the cold ones
+    const blow = s.m === 2 ? ['#f7a8c4', '#ffffff'] : s.m === 3 ? ['#6d665e', '#9c968c'] : s.m === 10 || s.m === 11 || s.m === 1 ? ['#c9a24a', '#a8773c'] : null;
+    if (blow) {
+      o += '<g pointer-events="none">';
+      for (let i = 0; i < 10; i++) {
+        const x = ((rnd(i, 3) * 260 + s.t * (14 + rnd(i, 4) * 16) - s.pan * 0.6) % 260 + 260) % 260 + X - 30, y = Y + 20 + ((rnd(i, 5) * 120 + s.t * (6 + rnd(i, 6) * 6)) % 110), a = (s.t * 120 + i * 40) % 360;
+        o += `<path transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${a.toFixed(0)})" d="M-1.6 0Q0 -1.3 1.6 0Q0 1.3 -1.6 0Z" fill="${blow[i % 2]}" stroke="#231e16" stroke-width=".3"/>`;
       }
       o += '</g>';
     }
-    if (M.rain) {
-      o += `<g data-p="ruah" stroke="#5f7fb5" stroke-width=".8" stroke-linecap="round" opacity="${(0.4 + M.rain * 0.5).toFixed(2)}" pointer-events="none">`;
-      for (let i = 0, n = Math.round(60 * M.rain); i < n; i++) {
+    if (L.mist > 0.02) {
+      o += `<g data-p="tiauchhum" pointer-events="none">`;
+      for (let i = 0; i < 5; i++) {
+        const x = ((s.t * (3 + i) + i * 60 - s.pan * 0.3) % 320 + 320) % 320 + X - 70, y = -58 + i * 16;
+        o += `<rect x="${x.toFixed(1)}" y="${y}" width="${120 + i * 10}" height="${10 + i * 2}" rx="${6 + i}" fill="#f4f6f7" opacity="${(L.mist * 0.32).toFixed(2)}"/>`;
+      }
+      o += '</g>';
+    }
+    if (L.rain > 0.02) {
+      // Drops splash on the ground: rings that open and fade
+      o += '<g fill="none" stroke="#dbe8f3" stroke-width=".5" pointer-events="none">';
+      for (let i = 0, n = Math.round(14 * L.rain); i < n; i++) {
+        const k = (s.t * 2.2 + rnd(i, 9)) % 1, x = X + rnd(i, 7 + Math.floor(s.t * 2.2 + rnd(i, 9))) * W, y = -18 + rnd(i, 8 + Math.floor(s.t * 2.2 + rnd(i, 9))) * 46;
+        o += `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="${(0.5 + k * 2.6).toFixed(1)}" ry="${(0.25 + k * 1).toFixed(1)}" opacity="${(1 - k).toFixed(2)}"/>`;
+      }
+      o += '</g>';
+      o += `<g data-p="ruah" stroke="#5f7fb5" stroke-width=".8" stroke-linecap="round" opacity="${(0.4 + L.rain * 0.5).toFixed(2)}" pointer-events="none">`;
+      for (let i = 0, n = Math.round(60 * L.rain); i < n; i++) {
         const x = X + rnd(i, 1) * (W + 20), y = Y + ((rnd(i, 2) * (H + 20) + s.t * 180) % (H + 20));
         o += `<path d="M${x.toFixed(1)} ${y.toFixed(1)}l-2 7"/>`;
       }
@@ -2993,7 +3162,7 @@ const ZONUN = (() => {
 
   return {
     id: 'zonun', name: 'Zonun', sub: 'a year of Mizo village life',
-    view: { yaw: 0, pitch: 28, box: BOX.join(' '), centre: [0, -30], ink: 0.8 },
+    view: { yaw: 0, pitch: 28, box: BOX.join(' '), centre: [0, -30], ink: 1 },
     hint: 'Tap anyone · drag to walk',
     words: ['khua', 'in', 'buh in', 'kawngkhar', 'kawng', 'thingkung', 'thing', 'hnah', 'mau', 'pangpâr', 'tuikhur', 'tui', 'kawtchhuah', 'lo', 'ngaw', 'buk',
       'buh', 'vaimim', 'fanghma', 'bal', 'hlo', 'pâwl', 'sava hlauh', 'hreipui', 'favah', 'mei', 'meikhu', 'vut', 'thingtuah', 'tapchhak', 'pher', 'khuang', 'bel', 'êm', 'puan',
@@ -3002,7 +3171,7 @@ const ZONUN = (() => {
       'thla', 'thlasik', 'nipui', 'favâng'],
     names: { 'Chapchar Kut': 'the grandest Mizo festival, in March', 'Pâwlkut': 'the straw festival, in January', 'Mim Kut': 'the festival for the departed, in September',
       Khuangchawi: 'a grand feast for the whole village, in October' },
-    init, step, tint, light: () => SUNLIGHT, scene, sky, over, anchors, tap, pan, info, go, labelGroups: ['Places', 'People', 'Things'],
+    init, step, tint, haze, smooth: true, light: () => SUNLIGHT, scene, sky, over, anchors, tap, pan, info, go, labelGroups: ['Places', 'People', 'Things'],
     actions: [
       { label: () => '‹ Previous month', word: () => null, run: s => { s.play = false; goMonth(s, s.m - 1); } },
       { label: () => 'Next month ›', word: () => null, run: s => { s.play = false; goMonth(s, s.m + 1); } },
@@ -3020,7 +3189,8 @@ const ZONUN = (() => {
   const FIGS = [HOUSE, LA, LOOM, BAZAR, ZONUN];
   let fig = FIGS.find(f => '#' + f.id === location.hash) || FIGS[0];
   const $ = id => document.getElementById(id);
-  const svg = $('svg'), stage = $('stage'), wordEl = $('word');
+  const svg = $('svg'), skyEl = $('sky'), cvs = $('cvs'), ctx = cvs.getContext('2d'), stage = $('stage'), wordEl = $('word');
+  let hits = [], paintedAt = null;   // what the canvas drew with a name (for taps), and its transform
   let VX, VY, VW, VH, st;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let yaw = fig.view.yaw, spin = false, labels = 0, pen = true, hl = null, hlUntil = 0;
@@ -3093,12 +3263,20 @@ const ZONUN = (() => {
   function draw(dt = 1) {
     const cam = Ink3D.camera(yaw, fig.view.pitch);
     aim(cam, dt);
-    const body = Ink3D.render(fig.scene(st, cam), cam, { tint: fig.tint(st), hl, ink: fig.view.ink || 1, wobble: pen ? 0.45 * (fig.view.ink || 1) : 0, light: fig.light && fig.light(st) });
-    const c = fig.view.centre, g = zoomed() ? `<g transform="translate(${(c[0] - cv.x * cv.z).toFixed(2)} ${(c[1] - cv.y * cv.z).toFixed(2)}) scale(${cv.z.toFixed(4)})">` : '<g>';
-    svg.innerHTML = fig.sky(st) + g + body + '</g>' + fig.over(st) + (labels ? labelLayer(cam) : '');
+    // The canvas at the screen's sharpness (up to 2.5 pixels a point), mapped to the picture's units and the camera's zoom
+    const dpr = Math.min(devicePixelRatio || 1, 2.5), w = Math.round(svg.clientWidth * dpr), h = Math.round(svg.clientHeight * dpr);
+    if (cvs.width !== w || cvs.height !== h) { cvs.width = w; cvs.height = h; }
+    const k = w / VW, c = fig.view.centre;
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, w, h);
+    ctx.setTransform(k, 0, 0, k, -VX * k, -VY * k);
+    ctx.transform(cv.z, 0, 0, cv.z, c[0] - cv.x * cv.z, c[1] - cv.y * cv.z);
+    hits = Ink3D.paint(ctx, fig.scene(st, cam), cam, { tint: fig.tint(st), hl, ink: fig.view.ink || 1, wobble: pen ? 0.45 * (fig.view.ink || 1) : 0, light: fig.light && fig.light(st), haze: fig.haze && fig.haze(st), smooth: fig.smooth });
+    paintedAt = ctx.getTransform();
+    skyEl.innerHTML = fig.sky(st);
+    svg.innerHTML = fig.over(st) + (labels ? labelLayer(cam) : '');
   }
 
-  // ---------- the loop: 30 frames a second, fewer on a slow phone, every frame while you drag ----------
+  // ---------- the loop: 60 frames a second when the phone keeps up, 30 or fewer on a slow one, every frame while you drag ----------
   let last = performance.now(), lastDraw = 0, drag = null, cost = 8;
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -3106,7 +3284,7 @@ const ZONUN = (() => {
     fig.step(st, reduce ? dt * 0.4 : dt);
     if (hl && now > hlUntil) hl = null;
     // A drawing that takes long (an older phone) gets more time between pictures, so it never stutters.
-    const gap = cost > 16 ? 48 : cost > 10 ? 40 : 32;
+    const gap = cost > 16 ? 48 : cost > 10 ? 40 : cost > 6 ? 32 : 15;
     if (drag || now - lastDraw > gap) {
       const t0 = performance.now();
       draw(Math.min(0.1, (now - lastDraw) / 1000)); lastDraw = now;
@@ -3117,12 +3295,27 @@ const ZONUN = (() => {
   requestAnimationFrame(frame);
 
   // ---------- tap a part, or drag to turn ----------
-  function partAt(x, y) {
-    for (const [dx, dy] of [[0, 0], [8, 0], [-8, 0], [0, 8], [0, -8], [12, 12], [-12, 12], [12, -12], [-12, -12]]) {
-      const el = document.elementFromPoint(x + dx, y + dy);
-      const p = el && el.closest && el.closest('[data-p]');
-      if (p && stage.contains(p)) return p.dataset.p;
+  // The front picture (labels, the map) first, then the thing on the canvas, then the sky; a little round
+  // the finger too, so a small part is easy to hit.
+  const NEAR = [[0, 0], [8, 0], [-8, 0], [0, 8], [0, -8], [12, 12], [-12, 12], [12, -12], [-12, -12]];
+  function inLayer(layer, x, y) {
+    for (const el of document.elementsFromPoint(x, y)) {
+      const p = el.closest && el.closest('[data-p]');
+      if (p && layer.contains(p)) return p.dataset.p;
     }
+    return null;
+  }
+  function partAt(x, y) {
+    for (const [dx, dy] of NEAR) { const p = inLayer(svg, x + dx, y + dy); if (p) return p; }
+    if (paintedAt) {
+      const r = cvs.getBoundingClientRect();
+      ctx.setTransform(paintedAt);
+      for (const [dx, dy] of NEAR) {
+        const p = Ink3D.hit(ctx, hits, (x + dx - r.left) * cvs.width / r.width, (y + dy - r.top) * cvs.height / r.height);
+        if (p) return p;
+      }
+    }
+    for (const [dx, dy] of NEAR) { const p = inLayer(skyEl, x + dx, y + dy); if (p) return p; }
     return null;
   }
   // A thing that is walked along (fig.pan, the village) slides under the finger instead of turning.
@@ -3274,7 +3467,7 @@ const ZONUN = (() => {
   function useFig(f) {
     fig = f; st = f.init();
     [VX, VY, VW, VH] = f.view.box.split(' ').map(Number);
-    svg.setAttribute('viewBox', f.view.box);
+    svg.setAttribute('viewBox', f.view.box); skyEl.setAttribute('viewBox', f.view.box);
     svg.style.aspectRatio = `${VW} / ${VH}`;
     svg.setAttribute('aria-label', `${f.name}: ${f.sub}. Tap a part to see its Mizo name.`);
     $('fname').textContent = f.name;
