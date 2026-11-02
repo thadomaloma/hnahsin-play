@@ -137,7 +137,7 @@
   @keyframes pop { from { transform: scale(.7); opacity: .3; } }
   @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
 
-  /* Notes a thing gives on itself (Zonun: the month), with buttons to jump (data-go) */
+  /* Notes a thing gives on itself (Zokhua: the place), with buttons to jump (data-go) */
   .info { padding: 12px 16px 16px; border-top: 1.5px solid var(--ink); display: grid; gap: 4px; }
   .info .mhead { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; }
   .info .mhead b { font-family: "Baloo 2", sans-serif; font-size: 26px; line-height: 1.1; color: var(--brand); }
@@ -2453,13 +2453,16 @@ const LA = (() => {
 })();
 </script>
 <script>
-// Zonun: a year of life in an old Mizo village, January to December, drawn with Ink3D. A road runs from
-// the homes past the spring and the village square to the jhum field (lo). Each month the field, the
-// weather and the work change as the months' notes tell: the forest is cut (February), dries (March),
-// is burnt and sown (April), sprouts in the first rain (May), is weeded in the rains (June, July),
-// stands in the mist (August), flowers (September), turns gold (October), is harvested (November) and
-// lies in straw (December, January); the festivals come in their months. Drag to walk along the road;
-// tap anyone to see what they are doing. Words not in the Hnahsin content come from zonun_words.json.
+// Kumtluang: a year of life in an old Mizo village as one long scroll, January at the left end and
+// December at the right, drawn with Ink3D. Drag (or play the year) to move through it: each month has its own
+// scene, as the months' notes tell, and the sky, the weather and the grass change smoothly between them. The
+// forest is cut (February) and dries while the village dances Chapchar Kut (March); the field is burnt and
+// sown (April), sprouts in the first rain (May), is weeded in the rains (June); the yards turn to mud
+// (July); the rice stands in the mist (August); the first crops are set out at Mim Kut (September); the
+// village feasts at Khuangchawi (October), harvests (November) and threshes by the hearth (December), and the
+// children feast at Pâwlkut (January). The picture tells it: at the top only the month's name, in English
+// and Mizo; tap anyone or anything to see its name there. (The months' notes stay in MONTHS, for reference.)
+// Words that are not in the Hnahsin content come from zonun_words.json.
 const ZONUN = (() => {
   const { hexa, ball, cyl, line, poly, group, solid, spot, mix } = Ink3D;
 
@@ -2582,37 +2585,41 @@ const ZONUN = (() => {
     };
   }
 
-  // The places along the road (x is how far along it), and how far you can walk.
-  const PLACES = [{ id: 'in', x: 0, en: 'Homes' }, { id: 'tuikhur', x: 230, en: 'Spring' }, { id: 'kawtchhuah', x: 470, en: 'Village square' }, { id: 'lo', x: 740, en: 'Jhum field' }];
-  const placeX = id => PLACES.find(p => p.id === id).x;
-  const MIN = -40, MAX = 770, BOX = [-98, -86, 196, 126];
+  // The year as a road: each month a stretch MW long, January's in the middle of x = 0, December's at 11·MW.
+  // Each month's scene is built round the middle of its stretch: the village square for the festivals, the
+  // homes for the home work, the jhum field for the field work.
+  const MW = 240, MIN = -70, MAX = 11 * MW + 70, BOX = [-98, -86, 196, 126];
+  const SCENE = ['kawtchhuah', 'lo', 'kawtchhuah', 'lo', 'lo', 'lo', 'in', 'lo', 'in', 'kawtchhuah', 'lo', 'in'];
+  const posOf = s => clamp(s.pan / MW, 0, 11);
   const SUNLIGHT = Ink3D.norm([0.3, 0.5, 1]);
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const rnd = (i, k) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
 
   function init() {
-    const m = 0;
-    return { t: 0, m, prev: m, blend: 1, pan: placeX(MONTHS[m].at), panT: placeX(MONTHS[m].at), v: 0, held: false, tour: false, play: false, playClock: 0,
-      bubble: null, cam: null, anchors: [], heads: {}, says: {} };
+    const s = { t: 0, m: 0, prev: 0, blend: 1, cur: 0, pan: 0, panT: 0, v: 0, held: false, play: false, cam: null, anchors: [], heads: {}, says: {} };
+    weather(s); return s;
   }
-  function goMonth(s, m) {
-    s.prev = s.m; s.blend = 0;   // the sky, the colours and the rice change over a moment, not at once
-    s.m = (m + 12) % 12; s.bubble = null; s.v = 0; s.tour = false;
-    s.panT = placeX(MONTHS[s.m].at);
+  // Where in the year the view is: the weather blends between the two months either side (s.prev → s.m by
+  // s.blend), and the month shown in the notes is the nearest (s.cur).
+  function weather(s) {
+    const p = posOf(s), a = Math.floor(p);
+    s.prev = a; s.m = Math.min(11, a + 1); s.blend = p - a; s.cur = Math.round(p);
   }
+  // While one month's scene is built, everything in it looks as in that month
+  const inMonth = (s, m) => { s.prev = s.m = m; s.blend = 1; };
+  function goMonth(s, m) { s.v = 0; s.panT = clamp(m, 0, 11) * MW; }
 
   function step(s, dt) {
     s.t += dt;
-    s.blend = Math.min(1, s.blend + dt / 1.8);
-    if (s.play && (s.playClock -= dt) <= 0) { s.playClock = 9; goMonth(s, s.m + 1); }
-    if (s.tour) { s.panT = Math.min(MAX, s.panT + dt * 40); if (s.panT >= MAX) s.tour = false; }
+    // Playing the year moves along it steadily, a month every nine seconds, and stops at December
+    if (s.play && !s.held) { s.panT = Math.min(11 * MW, s.panT + dt * MW / 9); s.pan = s.panT; if (s.panT >= 11 * MW) s.play = false; }
     if (!s.held) {
       if (Math.abs(s.v) > 4) { s.pan += s.v * dt; s.v *= Math.exp(-dt * 3.2); s.panT = s.pan; }   // a flick glides on
       else { s.v = 0; s.pan += (s.panT - s.pan) * (1 - Math.exp(-dt * 2.4)); }
     }
     s.pan = clamp(s.pan, MIN, MAX); s.panT = clamp(s.panT, MIN, MAX);
-    if (s.bubble && s.t > s.bubble.until) s.bubble = null;
+    weather(s);
   }
 
   // ---------- building blocks ----------
@@ -2688,7 +2695,7 @@ const ZONUN = (() => {
     }
     return group(out, { at: [x, y, 2], part });
   }
-  // A person (part#place, so a tap knows who), with what they are doing kept for the speech bubble
+  // A person (part#place, so a tap knows who), with what they are doing kept for a tap
   function who(s, id, at, dir, o, say) {
     s.heads[id] = [at[0], at[1], at[2] + o.h * (o.pose === 'wash' ? 0.75 : o.pose === 'sit' ? 0.8 : 1.08)];
     if (say) s.says[id] = say;
@@ -2788,22 +2795,6 @@ const ZONUN = (() => {
       out.push(poly([[piAt[0] - 6, piAt[1] + 6, 4.4], [piAt[0] + 6, piAt[1] + 6, 4.4], [piAt[0] + 6, piAt[1] + 14, 0.4], [piAt[0] - 6, piAt[1] + 14, 0.4]], { fill: '#d9474f', part: 'puan' }));
       A('nu', s.heads['nu#in'], 'People'); A('pi', s.heads['pi#in'], 'People'); A('puan', [piAt[0], piAt[1] + 10, 3], 'Things');
     }
-    return out;
-  }
-
-  // ---------- the spring ----------
-  function placeTuikhur(s, ox, A) {
-    const T = frame(ox, -36), out = [];
-    out.push(rbox(T, -22, 22, -10, -3, 0, 15, { pal: STONE, part: 'tuikhur' }), rbox(T, -15, 15, -3, 13, 0, 5, { pal: STONE, part: 'tuikhur' }));
-    out.push(poly([T(-13, -1, 5.1), T(13, -1, 5.1), T(13, 11, 5.1), T(-13, 11, 5.1)], { fill: WATER, part: 'tui', w: 0.6 }));
-    out.push(line([T(-2, -6, 12), T(0, 3, 11)], { col: BAMBOO, w: 2.4, part: 'mau' }));
-    out.push(line([T(0, 3, 11), T(Math.sin(s.t * 14) * 0.25, 4.4, 8), T(0, 5, 5.2)], { col: '#d6eefc', w: 1.5, part: 'tui', opacity: 0.9 }));
-    out.push(bamboo(s, ox - 44, -50), tree(s, ox + 52, -54, 0.9, DARK_LEAF, MONTHS[s.m].bloom));
-    out.push(who(s, 'nula#tuikhur', [ox - 4, -14, 0], -Math.PI / 2, { ...NULA2, pose: 'wash' }, { act: 'Puan a su', verb: 'su' }));
-    const loop = (s.t * 0.11) % 2, go = loop < 1, f = go ? loop : 2 - loop, tx = ox + 24 + f * 70, dir = go ? 0 : Math.PI, tAt = [tx, 2, 0];
-    out.push(who(s, 'tlangval#tuikhur', tAt, dir, { ...TLANGVAL, pose: 'walk', phase: pace(s, 0.11 * 70, TLANGVAL.h) }, { act: 'Tui a phur', verb: 'phur' }), emOn(tAt, dir, TLANGVAL.h));
-    A('tuikhur', T(-16, -6, 15), 'Places'); A('tui', T(8, 4, 5), 'Things'); A('mau', [ox - 44, -50, 44], 'Things');
-    A('nula', s.heads['nula#tuikhur'], 'People'); A('tlangval', s.heads['tlangval#tuikhur'], 'People');
     return out;
   }
 
@@ -2993,19 +2984,28 @@ const ZONUN = (() => {
     }
     return out;
   }
-  const BUILD = { in: placeIn, tuikhur: placeTuikhur, kawtchhuah: placeKawtchhuah, lo: placeLo };
-  const BETWEEN = [[-120, 'tree', -50], [115, 'tree', -60], [350, 'bamboo', -58], [600, 'tree', -58], [880, 'tree', -56]];
+  const BUILD = { in: placeIn, kawtchhuah: placeKawtchhuah, lo: placeLo };
 
   function scene(s, cam) {
     s.cam = cam; s.heads = {}; s.says = {};
-    const M = MONTHS[s.m], items = [], anchors = [], A = (part, p, g) => p && anchors.push({ part, p, g });
-    for (const pl of PLACES) { const ox = pl.x - s.pan; if (Math.abs(ox) < 230) items.push(...BUILD[pl.id](s, ox, A)); }
-    for (const [x, kind, y] of BETWEEN) { const ox = x - s.pan; if (Math.abs(ox) < 150) items.push(kind === 'tree' ? tree(s, ox, y, 1.1, LEAF, M.bloom) : bamboo(s, ox, y)); }
-    // In January, the paddy is carried home from the field along the road
-    if (s.m === 0) {
-      const loop = (s.t * 0.013) % 1, wx = 700 - loop * 640, rx = wx - s.pan;
-      if (Math.abs(rx) < 150) { const at = [rx, 12, 0]; items.push(who(s, 'pa#runpui', at, Math.PI, { ...PA, pose: 'walk', phase: pace(s, 0.013 * 640, PA.h) }, { act: 'Buh a phur', verb: 'phur' }), emOn(at, Math.PI, PA.h, { pal: GOLD, part: 'buh' })); A('pa', s.heads['pa#runpui'], 'People'); }
+    const items = [], anchors = [], A = (part, p, g) => p && anchors.push({ part, p, g });
+    for (let m = 0; m < 12; m++) {
+      const ox = m * MW - s.pan;
+      if (Math.abs(ox) > MW * 1.15) continue;
+      inMonth(s, m);
+      items.push(...BUILD[SCENE[m]](s, ox, A));
+      // between this month and the next, a tree or a clump of bamboo
+      const bx = ox + MW / 2;
+      if (m < 11 && Math.abs(bx) < 150) items.push(m % 2 ? bamboo(s, bx, -58) : tree(s, bx, -56, 1.1, LEAF, MONTHS[m].bloom || MONTHS[m + 1].bloom));
+      // in January the paddy is still being carried home along the road
+      if (m === 0) {
+        const loop = (s.t * 0.02) % 1, rx = ox + 110 - loop * 220, at = [rx, 12, 0];
+        items.push(who(s, 'pa#runpui', at, Math.PI, { ...PA, pose: 'walk', phase: pace(s, 0.02 * 220, PA.h) }, { act: 'Buh a phur', verb: 'phur' }), emOn(at, Math.PI, PA.h, { pal: GOLD, part: 'buh' }));
+        A('pa', s.heads['pa#runpui'], 'People');
+      }
     }
+    weather(s);
+    const M = MONTHS[s.cur];
     A('kawng', [-60, 4, 0], 'Things');
     s.anchors = anchors.filter(a => { const q = cam.P(a.p); return q[0] > BOX[0] + 8 && q[0] < BOX[0] + BOX[2] - 8 && q[1] > BOX[1] + 14 && q[1] < BOX[1] + BOX[3] - 18; });
     const slab = hexa([[-240, -120, -12], [240, -120, -12], [240, 120, -12], [-240, 120, -12], [-240, -120, 0], [240, -120, 0], [240, 120, 0], [-240, 120, 0]], { pal: EARTH, pals: { zp: look(s).grass }, shadow: false });
@@ -3038,12 +3038,13 @@ const ZONUN = (() => {
 
   // ---------- the sky, far hills, the river, birds ----------
   function sky(s) {
-    const [X, Y, W, H] = BOX, M = MONTHS[s.m], L = look(s);
+    const [X, Y, W, H] = BOX, M = MONTHS[s.cur], L = look(s);
     let o = `<defs><linearGradient id="zsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${L.sky[0]}"/><stop offset="1" stop-color="${L.sky[1]}"/></linearGradient></defs>`;
     o += `<rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="url(#zsky)" data-p="vân"/>`;
     // The sun: high and hot at the solstice, low in winter, hidden in the rains and the mist
-    const sunY = s.m === 5 ? -80 : M.cold ? -66 : -74, sunA = 1 - L.rain * 0.8 - L.mist * 0.7;
-    if (sunA > 0.1) o += `<g data-p="ni" opacity="${sunA.toFixed(2)}"><circle cx="72" cy="${sunY}" r="${s.m === 5 ? 15 : 13}" fill="#ffe28a" opacity=".45"/><circle cx="72" cy="${sunY}" r="8" fill="${M.haze ? '#ff9a3c' : '#ffd84a'}" stroke="#231e16" stroke-width=".8"/></g>`;
+    // The sun: high at the solstice, low in winter, hidden in the rains and the mist, red in the burning season's haze
+    const sunY = -74 - 6 * Math.cos((posOf(s) - 5) / 6 * Math.PI) + (L.cold * 4), sunA = 1 - L.rain * 0.8 - L.mist * 0.7;
+    if (sunA > 0.1) o += `<g data-p="ni" opacity="${sunA.toFixed(2)}"><circle cx="72" cy="${sunY.toFixed(1)}" r="13" fill="#ffe28a" opacity=".45"/><circle cx="72" cy="${sunY.toFixed(1)}" r="8" fill="${mix('#ffd84a', '#ff9a3c', L.haze)}" stroke="#231e16" stroke-width=".8"/></g>`;
     const hillCol = c => mix(mix(c, '#c9b48a', L.dry * 0.35), '#dfe4e6', L.mist * 0.6);
     const ridge = (k, base, amp, fill, part) => {
       let d = `M${X} 40`;
@@ -3052,7 +3053,7 @@ const ZONUN = (() => {
     };
     o += ridge(0.08, -66, 9, '#b9d9c4', 'tlang');
     // In April, smoke rises from other villages' fields on the far hills
-    if (M.haze) for (let i = 0; i < 3; i++) {
+    if (L.haze > 0.2) for (let i = 0; i < 3; i++) {
       const bx = ((i * 90 - s.pan * 0.08) % 260 + 260) % 260 + X - 20;
       o += `<path data-p="meikhu" d="M${bx} -64Q${bx + 6} -76 ${bx + 2} -88Q${bx - 2} -94 ${bx + 8} -100" fill="none" stroke="#a49a8c" stroke-width="4" stroke-linecap="round" opacity=".45"/>`;
     }
@@ -3068,10 +3069,10 @@ const ZONUN = (() => {
       o += `<g data-p="chhum">${C.map(([a, b, r]) => `<circle cx="${a.toFixed(1)}" cy="${b}" r="${(r + 0.9).toFixed(1)}" fill="#231e16" opacity=".55"/>`).join('')}${C.map(([a, b, r]) => `<circle cx="${a.toFixed(1)}" cy="${b}" r="${r.toFixed(1)}" fill="${cloudC}"/>`).join('')}</g>`;
     }
     // Birds: a few in the sky, more over the field when the rice stands (August, September)
-    const birds = s.m === 7 || s.m === 8 ? 6 : 3;
+    const birds = s.cur === 7 || s.cur === 8 ? 6 : 3;
     o += '<g data-p="sava" fill="none" stroke="#231e16" stroke-width=".9" stroke-linecap="round">';
     for (let i = 0; i < birds; i++) {
-      const bx = i >= 3 ? 740 - s.pan - 30 + Math.sin(s.t * 1.3 + i) * 26 : ((s.t * 9 + i * 14 - s.pan * 0.2) % 300 + 300) % 300 + X - 40;
+      const bx = i >= 3 ? s.cur * MW - s.pan - 30 + Math.sin(s.t * 1.3 + i) * 26 : ((s.t * 9 + i * 14 - s.pan * 0.2) % 300 + 300) % 300 + X - 40;
       const by = i >= 3 ? -50 + Math.cos(s.t * 1.7 + i) * 6 : -82 + i * 4 + Math.sin(s.t * 2 + i) * 1.5, f = Math.sin(s.t * 8 + i) * 1.3;
       o += `<path d="M${(bx - 3).toFixed(1)} ${(by - f).toFixed(1)}Q${(bx - 1.5).toFixed(1)} ${(by - 1.4).toFixed(1)} ${bx.toFixed(1)} ${by.toFixed(1)}Q${(bx + 1.5).toFixed(1)} ${(by - 1.4).toFixed(1)} ${(bx + 3).toFixed(1)} ${(by - f).toFixed(1)}"/>`;
     }
@@ -3081,10 +3082,10 @@ const ZONUN = (() => {
   // ---------- over the scene: rain and mist, what someone says, the month, and the map of the road ----------
   const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
   function over(s) {
-    const [X, Y, W, H] = BOX, M = MONTHS[s.m], L = look(s);
+    const [X, Y, W, H] = BOX, M = MONTHS[s.cur], L = look(s);
     let o = '';
     // On the wind: petals in the flowering month, ash in the burning month, dry leaves in the cold ones
-    const blow = s.m === 2 ? ['#f7a8c4', '#ffffff'] : s.m === 3 ? ['#6d665e', '#9c968c'] : s.m === 10 || s.m === 11 || s.m === 1 ? ['#c9a24a', '#a8773c'] : null;
+    const blow = s.cur === 2 ? ['#f7a8c4', '#ffffff'] : s.cur === 3 ? ['#6d665e', '#9c968c'] : s.cur === 10 || s.cur === 11 || s.cur === 1 ? ['#c9a24a', '#a8773c'] : null;
     if (blow) {
       o += '<g pointer-events="none">';
       for (let i = 0; i < 10; i++) {
@@ -3116,82 +3117,59 @@ const ZONUN = (() => {
       }
       o += '</g>';
     }
-    const b = s.bubble, head = b && s.heads[b.id], hp = head && s.cam && s.cam.P(head);
-    if (hp && hp[0] > X && hp[0] < X + W) {
-      const [hx, hy] = hp, lines = [[b.title, 7.4, '#1565c0', 800]];
-      if (b.line) lines.push([b.line[0], 6.6, '#231e16', 700], [b.line[1], 5.6, '#5d5547', 600]);
-      const w = Math.min(W - 8, Math.max(...lines.map(([t, f]) => t.length * f * 0.54)) + 12), h = lines.reduce((a, [, f]) => a + f * 1.3, 0) + 7;
-      const bx = clamp(hx - w / 2, X + 4, X + W - w - 4), by = Math.max(Y + 22, hy - h - 9), tip = clamp(hx, bx + 6, bx + w - 6);
-      o += `<g pointer-events="none"><path d="M${tip - 4} ${by + h - 0.5}L${tip} ${by + h + 6}L${tip + 4} ${by + h - 0.5}" fill="#fffdf8" stroke="#231e16" stroke-width=".9"/>`;
-      o += `<rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="5" fill="#fffdf8" stroke="#231e16" stroke-width=".9"/>`;
-      o += `<path d="M${tip - 3.4} ${by + h - 0.6}L${tip + 3.4} ${by + h - 0.6}" stroke="#fffdf8" stroke-width="1.6"/>`;
-      let y = by + 3.5;
-      for (const [t, f, c, wt] of lines) { y += f * 1.15; o += `<text x="${(bx + 6).toFixed(1)}" y="${y.toFixed(1)}" font-size="${f}" font-weight="${wt}" fill="${c}" font-family="Plus Jakarta Sans, system-ui, sans-serif">${esc(t)}</text>`; y += f * 0.15; }
-      o += '</g>';
+    // The month at the top, in English and in Mizo
+    const en = M.en, mz = `${M.n} thla`, w = (en.length + mz.length) * 4.3 + 22, cx = X + W / 2;
+    o += `<g pointer-events="none"><rect x="${(cx - w / 2).toFixed(1)}" y="${Y + 4}" width="${w.toFixed(1)}" height="14" rx="7" fill="#fffdf8" opacity=".94" stroke="#231e16" stroke-width=".7"/>` +
+      `<text x="${cx}" y="${Y + 13.6}" text-anchor="middle" font-size="8" font-weight="800" font-family="Baloo 2, Plus Jakarta Sans, sans-serif"><tspan fill="#231e16">${en}</tspan><tspan fill="#a58a5a"> · </tspan><tspan fill="#1565c0">${esc(mz)}</tspan></text></g>`;
+    // The year along the foot: twelve months, the season's colour behind each, and where you are in it
+    const mx0 = X + 12, mw = W - 24, my = Y + H - 8, mx = x => mx0 + (x - MIN) / (MAX - MIN) * mw;
+    o += `<rect x="${X + 6}" y="${my - 9}" width="${W - 12}" height="15" rx="7.5" fill="#fffdf8" opacity=".9" stroke="#231e16" stroke-width=".7"/>`;
+    for (let m = 0; m < 12; m++) {
+      const a = mx(m * MW - MW / 2), b = mx(m * MW + MW / 2), c = mx(m * MW);
+      o += `<rect x="${a.toFixed(1)}" y="${my - 1}" width="${(b - a).toFixed(1)}" height="3" fill="${GRASS[MONTHS[m].grass].m}" opacity=".7" pointer-events="none"/>`;
+      o += `<g data-p="${MONTHS[m].n} thla#go"><rect x="${a.toFixed(1)}" y="${my - 9}" width="${(b - a).toFixed(1)}" height="15" fill="transparent"/>` +
+        `<text x="${c.toFixed(1)}" y="${my - 2.6}" text-anchor="middle" font-size="5" font-weight="800" fill="${m === s.cur ? '#1565c0' : '#5d5547'}" font-family="Plus Jakarta Sans, system-ui, sans-serif">${m + 1}</text></g>`;
     }
-    // The month, top left: its number, its Mizo name, and its English
-    const label = `${s.m + 1} · ${M.n} thla`, lw = label.length * 4.6 + 16;
-    o += `<g pointer-events="none"><rect x="${X + 4}" y="${Y + 4}" width="${Math.max(lw, M.en.length * 3.4 + 12).toFixed(1)}" height="17" rx="5" fill="#fffdf8" opacity=".92" stroke="#231e16" stroke-width=".7"/>` +
-      `<text x="${X + 10}" y="${Y + 12.4}" font-size="7.6" font-weight="800" fill="#231e16" font-family="Baloo 2, Plus Jakarta Sans, sans-serif">${esc(label)}</text>` +
-      `<text x="${X + 10}" y="${Y + 18.4}" font-size="5" font-weight="700" fill="#5d5547" font-family="Plus Jakarta Sans, system-ui, sans-serif">${M.en}</text></g>`;
-    // The map: the road from end to end, each place a dot with its Mizo name, and where you are
-    const mx0 = X + 14, mw = W - 28, my = Y + H - 8, mx = x => mx0 + (x - MIN) / (MAX - MIN) * mw;
-    o += `<rect x="${X + 6}" y="${my - 9}" width="${W - 12}" height="15" rx="7.5" fill="#fffdf8" opacity=".88" stroke="#231e16" stroke-width=".7"/>`;
-    o += `<path d="M${mx0} ${my}H${mx0 + mw}" stroke="#c9a36b" stroke-width="2" stroke-linecap="round"/>`;
     const span = W / (MAX - MIN + W) * mw;
-    o += `<rect x="${(mx(s.pan) - span / 2).toFixed(1)}" y="${my - 3.4}" width="${span.toFixed(1)}" height="6.8" rx="3.4" fill="#ffc94a" stroke="#231e16" stroke-width=".7" opacity=".9" pointer-events="none"/>`;
-    for (const p of PLACES) {
-      const x = mx(p.x), near = Math.abs(p.x - s.pan) < 60;
-      o += `<g data-p="${p.id}#go"><rect x="${x - 16}" y="${my - 9}" width="32" height="15" fill="transparent"/><circle cx="${x}" cy="${my}" r="1.8" fill="#231e16"/>` +
-        `<text x="${x}" y="${my - 3.6}" text-anchor="middle" font-size="5" font-weight="800" fill="${near ? '#1565c0' : '#5d5547'}" font-family="Plus Jakarta Sans, system-ui, sans-serif">${p.id}</text></g>`;
-    }
+    o += `<rect x="${(mx(s.pan) - span / 2).toFixed(1)}" y="${my + 0.4}" width="${span.toFixed(1)}" height="4.2" rx="2.1" fill="#ffc94a" stroke="#231e16" stroke-width=".6" opacity=".95" pointer-events="none"/>`;
     return o;
   }
 
   function anchors(s) { return s.anchors; }
 
   function tap(s, part, id) {
-    if (id.endsWith('#go')) { const p = PLACES.find(q => q.id === part); if (p) { s.tour = false; s.v = 0; s.panT = p.x; } return null; }
+    if (id.endsWith('#go')) { const m = MONTHS.findIndex(q => `${q.n} thla` === part); if (m >= 0) { s.play = false; goMonth(s, m); } return null; }
     const say = s.says[id];
-    if (!say) return null;
-    s.bubble = { id, title: `${part} · ${say.act}`, line: say.line, until: s.t + 6 };
-    return say.verb;
+    return say ? say.verb : null;
   }
 
-  // The notes on this month, under the picture, and a row of the twelve months to jump to.
-  function info(s) {
-    const M = MONTHS[s.m];
-    return `<div class="mhead"><b>${M.n} thla</b><span>${M.en} · ${M.title}</span></div>` +
-      `<p class="lead">Boruak leh khawtlang nun</p><p class="mz">${M.life}</p><p class="en">${M.lifeEn}</p>` +
-      `<p class="lead">Hnapui</p><p class="mz">${M.work}</p><p class="en">${M.workEn}</p>` +
-      `<div class="months">${MONTHS.map((x, i) => `<button type="button" data-go="${i}" aria-pressed="${i === s.m}" aria-label="${x.en}, ${x.n} thla">${i + 1}<small>${x.en.slice(0, 3)}</small></button>`).join('')}</div>`;
-  }
   const go = (s, v) => goMonth(s, +v);
 
   const pan = {
-    hold: s => { s.held = true; s.tour = false; s.v = 0; return s.pan; },
+    hold: s => { s.held = true; s.play = false; s.v = 0; return s.pan; },
     move: (s, from, u) => { s.pan = s.panT = clamp(from - u, MIN, MAX); },
     let: (s, v) => { s.held = false; s.v = -v; },
-    by: (s, u) => { s.tour = false; s.v = 0; s.panT = clamp(s.panT + u, MIN, MAX); },
+    by: (s, u) => { s.play = false; s.v = 0; s.panT = clamp(s.panT + u, MIN, MAX); },
   };
 
   return {
-    id: 'zonun', name: 'Zonun', sub: 'a year of Mizo village life',
+    id: 'zonun', name: 'Kumtluang', sub: 'a year in an old Mizo village',
     view: { yaw: 0, pitch: 28, box: BOX.join(' '), centre: [0, -30], ink: 1 },
-    hint: 'Tap anyone · drag to walk',
-    words: ['khua', 'in', 'buh in', 'kawngkhar', 'kawng', 'thingkung', 'thing', 'hnah', 'mau', 'pangpâr', 'tuikhur', 'tui', 'kawtchhuah', 'lo', 'ngaw', 'buk',
+    hint: 'Drag through the year · tap anyone',
+    words: ['khua', 'in', 'buh in', 'kawngkhar', 'kawng', 'thingkung', 'thing', 'hnah', 'mau', 'pangpâr', 'tui', 'kawtchhuah', 'lo', 'ngaw', 'buk',
       'buh', 'vaimim', 'fanghma', 'bal', 'hlo', 'pâwl', 'sava hlauh', 'hreipui', 'favah', 'mei', 'meikhu', 'vut', 'thingtuah', 'tapchhak', 'pher', 'khuang', 'bel', 'êm', 'puan',
       'nu', 'pa', 'pi', 'pu', 'naupang', 'nula', 'tlangval', 'lal', 'ui', 'vawk', 'arpui', 'chirh', 'sava', 'tlang', 'lui', 'ni', 'chhum', 'vân', 'ruah', 'tiauchhum',
       'phiat', 'tah', 'su', 'phur', 'infiam', 'vua', 'thlei', 'ṭhu', 'lâm', 'ei', 'chawl', 'hal', 'tuh', 'seng', 'kal',
       'thla', 'thlasik', 'nipui', 'favâng'],
     names: { 'Chapchar Kut': 'the grandest Mizo festival, in March', 'Pâwlkut': 'the straw festival, in January', 'Mim Kut': 'the festival for the departed, in September',
-      Khuangchawi: 'a grand feast for the whole village, in October' },
-    init, step, tint, haze, smooth: true, light: () => SUNLIGHT, scene, sky, over, anchors, tap, pan, info, go, labelGroups: ['Places', 'People', 'Things'],
+      Khuangchawi: 'a grand feast for the whole village, in October',
+      // the months on the map at the foot
+      ...Object.fromEntries(MONTHS.map(q => [`${q.n} thla`, `${q.en}: ${q.title.replace('The Month of ', '').replace(/^the /, '')}`])) },
+    init, step, tint, haze, smooth: true, light: () => SUNLIGHT, scene, sky, over, anchors, tap, pan, go, labelGroups: ['Places', 'People', 'Things'],
     actions: [
-      { label: () => '‹ Previous month', word: () => null, run: s => { s.play = false; goMonth(s, s.m - 1); } },
-      { label: () => 'Next month ›', word: () => null, run: s => { s.play = false; goMonth(s, s.m + 1); } },
-      { label: s => s.play ? 'Stop' : 'Play the year', word: () => null, run: s => { s.play = !s.play; s.playClock = 9; } },
-      ...PLACES.map(p => ({ label: () => p.en, word: () => p.id, run: s => { s.play = false; s.tour = false; s.v = 0; s.panT = p.x; } })),
+      { label: () => '‹ Previous month', word: () => null, run: s => { s.play = false; goMonth(s, s.cur - 1); } },
+      { label: () => 'Next month ›', word: () => null, run: s => { s.play = false; goMonth(s, s.cur + 1); } },
+      { label: s => s.play ? 'Stop' : 'Play the year', word: () => null, run: s => { if (s.play) s.play = false; else { if (s.panT >= 11 * MW - 1) s.pan = s.panT = 0; s.play = true; } } },
     ],
   };
 })();
@@ -3688,6 +3666,19 @@ const ZOKHUA = (() => {
         `<text x="${t.x + t.w / 2}" y="${t.y + pad / 2 + lh * 0.78}" text-anchor="middle" font-size="${fs}" font-weight="800" fill="#1565c0" font-family="Plus Jakarta Sans, system-ui, sans-serif">${t.m}</text></g>`;
     }).join('') + '</g>';
   }
+  // The name tag of what was just tapped: above the finger, kept inside the picture, the same size on any screen
+  function tagLayer() {
+    if (!tag || performance.now() > tag.until) { tag = null; return ''; }
+    const k = VW / (svg.clientWidth || 360), f1 = 17 * k, f2 = 13 * k, pad = 8 * k;
+    const w = Math.max(tag.word.length * f1 * 0.56, tag.en.length * f2 * 0.52) + pad * 2, h = (tag.en ? f1 + f2 + 6 * k : f1 + 2 * k) + pad * 1.4;
+    const x = Math.max(VX + 4 * k, Math.min(VX + VW - w - 4 * k, tag.x - w / 2)), y = Math.max(VY + 4 * k, tag.y - h - 16 * k);
+    const fade = Math.min(1, (tag.until - performance.now()) / 400), font = 'font-family="Plus Jakarta Sans, system-ui, sans-serif"';
+    return `<g pointer-events="none" opacity="${fade.toFixed(2)}"><path d="M${tag.x - 5 * k} ${y + h - 1}L${tag.x} ${tag.y - 6 * k}L${tag.x + 5 * k} ${y + h - 1}Z" fill="#231e16"/>` +
+      `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${8 * k}" fill="#fffdf8" stroke="#231e16" stroke-width="${1.4 * k}"/>` +
+      `<text x="${x + pad}" y="${y + pad * 0.7 + f1 * 0.85}" font-size="${f1}" font-weight="800" fill="#1565c0" ${font}>${tag.word}</text>` +
+      (tag.en ? `<text x="${x + pad}" y="${y + pad * 0.7 + f1 + f2 * 0.95}" font-size="${f2}" font-weight="700" fill="#5d5547" ${font}>${tag.en.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</text>` : '') + '</g>';
+  }
+
   // ---------- the camera follows the work ----------
   // A thing may name a point to look at closely (fig.focus → { p, zoom }); the camera glides there
   // and back out. Only the scene moves: the sky, the step dots and the labels' boxes stay put.
@@ -3715,7 +3706,7 @@ const ZOKHUA = (() => {
     hits = Ink3D.paint(ctx, fig.scene(st, cam), cam, { tint: fig.tint(st), hl, ink: fig.view.ink || 1, wobble: pen ? 0.45 * (fig.view.ink || 1) : 0, light: fig.light && fig.light(st), haze: fig.haze && fig.haze(st), smooth: fig.smooth });
     paintedAt = ctx.getTransform();
     skyEl.innerHTML = fig.sky(st);
-    svg.innerHTML = fig.over(st) + (labels ? labelLayer(cam) : '');
+    svg.innerHTML = fig.over(st) + (labels ? labelLayer(cam) : '') + tagLayer();
   }
 
   // ---------- the loop: 60 frames a second when the phone keeps up, 30 or fewer on a slow one, every frame while you drag ----------
@@ -3787,7 +3778,7 @@ const ZOKHUA = (() => {
     if (fig.pan && d.moved) fig.pan.let(st, e.timeStamp - d.lt < 80 ? d.vx * unitsPerPx() : 0);
     if (e.type === 'pointerup' && !d.moved) {
       const part = partAt(e.clientX, e.clientY);
-      if (part) touched(part);
+      if (part) touched(part, e.clientX, e.clientY);
     }
   };
   stage.addEventListener('pointerup', end);
@@ -3800,9 +3791,15 @@ const ZOKHUA = (() => {
   });
 
   // id is the tapped part's name, with #n when there are several of a kind (the eggs).
-  function touched(id) {
+  // A tap names what was tapped right there on the picture, for a moment: its Mizo word, and its English.
+  let tag = null;
+  function touched(id, x, y) {
     const part = id.split('#')[0];
     hl = id; hlUntil = performance.now() + 900;
+    if (x != null && !find) {
+      const r = svg.getBoundingClientRect();
+      tag = { x: VX + (x - r.left) / r.width * VW, y: VY + (y - r.top) / r.height * VH, word: part, en: WORDS[part] || (fig.names && fig.names[part]) || '', until: performance.now() + 2400 };
+    }
     $('hint').classList.add('gone');
     const also = fig.tap ? fig.tap(st, part, id) : null;
     drawActs();   // a tap can make a button ready (Weigh it, Pay) at once
@@ -3921,7 +3918,7 @@ const ZOKHUA = (() => {
     stage.classList.toggle('pan', !!f.pan);
     $('hint').textContent = f.hint || 'Tap anything · drag to turn'; $('hint').classList.remove('gone');
     cv.z = 1; [cv.x, cv.y] = f.view.centre;
-    stopFind(); showLabels(0);
+    stopFind(); showLabels(0); tag = null;
     wordEl.className = 'word idle'; wordEl.innerHTML = '<b>Tap anything</b><span>to see its Mizo name</span>';
     $('acts').dataset.html = ''; drawActs(); drawSwatches(); drawInfo();
     document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.id === f.id));

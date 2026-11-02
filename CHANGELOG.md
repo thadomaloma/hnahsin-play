@@ -4,6 +4,21 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.44.0 (2 November 2026)
+
+### Touch and learn: Kumtluang, the year as one long picture
+
+- Zonun is now Kumtluang: a year in an old Mizo village as one long picture,
+  January at one end and December at the other, to drag through or to play.
+  Each month has its own scene (the festivals at the square, the field work
+  in the jhum, the home work at the houses), and the sky, the weather and the
+  grass change little by little between them.
+- The month's name shows at the top, in English and Mizo, with a map of the
+  twelve months along the foot of the picture. The long notes on the months
+  and the speech bubbles are gone: the picture tells it.
+- Tap anyone or anything in Touch and learn and its name shows right there on
+  the picture for a moment: the Mizo word, and its English.
+
 ## 1.43.1 (2 November 2026)
 
 ### Touch and learn: no source lines in the notes

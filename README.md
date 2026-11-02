@@ -31,11 +31,12 @@ Learn Mizo words by playing. Free, on any phone, no sign-up.
   from the cotton gin to the warp. Puan tah: pi weaves a Mizo puan on her
   loom, with every tool named, and the five famous Mizo puans to learn about
   and weave. Bazar dâwr: Rova shops at a market stall from a list in Mizo
-  numbers. And Zonun: a year of life in an old Mizo village, January to
-  December. Walk from the homes past the spring and the square to the jhum
-  field, and watch it cut, burnt, sown, weeded, harvested and left in straw,
-  with each month's weather, work and festival (Pâwlkut, Chapchar Kut, Mim
-  Kut, Khuangchawi), and the notes on every month in Mizo and English.
+  numbers. And Kumtluang: a year in an old Mizo village as one long picture,
+  January to December, to drag through or play: the forest cut, burnt and
+  sown, the rice weeded in the rains, standing in the mist, harvested and
+  threshed, with each month's weather and festival (Pâwlkut, Chapchar Kut, Mim
+  Kut, Khuangchawi), the month's name in English and Mizo at the top, and the
+  name of anyone or anything you tap.
 - **Aizawl Ride.** Ride a scooter along real Aizawl roads to deliver a parcel:
   from Millennium Centre to Civil Hospital, or down past Vanapa Hall and the
   Assembly House to Chawnga Road, in 3D. The bends, hills, hillsides and houses
