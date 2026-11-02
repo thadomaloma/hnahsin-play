@@ -4,6 +4,28 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.42.0 (2 November 2026)
+
+### Touch and learn: Zokhua, an old Mizo village
+
+- A new thing to play with, after In hlui: Zokhua, an old Mizo village as at
+  Zokhua, the Mizo typical village at Falkawn, laid out as J. Shakespear
+  describes a Lushai village (1912).
+- A stockade (kulh) all round, a gate (kawtchhuah) of hanging saplings with
+  a guard hut, and the street up to the open space at the top: the chief's
+  house (lal in) on one side, with skull posts in front, and the zawlbuk
+  opposite, high on its posts with the mithun (sial) beneath.
+- The adviser's house (khawnbawl in) beside the chief's, ordinary houses
+  along the street, a granary, and in the widest part of the street the
+  blacksmith's forge (pum): its two-cylinder bellows pumping, the charcoal
+  glowing, and the thirdeng hammering on the anvil.
+- Outside the gate, the memorials by the road (lungdawh), and posts hung
+  with skulls, gourds and pots; the spring below, and mithun grazing.
+- Drag to turn the village, or visit each place: the camera comes in close
+  and the story of the place shows under the picture. In the evening the
+  gate is let down, the young men sit round a fire by the zawlbuk, and the
+  crier calls out the chief's orders.
+
 ## 1.41.0 (2 November 2026)
 
 ### Touch and learn: In hlui, an old Mizo house

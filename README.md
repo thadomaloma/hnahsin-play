@@ -25,7 +25,10 @@ Learn Mizo words by playing. Free, on any phone, no sign-up.
   part to see its Mizo name, look inside, change the time of day, make it
   rain or blow, meet the family, have Rova and Mami visit, pick up the hen's
   eggs, or play Find it. In hlui: an old Mizo house as at Zokhua, Falkawn,
-  to look inside, with every part named and things to do in it. Also La
+  to look inside, with every part named and things to do in it. Zokhua: an
+  old Mizo village as at Falkawn, with its stockade and gate, the chief's
+  house and the zawlbuk, the adviser's and ordinary houses, the forge and the
+  memorials, each to visit with its story, by day or evening. Also La
   siam: nu makes thread from cotton in six steps, from the cotton gin to the
   warp. Puan tah: pi weaves a Mizo puan on her loom, with every tool named, and the five famous Mizo puans to learn
   about and weave. Bazar dâwr: Rova shops at a market stall from a list
