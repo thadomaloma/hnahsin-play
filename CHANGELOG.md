@@ -4,6 +4,29 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.39.0 (2 November 2026)
+
+### Touch and learn: Zonun, a year in a Mizo village
+
+- A new thing to play with, Zonun: a year of life in an old Mizo village,
+  from January (Pâwlkut thla) to December (Pâwltlak thla). Drag to walk
+  along the road from the homes, past the spring (tuikhur) and the village
+  square (kawtchhuah), to the jhum field (lo).
+- Each month changes what you see. The forest is cut in February, dries in
+  March and is burnt and sown in April. The rice sprouts in the first rain,
+  is weeded through June and July, stands in the August mist with a scarecrow
+  and a guard in the field hut, flowers, turns gold and is harvested in
+  November, and lies in straw in December. Rain, mist, haze and the cold
+  come in their months, and the animals grow thick fur in Sahmulphah thla.
+- The festivals come in their months: children feast at Pâwlkut, the bamboo
+  dance at Chapchar Kut, the first crops set out at Mim Kut, and the great
+  drum and feast at Khuangchawi.
+- Under the picture are the notes on the month in Mizo and English (its
+  weather and village life, and its main work), and a button for each of the
+  twelve months. Play the year moves on a month every few seconds.
+- Tap anyone to see what they are doing; tap anything to see its Mizo name.
+  Words not in the Hnahsin content come from J.F. Laldailova's dictionary.
+
 ## 1.38.7 (2 November 2026)
 
 ### Rova's Journey: in the middle of the screen, and a livelier card

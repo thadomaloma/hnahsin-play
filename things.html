@@ -116,6 +116,7 @@
   .stage svg g.hl > * { stroke: var(--gold-deep) !important; stroke-width: 2.2px !important; }
   .hint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); background: rgba(35, 30, 22, .78); color: #fff; font-size: 14px; font-weight: 700; padding: 6px 12px; border-radius: 99px; pointer-events: none; transition: opacity .5s; white-space: nowrap; }
   .hint.gone { opacity: 0; }
+  .stage.pan .hint { bottom: 15%; }   /* above the village's map at the foot (and clear of the month at the top) */
 
   .word { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; min-height: 64px; padding: 12px 16px 14px; border-top: 1.5px solid var(--ink); background: #fff8e1; }
   .word b { font-family: "Baloo 2", sans-serif; font-size: 30px; line-height: 1.1; color: var(--brand); }
@@ -128,6 +129,21 @@
   .word.bad { animation: shake .35s; }
   @keyframes pop { from { transform: scale(.7); opacity: .3; } }
   @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+  /* Notes a thing gives on itself (Zonun: the month), with buttons to jump (data-go) */
+  .info { padding: 12px 16px 16px; border-top: 1.5px solid var(--ink); display: grid; gap: 4px; }
+  .info .mhead { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; }
+  .info .mhead b { font-family: "Baloo 2", sans-serif; font-size: 26px; line-height: 1.1; color: var(--brand); }
+  .info .mhead span { color: var(--muted); font-weight: 700; font-size: 15px; }
+  .info .lead { margin: 8px 0 0; font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--leaf); }
+  .info .mz { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.45; }
+  .info .en { margin: 0; font-size: 14px; color: var(--muted); line-height: 1.4; }
+  .info .months { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+  @media (min-width: 560px) { .info .months { grid-template-columns: repeat(12, minmax(0, 1fr)); } }
+  .info .months button { display: grid; place-items: center; min-height: 44px; padding: 2px; border-radius: 12px; border: 1.5px solid var(--ink); background: var(--panel); font-weight: 800; font-size: 15px; line-height: 1; }
+  .info .months button small { font-size: 11px; font-weight: 700; color: var(--muted); }
+  .info .months button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .info .months button[aria-pressed="true"] small { color: #e8e2d4; }
 
   .row { display: flex; flex-wrap: wrap; gap: 8px; }
   #acts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -166,6 +182,7 @@
       <div class="hint" id="hint">Tap anything · drag to turn</div>
     </div>
     <div class="word idle" id="word" aria-live="polite"><b>Tap anything</b><span>to see its Mizo name</span></div>
+    <section class="info" id="info" hidden></section>
   </main>
 
   <section class="find" id="findbar" hidden aria-live="polite">
@@ -2311,11 +2328,696 @@ const LA = (() => {
 })();
 </script>
 <script>
+// Zonun: a year of life in an old Mizo village, January to December, drawn with Ink3D. A road runs from
+// the homes past the spring and the village square to the jhum field (lo). Each month the field, the
+// weather and the work change as the months' notes tell: the forest is cut (February), dries (March),
+// is burnt and sown (April), sprouts in the first rain (May), is weeded in the rains (June, July),
+// stands in the mist (August), flowers (September), turns gold (October), is harvested (November) and
+// lies in straw (December, January); the festivals come in their months. Drag to walk along the road;
+// tap anyone to see what they are doing. Words not in the Hnahsin content come from zonun_words.json.
+const ZONUN = (() => {
+  const { hexa, ball, cyl, line, poly, group, solid, mix } = Ink3D;
+
+  const WALL = { l: '#e9cf98', m: '#cdb070', d: '#7d6236' }, WOOD = { l: '#c98d55', m: '#a46c3c', d: '#55361d' }, POST = { l: '#9a6a40', m: '#7a5230', d: '#3e2918' };
+  const EARTH = { l: '#c99a6b', m: '#a8774b', d: '#5a3d26' }, LEAF = { l: '#86c86e', m: '#5fa451', d: '#2f5a28' }, DARK_LEAF = { l: '#6fb35e', m: '#4c8c44', d: '#244a22' };
+  const DRY_LEAF = { l: '#c9b06a', m: '#a88d4c', d: '#5a4a24' }, BARK = { l: '#9b7350', m: '#7a5636', d: '#3b2817' }, STONE = { l: '#c4c0b8', m: '#99948c', d: '#4a4743' };
+  const THATCH = { l: '#e2c27a', m: '#c4a25a', d: '#6b5626' }, CANE = { l: '#e8c584', m: '#c9a05a', d: '#6b5126' }, IRON = { l: '#8d8a86', m: '#5a5754', d: '#2d2b29' };
+  const HEN = { l: '#e39a57', m: '#c0733a', d: '#5c3417' }, PIG = { l: '#f7c1cb', m: '#e99aab', d: '#7a3f4c' }, DOG = { l: '#d9b98a', m: '#b8915e', d: '#5c4426' };
+  const GOLD = { l: '#f2d36b', m: '#d9b13d', d: '#7a6018' }, DRUM = { l: '#d9a066', m: '#b0763e', d: '#55361d' }, SKIN_TOP = '#f1e3c4';
+  const INSIDE = '#3a2c22', WATER = '#8cc5ee', BAMBOO = '#a3b55a', FLAME = ['#ffd84a', '#ff9a3c', '#e2483d'];
+
+  // The people of the village, dressed as in old times: puan skirts and plain cloths
+  const HAIR = '#1d1b22', GREY = '#cfcac2', PUAN = { l: '#d9474f', m: '#b8343d', d: '#5c1a1f' }, DARK = { l: '#5a5f6b', m: '#41454f', d: '#1f2128' };
+  const WHITE = { l: '#fbf7ee', m: '#e6e0d2', d: '#8f887a' }, INDIGO = { l: '#7a8be0', m: '#4f5fc0', d: '#1f2660' };
+  const NU = { h: 22, shirt: { l: '#f4e7d0', m: '#dccbb0', d: '#6d604c' }, lower: 'skirt', lowerPal: PUAN, bands: [0.24, 0.32, 0.4], hair: HAIR, bun: true };
+  const PA = { h: 24, shirt: WHITE, lower: 'shorts', lowerPal: DARK, hair: HAIR };
+  const PI = { h: 21, shirt: { l: '#e9e4f5', m: '#c9c0e0', d: '#5c5478' }, lower: 'skirt', lowerPal: { l: '#5f8f6a', m: '#3f6f4c', d: '#1d3524' }, bands: [0.2, 0.28], hair: GREY, bun: true };
+  const PU = { h: 23, shirt: { l: '#f4efe4', m: '#d8d0bf', d: '#6d6556' }, lower: 'shorts', lowerPal: { l: '#7a6a58', m: '#5c4e40', d: '#2c241c' }, hair: GREY };
+  const NAUPANG = { h: 14, shirt: { l: '#ffe08a', m: '#f2b431', d: '#6b4d12' }, lower: 'shorts', lowerPal: DARK, hair: HAIR };
+  const NAUPANG2 = { h: 13, shirt: { l: '#f4e7d0', m: '#dccbb0', d: '#6d604c' }, lower: 'skirt', lowerPal: INDIGO, hair: HAIR, ponytail: true, tie: '#e0457b' };
+  const NULA = { h: 21, shirt: { l: '#fff3b0', m: '#f2d36b', d: '#7a6420' }, lower: 'skirt', lowerPal: PUAN, bands: [0.2, 0.26, 0.32, 0.38], hair: HAIR, bun: true };
+  const NULA2 = { h: 21, shirt: WHITE, lower: 'skirt', lowerPal: { l: '#3f3f4a', m: '#26262e', d: '#101014' }, bands: [0.22, 0.3, 0.38], hair: HAIR, bun: true };
+  const TLANGVAL = { h: 24, shirt: WHITE, lower: 'shorts', lowerPal: { l: '#5a5f6b', m: '#2c2f36', d: '#121418' }, hair: HAIR };
+  const LAL = { h: 25, shirt: { l: '#f7f2e6', m: '#e2d8c2', d: '#7a6f5a' }, lower: 'skirt', lowerPal: PUAN, bands: [0.2, 0.3, 0.4], hair: HAIR };
+
+  // ---------- the months: their names, the notes on them (Mizo, then English), and how each one looks ----------
+  // lo: what the jhum field is like · h: how tall the rice stands · rain, mist, haze: 0–1 · cold: a fire is lit ·
+  // kut: the festival held at the square · at: the place to walk to for this month's main work
+  const MONTHS = [
+    { n: 'Pâwlkut', en: 'January', title: 'The Month of the Straw Festival', lo: 'pawl', cold: true, kut: 'pawlkut', at: 'kawtchhuah',
+      sky: ['#a9cbe6', '#eef3f6'], grass: 'dry',
+      life: 'Fur leh favang rim taka hna an thawh hnuah, buh leh thlai a lo thar fel a. Khawtlangin hlim takin "Pâwlkut" an hmang ṭhin. Naupang leh puitling an hlim tlang hle.',
+      work: 'Buh zêm thiah, buh in lama phurh luh (buh runpui), leh kum thar tana inbuatsaihna hun a ni.',
+      lifeEn: 'The harvest is fully gathered after months of hard labor during the monsoon and autumn. The community celebrates "Pâwlkut," a festival marking the abundance of grain and straw. It is a joyful time filled with feasts, especially for children and families.',
+      workEn: 'Threshing grain, transporting rice to the village granaries (Buh Runpui), and preparing for the upcoming agricultural cycle.' },
+    { n: 'Ramtuk', en: 'February', title: 'The Month of Preparing the Land', lo: 'ngaw', cold: true, at: 'lo',
+      sky: ['#9fcdee', '#eaf5fc'], grass: 'dry',
+      life: "Khua a vawt a reh ṭan a, thlasik a kiang chho ṭan. Ram thar (lo thar tur) tura tlangval leh mipuite an chhuah huk ṭhin avangin 'Ramtuk' tiin an vuah a ni.",
+      work: 'Lo vah hnatlang a kal chho a. Thingzar sat thluin ram hnuai hna rim takin an thawk ṭan.',
+      lifeEn: "The winter cold begins to fade as spring approaches. The village comes alive as men head out to the forests to clear new land for cultivation, which gives the month its name, 'Ramtuk'.",
+      workEn: 'Clearing the jungle and cutting down trees (Lo vah) for the new Jhum fields. This is done through community work or helping one another.' },
+    { n: 'Vau', en: 'March', title: 'The Month of the Vau Flower', lo: 'vah', bloom: true, kut: 'chapchar', at: 'kawtchhuah',
+      sky: ['#8fd3ff', '#e3f4ff'], grass: 'dry',
+      life: 'Vaube par leh thinghnah no a chhuak a, khua a lum chho ṭan. He thla hi Mizo kut pui ber "Chapchar Kut" hman thla a ni a, nula leh tlangval zai leh lamin kawtchhuah an khat ṭhin.',
+      work: 'Lo vah hnuhnung buatsaih leh lo vah tawh sa ni sa hnuaia phorona hun a ni.',
+      lifeEn: 'The Vaube orchid blooms beautifully across the hills, and the weather turns warmer. This is the month of "Chapchar Kut," the grandest Mizo festival. The village breaks into celebration with traditional dances and songs at the public squares.',
+      workEn: 'Finishing the clearing of the jungle and leaving the felled trees and brush to dry thoroughly under the hot spring sun.' },
+    { n: 'Ṭau', en: 'April', title: 'The Month of the Tau Fruit', lo: 'hal', haze: 0.8, wind: 1, at: 'lo',
+      sky: ['#c9c0a2', '#f3dcb2'], grass: 'dry',
+      life: 'Hmuntau a hmin hun a ni a, boruak a hul ṭha tawh hle.',
+      work: 'Lo hal thla a ni. Lo an hal zawhin kangfai an theh a, buh chi tuh (chi phûm) hna khawtlangin an ṭan nghal ṭhin.',
+      lifeEn: 'The wild Tau fruit matures, and the weather becomes very dry and windy.',
+      workEn: 'Burning the dried Jhum fields (Lo hal). After the burning, the ashes are cleared away, and the entire village joins in sowing the rice seeds (Buh tuh) into the soil.' },
+    { n: 'Ṭomir', en: 'May', title: 'The Month of Early Rains', lo: 'tiak', h: 0.12, rain: 0.35, at: 'lo',
+      sky: ['#8fb4d2', '#dbe8f0'], grass: 'green',
+      life: 'Ruahtui ṭo a lo tla ṭan a, thlai chin hrang hrang leh lo vah sa hnuai aṭangin chawm a lo ṭo chhuak ṭan.',
+      work: 'Buh hmun tifai tura lo kal zut zut leh hlo thlawh hmasak ber tura inbuatsaih hun a ni.',
+      lifeEn: 'The early monsoon showers arrive, bringing life back to the burnt hillsides. The newly planted crops and wild vegetation begin to sprout simultaneously.',
+      workEn: 'Clearing weeds around the young rice plants and monitoring the Jhum fields as the first heavy weeding season approaches.' },
+    { n: 'Nikir', en: 'June', title: 'The Month of the Solstice', lo: 'hring', h: 0.4, rain: 0.8, at: 'lo',
+      sky: ['#7f99ae', '#c9d5dd'], grass: 'green',
+      life: 'Ni a sei ber a (Summer Solstice), khua a lum vawrtap bawk. Ruah a sur nasa chho ṭan.',
+      work: "Hlo thlawh rim lai ber a ni. Zing khawvar aṭanga tlai thim thleng lovah hun an hmang a, khawtlang tlangval ten 'thlawhhma hnatlang' an nei fo.",
+      lifeEn: 'This month features the longest days of the year (Summer Solstice) and intense summer heat, accompanied by heavy rainfall.',
+      workEn: 'The peak weeding season (Hlo thlawh). Villagers work tirelessly from dawn to dusk in the fields, often forming youth groups (Thlawhhma hnatlang) to help each other manage the rapidly growing weeds.' },
+    { n: 'Vawkhniahzawn', en: 'July', title: 'The Month of Endless Mud', lo: 'hring', h: 0.62, rain: 1, mud: true, at: 'in',
+      sky: ['#72899a', '#bec9d0'], grass: 'green',
+      life: 'Ruah sur a reh hman meuh lo a, lei hnawng leh balah chuan vawk hniak pawh a tlang chhuak thei reng a, chuvanga vawk-hniak-zawn ti an ni.',
+      work: 'Hlo thlailet (hlo thlawh hnihna) an thlo a, buh chawm hualin lo tuihawk zawn hna an thawk bawk.',
+      lifeEn: "The monsoon rains are continuous. The village paths are so muddy and wet that even a pig's footprint is immediately washed over or followed by another, giving the month its unique name.",
+      workEn: 'The second round of weeding (Hlo thlailet) takes place. Farmers also dig channels to divert heavy rainwater away from their crops.' },
+    { n: 'Thlazîng', en: 'August', title: 'The Month of the Misty Clouds', lo: 'hring', h: 0.85, rain: 0.35, mist: 0.85, at: 'lo',
+      sky: ['#aab4bb', '#e0e4e6'], grass: 'green',
+      life: 'Chhum a zing chuk a, ruah sur avangin khua a thim mup reng ṭhin. Hmanlai chuan mitthi thlarau an thlah ṭhin thla (Thiṭin) nia ngaiin hlimhlawp an nei meuh lo.',
+      work: 'Buh a ding ṭan a, ramsa leh sava laka buh ven nan lo vah buk riah leh râl vênna hna an ṭan ṭhin.',
+      lifeEn: 'Thick mist covers the hills, and the sky remains dark with rain. In ancient times, this was considered a solemn month of remembrance for the departed (Thiṭin), so loud celebrations and weddings were generally avoided.',
+      workEn: 'The rice stalks begin to grow tall. Villagers build temporary watch-huts (Buk riah) in the fields to guard the crops against wild animals and birds.' },
+    { n: 'Mimkut', en: 'September', title: 'The Month of the Maize Festival', lo: 'par', h: 0.95, kut: 'mimkut', at: 'in',
+      sky: ['#86c6f0', '#e3f2fb'], grass: 'green',
+      life: 'Mitthi thlarau chawmna leh hriat rengna kut, "Mim Kut" an hmang ṭhin. Mim leh thlai hmasa a lo thar ṭan bawk.',
+      work: 'Buh seng hma thlai thar (maita, bal, mim) khawm leh buh par ven hna an thawk.',
+      lifeEn: 'The community celebrates "Mim Kut," a festival dedicated to honoring deceased ancestors by offering them fresh maize, millet, and other early harvests.',
+      workEn: 'Gathering early-maturing crops like maize, roots, and vegetables, while continuing to protect the flowering rice crops.' },
+    { n: 'Khuangchawi', en: 'October', title: 'The Month of the Feast', lo: 'hmin', h: 1, kut: 'khuangchawi', at: 'kawtchhuah',
+      sky: ['#6cc0f5', '#e6f6ff'], grass: 'green',
+      life: 'Khua a thiang nuam a, favang boruak a lo thleng. Mi neinung leh khawnbawlten ropuina changkan nan khawtlang huapa ruai ṭhehin "Khuang an chawi" ṭhin.',
+      work: 'Buh par a thla a, buh al (hmin) ṭan fawm leh favang hna zawh fel a ni.',
+      lifeEn: 'The rainy season ends, giving way to clear autumn skies and pleasant weather. Wealthy families and chiefs host grand community feasts known as "Khuangchawi" to earn social prestige and feed the village.',
+      workEn: 'The rice fields turn golden as the crop matures. Farmers make final preparations, such as weaving baskets, for the grand harvest.' },
+    { n: 'Sahmulphah', en: 'November', title: 'The Month of Thick Fur', lo: 'seng', h: 1, cold: true, fur: true, at: 'lo',
+      sky: ['#9cc7e3', '#f3efe2'], grass: 'fall',
+      life: 'Khua a vawh ṭan tawh avangin ramsa leh in chhung ranvulh ten hmul chhah an phah ṭan nia hriat a ni.',
+      work: 'Buh seng hnatlang a intan a, khawtlang pum buh zik lawh leh buh lâwmin an phe suau suau ṭhin.',
+      lifeEn: 'The weather turns quite cold. Wild animals and domestic livestock begin to develop thick winter coats to protect themselves from the chill.',
+      workEn: 'The grand harvest (Buh seng) begins. The entire village works together in a festive spirit, harvesting the grain and singing traditional songs.' },
+    { n: 'Pâwltlak', en: 'December', title: 'The Month of Fallen Straw', lo: 'pawl', cold: true, fur: true, at: 'in',
+      sky: ['#b7cfe0', '#f0eee8'], grass: 'dry',
+      life: 'Buh seng a zo a, lo lamahte buh pawl chauh a tlak tawh avangin Pâwltlak thla an ti. Khua a vawt hle a, chhungkua leh khawtlang tapchhak an bel ṭan.',
+      work: 'Buh thlei, sam, leh rawngbawl hrang hrang zo felin khawtlang an chawl hahdam ṭhin a ni.',
+      lifeEn: 'The harvest is complete, leaving nothing but leftover straw (Pâwl) scattered across the empty fields. The weather is cold, and families gather around the hearth fire in the evenings. The village enters a peaceful period of rest.',
+      workEn: 'Winnowing the grain, storing the final yields in the village granaries, and enjoying a well-deserved rest after a long year of labor.' },
+  ];
+  const GRASS = {
+    green: { l: '#a9d67c', m: '#8cc063', d: '#4b6b33' }, dry: { l: '#cfd08a', m: '#b5b56a', d: '#5f6136' }, fall: { l: '#c4cf7c', m: '#a6b35c', d: '#56602f' },
+  };
+
+  // The places along the road (x is how far along it), and how far you can walk.
+  const PLACES = [{ id: 'in', x: 0, en: 'Homes' }, { id: 'tuikhur', x: 230, en: 'Spring' }, { id: 'kawtchhuah', x: 470, en: 'Village square' }, { id: 'lo', x: 740, en: 'Jhum field' }];
+  const placeX = id => PLACES.find(p => p.id === id).x;
+  const MIN = -40, MAX = 770, BOX = [-98, -86, 196, 126];
+  const SUNLIGHT = Ink3D.norm([0.3, 0.5, 1]);
+
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const rnd = (i, k) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
+
+  function init() {
+    const m = 0;
+    return { t: 0, m, pan: placeX(MONTHS[m].at), panT: placeX(MONTHS[m].at), v: 0, held: false, tour: false, play: false, playClock: 0,
+      bubble: null, cam: null, anchors: [], heads: {}, says: {} };
+  }
+  function goMonth(s, m) {
+    s.m = (m + 12) % 12; s.bubble = null; s.v = 0; s.tour = false;
+    s.panT = placeX(MONTHS[s.m].at);
+  }
+
+  function step(s, dt) {
+    s.t += dt;
+    if (s.play && (s.playClock -= dt) <= 0) { s.playClock = 9; goMonth(s, s.m + 1); }
+    if (s.tour) { s.panT = Math.min(MAX, s.panT + dt * 40); if (s.panT >= MAX) s.tour = false; }
+    if (!s.held) {
+      if (Math.abs(s.v) > 4) { s.pan += s.v * dt; s.v *= Math.exp(-dt * 3.2); s.panT = s.pan; }   // a flick glides on
+      else { s.v = 0; s.pan += (s.panT - s.pan) * (1 - Math.exp(-dt * 2.4)); }
+    }
+    s.pan = clamp(s.pan, MIN, MAX); s.panT = clamp(s.panT, MIN, MAX);
+    if (s.bubble && s.t > s.bubble.until) s.bubble = null;
+  }
+
+  // ---------- building blocks ----------
+  const frame = (ox, oy, ang = 0) => { const a = ang * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a); return (x, y, z) => [ox + x * c - y * sn, oy + x * sn + y * c, z]; };
+  const rbox = (T, x0, x1, y0, y1, z0, z1, o = {}) => {
+    const dec = o.decals ? Object.fromEntries(Object.entries(o.decals).map(([k, list]) => [k, list.map(d => ({ ...d, pts: d.pts.map(p => T(...p)) }))])) : undefined;
+    return hexa([[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0], [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]].map(p => T(...p)), { ...o, decals: dec });
+  };
+  function roof(T, x0, x1, y0, y1, zt, rh, o, pal, part) {
+    const ym = (y0 + y1) / 2, X0 = x0 - o, X1 = x1 + o, Y0 = y0 - o, Y1 = y1 + o;
+    const a = T(X0, Y1, zt), b = T(X1, Y1, zt), c = T(X1, ym, zt + rh), d = T(X0, ym, zt + rh), e = T(X0, Y0, zt), f = T(X1, Y0, zt);
+    return solid([{ pts: [a, b, c, d] }, { pts: [f, e, d, c] }, { pts: [a, d, e] }, { pts: [b, f, c] }, { pts: [a, e, f, b] }], { pal, part });
+  }
+  const onFront = (y1, u0, u1, v0, v1, fill, part) => ({ pts: [[u0, y1 + 0.1, v0], [u1, y1 + 0.1, v0], [u1, y1 + 0.1, v1], [u0, y1 + 0.1, v1]], fill, part });
+  const flat = (pts, fill, part, o = {}) => poly(pts.map(([x, y]) => [x, y, 0.06]), { fill, part, w: 0.6, ...o });
+
+  // An old Mizo house on stilts, its walls of split bamboo and a thatched roof, with smoke from the hearth in the cold
+  function house(s, ox, oy, ang, w = 50, dpt = 26, part = 'in') {
+    const T = frame(ox, oy, ang), x0 = -w / 2, x1 = w / 2, y0 = -dpt / 2, y1 = dpt / 2, out = [];
+    for (const x of [x0 + 2, 0, x1 - 2]) for (const y of [y0 + 2, y1 - 2]) out.push(rbox(T, x - 1.2, x + 1.2, y - 1.2, y + 1.2, 0, 9, { pal: POST, part }));
+    out.push(rbox(T, x0 - 3, x1 + 3, y0 - 1, y1 + 5, 9, 11, { pal: WOOD, part }));
+    out.push(rbox(T, x0, x1, y0, y1, 11, 29, { pal: WALL, part, decals: { yp: [onFront(y1, -4, 5, 11, 25, INSIDE, 'kawngkhar'), onFront(y1, 10, 18, 17, 24, INSIDE, 'tukverh')] } }));
+    out.push(roof(T, x0, x1, y0, y1, 29, 15, 5, THATCH, part));
+    out.push(line([T(0, y1 + 5, 10), T(1, y1 + 12, 0)], { col: WOOD.m, w: 3.2, part }));
+    return group(out, { at: T(0, 0, 10) });
+  }
+  // The buh in (granary): a small hut on tall posts
+  function granary(ox, oy, full) {
+    const T = frame(ox, oy, 8), out = [];
+    for (const x of [-7, 7]) for (const y of [-5, 5]) out.push(rbox(T, x - 1, x + 1, y - 1, y + 1, 0, 12, { pal: POST, part: 'buh in' }));
+    out.push(rbox(T, -9, 9, -7, 7, 12, 26, { pal: CANE, part: 'buh in', decals: { yp: [onFront(7, -3, 3, 14, 22, full ? GOLD.m : INSIDE, 'buh')] } }));
+    out.push(roof(T, -9, 9, -7, 7, 26, 9, 3, THATCH, 'buh in'));
+    return group(out, { at: T(0, 0, 12) });
+  }
+  function tree(s, x, y, k = 1, pal = LEAF, bloom = false) {
+    const M = MONTHS[s.m], sway = Math.sin(s.t * (M.wind ? 2.2 : 1) + x) * (M.wind ? 1.6 : 0.4) * k;
+    const kids = [cyl([x, y], 0, 16 * k, 2.2 * k, 1.6 * k, { pal: BARK }), ball([x + sway, y, 24 * k], 11 * k, { pal }), ball([x - 7 * k + sway * 0.6, y + 2, 18 * k], 7.5 * k, { pal }), ball([x + 7 * k + sway * 0.6, y + 1, 19 * k], 8 * k, { pal })];
+    if (bloom) for (let i = 0; i < 9; i++) kids.push(ball([x + (rnd(i, x) - 0.5) * 20 * k + sway, y + 6 + rnd(i, 2) * 3, (14 + rnd(i, 3) * 18) * k], 1.5 * k, { fill: i % 3 ? '#f7a8c4' : '#ffffff', w: 0.4, part: 'pangpâr' }));
+    return group(kids, { part: 'thingkung', at: [x, y, 10] });
+  }
+  function bamboo(s, x, y) {
+    const out = [], wind = MONTHS[s.m].wind ? 3 : 1;
+    for (let i = 0; i < 5; i++) {
+      const lean = (i - 2) * 4, sway = Math.sin(s.t * 1.3 * wind + i) * 1.2 * wind, top = [x + lean * 2.2 + sway, y + (i % 2) * 2, 48 + (i % 3) * 6];
+      out.push(line([[x + i - 2, y, 0], [x + lean + sway * 0.5, y, 26], top], { col: BAMBOO, w: 1.8 }));
+      out.push(line([top, [top[0] + 6, top[1], top[2] - 5]], { col: LEAF.m, w: 1.4 }), line([top, [top[0] - 6, top[1], top[2] - 4]], { col: LEAF.m, w: 1.4 }));
+    }
+    return group(out, { part: 'mau', at: [x, y, 20] });
+  }
+  // A fire on the ground: logs, flickering flames and smoke rising (part: what the fire is called there)
+  function fire(s, x, y, k = 1, part = 'mei', smoke = 4) {
+    const out = [line([[x - 5 * k, y - 1, 0.8], [x + 5 * k, y + 1, 0.8]], { col: BARK.m, w: 1.8, part: 'thingtuah' }), line([[x - 4 * k, y + 2, 0.8], [x + 4 * k, y - 2, 0.8]], { col: BARK.m, w: 1.8, part: 'thingtuah' })];
+    // Three tongues of flame, red outside to yellow inside, each licking up and leaning as it flickers
+    for (let i = 0; i < 3; i++) {
+      const f = 0.75 + 0.25 * Math.sin(s.t * 11 + i * 2.1 + x), h = (9 - i * 2.4) * k * f, w = (3.6 - i * 0.9) * k, lean = Math.sin(s.t * 6 + i + x) * 1.2 * k;
+      const P = (u, v) => [x + u, y + 0.5 + i * 0.1, 1 + v];
+      out.push(poly([P(-w, 0), P(-w * 0.75, h * 0.4), P(-w * 0.3 + lean * 0.5, h * 0.62), P(-w * 0.15 + lean * 0.4, h * 0.5), P(lean, h), P(w * 0.4 + lean * 0.6, h * 0.55), P(w * 0.55 + lean * 0.3, h * 0.68), P(w * 0.8, h * 0.32), P(w, 0)],
+        { fill: FLAME[2 - i], glow: true, part, w: 0.5 }));
+    }
+    for (let i = 0; i < smoke; i++) {
+      const r = (s.t * 0.35 + i / smoke) % 1;
+      out.push(ball([x + Math.sin(r * 5 + i) * 3 + r * 6, y, 9 * k + r * 34 * k], (2 + r * 5) * k, { fill: '#d8d4cc', ink: false, opacity: 0.55 * (1 - r), part: 'meikhu', shadow: false }));
+    }
+    return group(out, { at: [x, y, 2], part });
+  }
+  // A person (part#place, so a tap knows who), with what they are doing kept for the speech bubble
+  function who(s, id, at, dir, o, say) {
+    s.heads[id] = [at[0], at[1], at[2] + o.h * (o.pose === 'wash' ? 0.75 : o.pose === 'sit' ? 0.8 : 1.08)];
+    if (say) s.says[id] = say;
+    return group(Ink3DPeople.person(at, dir, { t: s.t, ...o }), { part: id, at: [at[0], at[1], at[2] + o.h / 2] });
+  }
+  // Hands for a swinging tool (an axe, a threshing stick): raised behind the head, then down in front
+  function swingHands(at, dir, h, w) {
+    const c = Math.cos(dir), sn = Math.sin(dir), f = -3 + 12 * w, z = h * (1.15 - 0.7 * w);
+    const p = [at[0] + c * f, at[1] + sn * f, at[2] + z];
+    return { hands: [[p[0] - sn * 1.5, p[1] + c * 1.5, p[2]], [p[0] + sn * 1.5, p[1] - c * 1.5, p[2]]], p, c, sn };
+  }
+  const emOn = (at, dir, h, load) => {
+    const c = [at[0] - Math.cos(dir) * 0.22 * h, at[1] - Math.sin(dir) * 0.22 * h], out = [cyl(c, at[2] + 0.48 * h, at[2] + 0.86 * h, 0.13 * h, 0.2 * h, { pal: CANE, bands: [at[2] + 0.6 * h, at[2] + 0.72 * h], part: 'êm' })];
+    if (load) out.push(ball([c[0], c[1], at[2] + 0.88 * h], 0.17 * h, { pal: load.pal, part: load.part, w: 0.6 }));
+    return group(out, { at: [c[0], c[1], at[2] + 0.6 * h] });
+  };
+  function dog(s, x, y, dir, k) {
+    const c = Math.cos(dir), sn = Math.sin(dir), P = (f, sd, z) => [x + c * f - sn * sd, y + sn * f + c * sd, z], out = [], fur = MONTHS[s.m].fur ? 1.25 : 1;
+    for (const [f, sd, ph] of [[3, -1.4, 0], [3, 1.4, Math.PI], [-3, -1.4, Math.PI], [-3, 1.4, 0]]) out.push(line([P(f, sd, 4), P(f + Math.sin(s.t * 9 + ph) * 1.6 * k, sd, 0.3)], { col: DOG.d, w: 1.1 }));
+    out.push(ball(P(0, 0, 5), 4 * fur, { pal: DOG }), ball(P(5, 0, 7.5), 2.8 * fur, { pal: DOG }), ball(P(7.4 * fur, 0, 7), 1.1, { fill: '#231e16', ink: false }));
+    if (fur > 1) for (let i = 0; i < 4; i++) out.push(ball(P(-3 + i * 2, (i % 2 ? 1 : -1) * 2.8, 6.5), 1.6, { pal: DOG, w: 0.5 }));   // a thick winter coat
+    out.push(line([P(-4, 0, 6), P(-7, 0, 9 + Math.sin(s.t * 12) * 1)], { col: DOG.m, w: 1.2 * fur }));
+    return group(out, { part: 'ui', at: P(0, 0, 4) });
+  }
+  function hen(s, x, y) {
+    const peck = Math.max(0, Math.sin(s.t * 2.4 + x)) ** 4;
+    return group([ball([x, y, 3.6], 3.2 * (MONTHS[s.m].fur ? 1.15 : 1), { pal: HEN }), ball([x + 2.6, y, 6.4 - peck * 3.4], 1.9, { pal: HEN }), ball([x + 2.7, y, 8.2 - peck * 3.4], 0.8, { fill: '#e2483d', w: 0.4 }),
+      line([[x - 0.6, y, 1.2], [x - 0.6, y, 0]], { col: '#c98a2a', w: 0.7 }), line([[x + 0.8, y, 1.2], [x + 0.8, y, 0]], { col: '#c98a2a', w: 0.7 })], { part: 'arpui', at: [x, y, 3] });
+  }
+  function pig(s, x, y, root = 0) {
+    const nose = Math.sin(s.t * 3) * root;
+    return group([ball([x, y, 4.6], 4.6 * (MONTHS[s.m].fur ? 1.12 : 1), { pal: PIG }), ball([x + 5.2, y, 5.4 - nose], 3, { pal: PIG }), ball([x + 7.8, y, 5 - nose * 1.4], 1.3, { fill: PIG.m, w: 0.5 })], { part: 'vawk', at: [x, y, 4] });
+  }
+
+  // ---------- the homes ----------
+  function placeIn(s, ox, A) {
+    const M = MONTHS[s.m], out = [house(s, ox - 34, -46, -12), house(s, ox + 38, -52, 10, 44, 24), granary(ox + 84, -40, s.m <= 1 || s.m >= 10)];
+    A('in', [ox - 34, -46, 46], 'Places'); A('buh in', [ox + 84, -40, 34], 'Places'); A('kawngkhar', [ox - 34, -32, 18], 'Things');
+    if (M.cold) for (const [x, y] of [[ox - 34, -46], [ox + 38, -52]]) for (let i = 0; i < 3; i++) {   // the hearths are lit: smoke through the thatch
+      const r = (s.t * 0.25 + i / 3) % 1;
+      out.push(ball([x + r * 8, y, 46 + r * 30], 2.5 + r * 5, { fill: '#e2ded6', ink: false, opacity: 0.6 * (1 - r), part: 'meikhu', shadow: false }));
+    }
+    out.push(hen(s, ox - 66 + Math.sin(s.t * 0.3) * 6, -18), dog(s, ox + 64, -12, Math.PI / 2 + Math.sin(s.t * 0.4) * 0.4, 1));
+    A('arpui', [ox - 66, -18, 8], 'Things'); A('ui', [ox + 64, -12, 9], 'Things');
+    if (M.mud) {   // July: the yard is mud, and the pig's tracks are everywhere
+      out.push(flat([[ox - 20, -24], [ox + 34, -26], [ox + 40, -8], [ox - 26, -6]], '#8a6a4a', 'chirh'));
+      for (let i = 0; i < 14; i++) out.push(flat([[ox - 16 + rnd(i, 1) * 50, -22 + rnd(i, 2) * 14], [ox - 14.6 + rnd(i, 1) * 50, -22 + rnd(i, 2) * 14], [ox - 15.3 + rnd(i, 1) * 50, -20.6 + rnd(i, 2) * 14]], '#5a3d26', 'chirh', { ink: false }));
+      out.push(pig(s, ox + 6 + Math.sin(s.t * 0.4) * 10, -16, 1.2), pig(s, ox - 6, -12, 0.8));
+      A('chirh', [ox + 30, -12, 0], 'Things'); A('vawk', [ox + 8, -16, 10], 'Things');
+    } else { out.push(pig(s, ox + 72, -22)); A('vawk', [ox + 74, -22, 9], 'Things'); }
+
+    if (s.m === 0 || s.m === 11) {
+      // January and December: pa threshes on a mat, nu winnows, and the family sit at a fire in the cold
+      const mat = [ox - 40, -16];
+      out.push(flat([[mat[0] - 11, mat[1] - 5], [mat[0] + 11, mat[1] - 5], [mat[0] + 11, mat[1] + 5], [mat[0] - 11, mat[1] + 5]], '#d9c08a', 'pher'));
+      for (let i = 0; i < 8; i++) out.push(ball([mat[0] - 7 + i * 2, mat[1] + (i % 3) - 1, 1.2], 1.6, { pal: GOLD, w: 0.4, part: 'buh', shadow: false }));
+      const pAt = [mat[0] - 6, mat[1] - 9, 0], w = (Math.sin(s.t * 4.5) + 1) / 2, sw = swingHands(pAt, Math.PI / 2 - 0.4, PA.h, w);
+      out.push(who(s, 'pa#in', pAt, Math.PI / 2 - 0.4, { ...PA, pose: 'stand', hands: sw.hands }, { act: 'Buh a vua', verb: 'vua' }));
+      out.push(line([sw.p, [sw.p[0] + sw.c * 12, sw.p[1] + sw.sn * 12, sw.p[2] - 10 + w * 8]], { col: BAMBOO, w: 1.3, part: 'pa#in' }));
+      const nAt = [ox - 2, -14, 0], b = Math.abs(Math.sin(s.t * 3)) * 3, bc = [nAt[0], nAt[1] + 7, 11 + b];
+      out.push(who(s, 'nu#in', nAt, Math.PI / 2, { ...NU, pose: 'stand', hands: [[bc[0] - 5, bc[1], bc[2]], [bc[0] + 5, bc[1], bc[2]]] }, { act: 'Buh a thlei', verb: 'thlei' }));
+      out.push(cyl([bc[0], bc[1]], bc[2] - 0.6, bc[2] + 0.8, 6.5, 7, { pal: CANE, capFill: GOLD.l, part: 'nu#in' }));
+      for (let i = 0; i < 5; i++) { const r = (s.t * 0.9 + i / 5) % 1; out.push(ball([bc[0] + 4 + r * 18, bc[1], bc[2] + 2 - r * 6], 0.6, { fill: '#e8d9a8', ink: false, opacity: 1 - r, shadow: false })); }
+      out.push(fire(s, ox + 26, -14, 0.8, 'tapchhak', 3));
+      out.push(who(s, 'pi#in', [ox + 18, -9, 0], 0.4, { ...PI, pose: 'sit' }, { act: 'Tapchhak an bel', verb: 'ṭhu' }), who(s, 'naupang#in', [ox + 34, -8, 0], Math.PI - 0.4, { ...NAUPANG, pose: 'sit' }, { act: 'Tapchhak an bel', verb: 'ṭhu' }));
+      A('pher', [mat[0] + 8, mat[1] + 4, 0], 'Things'); A('tapchhak', [ox + 26, -14, 6], 'Things');
+      A('pa', s.heads['pa#in'], 'People'); A('nu', s.heads['nu#in'], 'People'); A('pi', s.heads['pi#in'], 'People');
+    } else if (s.m === 8) {
+      // September, Mim Kut: the first crops are set out for the departed, and the family remember them
+      const T = frame(ox - 6, -22, 0);
+      out.push(rbox(T, -12, 12, -4, 4, 0, 7, { pal: { l: '#d8c48e', m: '#b9a56c', d: '#5e5132' }, part: 'Mim Kut' }));
+      for (let i = 0; i < 4; i++) out.push(ball(T(-8 + i * 5, -1, 8.6), 1.7, { pal: GOLD, part: 'vaimim', w: 0.5 }), line([T(-8 + i * 5, 2, 7.6), T(-5.6 + i * 5, 2.4, 8)], { col: '#5fa451', w: 1.5, part: 'fanghma' }));
+      out.push(ball(T(9, 1, 8.4), 1.8, { pal: { l: '#b49a7a', m: '#8d7458', d: '#4a3a2a' }, part: 'bal', w: 0.5 }));
+      out.push(who(s, 'pi#in', [ox - 20, -8, 0], Math.PI / 2 - 0.9, { ...PI, pose: 'sit' }, { act: 'Mim Kut', verb: null }));
+      out.push(who(s, 'nu#in', [ox + 12, -10, 0], Math.PI / 2 + 0.9, { ...NU, pose: 'stand' }, { act: 'Mim Kut', verb: null }));
+      const cAt = [ox + 40 + Math.sin(s.t * 0.3) * 6, 6, 0];
+      out.push(who(s, 'pa#in', cAt, Math.PI, { ...PA, pose: 'walk', phase: s.t * 5 }, { act: 'Vaimim a phur', verb: 'phur' }), emOn(cAt, Math.PI, PA.h, { pal: GOLD, part: 'vaimim' }));
+      A('Mim Kut', T(0, 0, 12), 'Places'); A('vaimim', T(-8, -1, 9), 'Things'); A('bal', T(9, 1, 9), 'Things'); A('fanghma', T(4, 2, 8), 'Things');
+      A('pi', s.heads['pi#in'], 'People'); A('pa', s.heads['pa#in'], 'People');
+    } else if (s.m === 9) {
+      // October: baskets are woven for the harvest
+      const pAt = [ox - 24, -16, 0], k = Math.sin(s.t * 2.4) * 1.6;
+      out.push(who(s, 'pi#in', pAt, Math.PI / 2, { ...PI, pose: 'sit', hands: [[pAt[0] - 3 + k, pAt[1] + 8, 7], [pAt[0] + 3 + k, pAt[1] + 8, 7]] }, { act: 'Êm a phiar', verb: null }));
+      out.push(cyl([pAt[0], pAt[1] + 10], 0, 6, 3.6, 5, { pal: CANE, bands: [2, 4], part: 'êm' }), cyl([pAt[0] + 10, pAt[1] + 4], 0, 9, 3.4, 5.4, { pal: CANE, bands: [3, 6], part: 'êm' }));
+      A('êm', [pAt[0] + 10, pAt[1] + 4, 9], 'Things'); A('pi', s.heads['pi#in'], 'People');
+    } else {
+      // The other months: nu sweeps the yard and pi weaves a puan on the porch
+      const nx = ox - 30 + Math.sin(s.t * 0.5) * 8;
+      out.push(who(s, 'nu#in', [nx, -18, 0], Math.PI / 2 + Math.cos(s.t * 0.5) * 0.6, { ...NU, pose: 'sweep' }, { act: 'Hmun a phiat', verb: 'phiat', line: ['Ka awmnaah i lo kal thei e.', 'You can come to my place.'] }));
+      out.push(line([[nx + 2, -12, 9], [nx + 5, -9, 0]], { col: CANE.m, w: 1.6, part: 'nu#in' }));
+      const piAt = [ox + 46, -34, 0], k = Math.sin(s.t * 2.2) * 1.6;
+      out.push(who(s, 'pi#in', piAt, Math.PI / 2, { ...PI, pose: 'sit', hands: [[piAt[0] - 3 + k, piAt[1] + 8, 6], [piAt[0] + 3 + k, piAt[1] + 8, 6]] }, { act: 'Puan a tah', verb: 'tah' }));
+      out.push(poly([[piAt[0] - 6, piAt[1] + 6, 4.4], [piAt[0] + 6, piAt[1] + 6, 4.4], [piAt[0] + 6, piAt[1] + 14, 0.4], [piAt[0] - 6, piAt[1] + 14, 0.4]], { fill: '#d9474f', part: 'puan' }));
+      A('nu', s.heads['nu#in'], 'People'); A('pi', s.heads['pi#in'], 'People'); A('puan', [piAt[0], piAt[1] + 10, 3], 'Things');
+    }
+    return out;
+  }
+
+  // ---------- the spring ----------
+  function placeTuikhur(s, ox, A) {
+    const T = frame(ox, -36), out = [];
+    out.push(rbox(T, -22, 22, -10, -3, 0, 15, { pal: STONE, part: 'tuikhur' }), rbox(T, -15, 15, -3, 13, 0, 5, { pal: STONE, part: 'tuikhur' }));
+    out.push(poly([T(-13, -1, 5.1), T(13, -1, 5.1), T(13, 11, 5.1), T(-13, 11, 5.1)], { fill: WATER, part: 'tui', w: 0.6 }));
+    out.push(line([T(-2, -6, 12), T(0, 3, 11)], { col: BAMBOO, w: 2.4, part: 'mau' }));
+    out.push(line([T(0, 3, 11), T(Math.sin(s.t * 14) * 0.25, 4.4, 8), T(0, 5, 5.2)], { col: '#d6eefc', w: 1.5, part: 'tui', opacity: 0.9 }));
+    out.push(bamboo(s, ox - 44, -50), tree(s, ox + 52, -54, 0.9, DARK_LEAF, MONTHS[s.m].bloom));
+    out.push(who(s, 'nula#tuikhur', [ox - 4, -14, 0], -Math.PI / 2, { ...NULA2, pose: 'wash' }, { act: 'Puan a su', verb: 'su' }));
+    const loop = (s.t * 0.11) % 2, go = loop < 1, f = go ? loop : 2 - loop, tx = ox + 24 + f * 70, dir = go ? 0 : Math.PI, tAt = [tx, 2, 0];
+    out.push(who(s, 'tlangval#tuikhur', tAt, dir, { ...TLANGVAL, pose: 'walk', phase: s.t * 6 }, { act: 'Tui a phur', verb: 'phur' }), emOn(tAt, dir, TLANGVAL.h));
+    A('tuikhur', T(-16, -6, 15), 'Places'); A('tui', T(8, 4, 5), 'Things'); A('mau', [ox - 44, -50, 44], 'Things');
+    A('nula', s.heads['nula#tuikhur'], 'People'); A('tlangval', s.heads['tlangval#tuikhur'], 'People');
+    return out;
+  }
+
+  // ---------- the village square, where the festivals are held ----------
+  function placeKawtchhuah(s, ox, A) {
+    const M = MONTHS[s.m], out = [flat([[ox - 70, -44], [ox + 70, -44], [ox + 78, -8], [ox - 78, -8]], '#d8c59a', 'kawtchhuah')];
+    out.push(tree(s, ox - 82, -58, 1.25, DARK_LEAF, M.bloom), tree(s, ox + 84, -60, 1.1, LEAF, M.bloom), house(s, ox + 6, -70, 0, 60, 22, 'in'));
+    A('kawtchhuah', [ox - 50, -40, 0], 'Places');
+    if (M.kut === 'chapchar') {
+      // Chapchar Kut: the bamboo dance. Two poles lie on the ground; men kneel and clap the cross-poles
+      // together and apart to the drum, and the nula dance in and out of them.
+      const PAIRS = [-31, -17], open = (Math.sin(s.t * 5.5) + 1) / 2;
+      // the two base poles (along the ground, front to back) at each end, and the clapping poles across them
+      out.push(line([[ox - 34, -36, 0.6], [ox - 34, -12, 0.6]], { col: BAMBOO, w: 2, part: 'mau' }), line([[ox + 34, -36, 0.6], [ox + 34, -12, 0.6]], { col: BAMBOO, w: 2, part: 'mau' }));
+      for (const c of PAIRS) for (const side of [-1, 1]) {
+        const y = c + side * (0.6 + open * 3.6);
+        out.push(line([[ox - 36, y, 1.8], [ox + 36, y, 1.8]], { col: '#c9d27a', w: 1.6, part: 'mau' }));
+      }
+      for (const [dx, side] of [[-34, -1], [34, 1]]) for (const y of PAIRS) out.push(who(s, `tlangval#cheraw${dx}${y}`, [ox + dx + side * 5, y, 0], side > 0 ? Math.PI : 0, { ...TLANGVAL, pose: 'sit', lean: 0.08 }, { act: 'Mau an vua', verb: 'vua' }));
+      for (let i = 0; i < 3; i++) {
+        const hop = Math.abs(Math.sin(s.t * 5.5 + i)) * 2.6, x = ox - 20 + i * 20, at = [x, -24, hop], arm = Math.sin(s.t * 2.7 + i) * 3;
+        out.push(who(s, `nula#lam${i}`, at, Math.PI / 2, { ...(i === 1 ? NULA2 : NULA), pose: 'stand', hands: [[x - 8, -24, 13 + hop + arm], [x + 8, -24, 13 + hop - arm]] }, { act: 'An lâm', verb: 'lâm' }));
+      }
+      out.push(...drummer(s, ox + 54, -12, 'tlangval#khuang'));
+      A('Chapchar Kut', [ox, -36, 22], 'Places'); A('mau', [ox - 34, -12, 1], 'Things'); A('khuang', [ox + 58, -6, 12], 'Things');
+      A('nula', s.heads['nula#lam0'], 'People'); A('tlangval', s.heads['tlangval#khuang'], 'People');
+    } else if (M.kut === 'khuangchawi') {
+      // Khuangchawi: a rich man feeds the whole village. A great drum, a pot of meat on the fire, dancing.
+      out.push(fire(s, ox - 44, -22, 1.3, 'mei', 5), cyl([ox - 44, -22], 4, 13, 6.5, 7.5, { pal: IRON, capFill: '#6b4a2a', part: 'bel' }));
+      out.push(who(s, 'nu#bel', [ox - 56, -12, 0], 0.2, { ...NU, pose: 'stand', hands: [[ox - 50, -18, 14], [ox - 52, -16, 12]] }, { act: 'Ruai a buatsaih', verb: null }));
+      out.push(...drummer(s, ox - 8, -30, 'tlangval#khuang', 1.5));
+      out.push(who(s, 'lal#khuangchawi', [ox + 20, -34, 0], Math.PI / 2, { ...LAL, pose: 'stand' }, { act: 'Khuang a chawi', verb: 'khuang' }));
+      for (let i = 0; i < 4; i++) {
+        const a = s.t * 0.6 + i * Math.PI / 2, x = ox + 30 + Math.cos(a) * 22, y = -16 + Math.sin(a) * 6, hop = Math.abs(Math.sin(s.t * 4 + i)) * 1.8;
+        out.push(who(s, `${i % 2 ? 'nula' : 'tlangval'}#lam${i}`, [x, y, hop], a + Math.PI / 2, { ...(i % 2 ? NULA : TLANGVAL), pose: 'walk', phase: s.t * 5 + i }, { act: 'An lâm', verb: 'lâm' }));
+      }
+      A('Khuangchawi', [ox + 20, -40, 30], 'Places'); A('khuang', [ox - 8, -24, 16], 'Things'); A('bel', [ox - 44, -22, 14], 'Things'); A('lal', s.heads['lal#khuangchawi'], 'People');
+    } else if (M.kut === 'pawlkut') {
+      // Pâwlkut: the children sit together to feast, and mothers serve them
+      out.push(fire(s, ox - 40, -26, 1, 'mei', 3), cyl([ox - 40, -26], 3.4, 11, 5.6, 6.4, { pal: IRON, capFill: '#efe6d0', part: 'bel' }));
+      for (let i = 0; i < 5; i++) {
+        const a = -0.3 + i * 0.6, x = ox - 6 + Math.cos(a + Math.PI / 2) * 22, y = -24 + Math.sin(a) * 4 + (i % 2) * 6;
+        out.push(who(s, `naupang#pawlkut${i}`, [x + i * 8 - 10, y, 0], Math.PI / 2 + (i - 2) * 0.25, { ...(i % 2 ? NAUPANG2 : NAUPANG), pose: 'sit' }, { act: 'An ei', verb: 'ei' }));
+      }
+      const nx = ox + 34 + Math.sin(s.t * 0.7) * 14;
+      out.push(who(s, 'nu#pawlkut', [nx, -14, 0], Math.PI + Math.cos(s.t * 0.7) * 1.2, { ...NU, pose: 'walk', phase: s.t * 5 }, { act: 'Chaw a pe', verb: null }));
+      A('Pâwlkut', [ox, -34, 20], 'Places'); A('bel', [ox - 40, -26, 12], 'Things'); A('naupang', s.heads['naupang#pawlkut2'], 'People');
+    } else {
+      // Other months: children play and an old man rests on a log; in the solemn misty month, it is quiet
+      out.push(line([[ox + 22, -30, 2], [ox + 44, -32, 2]], { col: BARK.m, w: 4, part: 'thing' }));
+      out.push(who(s, 'pu#kawtchhuah', [ox + 32, -30, 4], Math.PI / 2, { ...PU, pose: 'sit' }, { act: 'A chawl', verb: 'chawl' }));
+      A('pu', s.heads['pu#kawtchhuah'], 'People');
+      if (s.m !== 7) {
+        const a = s.t * 1.4;
+        out.push(who(s, 'naupang#infiam1', [ox - 20 + Math.cos(a) * 14, -22 + Math.sin(a) * 6, 0], a + Math.PI / 2, { ...NAUPANG2, pose: 'run', phase: s.t * 10 }, { act: 'An infiam', verb: 'infiam' }));
+        out.push(who(s, 'naupang#infiam2', [ox - 20 + Math.cos(a - 1.1) * 14, -22 + Math.sin(a - 1.1) * 6, 0], a - 1.1 + Math.PI / 2, { ...NAUPANG, pose: 'run', phase: s.t * 10 + 1 }, { act: 'An infiam', verb: 'infiam' }));
+        A('naupang', s.heads['naupang#infiam1'], 'People');
+      }
+    }
+    return out;
+  }
+  // A drummer at a drum on a stand, beating it with both hands in turn
+  function drummer(s, x, y, id, k = 1) {
+    const top = 12 * k, beat = (i) => Math.max(0, Math.sin(s.t * 9 + i * Math.PI)) * 3;
+    const out = [cyl([x, y + 6], 3 * k, top, 4.6 * k, 4.6 * k, { pal: DRUM, bands: [4 * k, top - 1.5], capFill: SKIN_TOP, part: 'khuang' })];
+    for (const dx of [-4, 4]) out.push(line([[x + dx * k, y + 6, 0], [x + dx * 0.8 * k, y + 6, 3.2 * k]], { col: POST.m, w: 1.2, part: 'khuang' }));
+    out.push(who(s, id, [x, y - 4, 0], Math.PI / 2, { ...TLANGVAL, pose: 'stand', hands: [[x - 2.5, y + 5, top + 1 + beat(0)], [x + 2.5, y + 5, top + 1 + beat(1)]] }, { act: 'Khuang a vua', verb: 'khuang' }));
+    return out;
+  }
+
+  // ---------- the jhum field, which changes through the year ----------
+  function placeLo(s, ox, A) {
+    const M = MONTHS[s.m], st = M.lo, out = [], X0 = -100, X1 = 100, Y0 = -74, Y1 = -12;
+    const ground = { ngaw: '#7aa35a', vah: '#b49464', hal: '#3d3732', tiak: '#5e4a3a', hring: '#7f9a4c', par: '#8aa552', hmin: '#c9b45a', seng: '#c2ad62', pawl: '#cdb98a' }[st];
+    out.push(flat([[ox + X0, Y0], [ox + X1, Y0], [ox + X1 + 6, Y1], [ox + X0 - 6, Y1]], ground, 'lo'));
+    A('lo', [ox - 80, -20, 0], 'Places');
+    // The field hut at the back, always there
+    const T = frame(ox + 70, -70, 6);
+    for (const x of [-9, 9]) for (const y of [-5, 5]) out.push(rbox(T, x - 1, x + 1, y - 1, y + 1, 0, 14, { pal: POST, part: 'buk' }));
+    out.push(rbox(T, -12, 12, -7, 7, 14, 16, { pal: WOOD, part: 'buk' }), roof(T, -11, 11, -6, 6, 16, 11, 4, THATCH, 'buk'));
+    A('buk', T(0, 0, 32), 'Things');
+
+    if (st === 'ngaw') {
+      // February: the forest still stands; men fell it with axes, and felled trees lie where they dropped
+      const trees = [[-80, -60], [-52, -66], [-20, -58], [10, -64], [36, -56], [-66, -36], [-30, -30]];
+      for (const [x, y] of trees) out.push(tree(s, ox + x, y, 1.15, DARK_LEAF));
+      for (const [x, y, a] of [[-4, -36, 0.3], [24, -30, -0.4]]) {
+        out.push(line([[ox + x, y, 1.6], [ox + x + Math.cos(a) * 26, y + Math.sin(a) * 8, 1.6]], { col: BARK.m, w: 3.2, part: 'thing' }));
+        out.push(ball([ox + x + Math.cos(a) * 30, y + Math.sin(a) * 9, 6], 8, { pal: DARK_LEAF, part: 'thing' }));
+      }
+      for (const [x, y, i] of [[-34, -26, 0], [12, -48, 1]]) {
+        const at = [ox + x + 10, y + 8, 0], dir = Math.PI * 0.8, w = (Math.sin(s.t * 3.4 + i * 1.7) + 1) / 2, sw = swingHands(at, dir, TLANGVAL.h, w);
+        out.push(who(s, `tlangval#ngaw${i}`, at, dir, { ...TLANGVAL, pose: 'stand', hands: sw.hands }, { act: 'Lo a vah', verb: 'hreipui' }));
+        out.push(group([line([sw.p, [sw.p[0] + sw.c * 9, sw.p[1] + sw.sn * 9, sw.p[2] + 2 - w * 6]], { col: WOOD.d, w: 1.3 }),
+          ball([sw.p[0] + sw.c * 9, sw.p[1] + sw.sn * 9, sw.p[2] + 2 - w * 6], 1.6, { pal: IRON, w: 0.5 })], { part: 'hreipui', at: sw.p }));
+      }
+      A('ngaw', [ox - 52, -66, 34], 'Places'); A('hreipui', [ox - 20, -20, 18], 'Things'); A('tlangval', s.heads['tlangval#ngaw0'], 'People');
+    } else if (st === 'vah') {
+      // March: the felled trees and brush lie drying in the sun
+      for (let i = 0; i < 12; i++) {
+        const x = ox - 88 + rnd(i, 1) * 150, y = -68 + rnd(i, 2) * 50, a = rnd(i, 3) * Math.PI, l = 14 + rnd(i, 4) * 16;
+        out.push(line([[x, y, 1.4], [x + Math.cos(a) * l, y + Math.sin(a) * l * 0.4, 1.4]], { col: BARK.m, w: 2.6, part: 'thing' }));
+        if (i % 2) out.push(ball([x + Math.cos(a) * l, y + Math.sin(a) * l * 0.4, 3.5], 4 + rnd(i, 5) * 3, { pal: DRY_LEAF, part: 'hnah' }));
+      }
+      for (let i = 0; i < 6; i++) out.push(cyl([ox - 80 + i * 26, -40 + (i % 2) * 14], 0, 4, 2, 1.6, { pal: BARK, part: 'thing' }));
+      A('thing', [ox - 40, -40, 4], 'Things'); A('hnah', [ox + 10, -50, 6], 'Things');
+    } else if (st === 'hal') {
+      // April: the dried field is burnt; on the burnt side the ash is cleared and the seed sown
+      for (let i = 0; i < 9; i++) out.push(fire(s, ox - 92 + i * 11, -62 + (i % 3) * 14, 1.5, 'mei', 2));
+      for (let i = 0; i < 7; i++) {
+        const r = (s.t * 0.12 + i / 7) % 1, x = ox - 70 + i * 9 + r * 20;
+        out.push(ball([x, -56, 18 + r * 60], 8 + r * 16, { fill: '#9c968c', ink: false, opacity: 0.5 * (1 - r), part: 'meikhu', shadow: false }));
+      }
+      for (let i = 0; i < 5; i++) out.push(cyl([ox + 10 + i * 18, -50 + (i % 2) * 18], 0, 3.5, 1.8, 1.4, { fill: '#231e16', pal: { l: '#3a3530', m: '#2a2622', d: '#141210' }, part: 'vut' }));
+      for (let i = 0; i < 2; i++) {
+        const at = [ox + 20 + i * 30, -28 + i * 6, 0], dib = Math.abs(Math.sin(s.t * 3 + i)) * 4;
+        out.push(who(s, `${i ? 'nu' : 'pa'}#tuh`, at, -Math.PI / 2 - 0.3, { ...(i ? NU : PA), pose: 'wash' }, { act: 'Buh an tuh', verb: 'tuh' }));
+        out.push(line([[at[0] + 3, at[1] - 4, 9 + dib], [at[0] + 4, at[1] - 7, dib]], { col: WOOD.m, w: 1.2, part: `${i ? 'nu' : 'pa'}#tuh` }));
+      }
+      const tAt = [ox - 44, -18, 0];
+      out.push(who(s, 'tlangval#hal', tAt, -Math.PI / 2, { ...TLANGVAL, pose: 'stand', hands: [[tAt[0] - 3, tAt[1] - 6, 16], [tAt[0] - 2, tAt[1] - 5, 14]] }, { act: 'Lo a hal', verb: 'hal' }));
+      out.push(line([[tAt[0] - 3, tAt[1] - 6, 16], [tAt[0] - 6, tAt[1] - 12, 22]], { col: WOOD.m, w: 1.4, part: 'mei' }), fire(s, tAt[0] - 6, tAt[1] - 12, 0.4, 'mei', 1));
+      A('mei', [ox - 70, -60, 10], 'Things'); A('meikhu', [ox - 50, -56, 50], 'Things'); A('vut', [ox + 30, -46, 3], 'Things');
+      A('tlangval', s.heads['tlangval#hal'], 'People'); A('pa', s.heads['pa#tuh'], 'People');
+    } else {
+      // The rice, row by row: tiny sprouts, green and growing, flowering, golden, cut, or straw
+      const H = M.h || 0, gold = st === 'hmin' || st === 'seng', straw = st === 'pawl';
+      const green = st === 'par' ? '#8fbf4f' : gold ? '#d9b13d' : straw ? '#d6c48e' : mix('#7fbf4f', '#4f8f3a', H);
+      for (let r = 0; r < 5; r++) for (let c = 0; c < 13; c++) {
+        const x = ox - 92 + c * 12 + (r % 2) * 5, y = -68 + r * 11, sway = Math.sin(s.t * 1.6 + c * 0.6) * (0.4 + H);
+        const cut = st === 'seng' ? x < ox - 10 : straw;
+        const ht = cut ? 2.2 : 3 + H * 14, kid = [];
+        for (const [dx, k] of [[-1.4, 0.9], [1.5, 0.85], [0, 1]]) kid.push(line([[x, y, 0], [x + dx * (ht / 8) + (cut ? 0 : sway), y, ht * k]], { col: cut ? '#bfae7a' : green, w: 1 }));
+        if (!cut && (st === 'par' || gold)) kid.push(line([[x + sway, y, ht], [x + sway + 2.4, y, ht - 2.6]], { col: st === 'par' ? '#f4f0c8' : '#e8b93c', w: 1.6 }));   // the heads: pale flowers, then grain bending down
+        out.push(group(kid, { part: 'buh', at: [x, y, 2] }));
+        if ((s.m === 5 || s.m === 6) && (r + c) % 4 === 0) out.push(line([[x + 5, y + 2, 0], [x + 5.6, y + 2, 3]], { col: '#a5d483', w: 1.4, part: 'hlo' }));   // weeds among the rice
+      }
+      if (straw) for (let i = 0; i < 10; i++) out.push(line([[ox - 90 + rnd(i, 7) * 170, -66 + rnd(i, 8) * 50, 0.4], [ox - 84 + rnd(i, 7) * 170, -64 + rnd(i, 8) * 50, 0.4]], { col: '#e6d6a0', w: 1.2, part: 'pâwl', shadow: false }));
+      A('buh', [ox - 30, -50, 4 + H * 12], 'Things');
+      if (straw) A('pâwl', [ox + 20, -40, 1], 'Things');
+      // Maize by the hut from May to September
+      if (s.m >= 4 && s.m <= 8) for (let c = 0; c < 4; c++) {
+        const x = ox + 52 + c * 9, y = -44 + (c % 2) * 7, h = 8 + (s.m - 4) * 5;
+        const kid = [line([[x, y, 0], [x, y, h]], { col: '#5fa451', w: 1.5 }), line([[x, y, h * 0.5], [x + 5, y, h * 0.7]], { col: '#79b360', w: 1.2 })];
+        if (s.m >= 7) kid.push(ball([x + 1.6, y, h * 0.6], 1.8, { pal: GOLD, w: 0.5 }));
+        out.push(group(kid, { part: 'vaimim', at: [x, y, 4] }));
+      }
+      if (s.m >= 4 && s.m <= 8) A('vaimim', [ox + 60, -40, 20], 'Things');
+
+      if (st === 'tiak') {   // May: the first weeding, and carrying seed and tools out in the êm
+        out.push(who(s, 'nu#lo', [ox - 30, -24, 0], -Math.PI / 2 - 0.4, { ...NU, pose: 'wash' }, { act: 'Hlo a thlo', verb: 'hlo' }));
+        const loop = (s.t * 0.08) % 2, f = loop < 1 ? loop : 2 - loop, at = [ox - 90 + f * 120, 4, 0], dir = loop < 1 ? 0 : Math.PI;
+        out.push(who(s, 'nula#lo', at, dir, { ...NULA, pose: 'walk', phase: s.t * 6 }, { act: 'Lo-ah a kal', verb: 'kal' }), emOn(at, dir, NULA.h));
+        A('nu', s.heads['nu#lo'], 'People');
+      } else if (st === 'hring') {
+        if (s.m === 7) {   // August: the rice stands tall in the mist; someone sleeps in the hut to guard it, and a scarecrow waves
+          out.push(who(s, 'pa#buk', [ox + 70, -62, 16], Math.PI / 2, { ...PA, pose: 'sit' }, { act: 'Buh a veng', verb: 'buk' }));
+          const sx = ox - 20, sy = -46, wave = Math.sin(s.t * 1.8) * 2;
+          out.push(group([line([[sx, sy, 0], [sx, sy, 22]], { col: WOOD.m, w: 1.4 }), line([[sx - 8, sy, 16 + wave], [sx + 8, sy, 16 - wave]], { col: WOOD.m, w: 1.2 }),
+            poly([[sx - 6, sy + 0.5, 17], [sx + 6, sy + 0.5, 17], [sx + 4, sy + 0.5, 8], [sx - 4, sy + 0.5, 8]], { fill: '#b8343d' }), ball([sx, sy, 23], 3, { fill: '#e2c27a', w: 0.6 }),
+            poly([[sx - 6, sy, 25], [sx + 6, sy, 25], [sx, sy, 30]], { fill: THATCH.m })], { part: 'sava hlauh', at: [sx, sy, 10] }));
+          A('sava hlauh', [sx, sy, 30], 'Things'); A('pa', s.heads['pa#buk'], 'People');
+        } else {   // June and July: weeding in a row, the young people working together; in July a channel takes the rain away
+          for (let i = 0; i < 3; i++) {
+            const at = [ox - 70 + i * 26 + Math.sin(s.t * 0.2) * 4, -22 + (i % 2) * 4, 0];
+            out.push(who(s, `${i % 2 ? 'nula' : 'tlangval'}#hlo${i}`, at, -Math.PI / 2 - 0.3, { ...(i % 2 ? NULA : TLANGVAL), pose: 'wash' }, { act: s.m === 6 ? 'Hlo thlailet' : 'Hlo an thlawh', verb: 'hlo' }));
+          }
+          if (s.m === 6) out.push(line([[ox + 20, -70, 0.2], [ox + 26, -40, 0.2], [ox + 18, -14, 0.2]], { col: '#6f9fc8', w: 2.2, part: 'tui', shadow: false }));
+          A('hlo', [ox - 40, -40, 3], 'Things'); A('tlangval', s.heads['tlangval#hlo0'], 'People');
+        }
+      } else if (st === 'par') {   // September: the maize is picked by the hut
+        const at = [ox + 50, -30, 0], reach = Math.abs(Math.sin(s.t * 1.5)) * 4;
+        out.push(who(s, 'nu#lo', at, -Math.PI / 2 + 0.8, { ...NU, pose: 'stand', hands: [[at[0] + 4, at[1] - 4, 12 + reach], [at[0] + 2, at[1] - 3, 10]] }, { act: 'Vaimim a seng', verb: 'seng' }), emOn(at, -Math.PI / 2 + 0.8, NU.h, { pal: GOLD, part: 'vaimim' }));
+        A('nu', s.heads['nu#lo'], 'People');
+      } else if (st === 'seng') {   // November: the village harvests together with sickles, singing; sheaves stand on the stubble
+        for (let i = 0; i < 3; i++) {
+          const at = [ox - 6 + Math.sin(s.t * 0.15 + i) * 3, -60 + i * 18, 0];
+          out.push(who(s, `${i === 1 ? 'nula' : 'pa'}#seng${i}`, at, Math.PI + 0.3, { ...(i === 1 ? NULA : PA), pose: 'wash' }, { act: 'Buh an seng', verb: 'seng' }));
+          out.push(line([[at[0] - 6, at[1], 6 + Math.sin(s.t * 6 + i) * 1.5], [at[0] - 9, at[1] + 2, 4]], { col: IRON.m, w: 1.2, part: 'favah' }));
+        }
+        for (let i = 0; i < 5; i++) out.push(cyl([ox - 80 + i * 14, -54 + (i % 2) * 18], 0, 8, 2.6, 1.4, { pal: GOLD, part: 'buh' }));
+        const loop = (s.t * 0.09) % 2, f = loop < 1 ? loop : 2 - loop, at = [ox - 30 - f * 140, 6, 0], dir = loop < 1 ? Math.PI : 0;
+        out.push(who(s, 'tlangval#phur', at, dir, { ...TLANGVAL, pose: 'walk', phase: s.t * 6 }, { act: 'Buh a phur', verb: 'phur' }), emOn(at, dir, TLANGVAL.h, { pal: GOLD, part: 'buh' }));
+        A('favah', [ox - 15, -42, 5], 'Things'); A('pa', s.heads['pa#seng0'], 'People');
+      }
+    }
+    return out;
+  }
+  const BUILD = { in: placeIn, tuikhur: placeTuikhur, kawtchhuah: placeKawtchhuah, lo: placeLo };
+  const BETWEEN = [[-120, 'tree', -50], [115, 'tree', -60], [350, 'bamboo', -58], [600, 'tree', -58], [880, 'tree', -56]];
+
+  function scene(s, cam) {
+    s.cam = cam; s.heads = {}; s.says = {};
+    const M = MONTHS[s.m], items = [], anchors = [], A = (part, p, g) => p && anchors.push({ part, p, g });
+    for (const pl of PLACES) { const ox = pl.x - s.pan; if (Math.abs(ox) < 230) items.push(...BUILD[pl.id](s, ox, A)); }
+    for (const [x, kind, y] of BETWEEN) { const ox = x - s.pan; if (Math.abs(ox) < 150) items.push(kind === 'tree' ? tree(s, ox, y, 1.1, LEAF, M.bloom) : bamboo(s, ox, y)); }
+    // In January, the paddy is carried home from the field along the road
+    if (s.m === 0) {
+      const loop = (s.t * 0.05) % 1, wx = 700 - loop * 640, rx = wx - s.pan;
+      if (Math.abs(rx) < 150) { const at = [rx, 12, 0]; items.push(who(s, 'pa#runpui', at, Math.PI, { ...PA, pose: 'walk', phase: s.t * 6 }, { act: 'Buh a phur', verb: 'phur' }), emOn(at, Math.PI, PA.h, { pal: GOLD, part: 'buh' })); A('pa', s.heads['pa#runpui'], 'People'); }
+    }
+    A('kawng', [-60, 4, 0], 'Things');
+    s.anchors = anchors.filter(a => { const q = cam.P(a.p); return q[0] > BOX[0] + 8 && q[0] < BOX[0] + BOX[2] - 8 && q[1] > BOX[1] + 14 && q[1] < BOX[1] + BOX[3] - 18; });
+    const slab = hexa([[-240, -120, -12], [240, -120, -12], [240, 120, -12], [-240, 120, -12], [-240, -120, 0], [240, -120, 0], [240, 120, 0], [-240, 120, 0]], { pal: EARTH, pals: { zp: GRASS[M.grass] }, shadow: false });
+    const road = poly([[-240, -7, 0.05], [240, -7, 0.05], [240, 26, 0.05], [-240, 26, 0.05]], { fill: M.mud ? '#a88b62' : '#dcc596', part: 'kawng', w: 0.7 });
+    const stones = [];
+    for (let i = 0; i < 16; i++) { const x = ((i * 31 - s.pan) % 480 + 720) % 480 - 240; stones.push(ball([x, i % 2 ? -8 : 27, 0.2], 1.4, { fill: '#b9a57a', w: 0.4, shadow: false })); }
+    return { ground: [slab], groundDecals: [road, ...stones], clip: [[-240, -120, 0], [240, -120, 0], [240, 120, 0], [-240, 120, 0]], items };
+  }
+
+  // The weather tints the whole picture: mist greys it, the cold cools it, the burning season warms it.
+  function tint(s) {
+    const M = MONTHS[s.m];
+    return c => {
+      if (M.mist) c = mix(c, '#dfe4e6', M.mist * 0.3);
+      if (M.rain) c = mix(c, '#7d8794', M.rain * 0.15);
+      if (M.haze) c = mix(c, '#e0a060', M.haze * 0.14);
+      if (M.cold) c = mix(c, '#c9d6e8', 0.08);
+      return c;
+    };
+  }
+
+  // ---------- the sky, far hills, the river, birds ----------
+  function sky(s) {
+    const [X, Y, W, H] = BOX, M = MONTHS[s.m];
+    let o = `<defs><linearGradient id="zsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${M.sky[0]}"/><stop offset="1" stop-color="${M.sky[1]}"/></linearGradient></defs>`;
+    o += `<rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="url(#zsky)" data-p="vân"/>`;
+    // The sun: high and hot at the solstice, low in winter, hidden in the rains and the mist
+    const sunY = s.m === 5 ? -80 : M.cold ? -66 : -74, sunA = 1 - (M.rain || 0) * 0.8 - (M.mist || 0) * 0.7;
+    if (sunA > 0.1) o += `<g data-p="ni" opacity="${sunA.toFixed(2)}"><circle cx="72" cy="${sunY}" r="${s.m === 5 ? 15 : 13}" fill="#ffe28a" opacity=".45"/><circle cx="72" cy="${sunY}" r="8" fill="${M.haze ? '#ff9a3c' : '#ffd84a'}" stroke="#231e16" stroke-width=".8"/></g>`;
+    const hillCol = c => mix(mix(c, '#c9b48a', M.grass === 'dry' ? 0.35 : 0), '#dfe4e6', (M.mist || 0) * 0.6);
+    const ridge = (k, base, amp, fill, part) => {
+      let d = `M${X} 40`;
+      for (let x = X; x <= X + W; x += 6) { const u = (x + s.pan * k) * 0.035; d += `L${x} ${(base - amp * (0.6 * Math.sin(u) + 0.4 * Math.sin(u * 2.3 + 1.7))).toFixed(1)}`; }
+      return `<path data-p="${part}" d="${d}L${X + W} 40Z" fill="${hillCol(fill)}" stroke="#231e16" stroke-width=".7" stroke-opacity=".35"/>`;
+    };
+    o += ridge(0.08, -66, 9, '#b9d9c4', 'tlang');
+    // In April, smoke rises from other villages' fields on the far hills
+    if (M.haze) for (let i = 0; i < 3; i++) {
+      const bx = ((i * 90 - s.pan * 0.08) % 260 + 260) % 260 + X - 20;
+      o += `<path data-p="meikhu" d="M${bx} -64Q${bx + 6} -76 ${bx + 2} -88Q${bx - 2} -94 ${bx + 8} -100" fill="none" stroke="#a49a8c" stroke-width="4" stroke-linecap="round" opacity=".45"/>`;
+    }
+    let r1 = '', r2 = '';
+    for (let x = X; x <= X + W; x += 6) { const u = (x + s.pan * 0.14) * 0.02, y = -58 + Math.sin(u) * 1.6; r1 += `${r1 ? 'L' : 'M'}${x} ${y.toFixed(1)}`; r2 = `L${x} ${(y + 2.8).toFixed(1)}` + r2; }
+    o += `<path data-p="lui" d="${r1}${r2}Z" fill="${mix('#9fd0f0', '#dfe4e6', (M.mist || 0) * 0.6)}" stroke="#5f8fb5" stroke-width=".5"/>`;
+    o += ridge(0.16, -54, 6, '#93c3a3', 'tlang');
+    // Clouds: one white one in fine weather, a grey bank in the rains
+    const cloudC = M.rain ? mix('#ffffff', '#8d97a3', M.rain) : '#ffffff', n = M.rain ? 3 : 1;
+    for (let j = 0; j < n; j++) {
+      const cx = ((s.t * 4 + j * 70 - s.pan * 0.1) % 280 + 280) % 280 + X - 30, cy = -80 + j * 3;
+      const C = [[0, 0, 7], [8, 2, 6], [-8, 3, 5], [3, -5, 6]].map(([a, b, r]) => [cx + a * (1 + j * 0.2), cy + b, r * (1 + (M.rain || 0) * 0.4)]);
+      o += `<g data-p="chhum">${C.map(([a, b, r]) => `<circle cx="${a.toFixed(1)}" cy="${b}" r="${(r + 0.9).toFixed(1)}" fill="#231e16" opacity=".55"/>`).join('')}${C.map(([a, b, r]) => `<circle cx="${a.toFixed(1)}" cy="${b}" r="${r.toFixed(1)}" fill="${cloudC}"/>`).join('')}</g>`;
+    }
+    // Birds: a few in the sky, more over the field when the rice stands (August, September)
+    const birds = s.m === 7 || s.m === 8 ? 6 : 3;
+    o += '<g data-p="sava" fill="none" stroke="#231e16" stroke-width=".9" stroke-linecap="round">';
+    for (let i = 0; i < birds; i++) {
+      const bx = i >= 3 ? 740 - s.pan - 30 + Math.sin(s.t * 1.3 + i) * 26 : ((s.t * 9 + i * 14 - s.pan * 0.2) % 300 + 300) % 300 + X - 40;
+      const by = i >= 3 ? -50 + Math.cos(s.t * 1.7 + i) * 6 : -82 + i * 4 + Math.sin(s.t * 2 + i) * 1.5, f = Math.sin(s.t * 8 + i) * 1.3;
+      o += `<path d="M${(bx - 3).toFixed(1)} ${(by - f).toFixed(1)}Q${(bx - 1.5).toFixed(1)} ${(by - 1.4).toFixed(1)} ${bx.toFixed(1)} ${by.toFixed(1)}Q${(bx + 1.5).toFixed(1)} ${(by - 1.4).toFixed(1)} ${(bx + 3).toFixed(1)} ${(by - f).toFixed(1)}"/>`;
+    }
+    return o + '</g>';
+  }
+
+  // ---------- over the scene: rain and mist, what someone says, the month, and the map of the road ----------
+  const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  function over(s) {
+    const [X, Y, W, H] = BOX, M = MONTHS[s.m];
+    let o = '';
+    if (M.mist) {
+      o += `<g data-p="tiauchhum" pointer-events="none">`;
+      for (let i = 0; i < 5; i++) {
+        const x = ((s.t * (3 + i) + i * 60 - s.pan * 0.3) % 320 + 320) % 320 + X - 70, y = -58 + i * 16;
+        o += `<rect x="${x.toFixed(1)}" y="${y}" width="${120 + i * 10}" height="${10 + i * 2}" rx="${6 + i}" fill="#f4f6f7" opacity="${(M.mist * 0.32).toFixed(2)}"/>`;
+      }
+      o += '</g>';
+    }
+    if (M.rain) {
+      o += `<g data-p="ruah" stroke="#5f7fb5" stroke-width=".8" stroke-linecap="round" opacity="${(0.4 + M.rain * 0.5).toFixed(2)}" pointer-events="none">`;
+      for (let i = 0, n = Math.round(60 * M.rain); i < n; i++) {
+        const x = X + rnd(i, 1) * (W + 20), y = Y + ((rnd(i, 2) * (H + 20) + s.t * 180) % (H + 20));
+        o += `<path d="M${x.toFixed(1)} ${y.toFixed(1)}l-2 7"/>`;
+      }
+      o += '</g>';
+    }
+    const b = s.bubble, head = b && s.heads[b.id], hp = head && s.cam && s.cam.P(head);
+    if (hp && hp[0] > X && hp[0] < X + W) {
+      const [hx, hy] = hp, lines = [[b.title, 7.4, '#1565c0', 800]];
+      if (b.line) lines.push([b.line[0], 6.6, '#231e16', 700], [b.line[1], 5.6, '#5d5547', 600]);
+      const w = Math.min(W - 8, Math.max(...lines.map(([t, f]) => t.length * f * 0.54)) + 12), h = lines.reduce((a, [, f]) => a + f * 1.3, 0) + 7;
+      const bx = clamp(hx - w / 2, X + 4, X + W - w - 4), by = Math.max(Y + 22, hy - h - 9), tip = clamp(hx, bx + 6, bx + w - 6);
+      o += `<g pointer-events="none"><path d="M${tip - 4} ${by + h - 0.5}L${tip} ${by + h + 6}L${tip + 4} ${by + h - 0.5}" fill="#fffdf8" stroke="#231e16" stroke-width=".9"/>`;
+      o += `<rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="5" fill="#fffdf8" stroke="#231e16" stroke-width=".9"/>`;
+      o += `<path d="M${tip - 3.4} ${by + h - 0.6}L${tip + 3.4} ${by + h - 0.6}" stroke="#fffdf8" stroke-width="1.6"/>`;
+      let y = by + 3.5;
+      for (const [t, f, c, wt] of lines) { y += f * 1.15; o += `<text x="${(bx + 6).toFixed(1)}" y="${y.toFixed(1)}" font-size="${f}" font-weight="${wt}" fill="${c}" font-family="Plus Jakarta Sans, system-ui, sans-serif">${esc(t)}</text>`; y += f * 0.15; }
+      o += '</g>';
+    }
+    // The month, top left: its number, its Mizo name, and its English
+    const label = `${s.m + 1} · ${M.n} thla`, lw = label.length * 4.6 + 16;
+    o += `<g pointer-events="none"><rect x="${X + 4}" y="${Y + 4}" width="${Math.max(lw, M.en.length * 3.4 + 12).toFixed(1)}" height="17" rx="5" fill="#fffdf8" opacity=".92" stroke="#231e16" stroke-width=".7"/>` +
+      `<text x="${X + 10}" y="${Y + 12.4}" font-size="7.6" font-weight="800" fill="#231e16" font-family="Baloo 2, Plus Jakarta Sans, sans-serif">${esc(label)}</text>` +
+      `<text x="${X + 10}" y="${Y + 18.4}" font-size="5" font-weight="700" fill="#5d5547" font-family="Plus Jakarta Sans, system-ui, sans-serif">${M.en}</text></g>`;
+    // The map: the road from end to end, each place a dot with its Mizo name, and where you are
+    const mx0 = X + 14, mw = W - 28, my = Y + H - 8, mx = x => mx0 + (x - MIN) / (MAX - MIN) * mw;
+    o += `<rect x="${X + 6}" y="${my - 9}" width="${W - 12}" height="15" rx="7.5" fill="#fffdf8" opacity=".88" stroke="#231e16" stroke-width=".7"/>`;
+    o += `<path d="M${mx0} ${my}H${mx0 + mw}" stroke="#c9a36b" stroke-width="2" stroke-linecap="round"/>`;
+    const span = W / (MAX - MIN + W) * mw;
+    o += `<rect x="${(mx(s.pan) - span / 2).toFixed(1)}" y="${my - 3.4}" width="${span.toFixed(1)}" height="6.8" rx="3.4" fill="#ffc94a" stroke="#231e16" stroke-width=".7" opacity=".9" pointer-events="none"/>`;
+    for (const p of PLACES) {
+      const x = mx(p.x), near = Math.abs(p.x - s.pan) < 60;
+      o += `<g data-p="${p.id}#go"><rect x="${x - 16}" y="${my - 9}" width="32" height="15" fill="transparent"/><circle cx="${x}" cy="${my}" r="1.8" fill="#231e16"/>` +
+        `<text x="${x}" y="${my - 3.6}" text-anchor="middle" font-size="5" font-weight="800" fill="${near ? '#1565c0' : '#5d5547'}" font-family="Plus Jakarta Sans, system-ui, sans-serif">${p.id}</text></g>`;
+    }
+    return o;
+  }
+
+  function anchors(s) { return s.anchors; }
+
+  function tap(s, part, id) {
+    if (id.endsWith('#go')) { const p = PLACES.find(q => q.id === part); if (p) { s.tour = false; s.v = 0; s.panT = p.x; } return null; }
+    const say = s.says[id];
+    if (!say) return null;
+    s.bubble = { id, title: `${part} · ${say.act}`, line: say.line, until: s.t + 6 };
+    return say.verb;
+  }
+
+  // The notes on this month, under the picture, and a row of the twelve months to jump to.
+  function info(s) {
+    const M = MONTHS[s.m];
+    return `<div class="mhead"><b>${M.n} thla</b><span>${M.en} · ${M.title}</span></div>` +
+      `<p class="lead">Boruak leh khawtlang nun</p><p class="mz">${M.life}</p><p class="en">${M.lifeEn}</p>` +
+      `<p class="lead">Hnapui</p><p class="mz">${M.work}</p><p class="en">${M.workEn}</p>` +
+      `<div class="months">${MONTHS.map((x, i) => `<button type="button" data-go="${i}" aria-pressed="${i === s.m}" aria-label="${x.en}, ${x.n} thla">${i + 1}<small>${x.en.slice(0, 3)}</small></button>`).join('')}</div>`;
+  }
+  const go = (s, v) => goMonth(s, +v);
+
+  const pan = {
+    hold: s => { s.held = true; s.tour = false; s.v = 0; return s.pan; },
+    move: (s, from, u) => { s.pan = s.panT = clamp(from - u, MIN, MAX); },
+    let: (s, v) => { s.held = false; s.v = -v; },
+    by: (s, u) => { s.tour = false; s.v = 0; s.panT = clamp(s.panT + u, MIN, MAX); },
+  };
+
+  return {
+    id: 'zonun', name: 'Zonun', sub: 'a year of Mizo village life',
+    view: { yaw: 0, pitch: 28, box: BOX.join(' '), centre: [0, -30], ink: 0.8 },
+    hint: 'Tap anyone · drag to walk',
+    words: ['khua', 'in', 'buh in', 'kawngkhar', 'kawng', 'thingkung', 'thing', 'hnah', 'mau', 'pangpâr', 'tuikhur', 'tui', 'kawtchhuah', 'lo', 'ngaw', 'buk',
+      'buh', 'vaimim', 'fanghma', 'bal', 'hlo', 'pâwl', 'sava hlauh', 'hreipui', 'favah', 'mei', 'meikhu', 'vut', 'thingtuah', 'tapchhak', 'pher', 'khuang', 'bel', 'êm', 'puan',
+      'nu', 'pa', 'pi', 'pu', 'naupang', 'nula', 'tlangval', 'lal', 'ui', 'vawk', 'arpui', 'chirh', 'sava', 'tlang', 'lui', 'ni', 'chhum', 'vân', 'ruah', 'tiauchhum',
+      'phiat', 'tah', 'su', 'phur', 'infiam', 'vua', 'thlei', 'ṭhu', 'lâm', 'ei', 'chawl', 'hal', 'tuh', 'seng', 'kal',
+      'thla', 'thlasik', 'nipui', 'favâng'],
+    names: { 'Chapchar Kut': 'the grandest Mizo festival, in March', 'Pâwlkut': 'the straw festival, in January', 'Mim Kut': 'the festival for the departed, in September',
+      Khuangchawi: 'a grand feast for the whole village, in October' },
+    init, step, tint, light: () => SUNLIGHT, scene, sky, over, anchors, tap, pan, info, go, labelGroups: ['Places', 'People', 'Things'],
+    actions: [
+      { label: () => '‹ Previous month', word: () => null, run: s => { s.play = false; goMonth(s, s.m - 1); } },
+      { label: () => 'Next month ›', word: () => null, run: s => { s.play = false; goMonth(s, s.m + 1); } },
+      { label: s => s.play ? 'Stop' : 'Play the year', word: () => null, run: s => { s.play = !s.play; s.playClock = 9; } },
+      ...PLACES.map(p => ({ label: () => p.en, word: () => p.id, run: s => { s.play = false; s.tour = false; s.v = 0; s.panT = p.x; } })),
+    ],
+  };
+})();
+</script>
+<script>
 (() => {
-  const WORDS = {"in": "house", "kawngkhar": "door", "tukverh": "window", "bang": "wall", "chhuat": "floor", "chungkhuh": "roof", "khawnvâr": "lamp", "zawhte": "cat", "arpui": "hen", "êm": "carrying basket", "kawng": "road", "pal": "fence", "thing": "tree", "mau": "bamboo", "pangpâr": "flower", "tlang": "hill", "ni": "sun", "thla": "moon", "arsi": "star", "chhum": "cloud", "ruah": "rain", "vân": "sky", "meikhu": "smoke", "mei": "fire", "hawng": "open", "khar": "close", "zân": "night", "zîng": "morning", "harh": "wake", "muhil": "sleep", "chhûngah": "inside", "choka": "kitchen", "bel": "pot", "khum": "bed", "puan": "cloth", "dawhkân": "table", "ṭhutthlêng": "chair", "chhuatphah": "mat", "arbawm": "chicken coop", "artui": "hen's egg", "vawk": "pig", "chhun": "daytime", "tlai": "evening", "thli": "wind", "chhimbâl": "rainbow", "nu": "mother", "pa": "father", "pi": "grandmother", "naupang": "child", "phiat": "to sweep", "hmunphiah": "broom", "su": "to wash clothes", "tui": "water", "kal": "go", "tlân": "run", "ṭhian": "friend", "tlawh": "to visit", "chibai": "hello", "infiam": "to play", "la": "cotton", "lapua": "raw cotton", "la mu": "cotton seeds", "herawt": "cotton gin", "herawt ban": "gin handle", "lasai": "cotton bow", "lasai thal": "bow string", "lachawn": "cotton roll", "hmui": "spinning wheel", "hmuithlur": "spindle", "la zai": "thread", "ladawhkilh": "skein pegs", "lamuai": "skein", "buhhawp tui": "rice starch water", "suvel": "yarn swift", "lazarna": "warping posts", "sutpui": "warp", "tah": "weave", "puan chei": "decorated cloth", "rawng": "colour", "sen": "red", "dum": "black", "vâr": "white", "hring": "green", "dumpâwl": "blue", "sendang": "pink", "ziarâng": "pattern", "hrui": "rope", "kawngvawn": "backstrap", "themkhawl": "breast beam", "thempui": "beater (weaving sword)", "thembupui": "shed stick", "hnahchawi": "heddle rod", "themte": "pattern rods", "tuirek": "reed (spacer bar)", "khawhtlang": "shuttle", "themtlang": "warp beam", "kaihbu": "lease rods", "ṭhu": "sit", "fawng": "basket", "thingrem": "wooden chest", "êng": "light", "zo": "finish", "mawi": "beautiful", "eng": "yellow", "puanchei": "the finest Mizo puan", "pawndum": "the black and red puan", "ngotekherh": "the white checked puan", "hmaram": "the girls' short puan", "tawlhlohpuan": "the puan of the brave", "bazar": "market", "dâwr": "shop", "dâwrkai": "shopkeeper", "zuar": "sell", "pawisa": "money", "thei": "fruit", "thlai": "vegetable", "balhla": "banana", "serthlum": "orange (fruit)", "theihai": "mango", "alu": "potato", "purun": "onion", "hmarcha": "chilli pepper", "fanghma": "cucumber", "zikhlum": "cabbage", "mâi": "pumpkin", "bawkbawn": "eggplant", "sawhthing": "ginger", "kho": "basket", "sangha": "fish", "hnah": "leaf", "buhfai": "husked rice", "rit": "heavy", "zâng": "light in weight", "lawmthu": "thanks", "pakhat": "one", "pahnih": "two", "pathum": "three"};   // Mizo → English, from the Hnahsin content
-  const NOTES = {"kawngvawn": "A strong strap of hide or cord round the weaver's back; leaning back pulls the warp tight.", "themkhawl": "The bar right in front of the weaver: the woven cloth rolls onto it, and the backstrap ties to it.", "thempui": "A long flat stick, thin and a little sharp, that beats each new row of weft tight.", "thembupui": "A wide flat bamboo bar that parts the upper and lower warp threads, opening the way for the shuttle.", "hnahchawi": "A thin straight rod tied with loops to every other warp thread; lifting it lifts them, so the threads cross.", "themte": "Thin rods added past the heddle to raise threads for the puan's design; four to seven for a fine pattern.", "tuirek": "A comb of bamboo or wood that keeps the warp threads evenly spaced.", "khawhtlang": "A slim stick with the weft wound on it, passed back and forth through the open shed.", "themtlang": "The big bar at the far end, tied to a wall or post, that holds every warp thread.", "kaihbu": "Two thin split bamboos near the warp beam that keep the warp threads from tangling.", "la": "Cotton grown in the jhum field, made into thread by hand before any weaving.", "lapua": "The cotton bolls picked from the plant and dried in the sun, with the seeds still inside.", "la mu": "The hard seeds, too big to pass between the gin's rollers; they drop out on the weaver's side.", "herawt": "Two hardwood rollers on an upright frame, geared together by carved spiral grooves. The cotton fibres are pulled through the gap; the seeds stay behind.", "lasai": "A strip of mature bamboo bent into an arch with a tight string. Held in the heap and plucked, it shakes the clumps into soft, airy fluff and the dust out.", "lasai thal": "The bow's tight cord, twisted from tough bark fibre or cane. Plucked with a little wooden striker, it buzzes \"per ri tek tek\".", "lachawn": "A handful of the fluffed cotton rolled round a thin bamboo stick into a soft hollow roll, ready to spin.", "hmui": "A low wheel on a heavy wooden base, used sitting on the floor. The right hand turns the wheel; a cord loop drives the spindle.", "hmuithlur": "The sharp, thin iron spindle. It twists the cotton into thread, then the thread is wound onto it into a full cone.", "la zai": "The cotton spun into a long, strong strand.", "ladawhkilh": "Upright wooden pegs. The thread from the spindle is wound round them into loose skeins (lamuai), so water, dye and starch reach every part.", "suvel": "A bamboo cage that turns on an upright pivot. The dried skein goes round it, and as the thread is pulled the cage spins, so it winds into a ball without tangling.", "lazarna": "Posts set apart as long as the puan will be. Walking back and forth, the weaver lays the starched thread round them in a figure-eight cross, counting each thread and placing the colour stripes.", "sutpui": "The long threads of the puan, laid out on the lazarna; the cross is later held by the kaihbu, and the warp goes onto the themkhawl and themtlang.", "buhhawp tui": "Thick rice water. The skeins are boiled in it, so the starch coats the thread and it does not fray or break on the loom; then they dry in the sun.", "eng": "The colour of turmeric and ripe rice; a bright thread in many puans.", "puanchei": "White, with red and black stripes and rows of patterns in green, yellow and black: sakei ha (tiger's teeth), disul (sungrass in the wind), kawkpuizikzial (the fern shoot), lenbuangthuam (forked branches) and fanghma mu. Once called \"Puan Lallukhum\". Worn at the big festivals, for the Cheraw (bamboo dance), and by a bride.", "pawndum": "Black, with bold red, yellow and white stripes across. A puan of mourning and of love for life: a bride takes one into marriage as her zawlken puan (\"I will cover you all your life, and wrap you in this at your death\"), and people bring one when someone dies, to share the family's sorrow.", "ngotekherh": "White and black. \"Ngo\" is white, and \"kherh\" the black lines woven both ways into a grid, with a wide black band in the middle (puanhruikhau). Once only for chiefs' and rich families; now men and women both wear it at festivals and big days.", "hmaram": "Deep indigo-black, dyed with ting (Assam indigo), with fine white patterns: fern shoots (kawkpuizikzial), stars and small flower borders. A short wrap worn by girls and young women, from the waist to the calves. A girl who could weave her own was counted a grown woman.", "tawlhlohpuan": "\"Tawlh lo\" means never stepping back. Black, with bold red, white and yellow stripes in the middle and sawtooth edges beside them. Once worn only by pasalṭha, the bravest warriors who never ran from a fight; now given to honour people who served the land.", "herawt ban": "The crank that turns the gin's rollers in opposite directions.", "lamuai": "A loose loop of thread, bundled so it can be boiled, dyed with ting or starched without tangling."};   // what some things do (the loom's parts)
-  // The things you can play with; #la, #loom or #bazar in the address opens that one.
-  const FIGS = [HOUSE, LA, LOOM, BAZAR];
+  const WORDS = {"in": "house", "kawngkhar": "door", "tukverh": "window", "bang": "wall", "chhuat": "floor", "chungkhuh": "roof", "khawnvâr": "lamp", "zawhte": "cat", "arpui": "hen", "êm": "carrying basket", "kawng": "road", "pal": "fence", "thing": "tree", "mau": "bamboo", "pangpâr": "flower", "tlang": "hill", "ni": "sun", "thla": "moon", "arsi": "star", "chhum": "cloud", "ruah": "rain", "vân": "sky", "meikhu": "smoke", "mei": "fire", "hawng": "open", "khar": "close", "zân": "night", "zîng": "morning", "harh": "wake", "muhil": "sleep", "chhûngah": "inside", "choka": "kitchen", "bel": "pot", "khum": "bed", "puan": "cloth", "dawhkân": "table", "ṭhutthlêng": "chair", "chhuatphah": "mat", "arbawm": "chicken coop", "artui": "hen's egg", "vawk": "pig", "chhun": "daytime", "tlai": "evening", "thli": "wind", "chhimbâl": "rainbow", "nu": "mother", "pa": "father", "pi": "grandmother", "naupang": "child", "phiat": "to sweep", "hmunphiah": "broom", "su": "to wash clothes", "tui": "water", "kal": "go", "tlân": "run", "ṭhian": "friend", "tlawh": "to visit", "chibai": "hello", "infiam": "to play", "la": "cotton", "lapua": "raw cotton", "la mu": "cotton seeds", "herawt": "cotton gin", "herawt ban": "gin handle", "lasai": "cotton bow", "lasai thal": "bow string", "lachawn": "cotton roll", "hmui": "spinning wheel", "hmuithlur": "spindle", "la zai": "thread", "ladawhkilh": "skein pegs", "lamuai": "skein", "buhhawp tui": "rice starch water", "suvel": "yarn swift", "lazarna": "warping posts", "sutpui": "warp", "tah": "weave", "puan chei": "decorated cloth", "rawng": "colour", "sen": "red", "dum": "black", "vâr": "white", "hring": "green", "dumpâwl": "blue", "sendang": "pink", "ziarâng": "pattern", "hrui": "rope", "kawngvawn": "backstrap", "themkhawl": "breast beam", "thempui": "beater (weaving sword)", "thembupui": "shed stick", "hnahchawi": "heddle rod", "themte": "pattern rods", "tuirek": "reed (spacer bar)", "khawhtlang": "shuttle", "themtlang": "warp beam", "kaihbu": "lease rods", "ṭhu": "sit", "fawng": "basket", "thingrem": "wooden chest", "êng": "light", "zo": "finish", "mawi": "beautiful", "eng": "yellow", "puanchei": "the finest Mizo puan", "pawndum": "the black and red puan", "ngotekherh": "the white checked puan", "hmaram": "the girls' short puan", "tawlhlohpuan": "the puan of the brave", "bazar": "market", "dâwr": "shop", "dâwrkai": "shopkeeper", "zuar": "sell", "pawisa": "money", "thei": "fruit", "thlai": "vegetable", "balhla": "banana", "serthlum": "orange (fruit)", "theihai": "mango", "alu": "potato", "purun": "onion", "hmarcha": "chilli pepper", "fanghma": "cucumber", "zikhlum": "cabbage", "mâi": "pumpkin", "bawkbawn": "eggplant", "sawhthing": "ginger", "kho": "basket", "sangha": "fish", "hnah": "leaf", "buhfai": "husked rice", "rit": "heavy", "zâng": "light in weight", "lawmthu": "thanks", "pakhat": "one", "pahnih": "two", "pathum": "three", "khua": "village", "buh in": "granary", "thingkung": "tree", "tuikhur": "spring", "kawtchhuah": "gateway", "lo": "cultivated field", "ngaw": "forest", "buk": "field hut", "buh": "paddy", "vaimim": "maize", "bal": "taro", "hlo": "weeds", "pâwl": "straw", "sava hlauh": "scarecrow", "hreipui": "large axe", "favah": "sickle", "vut": "ash", "thingtuah": "firewood", "tapchhak": "hearth", "pher": "mat", "khuang": "drum", "pu": "grandfather", "nula": "young woman", "tlangval": "young man", "lal": "chief", "ui": "dog", "chirh": "mud", "sava": "bird", "lui": "river", "tiauchhum": "fog", "phur": "to carry a load", "vua": "strike", "thlei": "to winnow", "lâm": "to dance", "ei": "eat", "chawl": "rest", "hal": "to burn", "tuh": "to sow", "seng": "harvest", "thlasik": "winter", "nipui": "summer", "favâng": "autumn"};   // Mizo → English, from the Hnahsin content
+  const NOTES = {"kawngvawn": "A strong strap of hide or cord round the weaver's back; leaning back pulls the warp tight.", "themkhawl": "The bar right in front of the weaver: the woven cloth rolls onto it, and the backstrap ties to it.", "thempui": "A long flat stick, thin and a little sharp, that beats each new row of weft tight.", "thembupui": "A wide flat bamboo bar that parts the upper and lower warp threads, opening the way for the shuttle.", "hnahchawi": "A thin straight rod tied with loops to every other warp thread; lifting it lifts them, so the threads cross.", "themte": "Thin rods added past the heddle to raise threads for the puan's design; four to seven for a fine pattern.", "tuirek": "A comb of bamboo or wood that keeps the warp threads evenly spaced.", "khawhtlang": "A slim stick with the weft wound on it, passed back and forth through the open shed.", "themtlang": "The big bar at the far end, tied to a wall or post, that holds every warp thread.", "kaihbu": "Two thin split bamboos near the warp beam that keep the warp threads from tangling.", "la": "Cotton grown in the jhum field, made into thread by hand before any weaving.", "lapua": "The cotton bolls picked from the plant and dried in the sun, with the seeds still inside.", "la mu": "The hard seeds, too big to pass between the gin's rollers; they drop out on the weaver's side.", "herawt": "Two hardwood rollers on an upright frame, geared together by carved spiral grooves. The cotton fibres are pulled through the gap; the seeds stay behind.", "lasai": "A strip of mature bamboo bent into an arch with a tight string. Held in the heap and plucked, it shakes the clumps into soft, airy fluff and the dust out.", "lasai thal": "The bow's tight cord, twisted from tough bark fibre or cane. Plucked with a little wooden striker, it buzzes \"per ri tek tek\".", "lachawn": "A handful of the fluffed cotton rolled round a thin bamboo stick into a soft hollow roll, ready to spin.", "hmui": "A low wheel on a heavy wooden base, used sitting on the floor. The right hand turns the wheel; a cord loop drives the spindle.", "hmuithlur": "The sharp, thin iron spindle. It twists the cotton into thread, then the thread is wound onto it into a full cone.", "la zai": "The cotton spun into a long, strong strand.", "ladawhkilh": "Upright wooden pegs. The thread from the spindle is wound round them into loose skeins (lamuai), so water, dye and starch reach every part.", "suvel": "A bamboo cage that turns on an upright pivot. The dried skein goes round it, and as the thread is pulled the cage spins, so it winds into a ball without tangling.", "lazarna": "Posts set apart as long as the puan will be. Walking back and forth, the weaver lays the starched thread round them in a figure-eight cross, counting each thread and placing the colour stripes.", "sutpui": "The long threads of the puan, laid out on the lazarna; the cross is later held by the kaihbu, and the warp goes onto the themkhawl and themtlang.", "buhhawp tui": "Thick rice water. The skeins are boiled in it, so the starch coats the thread and it does not fray or break on the loom; then they dry in the sun.", "eng": "The colour of turmeric and ripe rice; a bright thread in many puans.", "puanchei": "White, with red and black stripes and rows of patterns in green, yellow and black: sakei ha (tiger's teeth), disul (sungrass in the wind), kawkpuizikzial (the fern shoot), lenbuangthuam (forked branches) and fanghma mu. Once called \"Puan Lallukhum\". Worn at the big festivals, for the Cheraw (bamboo dance), and by a bride.", "pawndum": "Black, with bold red, yellow and white stripes across. A puan of mourning and of love for life: a bride takes one into marriage as her zawlken puan (\"I will cover you all your life, and wrap you in this at your death\"), and people bring one when someone dies, to share the family's sorrow.", "ngotekherh": "White and black. \"Ngo\" is white, and \"kherh\" the black lines woven both ways into a grid, with a wide black band in the middle (puanhruikhau). Once only for chiefs' and rich families; now men and women both wear it at festivals and big days.", "hmaram": "Deep indigo-black, dyed with ting (Assam indigo), with fine white patterns: fern shoots (kawkpuizikzial), stars and small flower borders. A short wrap worn by girls and young women, from the waist to the calves. A girl who could weave her own was counted a grown woman.", "tawlhlohpuan": "\"Tawlh lo\" means never stepping back. Black, with bold red, white and yellow stripes in the middle and sawtooth edges beside them. Once worn only by pasalṭha, the bravest warriors who never ran from a fight; now given to honour people who served the land.", "herawt ban": "The crank that turns the gin's rollers in opposite directions.", "lamuai": "A loose loop of thread, bundled so it can be boiled, dyed with ting or starched without tangling.", "hlo": "Weeds that grow up among the rice. Hlo thlawh, weeding, is the hardest work of June and July. (JF: weed → hlo thlo)", "buk": "A hut on posts in the jhum field. In August people sleep in it (buk riah) to guard the rice from wild animals and birds. (JF: hut → buk)", "sava hlauh": "Set up in the field to frighten the birds away from the rice. (JF: scarecrow → sava hlauh)", "pher": "A woven mat: the paddy is beaten (vua) on it to thresh it. (JF: mat → pher)", "thlei": "To toss the grain in a flat basket, so the light husks blow away. (JF: winnow → thlei)", "tiak": "What the rice and the jungle do when the first rains come in May. (JF: sprout → tiak)", "tapchhak": "The fireplace in the house, where the family sit in the cold months. (JF: hearth → tap, tapchhak)", "hal": "Lo hal: burning the dried jhum in April, before the sowing. (JF: fire → hal)", "buh in": "The house where the harvested paddy is kept. (JF: barn → chhêk in, buh in)", "pâwl": "What is left of the rice in the field after the harvest. Pâwlkut and Pâwltlak are named for it. (From the notes on the months)"};   // what some things do (the loom's parts)
+  // The things you can play with; #la, #loom, #bazar or #zonun in the address opens that one.
+  const FIGS = [HOUSE, LA, LOOM, BAZAR, ZONUN];
   let fig = FIGS.find(f => '#' + f.id === location.hash) || FIGS[0];
   const $ = id => document.getElementById(id);
   const svg = $('svg'), stage = $('stage'), wordEl = $('word');
@@ -2423,8 +3125,10 @@ const LA = (() => {
     }
     return null;
   }
+  // A thing that is walked along (fig.pan, the village) slides under the finger instead of turning.
+  const unitsPerPx = () => VW / (svg.clientWidth || 360);
   stage.addEventListener('pointerdown', e => {
-    drag = { x: e.clientX, y: e.clientY, yaw, moved: false, id: e.pointerId };
+    drag = { x: e.clientX, y: e.clientY, yaw, moved: false, id: e.pointerId, from: null, vx: 0, lx: e.clientX, lt: e.timeStamp };
   });
   stage.addEventListener('pointermove', e => {
     if (!drag || e.pointerId !== drag.id) return;
@@ -2433,12 +3137,19 @@ const LA = (() => {
       drag.moved = true; stage.classList.add('dragging');
       try { stage.setPointerCapture(e.pointerId); } catch (err) {}
       $('hint').classList.add('gone');
+      if (fig.pan) drag.from = fig.pan.hold(st);
     }
-    if (drag.moved) yaw = drag.yaw - dx * 0.6;
+    if (!drag.moved) return;
+    if (fig.pan) {
+      fig.pan.move(st, drag.from, dx * unitsPerPx());
+      const dt = Math.max(1, e.timeStamp - drag.lt);   // how fast the finger moves, for a flick
+      drag.vx = drag.vx * 0.6 + (e.clientX - drag.lx) / dt * 1000 * 0.4; drag.lx = e.clientX; drag.lt = e.timeStamp;
+    } else yaw = drag.yaw - dx * 0.6;
   });
   const end = e => {
     if (!drag || e.pointerId !== drag.id) return;
     const d = drag; drag = null; stage.classList.remove('dragging');
+    if (fig.pan && d.moved) fig.pan.let(st, e.timeStamp - d.lt < 80 ? d.vx * unitsPerPx() : 0);
     if (e.type === 'pointerup' && !d.moved) {
       const part = partAt(e.clientX, e.clientY);
       if (part) touched(part);
@@ -2446,6 +3157,12 @@ const LA = (() => {
   };
   stage.addEventListener('pointerup', end);
   stage.addEventListener('pointercancel', end);
+  // The arrow keys walk along too.
+  stage.tabIndex = 0;
+  stage.addEventListener('keydown', e => {
+    if (!fig.pan || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+    e.preventDefault(); fig.pan.by(st, e.key === 'ArrowRight' ? 60 : -60);
+  });
 
   // id is the tapped part's name, with #n when there are several of a kind (the eggs).
   function touched(id) {
@@ -2472,9 +3189,19 @@ const LA = (() => {
     const a = fig.actions[+b.dataset.i], w = a.word(st);
     a.run(st);
     if (w && !find) say(w);
-    drawActs();
+    drawActs(); drawInfo();
   });
-  setInterval(() => { drawActs(); syncSwatches(); }, 400);
+  // A thing's own notes (fig.info), redrawn when they change; a button in them with data-go calls fig.go.
+  function drawInfo() {
+    const html = fig.info ? fig.info(st) : '';
+    $('info').hidden = !html;
+    if ($('info').dataset.html !== html) { $('info').innerHTML = html; $('info').dataset.html = html; }
+  }
+  $('info').addEventListener('click', e => {
+    const b = e.target.closest('[data-go]'); if (!b || !fig.go) return;
+    fig.go(st, b.dataset.go); drawActs(); drawInfo();
+  });
+  setInterval(() => { drawActs(); syncSwatches(); drawInfo(); }, 400);
 
   const toggle = (id, on) => $(id).setAttribute('aria-pressed', on);
   // Labels step through the figure's groups (House, Yard, …), then off.
@@ -2553,10 +3280,13 @@ const LA = (() => {
     $('fname').textContent = f.name;
     $('fsub').textContent = `· ${f.sub}`;
     yaw = f.view.yaw; spin = false; toggle('t-turn', false); hl = null;
+    $('t-turn').hidden = $('t-front').hidden = !!f.pan;   // a village is walked along, not turned
+    stage.classList.toggle('pan', !!f.pan);
+    $('hint').textContent = f.hint || 'Tap anything · drag to turn'; $('hint').classList.remove('gone');
     cv.z = 1; [cv.x, cv.y] = f.view.centre;
     stopFind(); showLabels(0);
     wordEl.className = 'word idle'; wordEl.innerHTML = '<b>Tap anything</b><span>to see its Mizo name</span>';
-    $('acts').dataset.html = ''; drawActs(); drawSwatches();
+    $('acts').dataset.html = ''; drawActs(); drawSwatches(); drawInfo();
     document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.id === f.id));
     try { history.replaceState(null, '', '#' + f.id); } catch (e) {}
     hnStat(`things/${f.id}`, `Touch and learn: ${f.sub}`);
