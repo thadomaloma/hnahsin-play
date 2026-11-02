@@ -4,6 +4,13 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.43.1 (2 November 2026)
+
+### Touch and learn: no source lines in the notes
+
+- Zokhua's notes no longer end with a line naming their sources, and the
+  words' explanations in Zokhua and Zonun no longer end with one either.
+
 ## 1.43.0 (2 November 2026)
 
 ### Touch and learn: buttons that fit on a phone, and more to learn in Zokhua
