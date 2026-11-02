@@ -58,7 +58,7 @@
 </script>
 </head><body>
 <title>Touch and Learn · Hnahsin</title>
-<meta name="description" content="Tap the parts of a Mizo house and learn their Mizo names.">
+<meta name="description" content="Tap an old Mizo village, a loom, a cotton spinner and a market stall, and walk through a Mizo year, to learn their Mizo names.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap">
 <style>
@@ -132,6 +132,14 @@
   .word.idle b { color: var(--ink); font-size: 20px; }
   .word .what { flex-basis: 100%; font-size: 14px; font-weight: 600; color: var(--muted); line-height: 1.35; }
   .word.pop b { animation: pop .35s cubic-bezier(.2, .8, .2, 1.4); }
+  /* What happens in the month in view (Kumtluang): its name, then a line in Mizo and in English */
+  .word.month { display: grid; gap: 1px; align-content: center; min-height: 0; padding: 8px 16px 9px; }
+  .word.month b { font-size: 17px; line-height: 1.2; }
+  .word.month b em { font-style: normal; color: var(--muted); font-size: 13px; font-weight: 600; }
+  .word.month .mz { font-size: 14px; font-weight: 700; color: var(--ink); line-height: 1.3; }
+  .word.month .en { font-size: 12.5px; font-weight: 500; color: var(--muted); line-height: 1.3; }
+  .word.month.pop .mz, .word.month.pop .en { animation: rise .4s ease both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
   .word.good { background: #e3f4dd; }
   .word.bad { animation: shake .35s; }
   @keyframes pop { from { transform: scale(.7); opacity: .3; } }
@@ -1984,6 +1992,21 @@ const ZONUN = (() => {
       lifeEn: 'The harvest is complete, leaving nothing but leftover straw (Pâwl) scattered across the empty fields. The weather is cold, and families gather around the hearth fire in the evenings. The village enters a peaceful period of rest.',
       workEn: 'Winnowing the grain, storing the final yields in the village granaries, and enjoying a well-deserved rest after a long year of labor.' },
   ];
+  // What happens in each month, in a line, for under the picture: in Mizo (from the months' notes), and in English
+  const SHORT = [
+    ['Buh in lama phurh luh, leh Pâwlkut hman', 'The rice carried home, and the Pâwlkut feast'],
+    ['Lo vah hnatlang', 'The village clears the forest for the new jhum'],
+    ['Chapchar Kut: nula leh tlangval zai leh lam', 'Chapchar Kut: songs and dances in the square'],
+    ['Lo hal, leh buh chi tuh', 'The jhum is burnt, and the rice sown'],
+    ['Ruahtui ṭo a lo tla ṭan', 'The first rains, and the young rice sprouts'],
+    ['Hlo thlawh rim lai ber', 'The hardest weeding, in the heavy rain'],
+    ['Ruah sur a reh hman meuh lo', 'Endless rain and mud, and the second weeding'],
+    ['Chhum a zing chuk; buh ven nan buk riah', 'Thick mist; the rice guarded from the field hut'],
+    ['Mim Kut; thlai hmasa a lo thar ṭan', 'Mim Kut, and the first crops come in'],
+    ['Khua a thiang nuam; Khuangchawi', 'Clear skies, the Khuangchawi feast, and golden rice'],
+    ['Buh seng hnatlang', 'The whole village harvests the rice together'],
+    ['Buh thlei; tapchhak an bel', 'Winnowing, and resting by the hearth'],
+  ];
   const GRASS = {
     green: { l: '#a9d67c', m: '#8cc063', d: '#4b6b33' }, dry: { l: '#cfd08a', m: '#b5b56a', d: '#5f6136' }, fall: { l: '#c4cf7c', m: '#a6b35c', d: '#56602f' },
   };
@@ -2563,6 +2586,8 @@ const ZONUN = (() => {
   }
 
   const go = (s, v) => goMonth(s, +v);
+  // Under the picture: the month in view, what happens in it
+  const caption = s => { const M = MONTHS[s.cur], [mz, en] = SHORT[s.cur]; return `<b>${M.n} thla <em>· ${M.en}</em></b><span class="mz">${mz}</span><span class="en">${en}</span>`; };
 
   const pan = {
     hold: s => { s.held = true; s.play = false; s.v = 0; return s.pan; },
@@ -2584,10 +2609,11 @@ const ZONUN = (() => {
       Khuangchawi: 'a grand feast for the whole village, in October',
       // the months on the map at the foot
       ...Object.fromEntries(MONTHS.map(q => [`${q.n} thla`, `${q.en}: ${q.title.replace('The Month of ', '').replace(/^the /, '')}`])) },
-    init, step, tint, haze, smooth: true, light: () => SUNLIGHT, scene, sky, over, anchors, tap, pan, go, labelGroups: ['Places', 'People', 'Things'],
+    init, step, tint, haze, smooth: true, light: () => SUNLIGHT, scene, sky, over, anchors, tap, pan, go, caption, labelGroups: ['Places', 'People', 'Things'],
     actions: [
-      { label: () => '‹ Previous month', word: () => null, run: s => { s.play = false; goMonth(s, s.cur - 1); } },
-      { label: () => 'Next month ›', word: () => null, run: s => { s.play = false; goMonth(s, s.cur + 1); } },
+      // (from the month it is going to, so two quick taps go two months)
+      { label: () => '‹ Previous month', word: () => null, run: s => { s.play = false; goMonth(s, Math.round(s.panT / MW) - 1); } },
+      { label: () => 'Next month ›', word: () => null, run: s => { s.play = false; goMonth(s, Math.round(s.panT / MW) + 1); } },
       { label: s => s.play ? 'Stop' : 'Play the year', word: () => null, run: s => { if (s.play) s.play = false; else { if (s.panT >= 11 * MW - 1) s.pan = s.panT = 0; s.play = true; } } },
     ],
   };
@@ -3040,7 +3066,9 @@ const ZOKHUA = (() => {
 
   // ---------- the caption under the figure ----------
   // also: one word or a list of words to show after it (a verb, or what a friend says).
+  let saidAt = -1e9, capHtml = '';
   function say(m, also, cls) {
+    saidAt = performance.now(); capHtml = '';
     const en = WORDS[m] || (fig.names && fig.names[m]) || '';
     const extra = [].concat(also || []).filter(w => WORDS[w]).map(w => `<span class="also">${w} · ${WORDS[w]}</span>`).join('');
     wordEl.className = 'word';
@@ -3254,7 +3282,17 @@ const ZOKHUA = (() => {
     const b = e.target.closest('[data-go]'); if (!b || !fig.go) return;
     fig.go(st, b.dataset.go); drawActs(); drawInfo();
   });
-  setInterval(() => { drawActs(); syncSwatches(); drawInfo(); }, 400);
+  // A thing may say something of its own under the picture while nothing has been tapped for a while
+  // (fig.caption: Kumtluang tells what happens in the month in view). It comes back a few seconds after a tap.
+  function drawCaption() {
+    if (!fig.caption || find || performance.now() - saidAt < 3500) return;
+    const html = fig.caption(st);
+    if (html === capHtml) return;
+    capHtml = html;
+    wordEl.className = 'word month'; wordEl.innerHTML = html;
+    void wordEl.offsetWidth; wordEl.classList.add('pop');
+  }
+  setInterval(() => { drawActs(); syncSwatches(); drawInfo(); drawCaption(); }, 400);
 
   const toggle = (id, on) => $(id).setAttribute('aria-pressed', on);
   // Labels step through the figure's groups (House, Yard, …), then off.
@@ -3339,6 +3377,7 @@ const ZOKHUA = (() => {
     cv.z = 1; [cv.x, cv.y] = f.view.centre;
     stopFind(); showLabels(0); tag = null;
     wordEl.className = 'word idle'; wordEl.innerHTML = '<b>Tap anything</b><span>to see its Mizo name</span>';
+    saidAt = -1e9; capHtml = ''; drawCaption();
     $('acts').dataset.html = ''; drawActs(); drawSwatches(); drawInfo();
     document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.id === f.id));
     try { history.replaceState(null, '', '#' + f.id); } catch (e) {}

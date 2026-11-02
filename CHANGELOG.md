@@ -4,6 +4,16 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.45.1 (2 November 2026)
+
+### Touch and learn: Kumtluang tells each month as you go
+
+- Under Kumtluang's picture, where it said "Tap anything", a short line now
+  tells what happens in the month in view, in Mizo and English, in small
+  letters, and it changes as you move through the year. After a tap the
+  tapped thing's name shows for a moment, then the month comes back.
+- Two quick taps on Next month (or Previous month) now go two months.
+
 ## 1.45.0 (2 November 2026)
 
 ### Touch and learn: In taken out, and a new card on the home page
