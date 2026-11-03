@@ -4,6 +4,21 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.50.0 (3 November 2026)
+
+### Aizawl Ride: no branches over the road, and betel-nut palms
+
+- Some trees reached out over the road: 543 of them on the 148 roads, nearly
+  all bamboo clumps, whose canes lean out up to 9 m, and a few broad-leaved
+  trees. A tree was kept 2.2 m clear of the road whatever its size. Now each
+  kind of tree is measured, branches and leaves too, and all of it is kept
+  clear of every stretch of road (a tree on a bank well above the road may
+  still reach out high over it). Checked on every road: none is over the road
+  now, and there are about as many trees as before.
+- A bamboo clump leans one way now, out over the slope, away from the road.
+- Betel-nut palms (kuhva), as by so many Mizo houses, grow by the road too: a
+  tall, thin, ringed trunk with a crown of fronds.
+
 ## 1.49.0 (3 November 2026)
 
 ### Aizawl Ride: land all round, no more holes past the hillside

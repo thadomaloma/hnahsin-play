@@ -2019,8 +2019,9 @@ void main() {
         for (let i = 0; i < P.fill; i++) cluster(ctr.clone().add(V((r() - 0.5) * P.crownR, (r() - 0.3) * P.crownR * 0.8, (r() - 0.5) * P.crownR)), V(r() - 0.5, 0, r() - 0.5));
         wood.add(lump, mtx(0, P.crownY, 0, 0, r() * 6, 0, P.crownR * 0.55, P.crownR * 0.42, P.crownR * 0.55), '#244a25');   // dark inside, so the crown is not see-through
       } else if (kind === 'bamboo') {
+        // the canes lean out one way, as a clump on a bank leans out over the slope (planted so that is away from the road)
         for (let i = 0; i < 12; i++) {
-          const a = r() * 6.28, lean = 0.08 + r() * 0.26, L = (8 + r() * 5) / 3, w = 0.07, col = ['#7f9a3e', '#93a84a', '#6f8a36'][i % 3];
+          const a = (r() - 0.5) * 2.6, lean = (i < 2 ? 0.03 : 0.08) + r() * 0.24, L = (8 + r() * 5) / 3, w = 0.07, col = ['#7f9a3e', '#93a84a', '#6f8a36'][i % 3];
           let x = Math.cos(a) * r() * 0.5, y = 0, z = Math.sin(a) * r() * 0.5;
           for (let sg = 0; sg < 3; sg++) {      // each cane in three pieces, leaning further out higher up
             const tilt = lean * (1 + sg * 0.8), nx = x + Math.cos(a) * Math.sin(tilt) * L, ny = y + Math.cos(tilt) * L, nz = z + Math.sin(a) * Math.sin(tilt) * L;
@@ -2038,6 +2039,14 @@ void main() {
           const a = i * 0.9 + r() * 0.4, t = 0.9 + r() * 0.45, len = 2.2 + r() * 0.5, d = [Math.cos(a) * Math.sin(t), Math.cos(t), Math.sin(a) * Math.sin(t)];
           leaves.add(cardG, mtx(d[0] * len / 2, 2.3 + d[1] * len / 2, d[2] * len / 2, t, Math.PI / 2 - a, 0, 0.75, len, 1), '#ffffff', { uv: REG.banana, center: V(0, 2.0, 0), ao: 2, shade: [1.5, 3.6] });
         }
+      } else if (kind === 'kuhva') {     // a betel-nut palm (kuhva), as by so many Mizo houses: a tall thin ringed trunk, a crown of fronds
+        const H = 8.5 + r() * 2, lean = (r() - 0.5) * 0.08;
+        for (let i = 0; i < 6; i++) wood.add(stick, mtx(lean * i * H / 6, i * H / 6, 0, 0, 0, lean, 0.11 - i * 0.008, H / 6 + 0.02, 0.11 - i * 0.008), i % 2 ? '#8d8a7c' : '#9a9788');
+        wood.add(stick, mtx(lean * H, H, 0, 0, 0, 0, 0.13, 0.9, 0.13), '#6f8a3a');                                  // the green crownshaft
+        for (let i = 0; i < 9; i++) {      // fronds arching out and down from the top
+          const a = i / 9 * 6.28 + r() * 0.3, t = 0.75 + r() * 0.6, len = 2.4 + r() * 0.5, d = [Math.cos(a) * Math.sin(t), Math.cos(t), Math.sin(a) * Math.sin(t)];
+          leaves.add(cardG, mtx(lean * H + d[0] * len / 2, H + 0.85 + d[1] * len / 2 - 0.25, d[2] * len / 2, t, Math.PI / 2 - a, 0, 0.9, len, 1), '#ffffff', { uv: REG.bamboo, center: V(0, H + 0.6, 0), ao: 2.2, shade: [H - 1.5, H + 1.5] });
+        }
       } else if (kind === 'pine') {     // a Khasi pine: a tall straight trunk and tiers of needles
         wood.add(stick, mtx(0, 0, 0, 0, 0, 0, 0.2, 9.5, 0.2), '#5a4636');
         for (let i = 0; i < 6; i++) {
@@ -2048,9 +2057,16 @@ void main() {
       } else {     // a low clump of ferns and grass, on three crossed cards
         for (let i = 0; i < 3; i++) leaves.add(cardG, mtx(0, 0.45, 0, 0, i * Math.PI / 3 + r() * 0.4, 0, 1.3, 0.95, 1), '#ffffff', { uv: REG.shrub, shade: [0, 0.9] });
       }
-      return { wood: wood.done(), leaves: leaves.done() };
+      // how far it reaches, at its own size: forward (+x), back (-x) and to either side, and how tall it is
+      const W = wood.done(), Lv = leaves.done(), fp = { front: 0, back: 0, side: 0, top: 0 };
+      for (const g of [W, Lv]) { const a = g.attributes.position; for (let i = 0; i < a.count; i++) { const x = a.getX(i), z = a.getZ(i); fp.front = Math.max(fp.front, x); fp.back = Math.max(fp.back, -x); fp.side = Math.max(fp.side, Math.abs(z)); fp.top = Math.max(fp.top, a.getY(i)); } }
+      return { wood: W, leaves: Lv, fp };
     }
-    const TREES = Object.fromEntries(['broad', 'tall', 'bamboo', 'banana', 'pine', 'shrub'].map(k => [k, makeTree(k)]));
+    const TREES = Object.fromEntries(['broad', 'tall', 'bamboo', 'banana', 'kuhva', 'pine', 'shrub'].map(k => [k, makeTree(k)]));
+    // the ground it covers, as a circle round a point (how far from the trunk, towards +x) that holds all of it;
+    // a tree that leans one way (bamboo) is planted with that side away from the road, the rest turn any way
+    const ONE_WAY = new Set(['bamboo']);
+    const reachOf = kind => { const f = TREES[kind].fp; return ONE_WAY.has(kind) ? { ox: (f.front - f.back) / 2, r: Math.hypot((f.front + f.back) / 2, f.side) } : { ox: 0, r: Math.max(f.front, f.back, f.side) }; };
     const TINT = ['#ffffff', '#e9f2da', '#f4fde6', '#dfe9c9'];
     const shared = new Set([box, hang, prism, tank, trunk, crown, cone, wheel, ball, disc, blob, plane, pole, ...Object.values(TREES).flatMap(t => [t.wood, t.leaves])]);
 
@@ -2323,7 +2339,7 @@ void main() {
         for (let i = 0; i < 4; i++) { const [a, b] = [c[i], c[(i + 1) % 4]]; st.quad(pt(k, a[0], h0, a[1]), pt(k, b[0], h0, b[1]), pt(k, b[0], h1, b[1]), pt(k, a[0], h1, a[1]), hex); }
         st.quad(...c.map(([x, z]) => pt(k, x, h1, z)), hex);
       };
-      const LAMP = [], HALO = [], POOL = [], YARD = [], BULB = [], STAR = [], FLAG = [], fest = festival(), H = [], RF = [], TK = [], TW = { broad: [], tall: [], bamboo: [], banana: [], pine: [], shrub: [] }, BAL = [], RAIL = [], SHUT = [], BAND = [], POLE = [], ARM = [], WIRE = [];
+      const LAMP = [], HALO = [], POOL = [], YARD = [], BULB = [], STAR = [], FLAG = [], fest = festival(), H = [], RF = [], TK = [], TW = { broad: [], tall: [], bamboo: [], banana: [], kuhva: [], pine: [], shrub: [] }, BAL = [], RAIL = [], SHUT = [], BAND = [], POLE = [], ARM = [], WIRE = [];
       // An electric pole every 36 m in town, on the near side, and the ends of its crossarm for the wires
       const poleAt = k => {
         if (k < 0 || k >= n || k % 9 || !footpath(k)) return null;
@@ -2477,11 +2493,15 @@ void main() {
             if (rnd(k, 40 + j + sd) > 0.55) continue;
             const off = E + 2 + j * 9 + rnd(k, 50 + j) * 7;
             if (off > ext[sd][k] - 1) continue;
-            const r = rnd(k, 60 + j), sc = 0.8 + rnd(k, j + 1) * 0.5, kind = g > 8 && r < 0.35 ? 'pine' : r < 0.42 ? 'bamboo' : r < 0.68 ? 'broad' : r < 0.86 ? 'tall' : 'banana';
+            const r = rnd(k, 60 + j), sc = 0.8 + rnd(k, j + 1) * 0.5, kind = g > 8 && r < 0.35 ? 'pine' : r < 0.42 ? 'bamboo' : r < 0.66 ? 'broad' : r < 0.82 ? 'tall' : r < 0.92 ? 'kuhva' : 'banana';
             if (crowded(off)) continue;
-            const tp = pt(k, sd * off, drawnAt(off) - 0.2);
-            if (onRoad(tp[0], tp[2], 2.2 * sc, tp[1], tp[1] + 12) || inHome(tp[0], tp[1], tp[1] + 12, tp[2], 1.8 * sc)) { dropped++; continue; }
-            TW[kind].push({ p: tp, yaw: rnd(k, j + 5) * 6.28, s: [sc, sc * (0.9 + rnd(k, j + 6) * 0.25), sc], c: TINT[(k + j) % TINT.length] });
+            const tp = pt(k, sd * off, drawnAt(off) - 0.2), sy = sc * (0.9 + rnd(k, j + 6) * 0.25);
+            // turned so a leaning clump leans out, away from the road; then all of it, branches and leaves, must be
+            // clear of every stretch of road, less than 4.5 m above it (a tree on a high bank may reach out over)
+            const out = [R[k].x * sd, R[k].z * sd], yw = ONE_WAY.has(kind) ? Math.atan2(-out[1], out[0]) : rnd(k, j + 5) * 6.28, ro = reachOf(kind);
+            const cx = tp[0] + Math.cos(yw) * ro.ox * sc, cz = tp[2] - Math.sin(yw) * ro.ox * sc;
+            if (onRoad(cx, cz, ro.r * sc - 0.5, tp[1], tp[1] + TREES[kind].fp.top * sy) || inHome(tp[0], tp[1], tp[1] + 12, tp[2], 1.8 * sc)) { dropped++; continue; }
+            TW[kind].push({ p: tp, yaw: yw, s: [sc, sy, sc], c: TINT[(k + j) % TINT.length] });
           }
           // low ferns and grass on the bank beside the road (fewer in town)
           for (let j = 0; j < 2; j++) {
@@ -3945,6 +3965,26 @@ void main() {
       }
       return out;
     }
+    // For the tests: trees reaching out over a road. Every third corner of each tree, its branches and leaves
+    // too, placed as drawn: over any stretch of road (within its edges) and less than 4.5 m above it
+    function audit14() {
+      setRoute();
+      const out = { trees: 0, over: 0, kinds: {}, at: [] }, m = new T.Matrix4(), v = new T.Vector3();
+      for (const g of pieces) g.traverse(o => {
+        if (!o.isInstancedMesh) return;
+        const kind = Object.keys(TREES).find(k => TREES[k].wood === o.geometry || TREES[k].leaves === o.geometry);
+        if (!kind || kind === 'shrub') return;
+        const a = o.geometry.attributes.position;
+        for (let i = 0; i < o.count; i++) {
+          o.getMatrixAt(i, m); if (o.geometry === TREES[kind].leaves) out.trees++;
+          for (let q = 0; q < a.count; q += 3) {
+            v.fromBufferAttribute(a, q).applyMatrix4(m);
+            if (onRoad(v.x, v.z, -0.8, v.y, v.y)) { out.over++; out.kinds[kind] = (out.kinds[kind] || 0) + 1; if (out.at.length < 8) out.at.push([kind, Math.round(v.x), Math.round(v.z), +v.y.toFixed(1)]); break; }
+          }
+        }
+      });
+      return out;
+    }
     // For the tests: holes as the rider sees them. The valley floor far below (seen only where all the land
     // stops) is drawn magenta, with its distance; the picture drawn, and its pixels counted: all of them,
     // those in the lower half of the picture (looking down into it), and how near the nearest is
@@ -3962,7 +4002,7 @@ void main() {
       return n ? { share: +(n / (w * h / 4)).toFixed(4), low: +(low / (w * h / 4)).toFixed(4), near: Math.round(near), x: low ? +(sx / low / w).toFixed(2) : null } : 0;
     }
     const walkable = (i, sd) => { setRoute(); i = clamp(i, 0, W3.n - 1); return !W3.bare[sd][i] && !W3.gone[sd][i] && !W3.ride[i]; };
-    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, audit9, audit10, audit11, audit12, audit13, holesSeen, walkable,
+    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, audit9, audit10, audit11, audit12, audit13, audit14, holesSeen, walkable,
       // for the tests: which earlier stretches of road lie under the middle of sample k, and how high
       under: (k, lat = 0) => { setRoute(); const { P, R, Y, grid, n } = W3, x = P[k].x + R[k].x * lat, z = P[k].z + R[k].z * lat, out = [];
         for (const kk of new Set([...Array(9).keys()].flatMap(i => [...Array(9).keys()].map(j => grid.get((Math.floor(x / 12) + i - 4) + ',' + (Math.floor(z / 12) + j - 4)) || []).flat()))) {
@@ -4768,6 +4808,7 @@ void main() {
     audit10All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit10() }); } route = keep; reset(); return out; },
     audit11All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit11() }); } route = keep; reset(); return out; },
     audit12All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit12() }); } route = keep; reset(); return out; },
+    audit14All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit14() }); } route = keep; reset(); return out; },
     audit13All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit13() }); } route = keep; reset(); return out; },
     audit6All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit6() }); } route = keep; reset(); return out; },
     audit5All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit5() }); } route = keep; reset(); return out; },
