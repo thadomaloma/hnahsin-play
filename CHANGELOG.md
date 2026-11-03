@@ -4,6 +4,22 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.48.0 (3 November 2026)
+
+### Aizawl Ride: a way back on every road of the Aizawl map
+
+- Every delivery on the Aizawl map now has its way back: 31 new roads, so
+  there are 146 in all. Before, 31 roads went only one way (from Zarkawt to
+  Dinthar, say, but not from Dinthar back).
+- Dinthar and Tuikual North, by the middle of town, could be reached only
+  the long way round through Luangmual, so they needed 40,000 and 46,000
+  points. They are now a short ride from Dawrpui, Zarkawt and Chhinga, and
+  open at 5,000 and 13,000 points.
+- The points each veng needs are now fixed, so no veng that is open now
+  closes.
+- Today's missions, the medals and the badges were checked: each can be
+  done, and each counts what it says.
+
 ## 1.47.0 (3 November 2026)
 
 ### Aizawl Ride: night lights that look real, trucks, and wheels that turn

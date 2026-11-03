@@ -4461,7 +4461,7 @@ void main() {
   let cityP = null;
   function loadCity() {      // fetched once, however many ask for it at the same time (and again after a failure)
     if (CITY) return Promise.resolve(CITY);
-    return cityP || (cityP = fetch('ride/city.json?v=24d78b21').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => (CITY = d)).catch(e => { cityP = null; throw e; }));
+    return cityP || (cityP = fetch('ride/city.json?v=b072f0de').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => (CITY = d)).catch(e => { cityP = null; throw e; }));
   }
   const vengOf = id => CITY.veng.find(v => v.id === id) || CITY.veng[0];
   // A packed list of small numbers (one character each) back into numbers
@@ -4482,23 +4482,17 @@ void main() {
   // points from today's missions.
   // Dawrpui and the four veng nearest it are open from the start; the others open one by one,
   // nearer ones first (by the shortest ride from Dawrpui). A veng you have been to stays open.
-  const UNLOCK = [0, 0, 0, 0, 0, 2000, 4000, 6500, 9000, 12000, 15000, 18500, 22000, 26000, 30000, 35000, 40000, 46000];
-  const LATER = ['ramhlunn', 'ramhlunv', 'ramtharn', 'thuampui', 'bawngkawn', 'zemabawk', 'durtlang', 'kulikawn'];     // the veng added after the first eighteen
+  // The points each needs are kept in a table, so a change to the roads never closes a veng already open
+  // (only ever lowers one): Dinthar and Tuikual, by the middle of town, were reached only the long way
+  // round through Luangmual before the way back on every road, and needed 40,000 and 46,000.
+  const NEED = {
+    dawrpui: 0, zarkawt: 0, chhinga: 0, treasury: 0, electric: 0, chanmari: 2000, republic: 4000, dinthar: 5000, venghlui: 6500, venglai: 9000,
+    khatla: 12000, tuikual: 13000, ramthar: 15000, mission: 18500, ramhlun: 22000, chaltlang: 26000, kulikawn: 27000, laipuitlang: 30000,
+    ramtharn: 31000, ramhlunn: 32000, ramhlunv: 33000, luangmual: 35000, bawngkawn: 36000, thuampui: 37000, durtlang: 47000, zemabawk: 48000,
+  };
   let vengNeed = null;
-  function needs() {
-    if (vengNeed) return vengNeed;
-    const dist = { dawrpui: 0 }, todo = ['dawrpui'];
-    while (todo.length) {
-      todo.sort((p, q) => dist[q] - dist[p]);
-      const v = todo.pop();
-      for (const j of CITY.jobs) if (j.a === v && dist[v] + j.length < (dist[j.b] ?? Infinity)) { dist[j.b] = dist[v] + j.length; todo.push(j.b); }
-    }
-    const order = CITY.veng.map(v => v.id).sort((p, q) => (dist[p] ?? 1e9) - (dist[q] ?? 1e9));
-    // the first eighteen keep the points they always needed; a veng added since needs a thousand more than
-    // the one before it on the way out from Dawrpui (so nothing already open closes)
-    const first = order.filter(id => !LATER.includes(id));
-    vengNeed = Object.fromEntries(first.map((id, i) => [id, UNLOCK[Math.min(i, UNLOCK.length - 1)]]));
-    order.forEach((id, i) => { if (LATER.includes(id)) vengNeed[id] = (i ? vengNeed[order[i - 1]] : 0) + 1000; });
+  function needs() {      // (a veng not in the table: a thousand more than the most any needs)
+    if (!vengNeed) { const top = Math.max(...Object.values(NEED)); vengNeed = Object.fromEntries(CITY.veng.map(v => [v.id, NEED[v.id] ?? top + 1000])); }
     return vengNeed;
   }
   const points = () => [...Object.values(S.best), ...Object.values(S.cityBest)].reduce((a, b) => a + (b || 0), 0) + (S.bonus || 0);
@@ -4673,6 +4667,8 @@ void main() {
   document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
 
   // For the automatic tests only (?test in the address): read the ride and steer.
+  // (the tests may ask for only some roads: window.__only, a list of route ids)
+  const testRoutes = () => [...DATA.routes, ...CITY.jobs.map(routeOf)].filter(r => !window.__only || window.__only.includes(r.id));
   if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ kind: c.kind, lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, wid: c.wid, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
     peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)) })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1, speed = 0) => { const c = newCar(kind, lane, s + ahead, dir * speed, dir); c.cruise = speed; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), sizes: () => R3 && R3.sizes(), under: (k, lat) => R3 && R3.under(k, lat), probe: (k, lat, al) => R3 && R3.probe(k, lat, al), mem: () => R3 && R3.mem(), walker: (ahead, x, va = 1, vx = 0, look) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; peds.push(p); return peds.length; },
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
@@ -4680,20 +4676,20 @@ void main() {
     useRoute: id => { route = [...DATA.routes, ...CITY.jobs.map(routeOf)].find(r => r.id === id); reset(); return route.length; }, go: () => start(),
     // for the tests: a vehicle of a kind, so far ahead, in a lane, at a speed, going our way (1) or towards us (-1)
     car: (kind, ahead, lane = 0, v = 0, dir = 1) => { cars.push(newCar(kind, lane, s + ahead, v, dir)); return cars.length; },
-    plans: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push([r.id, Math.round(r.length), planCrossings().length, planJams().length]); } route = keep; reset(); return out; },
-    auditAll: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; const a = R3.audit(); out.push({ id: r.id, ...a }); } route = keep; R3.audit(); return out; },
-    audit3All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); R3.setPlan(); out.push({ id: r.id, ...R3.audit3() }); } route = keep; reset(); return out; },
-    audit7All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); R3.setPlan(); out.push({ id: r.id, ...R3.audit7() }); } route = keep; reset(); return out; },
-    audit8All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit8() }); } route = keep; reset(); return out; },
-    audit9All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit9() }); } route = keep; reset(); return out; },
-    audit10All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit10() }); } route = keep; reset(); return out; },
-    audit11All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit11() }); } route = keep; reset(); return out; },
-    audit12All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit12() }); } route = keep; reset(); return out; },
-    audit13All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit13() }); } route = keep; reset(); return out; },
-    audit6All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit6() }); } route = keep; reset(); return out; },
-    audit5All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit5() }); } route = keep; reset(); return out; },
-    audit4All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); out.push({ id: r.id, ...R3.audit4() }); } route = keep; reset(); return out; },
-    audit2All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit2() }); } route = keep; R3.audit(); return out; } };
+    plans: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push([r.id, Math.round(r.length), planCrossings().length, planJams().length]); } route = keep; reset(); return out; },
+    auditAll: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; const a = R3.audit(); out.push({ id: r.id, ...a }); } route = keep; R3.audit(); return out; },
+    audit3All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; jams = planJams(); crossings = planCrossings(); R3.setPlan(); out.push({ id: r.id, ...R3.audit3() }); } route = keep; reset(); return out; },
+    audit7All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; jams = planJams(); crossings = planCrossings(); R3.setPlan(); out.push({ id: r.id, ...R3.audit7() }); } route = keep; reset(); return out; },
+    audit8All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit8() }); } route = keep; reset(); return out; },
+    audit9All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit9() }); } route = keep; reset(); return out; },
+    audit10All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit10() }); } route = keep; reset(); return out; },
+    audit11All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit11() }); } route = keep; reset(); return out; },
+    audit12All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit12() }); } route = keep; reset(); return out; },
+    audit13All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit13() }); } route = keep; reset(); return out; },
+    audit6All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit6() }); } route = keep; reset(); return out; },
+    audit5All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit5() }); } route = keep; reset(); return out; },
+    audit4All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; jams = planJams(); crossings = planCrossings(); out.push({ id: r.id, ...R3.audit4() }); } route = keep; reset(); return out; },
+    audit2All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit2() }); } route = keep; R3.audit(); return out; } };
 
   applyLang(); syncSound(); syncWallet(); syncReady(); syncPause(); drawRoutes(); showParcel(); reset(); resize();
   // three.js is fetched once and kept on the phone; until then, and without WebGL, the picture is flat
