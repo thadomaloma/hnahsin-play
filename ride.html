@@ -1765,6 +1765,10 @@
     };
     const groundMat = new T.MeshLambertMaterial({ vertexColors: true, side: T.DoubleSide });
     groundMat.onBeforeCompile = sh => grain(sh);
+    // the land further out: the same ground, in a softer haze that never quite hides it (as the far hills are
+    // drawn), so across a valley there are hills to see and not a gap of haze
+    const farMat = new T.MeshLambertMaterial({ vertexColors: true, side: T.DoubleSide });
+    farMat.onBeforeCompile = sh => { grain(sh); sh.fragmentShader = sh.fragmentShader.replace('#include <fog_fragment>', '#ifdef USE_FOG\n  gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, smoothstep(fogNear, fogFar * 1.5, vFogDepth) * 0.86);\n#endif'); };
     const plainMat = new T.MeshLambertMaterial(), glowMat = new T.MeshBasicMaterial({ toneMapped: false });
     // street lamps: dark by day, warm at night, each with its pool of light on the road; lit windows at night
     // At night: a soft round glow (brightest in the middle, fading out), the pool a lamp throws (wide and
@@ -2603,6 +2607,66 @@ void main() {
       const m = new T.Mesh(g, groundMat); m.receiveShadow = true; m.userData.fill = true;
       return m;
     }
+    // The land further out, to about 340 m from the road, so the near ground never stops short with the
+    // haze showing below the hills past it (a hole in the world, from the road). Its hills rise or fall as
+    // the ground beside the nearest stretch of road does, with a gentle roll; built-up where the road's
+    // houses are many (a patchwork of walls and roofs, as Aizawl's hillsides look from across a valley).
+    // Next to the road it keeps under the near ground, and the haze softens it with distance.
+    let farLand = null;
+    function farGround() {
+      const { n, P, R, Y } = W3, STEP = 15, R0 = 58, R1 = 340, ks = [];
+      for (let k = 0; k < n; k += 5) ks.push(k);
+      if (ks[ks.length - 1] !== n - 1) ks.push(n - 1);
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (const q of P) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); z0 = Math.min(z0, q.z); z1 = Math.max(z1, q.z); }
+      x0 -= R1; z0 -= R1; x1 += R1; z1 += R1;
+      const nx = Math.ceil((x1 - x0) / STEP) + 1, nz = Math.ceil((z1 - z0) / STEP) + 1, H = new Float32Array(nx * nz).fill(NaN), D = new Float32Array(nx * nz), TN = new Float32Array(nx * nz);
+      // the near ground's own slope, carried on: uphill to a hilltop; downhill to the valley's floor and up
+      // again on its far side, towards the next ridge (Aizawl's valleys, between ridges about as high as the road's)
+      const far = (g, d) => {
+        const h = g * (1 + (d - 30) / 30 * 0.6);
+        if (g >= 0) return Math.min(h, 30 + g * 4, 140);
+        const floor = clamp(g * 4, -200, -40), at = 30 + (floor / g - 1) / 0.02;
+        return d <= at ? h : Math.min(floor - g * 0.018 * (d - at), 40);
+      };
+      for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+        const x = x0 + i * STEP, z = z0 + j * STEP;
+        let dmin = Infinity, near = 0, hs = 0, ws = 0, ts = 0;
+        for (const k of ks) {
+          const dx = x - P[k].x, dz = z - P[k].z, d2 = dx * dx + dz * dz;
+          if (d2 > (R1 + 80) ** 2) continue;
+          const d = Math.sqrt(d2), sd = dx * R[k].x + dz * R[k].z >= 0 ? 1 : -1;
+          const v = Y[k] + (W3.ride ? W3.ride[k] : 0) + far(sideAt(k, sd), Math.max(d, 30)), w = 1 / Math.max(25, d) ** 4;
+          if (d < dmin) { dmin = d; near = v; }
+          hs += v * w; ws += w; ts += Math.min(1, housesOn(sd, k) / 6) * w;
+        }
+        if (!ws || dmin > R1 + 20) continue;
+        const roll = (Math.sin(x * 0.013 + z * 0.007) + Math.sin(x * 0.005 - z * 0.011 + 1.3)) * 4 * clamp((dmin - 70) / 90, 0, 1);
+        let h = hs / ws + roll;
+        if (dmin < 90) h = Math.min(h, near - 2.5 - (90 - dmin) * 0.05);     // under the near ground, where that reaches
+        H[j * nx + i] = h; D[j * nx + i] = dmin; TN[j * nx + i] = ts / ws;
+      }
+      // one corner for each point, shared by the cells round it (so the hills are smooth), each with its own
+      // colour: greens, and in town the pale walls and grey and red roofs of houses, softly mixed
+      const pos = new Float32Array(nx * nz * 3), col = new Float32Array(nx * nz * 3), idx = [], c = new T.Color();
+      const GREEN = ['#5b8a45', '#567f42', '#5f8c48', '#52793f'], TOWN = ['#b9b2a2', '#aaa494', '#c2bba8', '#98a2a6', '#b39f92', '#a4ad9a', '#86837b', '#96604f', '#6c7780'];
+      for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+        const v = j * nx + i, r = rnd(i * 7 + 1, j * 13 + 2);
+        pos[v * 3] = x0 + i * STEP; pos[v * 3 + 1] = Number.isNaN(H[v]) ? 0 : H[v]; pos[v * 3 + 2] = z0 + j * STEP;
+        c.set(r < TN[v] * 0.7 ? TOWN[Math.floor(rnd(i + 3, j + 5) * TOWN.length)] : GREEN[Math.floor(r * 97) % GREEN.length]);
+        col[v * 3] = c.r; col[v * 3 + 1] = c.g; col[v * 3 + 2] = c.b;
+      }
+      for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) {
+        const q = [j * nx + i, j * nx + i + 1, (j + 1) * nx + i + 1, (j + 1) * nx + i];
+        if (q.some(v => Number.isNaN(H[v])) || q.every(v => D[v] < R0)) continue;     // (the near ground's, there)
+        idx.push(q[0], q[2], q[1], q[0], q[3], q[2]);
+      }
+      const g = new T.BufferGeometry();
+      g.setAttribute('position', new T.BufferAttribute(pos, 3)); g.setAttribute('color', new T.BufferAttribute(col, 3)); g.setIndex(idx);
+      g.computeVertexNormals(); g.computeBoundingSphere();
+      const m = new T.Mesh(g, farMat); m.receiveShadow = true; m.userData.far = true;
+      return m;
+    }
     function setRoute() {
       if (built === route.id) return;
       built = route.id;
@@ -2619,6 +2683,8 @@ void main() {
       // stretches), you see ground there, not the valley floor far below
       if (fill) { scene.remove(fill); fill.geometry.dispose(); }
       fill = baseGround(); scene.add(fill);
+      if (farLand) { scene.remove(farLand); farLand.geometry.dispose(); }
+      farLand = farGround(); scene.add(farLand);
       // the valley floor far below, so no gap in the hillside shows the sky
       if (!under) { under = new T.Mesh(new T.PlaneGeometry(8000, 8000).rotateX(-Math.PI / 2), new T.MeshLambertMaterial({ color: '#557e45' })); scene.add(under); }
       under.position.set(0, W3.minY - 70, 0);
@@ -3554,7 +3620,8 @@ void main() {
       camX = mode === 'playing' ? camX + (px - camX) * (1 - Math.exp(-Math.min(0.1, ms / 1000) * 6)) : px;
       frame3(s, camX * 0.55, fB); frame3(s + 9, camX * 0.35, fA);
       want.set(fB.x - Math.sin(fB.yaw) * 5.4, fB.y + 2.3 + Math.sin(fB.pitch) * 5.4, fB.z - Math.cos(fB.yaw) * 5.4); aim.set(fA.x, fA.y + 0.9, fA.z);
-      if (orbit) {      // for the tests only: look at the road ahead from anywhere round it
+      if (orbit && orbit.rider) cam.copy(want);      // for the tests only: the rider's own camera, at once
+      else if (orbit) {      // for the tests only: look at the road ahead from anywhere round it
         frame3(s + orbit.ahead, orbit.lat || 0, fA); aim.set(fA.x, fA.y + (orbit.aimY ?? 0.8), fA.z);
         want.set(fA.x + Math.sin(fA.yaw + orbit.angle) * orbit.dist, fA.y + orbit.height, fA.z + Math.cos(fA.yaw + orbit.angle) * orbit.dist); cam.copy(want);
       } else if (mode === 'playing' || mode === 'crashing') cam.lerp(want, 1 - Math.exp(-Math.min(0.1, ms / 1000) * 9)); else cam.copy(want);
@@ -3878,8 +3945,24 @@ void main() {
       }
       return out;
     }
+    // For the tests: holes as the rider sees them. The valley floor far below (seen only where all the land
+    // stops) is drawn magenta, with its distance; the picture drawn, and its pixels counted: all of them,
+    // those in the lower half of the picture (looking down into it), and how near the nearest is
+    const holeMat = new T.ShaderMaterial({ uniforms: {},
+      vertexShader: 'varying vec3 vW;\nvoid main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+      fragmentShader: 'uniform float near;\nvarying vec3 vW;\nvoid main() { gl_FragColor = vec4(1.0, min(distance(vW, cameraPosition) / 1000.0, 1.0) * 0.3, 1.0, 1.0); }' });     // (its distance, up to 1 km, in the green)
+    function holesSeen() {
+      if (!under) return 0;
+      const keep = under.material; under.material = holeMat; draw3(); under.material = keep;
+      const gl = renderer.getContext(), w = gl.drawingBufferWidth, h = gl.drawingBufferHeight, px = new Uint8Array(w * h * 4);
+      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      // all of it seen, how near the nearest is, and how much of it is in the lower half of the picture (looking down into it)
+      let n = 0, low = 0, near = 1e9, sx = 0;
+      for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) { const i = (y * w + x) * 4; if (px[i] > 200 && px[i + 1] < 90 && px[i + 2] > 200) { n++; const d = px[i + 1] / 255 / 0.3 * 1000; near = Math.min(near, d); if (y < h * 0.5) { low++; sx += x; } } }
+      return n ? { share: +(n / (w * h / 4)).toFixed(4), low: +(low / (w * h / 4)).toFixed(4), near: Math.round(near), x: low ? +(sx / low / w).toFixed(2) : null } : 0;
+    }
     const walkable = (i, sd) => { setRoute(); i = clamp(i, 0, W3.n - 1); return !W3.bare[sd][i] && !W3.gone[sd][i] && !W3.ride[i]; };
-    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, audit9, audit10, audit11, audit12, audit13, walkable,
+    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, audit9, audit10, audit11, audit12, audit13, holesSeen, walkable,
       // for the tests: which earlier stretches of road lie under the middle of sample k, and how high
       under: (k, lat = 0) => { setRoute(); const { P, R, Y, grid, n } = W3, x = P[k].x + R[k].x * lat, z = P[k].z + R[k].z * lat, out = [];
         for (const kk of new Set([...Array(9).keys()].flatMap(i => [...Array(9).keys()].map(j => grid.get((Math.floor(x / 12) + i - 4) + ',' + (Math.floor(z / 12) + j - 4)) || []).flat()))) {
@@ -4014,7 +4097,7 @@ void main() {
       const t = ac.currentTime, k = Math.min(1, v / 18);
       ride.g.gain.setTargetAtTime(on ? 0.05 : 0, t, 0.15);
       ride.eng.frequency.setTargetAtTime(48 + v * 5.5, t, 0.12); ride.eng2.frequency.setTargetAtTime(96 + v * 11 + 3, t, 0.12);
-      ride.lp.frequency.setTargetAtTime(300 + v * 30, t, 0.2);
+      ride.lp.frequency.setTargetAtTime(Math.min(20000, 300 + v * 30), t, 0.2);
       ride.wg.gain.setTargetAtTime(0.15 + k * 0.6, t, 0.2);
       ride.bg.gain.setTargetAtTime(braking && v > 3 ? 0.35 : 0, t, 0.05);       // the brake's squeal
       ride.rg.gain.setTargetAtTime(cond.rain ? 0.5 : 0, t, 0.3);                  // the rain
@@ -4670,7 +4753,7 @@ void main() {
   // (the tests may ask for only some roads: window.__only, a list of route ids)
   const testRoutes = () => [...DATA.routes, ...CITY.jobs.map(routeOf)].filter(r => !window.__only || window.__only.includes(r.id));
   if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ kind: c.kind, lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, wid: c.wid, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
-    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)) })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1, speed = 0) => { const c = newCar(kind, lane, s + ahead, dir * speed, dir); c.cruise = speed; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), sizes: () => R3 && R3.sizes(), under: (k, lat) => R3 && R3.under(k, lat), probe: (k, lat, al) => R3 && R3.probe(k, lat, al), mem: () => R3 && R3.mem(), walker: (ahead, x, va = 1, vx = 0, look) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; peds.push(p); return peds.length; },
+    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)) })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1, speed = 0) => { const c = newCar(kind, lane, s + ahead, dir * speed, dir); c.cruise = speed; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), holes: () => R3 && R3.holesSeen(), sizes: () => R3 && R3.sizes(), under: (k, lat) => R3 && R3.under(k, lat), probe: (k, lat, al) => R3 && R3.probe(k, lat, al), mem: () => R3 && R3.mem(), walker: (ahead, x, va = 1, vx = 0, look) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; peds.push(p); return peds.length; },
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
     // for the tests: ride a given road; and every road with how many crossings and jams it has
     useRoute: id => { route = [...DATA.routes, ...CITY.jobs.map(routeOf)].find(r => r.id === id); reset(); return route.length; }, go: () => start(),

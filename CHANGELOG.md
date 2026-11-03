@@ -4,6 +4,24 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.49.0 (3 November 2026)
+
+### Aizawl Ride: land all round, no more holes past the hillside
+
+- Past the ground beside the road (about 60 m out) there was nothing, so in
+  about one view in six a patch of bare haze showed below the hills, like a
+  hole in the ground: across a valley, in a bend, and at the start and end of
+  a ride. Now the land carries on to about 340 m from the road. Its hills
+  rise or fall as the ground beside the road does, down to a valley's floor
+  and up again on the far side towards the next ridge. Where the road has
+  many houses, it is a soft patchwork of walls and roofs, as Aizawl's
+  hillsides look from across a valley.
+- That far land is in a softer haze than the near ground, as the far hills
+  are, so it can always be seen.
+- Checked on every road (all 148, every 10 m, from where you ride): the
+  view down to the valley floor below the world is gone everywhere, except
+  now and then at the far edge, about 1 km away, where the haze hides it.
+
 ## 1.48.0 (3 November 2026)
 
 ### Aizawl Ride: a way back on every road of the Aizawl map
