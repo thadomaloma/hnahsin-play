@@ -4,6 +4,25 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.46.0 (3 November 2026)
+
+### Aizawl Ride: houses in Aizawl's colours, and no more holes in the ground
+
+- The houses are painted as Aizawl's are: mostly white and cream, and many
+  sky blue, mint, lemon, salmon, peach or lavender, with some of bare grey
+  concrete. Each house has its own colour, so a row is no longer a repeating
+  pattern.
+- Each house has a concrete column at its corners and a parapet along the
+  top, with no windows in them, a line of shade where two walls meet, and a
+  flat grey concrete roof, so each one stands out clearly from the next.
+- In town the ground between the houses is concrete and bare earth, not
+  grass; the hills beyond are a natural green.
+- Holes in the ground are gone: on 28 roads (Dawrpui to Zarkawt, Zarkawt to
+  Dawrpui, Chhinga, Tuikual and Dinthar to Zarkawt, and others) you could
+  see straight down to the valley floor, 40 to 60 m beside the road, where
+  the hillside stops short. The ground under it all now reaches 68 m from
+  the road.
+
 ## 1.45.1 (2 November 2026)
 
 ### Touch and learn: Kumtluang tells each month as you go

@@ -1776,18 +1776,27 @@
     const houseMat = new T.MeshLambertMaterial({ map: windowTex });
     houseMat.onBeforeCompile = sh => {
       sh.uniforms.uNight = nightU;
-      sh.vertexShader = 'varying vec2 vWall;\nvarying float vStyle;\n' + sh.vertexShader;
-      sh.fragmentShader = 'uniform float uNight;\nvarying vec2 vWall;\nvarying float vStyle;\n' + sh.fragmentShader;
+      sh.vertexShader = 'varying vec2 vWall;\nvarying float vStyle;\nvarying vec4 vTrim;\n' + sh.vertexShader;
+      sh.fragmentShader = 'uniform float uNight;\nvarying vec2 vWall;\nvarying float vStyle;\nvarying vec4 vTrim;\n' + sh.fragmentShader;
       grain(sh, `
         vec3 hs = vec3(1.0); vStyle = 0.0;
         #ifdef USE_INSTANCING
           hs = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
           vStyle = floor(fract(sin(dot(instanceMatrix[3].xz, vec2(12.9898, 78.233))) * 43758.5453) * 4.0);
         #endif
-        vWall = abs(normal.y) > 0.5 ? vec2(0.03, 0.97) : vec2((abs(normal.x) > 0.5 ? position.z * hs.z : position.x * hs.x) / 3.0, position.y * hs.y / 3.0);`, `
+        vWall = abs(normal.y) > 0.5 ? vec2(0.03, 0.97) : vec2((abs(normal.x) > 0.5 ? position.z * hs.z : position.x * hs.x) / 3.0, position.y * hs.y / 3.0);
+        // for the trim: how far from the nearest corner (in metres), how far down from the top, and the roof
+        float hw = abs(normal.x) > 0.5 ? hs.z : hs.x;
+        vTrim = vec4((abs(normal.x) > 0.5 ? position.z : position.x) * hw, hw * 0.5, (1.0 - position.y) * hs.y, step(0.5, normal.y));`, `
         vec2 gw = vWall * vec2(0.25, 1.0);
         vec4 wt = textureGrad(map, vec2((fract(vWall.x) + vStyle) * 0.25, fract(vWall.y)), dFdx(gw), dFdy(gw));
+        // a concrete column at each corner and a parapet along the top, with no windows in them; a line of
+        // shade where two walls meet; and a flat concrete roof
+        float side = vTrim.y - abs(vTrim.x), col = 1.0 - step(0.32, side), para = 1.0 - step(0.85, vTrim.z);
+        wt = mix(wt, vec4(1.0), max(col, para) * (1.0 - vTrim.w));
+        wt.rgb *= mix(1.0, 0.93, col) * mix(1.0, 1.06, (1.0 - step(0.14, vTrim.z))) * mix(0.78, 1.0, smoothstep(0.0, 0.07, side));
         diffuseColor *= wt;
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.66, 0.64, 0.6), vTrim.w * 0.75);
         // at night some windows are lit, warm, one window (and floor) at a time
         float glassy = step(wt.r + 0.08, wt.b), lit = step(0.42, fract(sin(dot(floor(vWall) + vStyle * 7.0, vec2(41.3, 289.1))) * 43758.5453));
         totalEmissiveRadiance += uNight * glassy * lit * vec3(1.0, 0.76, 0.42) * 0.85;`);
@@ -1809,6 +1818,9 @@
     const pole = new T.CylinderGeometry(0.09, 0.13, 1, 6).translate(0, 0.5, 0);
     const shutterMat = new T.MeshLambertMaterial({ map: tex(16, 32, g => { g.fillStyle = '#ececec'; g.fillRect(0, 0, 16, 32); g.fillStyle = '#b4b4b4'; for (let y = 2; y < 32; y += 4) g.fillRect(0, y, 16, 1); }) });
     const wireMat = new T.LineBasicMaterial({ color: '#2b2b2b' });
+    // Aizawl's houses: mostly white and cream, many painted (sky blue, mint, lemon, salmon, lavender), some bare concrete
+    const WALL3 = ['#f4f1ea', '#f1e8d4', '#ece0c4', '#f4f1ea', '#f1e8d4', '#f3e3a0', '#e8c46e', '#a8cce4', '#7fb0d6', '#bfe0c8', '#8fc7a4',
+      '#f2b8a4', '#e89a74', '#d8c6e6', '#c4e4e2', '#f5cfd6', '#b7b4ac', '#a3a6a5', '#e9d9b0', '#d1dcc0'];
     const SHOP = ['#5f7f9c', '#8a9096', '#a3524a', '#4f7f5f', '#b98a2e', '#6b5f8a'], SIGNBAND = ['#c0392b', '#1565c0', '#2e7d32', '#f2c230', '#e67e22', '#ffffff'];
     // ---------- trees: bark and wood, and leaves drawn on cards with gaps you can see through ----------
     // Four kinds, each built once and then placed many times: broad-leaved trees, bamboo (mau) clumps,
@@ -2346,8 +2358,11 @@
             const xa = Math.max(HALF, ext[sd][k]), xb = Math.max(HALF, ext[sd][k + 1]);     // never inside the road
             const oa0 = Math.min(ca[c], xa), oa1 = Math.min(ca[c + 1], xa), ob0 = Math.min(cb[c], xb), ob1 = Math.min(cb[c + 1], xb);
             if (oa1 - oa0 < 0.01 && ob1 - ob0 < 0.01) continue;
-            const hex = c === 0 && g > 2.5 ? (footpath(k) ? (even ? '#a19c90' : '#9a958a') : (even ? '#5d9058' : '#64975d'))
-              : g < -2.5 ? (even ? '#4f8a62' : '#558f67') : c > 3 ? (even ? '#5f9a6c' : '#5a9567') : (even ? '#6aa57a' : '#62a073');
+            // in town the ground between the houses is concrete and bare earth; out of it, and further out, the green of the hills
+            const town = housesOn(sd, k) >= 4;
+            const hex = c === 0 && g > 2.5 ? (footpath(k) ? (even ? '#a19c90' : '#9a958a') : (even ? '#5c8a47' : '#62904c'))
+              : town && c <= 3 ? (g < -2.5 ? (even ? '#958e7e' : '#8f8878') : (even ? '#aaa393' : '#a49d8d')) : town && c === 4 ? (even ? '#8b8f6e' : '#868a69')
+              : g < -2.5 ? (even ? '#4f7d41' : '#548346') : c > 3 ? (even ? '#5b8a45' : '#578641') : (even ? '#6a9a4f' : '#64944a');
             st.quad(pt(k, sd * oa0, gAt(k, oa0)), pt(k, sd * oa1, gAt(k, oa1)), pt(k + 1, sd * ob1, gAt(k + 1, ob1)), pt(k + 1, sd * ob0, gAt(k + 1, ob0)), hex);
           }
           // the hillside's height o metres out as drawn (between its columns), for what stands on it
@@ -2362,7 +2377,7 @@
             const hm = W3.home[(k * 2 + (sd > 0 ? 1 : 0)) * 3 + j];
             if (!hm) continue;
             const { w, d, off, gy, bot, top, p } = hm;
-            H.push({ p: [p[0], Y[k] + bot, p[2]], yaw: yaw[k], s: [w, top - bot, d], c: HOUSE[(k + j) % HOUSE.length] });
+            H.push({ p: [p[0], Y[k] + bot, p[2]], yaw: yaw[k], s: [w, top - bot, d], c: WALL3[Math.floor(rnd(k * 3 + j, sd * 11 + 5) * WALL3.length)] });
             if (fest && fest.id === 'xmas' && rnd(k, j + 77) < 0.55) for (let i = 0; i < 8; i++) BULB.push({ p: pt(k, sd * (off - w / 2 - 0.06), top - 0.2, -d / 2 + (i + 0.5) * d / 8), yaw: yaw[k], s: [0.13, 0.13, 0.13], c: BULBS[(i + k + j) % BULBS.length] });
             if (j === 0 && footpath(k)) {
               const face = off - w / 2, along = d * 0.7;
@@ -2445,7 +2460,7 @@
         for (const sd of [-1, 1]) {
           q(sd * HALF, sd * GUT, 0.01, 0.01, '#9a968e'); q(sd * GUT, sd * KERB, 0.15, 0.15, j % 2 ? '#f3efe4' : '#c33f3f');
           const cols = [KERB, 10, 18, 30, 45, 60];
-          for (let c = 0; c < cols.length - 1; c++) q(sd * cols[c], sd * cols[c + 1], groundAt(k, sd, cols[c]), groundAt(k, sd, cols[c + 1]), c > 2 ? '#5f9a6c' : '#6aa57a');
+          for (let c = 0; c < cols.length - 1; c++) q(sd * cols[c], sd * cols[c + 1], groundAt(k, sd, cols[c]), groundAt(k, sd, cols[c + 1]), c > 2 ? '#5b8a45' : '#6a9a4f');
         }
       }
       const ap = st.mesh(); ap.userData.apron = true; grp.add(ap); grp.userData.mid = W3.P[k];
@@ -2457,19 +2472,20 @@
       const { n, P, R, Y, grid } = W3, STEP = 5;
       let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
       for (const q of P) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); z0 = Math.min(z0, q.z); z1 = Math.max(z1, q.z); }
-      x0 -= 45; z0 -= 45; x1 += 45; z1 += 45;
+      x0 -= 73; z0 -= 73; x1 += 73; z1 += 73;
       const nx = Math.ceil((x1 - x0) / STEP) + 1, nz = Math.ceil((z1 - z0) / STEP) + 1, H = new Float32Array(nx * nz).fill(NaN);
-      // first the points within 40 m of the road (from each piece of road, the points round it)
+      // first the points within 68 m of the road, past the hillside's furthest column (60 m), so wherever
+      // the hillside stops short there is ground (from each piece of road, the points round it)
       const keep = new Uint8Array(nx * nz);
       for (let k = 0; k < n - 1; k++) {
         const A = P[k], B = P[k + 1];
-        const i0 = Math.max(0, Math.floor((Math.min(A.x, B.x) - 40 - x0) / STEP)), i1 = Math.min(nx - 1, Math.ceil((Math.max(A.x, B.x) + 40 - x0) / STEP));
-        const j0 = Math.max(0, Math.floor((Math.min(A.z, B.z) - 40 - z0) / STEP)), j1 = Math.min(nz - 1, Math.ceil((Math.max(A.z, B.z) + 40 - z0) / STEP));
+        const i0 = Math.max(0, Math.floor((Math.min(A.x, B.x) - 68 - x0) / STEP)), i1 = Math.min(nx - 1, Math.ceil((Math.max(A.x, B.x) + 68 - x0) / STEP));
+        const j0 = Math.max(0, Math.floor((Math.min(A.z, B.z) - 68 - z0) / STEP)), j1 = Math.min(nz - 1, Math.ceil((Math.max(A.z, B.z) + 68 - z0) / STEP));
         const dx = B.x - A.x, dz = B.z - A.z, L2 = dx * dx + dz * dz || 1;
         for (let jj = j0; jj <= j1; jj++) for (let ii = i0; ii <= i1; ii++) {
           if (keep[jj * nx + ii]) continue;
           const x = x0 + ii * STEP, z = z0 + jj * STEP, t = clamp(((x - A.x) * dx + (z - A.z) * dz) / L2, 0, 1);
-          if ((A.x + dx * t - x) ** 2 + (A.z + dz * t - z) ** 2 <= 1600) keep[jj * nx + ii] = 1;
+          if ((A.x + dx * t - x) ** 2 + (A.z + dz * t - z) ** 2 <= 4624) keep[jj * nx + ii] = 1;
         }
       }
       // then their height: from each stretch of road within 25 m, its own height and its hillside that far
@@ -2477,16 +2493,21 @@
       for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
         if (!keep[j * nx + i]) continue;
         const x = x0 + i * STEP, z = z0 + j * STEP, cx = Math.floor(x / 12), cz = Math.floor(z / 12);
-        let h = Infinity, best = Infinity, bh = 0;
-        for (let a = cx - 3; a <= cx + 3; a++) for (let b = cz - 3; b <= cz + 3; b++) for (const k of grid.get(a + ',' + b) || []) {
+        let h = Infinity, far = Infinity, best = Infinity, bh = 0;
+        for (let a = cx - 6; a <= cx + 6; a++) for (let b = cz - 6; b <= cz + 6; b++) for (const k of grid.get(a + ',' + b) || []) {
           const A = P[k], B = P[k + 1], dx = B.x - A.x, dz = B.z - A.z, t = clamp(((x - A.x) * dx + (z - A.z) * dz) / (dx * dx + dz * dz || 1), 0, 1);
           const d = Math.hypot(A.x + dx * t - x, A.z + dz * t - z);
-          if (d > 25) continue;
+          if (d > 68) continue;
           const kk = t < 0.5 ? k : k + 1, side = (x - P[kk].x) * R[kk].x + (z - P[kk].z) * R[kk].z >= 0 ? 1 : -1;
           const v = Y[k] + (Y[k + 1] - Y[k]) * t + (W3.ride ? W3.ride[k] : 0) + (d <= HALF ? 0 : groundAt(kk, side, d)) - 0.6;
-          h = Math.min(h, v);
+          if (d <= 25) h = Math.min(h, v);
+          else if (d <= Math.max(HALF, W3.ext[side][kk])) far = Math.min(far, v - 0.7);
+          else if (d < best) { best = d; bh = v - 0.7; }
         }
-        // beyond 25 m of every stretch: carry on from the nearest point already worked out
+        // further out: under the lowest hillside drawn there; where none is drawn (each stops short), the
+        // nearest stretch's (the lowest of them all could be another stretch's valley side, a pit)
+        if (h === Infinity) h = far < Infinity ? far : best < Infinity ? bh : Infinity;
+        // beyond 68 m of every stretch: carry on from the nearest point already worked out
         if (h === Infinity) { for (const [a, b] of [[i - 1, j], [i, j - 1], [i - 1, j - 1], [i + 1, j - 1]]) if (a >= 0 && a < nx && b >= 0 && !Number.isNaN(H[b * nx + a])) { h = H[b * nx + a]; break; } }
         if (h < Infinity) H[j * nx + i] = h;
       }
@@ -2511,7 +2532,7 @@
         }
       }
       H.set(low);
-      const pos = [], col = [], c = C('#5f9567');
+      const pos = [], col = [], c = C('#6f8455');
       for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) {
         const q = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]].map(([a, b]) => [x0 + a * STEP, H[b * nx + a], z0 + b * STEP]);
         if (q.some(v => Number.isNaN(v[1]))) continue;
@@ -2534,13 +2555,13 @@
       for (let k = 0; k < W3.n - 1; k += PIECE) pieces.push(piece(k, k + PIECE + 1));
       pieces.push(apron(0, -1), apron(W3.n - 1, 1));
       for (const g of pieces) scene.add(g);
-      // A base ground under it all, within 40 m of the road, a little below the hillside and the road so
+      // A base ground under it all, within 68 m of the road, a little below the hillside and the road so
       // it never shows through them: wherever they leave a gap (inside a tight bend, between two
       // stretches), you see ground there, not the valley floor far below
       if (fill) { scene.remove(fill); fill.geometry.dispose(); }
       fill = baseGround(); scene.add(fill);
       // the valley floor far below, so no gap in the hillside shows the sky
-      if (!under) { under = new T.Mesh(new T.PlaneGeometry(8000, 8000).rotateX(-Math.PI / 2), new T.MeshLambertMaterial({ color: '#57865f' })); scene.add(under); }
+      if (!under) { under = new T.Mesh(new T.PlaneGeometry(8000, 8000).rotateX(-Math.PI / 2), new T.MeshLambertMaterial({ color: '#557e45' })); scene.add(under); }
       under.position.set(0, W3.minY - 70, 0);
     }
 
@@ -3579,7 +3600,7 @@
       out.fillOver = 0;
       if (fill) for (let k = 0; k < n - 1; k += 3) for (const sd of [-1, 1]) {
         const near = pieces.slice(Math.max(0, Math.floor(k / PIECE) - 1), Math.floor(k / PIECE) + 2).flatMap(g => g.children).filter(o => o.material === groundMat);
-        for (const L of [KERB + 0.3, 6, 8, 11, 15]) {
+        for (const L of [KERB + 0.3, 6, 8, 11, 15, 22, 30, 40, 50, 58]) {
           if (L > ext[sd][k] - 0.5) continue;     // past where this side's hillside stops, the base ground is meant to show
           const q = ptAt(k, sd * L, 0); o.set(q[0], q[1] + 60, q[2]); ray.set(o, down); ray.far = 120;
           const a = ray.intersectObject(fill, false)[0], b = ray.intersectObjects(near, false)[0];
@@ -3736,8 +3757,22 @@
       out.minR = +out.minR.toFixed(1);
       return out;
     }
+    // For the tests: holes further out, 22 to 58 m beside the road, where you look across the hillside
+    // (rays that meet nothing at all; within the drawn hillside, or past where it stops)
+    function audit13() {
+      setRoute();
+      const { n, ext } = W3, ray = new T.Raycaster(), down = new T.Vector3(0, -1, 0), o = new T.Vector3(), out = { rays: 0, voids: 0, inside: 0, at: [] };
+      for (let k = 2; k < n - 2; k += 2) {
+        const near = pieces.slice(Math.max(0, Math.floor(k / PIECE) - 2), Math.floor(k / PIECE) + 3).concat(pieces.slice(-2)).flatMap(g => g.children).concat(fill ? [fill] : []);
+        for (const sd of [-1, 1]) for (const L of [22, 28, 34, 40, 46, 52, 58]) {
+          const q = ptAt(k, sd * L, 0); o.set(q[0], q[1] + 60, q[2]); ray.set(o, down); ray.far = 400; out.rays++;
+          if (!ray.intersectObjects(near, false)[0]) { out.voids++; if (L < ext[sd][k]) out.inside++; if (out.at.length < 10) out.at.push([k, sd, L, +ext[sd][k].toFixed(1)]); }
+        }
+      }
+      return out;
+    }
     const walkable = (i, sd) => { setRoute(); i = clamp(i, 0, W3.n - 1); return !W3.bare[sd][i] && !W3.gone[sd][i] && !W3.ride[i]; };
-    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, audit9, audit10, audit11, audit12, walkable,
+    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, audit9, audit10, audit11, audit12, audit13, walkable,
       // for the tests: which earlier stretches of road lie under the middle of sample k, and how high
       under: (k, lat = 0) => { setRoute(); const { P, R, Y, grid, n } = W3, x = P[k].x + R[k].x * lat, z = P[k].z + R[k].z * lat, out = [];
         for (const kk of new Set([...Array(9).keys()].flatMap(i => [...Array(9).keys()].map(j => grid.get((Math.floor(x / 12) + i - 4) + ',' + (Math.floor(z / 12) + j - 4)) || []).flat()))) {
@@ -4545,6 +4580,7 @@
     audit10All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit10() }); } route = keep; reset(); return out; },
     audit11All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit11() }); } route = keep; reset(); return out; },
     audit12All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit12() }); } route = keep; reset(); return out; },
+    audit13All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit13() }); } route = keep; reset(); return out; },
     audit6All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit6() }); } route = keep; reset(); return out; },
     audit5All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push({ id: r.id, ...R3.audit5() }); } route = keep; reset(); return out; },
     audit4All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); out.push({ id: r.id, ...R3.audit4() }); } route = keep; reset(); return out; },
