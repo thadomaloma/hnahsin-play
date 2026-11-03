@@ -928,15 +928,16 @@
     taxi: { len: 3.35, wid: 1.5, hgt: 1.42, cols: ['#f2c230'] },
     sedan: { len: 3.88, wid: 1.73, hgt: 1.5, cols: ['#f4f4f0', '#b8bec4', '#7a1f2b', '#2c3e50', '#3d4b5c'] },
     suv: { len: 3.6, wid: 1.75, hgt: 1.88, cols: ['#f4f4f0', '#b8bec4', '#3a4a3a'] },
-    bus: { len: 8, wid: 2.35, hgt: 3.05, cols: ['#1f5fa8', '#b8322a', '#1d7a46'] },                     // an MST midi bus
+    bus: { len: 8, wid: 2.35, hgt: 3.05, cols: ['#1f5fa8', '#b8322a', '#1d7a46'] },                     // an Aizawl City Bus, a midi bus
+    truck: { len: 6.8, wid: 2.3, hgt: 2.85, cols: ['#f2c230', '#1565c0', '#c0392b', '#2e7d32', '#f4f4f0', '#e67e22'] },   // a Tata goods truck: a cab, and a wooden body behind
     // the two-wheelers, the most of Aizawl's traffic: a scooter, a commuter motorbike, a Royal Enfield and a sports bike
     scooter: { len: 1.8, wid: 0.75, hgt: 1.16, two: true, cols: ['#f4f4f0', '#c0392b', '#2c3e50', '#7f8c8d', '#1565c0', '#e67e22', '#8e1b3a', '#16a085'] },
     bike: { len: 1.95, wid: 0.8, hgt: 1.1, two: true, cols: ['#e74c3c', '#2c3e50', '#1b1b1b', '#1565c0', '#8e44ad'] },
     classic: { len: 2.05, wid: 0.85, hgt: 1.12, two: true, cols: ['#1b1b1b', '#5a1f1f', '#2f4a3a', '#6b6e70', '#c9b48a'] },
     sport: { len: 2.0, wid: 0.8, hgt: 1.12, two: true, cols: ['#1b1b1b', '#c0392b', '#1565c0', '#f4f4f0', '#2e7d32'] },
   };
-  // Aizawl's traffic: two-wheelers more than anything; the queues have no buses
-  const KIND_MIX = ['car', 'sedan', 'taxi', 'taxi', 'suv', 'scooter', 'scooter', 'scooter', 'bike', 'bike', 'classic', 'sport', 'bus'], JAM_MIX = KIND_MIX.filter(k => k !== 'bus');
+  // Aizawl's traffic: two-wheelers more than anything; the queues have no buses or trucks
+  const KIND_MIX = ['car', 'sedan', 'taxi', 'taxi', 'suv', 'scooter', 'scooter', 'scooter', 'bike', 'bike', 'classic', 'sport', 'bus', 'truck'], JAM_MIX = KIND_MIX.filter(k => k !== 'bus' && k !== 'truck');
   // (on a two-wheeler, now and then someone rides behind)
   const newCar = (kind, lane, at, v, dir) => { const K = KINDS[kind]; return { kind, lane, at, v, cruise: Math.abs(v), dir, x: LANES[lane], len: K.len, wid: K.wid, hgt: K.hgt, col: K.cols[Math.random() * K.cols.length | 0], hit: false, slowing: false, two: !!K.two, pillion: !!K.two && Math.random() < 0.3 }; };
   // Jams wait where the road is busy: at the veng and named places along it, spaced apart
@@ -1148,12 +1149,28 @@
     // tyres and the dark underside
     R(-w * 0.47, -h * 0.17, w * 0.2, h * 0.17, '#141615', 4); R(w * 0.27, -h * 0.17, w * 0.2, h * 0.17, '#141615', 4);
     R(-w * 0.48, -h * 0.2, w * 0.96, h * 0.08, '#2b2d2c', 3);
+    if (kind === 'truck') {     // from behind its wooden body, the cab's roof above it; from the front the cab
+      if (dir > 0) {
+        R(-w * 0.4, -h, w * 0.8, h * 0.2, shadeHex(col, -0.1), w * 0.05);
+        R(-w / 2, -h * 0.86, w, h * 0.68, '#9c6b3d', 3);
+        g.fillStyle = '#6f4a28'; for (const y of [0.7, 0.55, 0.4]) g.fillRect(-w / 2, -h * y, w, h * 0.025);
+        g.fillStyle = '#c0392b'; g.fillRect(-w * 0.45, -h * 0.26, w * 0.9, h * 0.04);
+        R(-w * 0.46, -h * 0.25, w * 0.1, h * 0.06, '#9e2a22', 2); R(w * 0.36, -h * 0.25, w * 0.1, h * 0.06, '#9e2a22', 2);
+      } else {
+        R(-w / 2, -h, w, h * 0.8, grad(-h, -h * 0.2, shadeHex(col, 0.2), shadeHex(col, -0.3)), w * 0.06);
+        R(-w * 0.42, -h * 0.94, w * 0.84, h * 0.34, grad(-h * 0.94, -h * 0.6, '#bfe0f2', '#6f9ab4'), 4);
+        g.fillStyle = '#f4f4f0'; g.fillRect(-w / 2, -h * 0.5, w, h * 0.04);
+        g.fillStyle = '#1a1b1c'; g.fillRect(-w * 0.3, -h * 0.42, w * 0.6, h * 0.14);
+        g.fillStyle = '#fff6c8'; for (const e of [-1, 1]) { g.beginPath(); g.arc(e * w * 0.38, -h * 0.34, w * 0.06, 0, 7); g.fill(); }
+      }
+      return;
+    }
     if (kind === 'bus') {
       R(-w / 2, -h, w, h * 0.9, grad(-h, -h * 0.1, shadeHex(col, 0.2), shadeHex(col, -0.3)), w * 0.06);
       R(-w * 0.44, -h * 0.92, w * 0.88, h * 0.34, grad(-h * 0.92, -h * 0.58, dir > 0 ? '#4b6273' : '#bfe0f2', dir > 0 ? '#2d3d48' : '#6f9ab4'), 4);
       g.fillStyle = 'rgba(255,255,255,.25)'; g.beginPath(); g.moveTo(-w * 0.3, -h * 0.92); g.lineTo(-w * 0.12, -h * 0.92); g.lineTo(-w * 0.36, -h * 0.58); g.lineTo(-w * 0.44, -h * 0.58); g.fill();
       g.fillStyle = '#1b1d1c'; g.fillRect(-w * 0.3, -h * 0.99, w * 0.6, h * 0.06);
-      g.fillStyle = '#ffc94a'; g.font = `800 ${Math.round(h * 0.045)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(dir > 0 ? '' : 'CITY', 0, -h * 0.96);
+      g.fillStyle = '#ffc94a'; g.font = `800 ${Math.round(h * 0.045)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(dir > 0 ? '' : 'AIZAWL CITY BUS', 0, -h * 0.96);
       g.fillStyle = shadeHex(col, -0.35); g.fillRect(-w / 2, -h * 0.5, w, h * 0.03);
     } else {
       R(-w / 2, -h * 0.62, w, h * 0.46, body, w * 0.09);
@@ -1750,7 +1767,44 @@
     groundMat.onBeforeCompile = sh => grain(sh);
     const plainMat = new T.MeshLambertMaterial(), glowMat = new T.MeshBasicMaterial({ toneMapped: false });
     // street lamps: dark by day, warm at night, each with its pool of light on the road; lit windows at night
-    const lampMat = new T.MeshBasicMaterial({ color: '#4a4a48', toneMapped: false }), poolMat = new T.MeshBasicMaterial({ color: '#ffcf80', transparent: true, opacity: 0.22, blending: T.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, visible: false });
+    // At night: a soft round glow (brightest in the middle, fading out), the pool a lamp throws (wide and
+    // soft), and a headlamp's beam on the road (bright just ahead, spreading and fading with distance)
+    const gray = (w, h, f) => { const t = tex(w, h, (g, W, H) => { const img = g.createImageData(W, H); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const v = Math.round(clamp(f((x + 0.5) / W, (y + 0.5) / H), 0, 1) * 255), i = (y * W + x) * 4; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; } g.putImageData(img, 0, 0); }); t.colorSpace = T.NoColorSpace; return t; };
+    const glowTex = gray(64, 64, (u, v) => { const r = Math.hypot(u - 0.5, v - 0.5) * 2; return r >= 1 ? 0 : Math.exp(-r * r * 9) * 0.9 + Math.pow(1 - r, 3) * 0.25; });
+    const poolTex = gray(64, 64, (u, v) => { const r = Math.hypot(u - 0.5, v - 0.5) * 2; return r >= 1 ? 0 : Math.pow(1 - r * r, 2.2); });
+    const beamTex = gray(64, 128, (u, v) => { const hw = 0.1 + 0.36 * v, a = Math.abs(u - 0.5), side = 1 - clamp((a - hw * 0.55) / (hw * 0.45), 0, 1); return side * side * Math.min(1, v / 0.08) * Math.pow(1 - v, 1.6); });
+    const lampMat = new T.MeshBasicMaterial({ color: '#4a4a48', toneMapped: false }), poolMat = new T.MeshBasicMaterial({ color: '#ffc773', map: poolTex, transparent: true, opacity: 0.5, blending: T.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, visible: false });
+    const beamMat = new T.MeshBasicMaterial({ color: '#fff1d2', map: beamTex, transparent: true, opacity: 0.5, blending: T.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, side: T.DoubleSide, visible: false });
+    // the glow round a lamp: a card that always faces the camera, its size from its scale, fading into the haze
+    const fogU = { near: { value: 10 }, far: { value: 160 } };
+    const haloMat = new T.ShaderMaterial({
+      uniforms: { map: { value: glowTex }, fogNear: fogU.near, fogFar: fogU.far },
+      vertexShader: `uniform float fogNear;
+uniform float fogFar;
+varying vec2 vUv;
+varying vec3 vCol;
+varying float vFade;
+void main() {
+  vUv = uv; vCol = vec3(1.0);
+  #ifdef USE_INSTANCING_COLOR
+    vCol = instanceColor;
+  #endif
+  vec4 c = modelViewMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+  c.xy += position.xy * length(instanceMatrix[0].xyz);
+  vFade = 1.0 - smoothstep(fogNear, fogFar, -c.z);
+  gl_Position = projectionMatrix * c;
+}`,
+      fragmentShader: `uniform sampler2D map;
+varying vec2 vUv;
+varying vec3 vCol;
+varying float vFade;
+void main() {
+  gl_FragColor = vec4(vCol * texture2D(map, vUv).r * vFade, 1.0);
+  #include <colorspace_fragment>
+}`,
+      transparent: true, depthWrite: false, blending: T.AdditiveBlending, visible: false,
+    });
+    const haloGeo = new T.PlaneGeometry(1, 1), beamGeo = new T.PlaneGeometry(1, 1).rotateX(Math.PI / 2).translate(0, 0, 0.5);   // (the beam: flat, reaching forward from its foot)
     const nightU = { value: 0 };
     // the festivals' dressing: a Christmas star (five points, a little thick), a bunting flag, their materials
     const starGeo = (() => { const sh = new T.Shape(); for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 0.2 : 0.5; i ? sh.lineTo(Math.cos(a) * r, Math.sin(a) * r) : sh.moveTo(Math.cos(a) * r, Math.sin(a) * r); } return new T.ExtrudeGeometry(sh, { depth: 0.06, bevelEnabled: false }).translate(0, 0, -0.03); })();
@@ -1797,9 +1851,12 @@
         wt.rgb *= mix(1.0, 0.93, col) * mix(1.0, 1.06, (1.0 - step(0.14, vTrim.z))) * mix(0.78, 1.0, smoothstep(0.0, 0.07, side));
         diffuseColor *= wt;
         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.66, 0.64, 0.6), vTrim.w * 0.75);
+        diffuseColor.rgb *= 1.0 - uNight * 0.38;     // at night the pale walls stay dim under the moon, so the lit windows and the lamps stand out
         // at night some windows are lit, warm, one window (and floor) at a time
         float glassy = step(wt.r + 0.08, wt.b), lit = step(0.42, fract(sin(dot(floor(vWall) + vStyle * 7.0, vec2(41.3, 289.1))) * 43758.5453));
-        totalEmissiveRadiance += uNight * glassy * lit * vec3(1.0, 0.76, 0.42) * 0.85;`);
+        float hue = fract(sin(dot(floor(vWall) + vStyle * 3.0, vec2(12.7, 91.3))) * 15731.743);
+        vec3 lamp = hue < 0.62 ? vec3(1.0, 0.74, 0.4) : hue < 0.9 ? vec3(0.92, 0.94, 1.0) : vec3(0.45, 0.62, 1.0);     // warm bulbs, white tube lights, the blue of a television
+        totalEmissiveRadiance += uNight * glassy * lit * lamp * 0.85;`);
     };
     const stripeMat = new T.MeshLambertMaterial({ map: tex(64, 16, (g, w, h) => { g.fillStyle = '#f3efe4'; g.fillRect(0, 0, w, h); g.fillStyle = '#d4483b'; for (let i = 0; i < 4; i++) g.fillRect(i * 16, 0, 8, h); }) });
     const box = new T.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);           // stands on its base
@@ -2171,10 +2228,10 @@
       if (!list.length) return null;
       const m = new T.InstancedMesh(geo, mat, list.length);
       list.forEach((it, i) => {
-        dummy.position.set(it.p[0], it.p[1], it.p[2]); dummy.rotation.set(0, it.yaw || 0, 0); dummy.scale.set(it.s[0], it.s[1], it.s[2]);
+        dummy.position.set(it.p[0], it.p[1], it.p[2]); dummy.rotation.set(it.rx || 0, it.yaw || 0, 0, 'YXZ'); dummy.scale.set(it.s[0], it.s[1], it.s[2]);
         dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); m.setColorAt(i, C(it.c));
       });
-      m.computeBoundingSphere(); m.castShadow = m.receiveShadow = true; return m;
+      m.computeBoundingSphere(); m.castShadow = m.receiveShadow = !mat.transparent; return m;     // (lights' glows and pools cast no shadow)
     }
     const housesOn = (sd, k) => (sd > 0 ? route.housesR : route.housesL)[k] || 0, tallOn = (sd, k) => (route.tallL ? (sd > 0 ? route.tallR : route.tallL)[k] : 0) || 0;
     const ptAt = (k, lat, h, along = 0) => { const { P, R, F, Y } = W3; return [P[k].x + R[k].x * lat + F[k].x * along, Y[k] + h, P[k].z + R[k].z * lat + F[k].z * along]; };
@@ -2262,7 +2319,7 @@
         for (let i = 0; i < 4; i++) { const [a, b] = [c[i], c[(i + 1) % 4]]; st.quad(pt(k, a[0], h0, a[1]), pt(k, b[0], h0, b[1]), pt(k, b[0], h1, b[1]), pt(k, a[0], h1, a[1]), hex); }
         st.quad(...c.map(([x, z]) => pt(k, x, h1, z)), hex);
       };
-      const LAMP = [], POOL = [], YARD = [], BULB = [], STAR = [], FLAG = [], fest = festival(), H = [], RF = [], TK = [], TW = { broad: [], tall: [], bamboo: [], banana: [], pine: [], shrub: [] }, BAL = [], RAIL = [], SHUT = [], BAND = [], POLE = [], ARM = [], WIRE = [];
+      const LAMP = [], HALO = [], POOL = [], YARD = [], BULB = [], STAR = [], FLAG = [], fest = festival(), H = [], RF = [], TK = [], TW = { broad: [], tall: [], bamboo: [], banana: [], pine: [], shrub: [] }, BAL = [], RAIL = [], SHUT = [], BAND = [], POLE = [], ARM = [], WIRE = [];
       // An electric pole every 36 m in town, on the near side, and the ends of its crossarm for the wires
       const poleAt = k => {
         if (k < 0 || k >= n || k % 9 || !footpath(k)) return null;
@@ -2282,7 +2339,9 @@
           // a street lamp on an arm over the road, and the pool of light it throws at night
           ARM.push({ p: pt(k, pl.lat - pl.sd * 0.7, 7.3), yaw: yaw[k], s: [1.4, 0.07, 0.07], c: '#8d8d86' });
           LAMP.push({ p: pt(k, pl.lat - pl.sd * 1.35, 7.18), yaw: yaw[k], s: [0.45, 0.1, 0.22], c: '#ffffff' });
-          POOL.push({ p: pt(k, pl.lat - pl.sd * 2.6, 0.06), yaw: 0, s: [10, 1, 10], c: '#ffffff' });
+          HALO.push({ p: pt(k, pl.lat - pl.sd * 1.35, 7.08), s: [3.2, 3.2, 3.2], c: '#ffcf8a' });
+          { const a = Math.max(0, k - 1), b = Math.min(n - 1, k + 1);     // (lying on the road, tilted as it climbs)
+            POOL.push({ p: pt(k, pl.lat - pl.sd * 2.6, 0.07), yaw: yaw[k], rx: -Math.atan2(Y[b] - Y[a], Math.hypot(P[b].x - P[a].x, P[b].z - P[a].z) || 1), s: [12, 1, 12], c: '#ffffff' }); }
           if (fest && fest.id === 'xmas') STAR.push({ p: pt(k, pl.lat - pl.sd * 0.3, 5.2), yaw: yaw[k], s: [1.2, 1.2, 1.2], c: k % 72 ? '#fff4c2' : '#ffd23f' });
           if (fest && fest.id === 'chapchar' && k % 18 === 0) {      // a line of flags in the puan's colours, sagging across the road
             const a = pt(k, pl.lat, 6.4), b = pt(k, -pl.lat, 6.4), at = t => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - 0.9 * t * (1 - t) * 4 * 0.25, a[2] + (b[2] - a[2]) * t];
@@ -2433,7 +2492,7 @@
         }
       }
       if (WIRE.length) { const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(WIRE, 3)); grp.add(new T.LineSegments(g, wireMat)); }
-      [instanced(box, plainMat, BAL), instanced(box, plainMat, RAIL), instanced(box, shutterMat, SHUT), instanced(box, plainMat, BAND), instanced(pole, plainMat, POLE), instanced(box, plainMat, ARM), instanced(box, plainMat, YARD), instanced(box, lampMat, LAMP), instanced(blob, poolMat, POOL), instanced(box, glowMat, BULB), instanced(starGeo, glowMat, STAR), instanced(flagGeo, flagMat, FLAG)].forEach(m => m && grp.add(m));
+      [instanced(box, plainMat, BAL), instanced(box, plainMat, RAIL), instanced(box, shutterMat, SHUT), instanced(box, plainMat, BAND), instanced(pole, plainMat, POLE), instanced(box, plainMat, ARM), instanced(box, plainMat, YARD), instanced(box, lampMat, LAMP), instanced(blob, poolMat, POOL), instanced(haloGeo, haloMat, HALO), instanced(box, glowMat, BULB), instanced(starGeo, glowMat, STAR), instanced(flagGeo, flagMat, FLAG)].forEach(m => m && grp.add(m));
       [st.mesh(), instanced(box, houseMat, H), instanced(prism, plainMat, RF), instanced(tank, plainMat, TK),
         ...Object.entries(TW).flatMap(([kind, list]) => [TREES[kind].wood.attributes.position.count ? instanced(TREES[kind].wood, woodMat, list) : null, instanced(TREES[kind].leaves, leafMat, list)])].forEach(m => m && grp.add(m));
       grp.userData.mid = P[Math.min(n - 1, (k0 + k1) >> 1)];
@@ -2572,7 +2631,7 @@
     const pools = [];
     const pool = (geo, mat, max, list = pools) => {
       const m = new T.InstancedMesh(geo, mat, max); m.frustumCulled = false; m.count = 0; m.n = 0; m.max = max;
-      m.castShadow = mat !== shadowMat && mat !== glowMat && mat !== plateMat; m.receiveShadow = true;
+      m.castShadow = mat !== shadowMat && mat !== glowMat && mat !== plateMat && !mat.transparent; m.receiveShadow = !mat.transparent;
       m.setColorAt(0, C('#fff')); list.push(m); scene.add(m); return m;
     };
     function put(m, x, y, z, sx, sy, sz, hex, rx = 0, ry = 0, rz = 0) {
@@ -2782,10 +2841,34 @@
       P.box(4.06, 0.5, 0, 0.16, 0.34, 1.04, '#2a2b2d'); P.box(4.09, 0.88, 0, 0.03, 0.22, 0.6, '#151617');                   // bumper, grille
       for (let i = 0; i < 3; i++) H.box(4.1, 0.81 + i * 0.07, 0, 0.02, 0.02, 0.56);
       P.box(-4.03, 0.5, 0, 0.14, 0.32, 1.04, '#2a2b2d'); for (let i = 0; i < 6; i++) P.box(-4.03, 1.05 + i * 0.07, 0, 0.03, 0.03, 0.7, '#151617');   // back bumper, engine louvres
-      for (const u of wh) P.disc(u, 0.42, 0, 0.57, 0.96, '#0d0d0e');
+      for (const u of wh) P.disc(u, 0.42, 0, 0.57, 0.62, '#0d0d0e');                                                        // the dark wheel wells, inside the wheels
       for (const e of [-1, 1]) { P.bar(3.95, 2.45, 4.35, 2.4, e * 0.55, 0.03, 0.03, DK); P.bar(4.35, 2.4, 4.4, 1.95, e * 0.58, 0.03, 0.03, DK); P.box(4.4, 1.85, e * 0.6, 0.05, 0.36, 0.12, DK); }   // mirrors on their arms
       return { paint: P.done(), glass: G.done(), chrome: H.done(), trim: W.done(), len: 8, hgt: 3.05, wheels: [[2.55, 0.47], [-2.35, 0.47]], track: 0.41, tw: 0.3,
         head: [4.09, 0.78, 0.38, 0.16, 0.12], tail: [-4.04, 0.82, 0.42, 0.1, 0.3], plate: [-4.04, 0.62], front: [4.12, 0.42], board: [4.08, 2.68, 0.72, 0.18] };
+    }
+    // A goods truck as on Aizawl's roads: a cab in its colour, a wooden body behind on the chassis, big wheels
+    function truck() {
+      const P = parts(), G = parts(), H = parts(), W = parts();
+      const wh = [2.45, -1.75], WOOD = '#9c6b3d', PLANK = '#6f4a28', POST = '#5a3b20';
+      P.side(arches([[1.62, 0.66], [1.62, 2.7], [2.85, 2.78], [3.22, 2.5], [3.36, 1.62], [3.4, 0.66]], 0.52, [2.45], 0.6), 1, 0.1);   // the cab
+      W.box(2.32, 2.79, 0, 1.15, 0.08, 0.98, '#f4f4f0');                                                                  // its white roof
+      W.box(2.5, 1.32, 0, 1.78, 0.1, 1.012, '#f4f4f0');                                                                   // a white stripe round it
+      G.bar(3.37, 1.72, 3.24, 2.46, 0, 0.86, 0.04);                                                                       // the windscreen
+      G.box(2.35, 2.12, 0, 0.82, 0.58, 1.012);                                                                            // the side windows
+      P.box(3.42, 1.06, 0, 0.04, 0.46, 0.62, '#1a1b1c'); for (let i = 0; i < 4; i++) H.box(3.44, 0.9 + i * 0.1, 0, 0.02, 0.025, 0.56);   // the grille
+      P.box(3.44, 0.62, 0, 0.14, 0.22, 1.02, '#2a2b2d');                                                                  // the bumper
+      P.box(-0.4, 0.74, 0, 6.0, 0.18, 0.78, DK);                                                                          // the chassis
+      P.box(-0.9, 1.0, 0, 5.0, 0.12, 1.0, DK);                                                                            // the body's floor
+      W.box(-0.9, 1.68, 0, 4.98, 1.25, 0.99, WOOD);                                                                       // the wooden body
+      for (const v of [1.33, 1.66, 1.99]) W.box(-0.9, v, 0, 5.0, 0.035, 1.006, PLANK);                                     // its planks
+      for (const u of [-3.37, -2.15, -0.9, 0.35, 1.56]) W.box(u, 1.68, 0, 0.08, 1.28, 1.012, POST);                        // its posts
+      W.box(-0.9, 2.33, 0, 5.04, 0.06, 1.014, POST);                                                                      // the top rail
+      W.box(-3.41, 1.16, 0, 0.02, 0.12, 0.92, '#c0392b');                                                                 // a red strip across the back
+      P.box(0.75, 0.72, 0.43, 0.7, 0.34, 0.12, '#b9bdc0');                                                                // the fuel tank
+      for (const u of wh) P.disc(u, 0.5, 0, 0.6, 0.6, '#0d0d0e');                                                         // the dark wheel wells, inside the wheels
+      for (const e of [-1, 1]) { P.bar(3.0, 2.4, 3.3, 2.36, e * 0.55, 0.03, 0.03, DK); P.box(3.32, 2.1, e * 0.6, 0.05, 0.34, 0.1, DK); }   // mirrors on their arms
+      return { paint: P.done(), glass: G.done(), chrome: H.done(), trim: W.done(), len: 6.8, hgt: 2.85, wheels: [[2.45, 0.5], [-1.75, 0.5]], track: 0.4, tw: 0.32,
+        head: [3.42, 1.02, 0.38, 0.16, 0.13], tail: [-3.42, 1.0, 0.42, 0.12, 0.14], plate: [-3.43, 0.74], front: [3.47, 0.56] };
     }
     // The two-wheelers. Each says where its rider sits: hip, knee and foot (forward u, up v), the grips
     // (and how far apart) and how far the rider leans forward.
@@ -2895,10 +2978,16 @@
     };
     const paintMat = VMAT.paint[0], chromeMat = VMAT.chrome[0];
     const vpool = (geo, kind, max) => { const m = pool(geo, VMAT[kind][0], max); m.userData.vm = kind; return m; };
-    const MODELS = { car: hatchback(), sedan: sedan(), suv: jeep(), bus: cityBus(), scooter: scooter(), bike: motorbike(), classic: classic(), sport: sport() };
+    // the city bus's name: in white along its sides and on its back, and in amber lights on the board over its windscreen
+    const letters = (w, h, bg, fg, px) => tex(w, h, g => { if (bg) { g.fillStyle = bg; g.fillRect(0, 0, w, h); } g.font = `800 ${px}px "Plus Jakarta Sans", system-ui, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      if (!bg) { g.lineWidth = px * 0.16; g.strokeStyle = 'rgba(0,0,0,.35)'; g.strokeText('AIZAWL CITY BUS', w / 2, h / 2 + 1); } g.fillStyle = fg; g.fillText('AIZAWL CITY BUS', w / 2, h / 2 + 1); });
+    const busSideMat = new T.MeshLambertMaterial({ map: letters(512, 64, '', '#ffffff', 44), transparent: true, alphaTest: 0.3 });
+    const busBoardMat = new T.MeshBasicMaterial({ map: letters(512, 56, '#141414', '#ffb21a', 40), toneMapped: false });
+    const textGeo = new T.PlaneGeometry(1, 1), busSideM = pool(textGeo, busSideMat, 36), busBoardM = pool(textGeo, busBoardMat, 12);
+    const MODELS = { car: hatchback(), sedan: sedan(), suv: jeep(), bus: cityBus(), truck: truck(), scooter: scooter(), bike: motorbike(), classic: classic(), sport: sport() };
     MODELS.taxi = MODELS.car;
     for (const M of new Set(Object.values(MODELS))) {
-      const max = M === MODELS.bus ? 12 : 60;
+      const max = M === MODELS.bus || M === MODELS.truck ? 12 : 60;
       M.pPaint = vpool(M.paint, 'paint', max);
       if (M.glass) M.pGlass = vpool(M.glass, 'glass', max);
       if (M.trim) M.pTrim = vpool(M.trim, 'paint', max);
@@ -2944,7 +3033,7 @@
     })();
     const logGeo = new T.CylinderGeometry(1, 1, 1, 10).rotateZ(Math.PI / 2);
     const logMats = [new T.MeshLambertMaterial({ color: '#7a4b2f' }), ...Array(2).fill(new T.MeshLambertMaterial({ map: tex(32, 32, g => { g.fillStyle = '#d6a46c'; g.fillRect(0, 0, 32, 32); g.strokeStyle = '#a8743f'; g.lineWidth = 1.5; for (const r of [4, 8, 12]) { g.beginPath(); g.arc(16, 16, r, 0, 7); g.stroke(); } }) }))];
-    const vBox = pool(box, plainMat, 400), vGlow = pool(box, glowMat, 300), tyreM = vpool(tyreGeo, 'tyre', 260), rimM = vpool(rimGeo, 'chrome', 260), spokeM = vpool(spokeGeo, 'chrome', 60), plateM = pool(plateGeo, plateMat, 120);
+    const vBox = pool(box, plainMat, 400), vGlow = pool(box, glowMat, 300), tyreM = vpool(tyreGeo, 'tyre', 260), rimM = vpool(rimGeo, 'chrome', 260), spokeM = vpool(spokeGeo, 'chrome', 60), plateM = pool(plateGeo, plateMat, 120), haloM = pool(haloGeo, haloMat, 240), beamM = pool(beamGeo, beamMat, 60);
     const coinM = pool(disc, coinMat, 60), rockM = pool(rockGeo, plainMat, 24), logM = pool(logGeo, logMats, 24), boardM = pool(box, stripeMat, 24);
     const pUp = pool(capUp, plainMat, 80), pLimb = pool(capHang, plainMat, 700), pRound = pool(ball, plainMat, 320), pPuan = pool(skirt, puanMat, 30), pTorso = pool(torsoGeo, plainMat, 110), pBox = pool(box, plainMat, 260), pCone = pool(cone, plainMat, 30);
     const JACKETS = ['#2c3e50', '#7a3b2e', '#3b5f3a', '#1f3a68', '#5b4a3a', '#8e1b3a', '#d8d4cc', '#4a4f57'], HELMETS = ['#f2f2ee', '#231e16', '#c0392b', '#1565c0', '#f2c230', '#6b6e70'];
@@ -3045,18 +3134,31 @@
         put(shadows, 0, 0.03, 0, c.wid * 1.2, 1, c.len * 1.08, '#000');
         const M = MODELS[c.kind], sl = c.len / M.len, sy = c.hgt / M.hgt, sw = M.single ? 1 : c.wid, stop = c.slowing ? '#ff3b2f' : '#8e2620';
         put(M.pPaint, 0, 0, 0, sw, sy, sl, c.col); if (M.pGlass) put(M.pGlass, 0, 0, 0, sw, sy, sl, '#ffffff'); if (M.pTrim) put(M.pTrim, 0, 0, 0, sw, sy, sl, '#ffffff'); put(M.pChrome, 0, 0, 0, sw, sy, sl, '#ffffff');
-        for (const [u, r] of M.wheels) for (const e of (M.single ? [0] : [-1, 1])) { const rr = r * sy, spin = c.at * c.dir / rr; put(tyreM, e * sw * M.track, rr, u * sl, M.tw, rr, rr, '#ffffff'); put(M.spokes ? spokeM : rimM, e * sw * M.track, rr, u * sl, M.spokes ? 0.2 : M.tw, rr, rr, '#ffffff', spin); }   // the wheels turn as it goes
+        // the wheels turn as it goes, to the eye no faster than about two turns a second: any faster and the
+        // spokes would seem to stand still or turn back, as wheels do in a film
+        c.spin = ((c.spin || 0) + Math.min(Math.abs(c.v) / (M.wheels[0][1] * sy), 13) * (mode === 'playing' ? dt : 0)) % (Math.PI * 2);
+        for (const [u, r] of M.wheels) for (const e of (M.single ? [0] : [-1, 1])) { const rr = r * sy; put(tyreM, e * sw * M.track, rr, u * sl, M.tw, rr, rr, '#ffffff'); put(M.spokes ? spokeM : rimM, e * sw * M.track, rr, u * sl, M.spokes ? 0.2 : M.tw, rr, rr, '#ffffff', c.spin); }
         // lights: headlights in front, tail lights that glow brighter when it slows
         const [hu, hv, hx, hw, hh] = M.head, [tu, tv, tx, tw, th] = M.tail;
         for (const e of (M.single ? [0] : [-1, 1])) {
           put(vGlow, e * sw * hx, (hv - hh / 2) * sy, hu * sl, sw * hw, hh * sy, 0.04, '#fffbe6');
           put(vGlow, e * sw * tx, (tv - th / 2) * sy, tu * sl, sw * tw, th * sy, 0.04, stop);
+          // at night each lamp glows, and the headlamps throw their beam down the road ahead
+          if (cond.night) {
+            put(haloM, e * sw * hx, (hv - hh / 2) * sy, hu * sl + 0.08, 1.5, 1.5, 1.5, '#fff0d0');
+            put(haloM, e * sw * tx, (tv - th / 2) * sy, tu * sl - 0.08, 0.75, 0.75, 0.75, c.slowing ? '#ff4030' : '#a8221a');
+          }
         }
+        if (cond.night) put(beamM, 0, 0.05, hu * sl + 0.1, M.single ? 2.4 : sw * 2.2, 1, 15, '#ffffff');
         const yellow = c.kind === 'taxi' || c.kind === 'bus' ? '#ffd34d' : '#ffffff';
         put(plateM, 0, M.plate[1] * sy, M.plate[0] * sl - 0.02, M.single ? 0.24 : 0.5, M.single ? 0.1 : 0.13, 1, yellow);
         if (M.front) put(plateM, 0, M.front[1] * sy, M.front[0] * sl + 0.02, 0.5, 0.13, 1, yellow, 0, Math.PI);
         if (c.kind === 'taxi') put(vGlow, 0, 1.47 * sy, -0.4 * sl, 0.5, 0.14, 0.24, '#ffd34d');                    // the roof sign
-        if (M.board) put(vGlow, 0, (M.board[1] - M.board[3] / 2) * sy, M.board[0] * sl, sw * M.board[2], M.board[3] * sy, 0.04, '#ffb300');   // the route board
+        if (M.board) {     // the board over the windscreen, and the name along both sides and on the back
+          put(busBoardM, 0, M.board[1] * sy, M.board[0] * sl + 0.03, sw * M.board[2], M.board[3] * sy, 1, '#ffffff');
+          for (const e of [-1, 1]) put(busSideM, e * (sw / 2 + 0.015), 1.36 * sy, -0.6 * sl, 3.4, 0.42, 1, '#ffffff', 0, -e * Math.PI / 2);
+          put(busSideM, 0, 1.62 * sy, -4.05 * sl, 1.7, 0.21, 1, '#ffffff', 0, Math.PI);
+        }
         if (M.rider) {     // the rider, and now and then someone behind
           if (!c.jk) { const pick = a => a[Math.random() * a.length | 0]; c.jk = pick(JACKETS); c.hm = pick(HELMETS); c.lg = pick(LEGS); c.bag = Math.random() < 0.3 ? pick(BAGS) : ''; c.jk2 = pick(JACKETS); c.hm2 = pick(HELMETS); c.lg2 = pick(LEGS); }
           rideOn(M.rider, c.jk, c.hm, c.lg, false, c.pillion ? '' : c.bag);
@@ -3334,8 +3436,11 @@
     for (const e of [-1, 1]) part(plane, logo, e * 0.258, 0.84, -0.69, 0.44, 0.22, 1).rotation.y = -e * Math.PI / 2;
     into = scoot;
     // our own lamp: a spot light from the headlight, down the road (off by day)
-    const head = new T.SpotLight('#fff1d2', 0, 46, 0.5, 0.55, 1.3); head.position.set(0, 1.05, 0.95); head.target.position.set(0, 0, 14);
+    const head = new T.SpotLight('#fff1d2', 0, 60, 0.46, 0.8, 1.2); head.position.set(0, 1.05, 0.95); head.target.position.set(0, 0, 14);
     scoot.add(head, head.target);
+    // and its beam on the road ahead, and the glow of its tail light (seen from behind)
+    const ownBeam = new T.Mesh(beamGeo, beamMat); ownBeam.position.set(0, 0.05, 0.9); ownBeam.scale.set(4.2, 1, 22); ownBeam.renderOrder = 1; scoot.add(ownBeam);
+    const ownTail = new T.InstancedMesh(haloGeo, haloMat, 1); ownTail.setMatrixAt(0, new T.Matrix4().compose(new T.Vector3(0, 0.64, -1.02), new T.Quaternion(), new T.Vector3(0.7, 0.7, 0.7))); ownTail.setColorAt(0, C('#a8221a')); ownTail.frustumCulled = false; scoot.add(ownTail);
     // the rain: streaks falling round the camera
     const rainPos = (() => { const a = new Float32Array(1400 * 6); for (let i = 0; i < a.length; i += 6) { const x = (Math.random() - 0.5) * 50, y = Math.random() * 22 - 2, z = (Math.random() - 0.5) * 50; a.set([x, y, z, x + 0.06, y - 0.65, z + 0.1], i); } return new T.Float32BufferAttribute(a, 3); })();
     const rainG = new T.LineSegments(new T.BufferGeometry().setAttribute('position', rainPos), new T.LineBasicMaterial({ color: '#cfd9e0', transparent: true, opacity: 0.45 }));
@@ -3343,7 +3448,7 @@
     const riderShadow = new T.Mesh(blob, shadowMat); riderShadow.scale.set(0.8, 1, 1.9); scene.add(riderShadow);
     scoot.traverse(m => { m.castShadow = !!m.isMesh; });
     scene.add(scoot);
-    let painted = '', shown = '', dressed = '', camX = 0;
+    let painted = '', shown = '', dressed = '', camX = 0, ownSpin = 0;
 
     // ---------- what the shiny things mirror: our own sky, the hills and the sun, made once ----------
     const pmrem = new T.PMREMGenerator(renderer), envScene = new T.Scene();
@@ -3402,14 +3507,15 @@
       // Night and rain, over the day's light: a dark sky, the moon instead of the sun, the street lamps and
       // lit windows on, our own lamp on the road; or a grey sky, a nearer haze, a wet road and the rain
       const night = cond.night, rain = cond.rain, dts = Math.min(0.05, ms / 1000);
-      nightU.value = night ? 1 : 0; poolMat.visible = night; lampMat.color.set(night ? '#ffe2a8' : '#4a4a48'); head.intensity = night ? 38 : 0;
+      nightU.value = night ? 1 : 0; poolMat.visible = beamMat.visible = haloMat.visible = night; lampMat.color.set(night ? '#ffe2a8' : '#4a4a48'); head.intensity = night ? 58 : 0;
+      fogU.near.value = night ? 12 : 25; fogU.far.value = far * 0.75;
       if (night) {
         fogCol.set(rain ? '#1c232c' : '#151d2b'); sky.material.uniforms.top.value.set('#060c1a'); sun.color.set('#9db2ee'); ridgeMat.color.set('#283246');
       } else if (rain) {
         fogCol.set('#a6b1b7'); sky.material.uniforms.top.value.set('#7c8993'); sun.color.multiplyScalar(0.8); ridgeMat.color.set('#b9c0c4');
       }
       if (night || rain) { scene.fog.color.copy(fogCol); scene.fog.near = night ? 10 : 14; scene.fog.far = far * (night ? 0.55 : 0.6); sky.material.uniforms.low.value.copy(fogCol); }
-      sun.intensity = night ? 0.28 : rain ? 1.2 : 2.6; hemi.intensity = night ? 0.32 : rain ? 1.5 : 2.1;
+      sun.intensity = night ? 0.24 : rain ? 1.2 : 2.6; hemi.intensity = night ? 0.24 : rain ? 1.5 : 2.1;
       groundMat.color.setScalar(rain ? 0.8 : 1);
       rainG.visible = rain;
       if (rain) {
@@ -3437,9 +3543,10 @@
       riderShadow.position.set(fS.x, fS.y + 0.03, fS.z); riderShadow.rotation.y = fS.yaw;
       // the sun follows a little ahead of the scooter, so its shadows cover what you see near you
       frame3(s + 14, 0, fA); sun.target.position.set(fA.x, fA.y, fA.z); sun.position.copy(sun.target.position).addScaledVector(sunDir, 150);
-      for (const w of wheels) w.rotation.x = s / 0.26;
+      ownSpin = (ownSpin + Math.min(Math.abs(v) / 0.26, 13) * (mode === 'playing' ? dts : 0)) % (Math.PI * 2); for (const w of wheels) w.rotation.x = ownSpin;   // (as the others' wheels)
       const brake = braking || mode === 'crashing' ? 1 : Math.max(0, Math.min(1, roadAt(route.grade, s, 1e-3) * 8));
       tailMat.color.set(brake > 0.05 ? '#ff4a3a' : '#b8352a');
+      if (night) { ownTail.setColorAt(0, C(brake > 0.05 ? '#ff4030' : '#a8221a')); ownTail.instanceColor.needsUpdate = true; }
       placeAll(far, Math.min(0.1, ms / 1000));
       // The camera rides behind the scooter and above, the way it is heading, looking down the road
       // (in a tight bend it swings round a moment later, so the scooter stays in the picture)
@@ -4571,6 +4678,8 @@
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
     // for the tests: ride a given road; and every road with how many crossings and jams it has
     useRoute: id => { route = [...DATA.routes, ...CITY.jobs.map(routeOf)].find(r => r.id === id); reset(); return route.length; }, go: () => start(),
+    // for the tests: a vehicle of a kind, so far ahead, in a lane, at a speed, going our way (1) or towards us (-1)
+    car: (kind, ahead, lane = 0, v = 0, dir = 1) => { cars.push(newCar(kind, lane, s + ahead, v, dir)); return cars.length; },
     plans: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; out.push([r.id, Math.round(r.length), planCrossings().length, planJams().length]); } route = keep; reset(); return out; },
     auditAll: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; const a = R3.audit(); out.push({ id: r.id, ...a }); } route = keep; R3.audit(); return out; },
     audit3All: () => { const keep = route, out = []; for (const r of [...DATA.routes, ...CITY.jobs.map(routeOf)]) { route = r; jams = planJams(); crossings = planCrossings(); R3.setPlan(); out.push({ id: r.id, ...R3.audit3() }); } route = keep; reset(); return out; },

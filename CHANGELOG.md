@@ -4,6 +4,30 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.47.0 (3 November 2026)
+
+### Aizawl Ride: night lights that look real, trucks, and wheels that turn
+
+- Trucks are on the road now: a goods truck with its cab in yellow, blue,
+  red, green, white or orange, and a wooden body behind.
+- The city bus says AIZAWL CITY BUS along both its sides and on its back,
+  and in amber lights on the board over its windscreen.
+- Every vehicle's wheels can be seen turning. The bus's wheels were hidden
+  behind its dark wheel wells, and on the others the wheels turned so fast
+  that they seemed to stand still or turn back, as wheels do in a film;
+  now they turn no faster to the eye than about two turns a second.
+- Each street lamp glows at night, a soft halo round its head, and throws a
+  warm pool of light on the road that fades out at its edges and lies on the
+  road as it climbs.
+- Your scooter's lamp throws a beam down the road ahead, bright just in
+  front and spreading as it fades, and its tail light glows red, brighter
+  when you brake.
+- Other vehicles' headlamps and tail lights glow too, and their headlamps
+  light the road in front of them.
+- The houses' walls stay dim under the moon, so the lamps and the lit windows
+  stand out. Lit windows are of three kinds: warm bulbs, white tube lights
+  and now and then the blue of a television.
+
 ## 1.46.0 (3 November 2026)
 
 ### Aizawl Ride: houses in Aizawl's colours, and no more holes in the ground
