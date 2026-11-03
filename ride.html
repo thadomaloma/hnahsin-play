@@ -636,7 +636,8 @@
   const SLOTS = [['helmet', 'Helmet'], ['jacket', 'Jacket'], ['box', 'Delivery box']];
   // Words for the question at the end of a ride: the parcels, the land and the road
   const QUIZ_WORDS = [...PARCELS.map(([m, e]) => [m, e]), ...SCENE_WORDS.map(([m, e]) => [m, e]),
-    ['motor', 'a car'], ['mi', 'a person'], ['kalkawng', 'a path'], ['tlar', 'a row, a queue'], ['dawhtheihna', 'patience'], ['zah', 'respect'], ['fimkhur', 'careful'], ['hmanhmawh', 'hurried']];
+    ['motor', 'a car'], ['mi', 'a person'], ['kalkawng', 'a path'], ['tlar', 'a row, a queue'], ['dawhtheihna', 'patience'], ['zah', 'respect'], ['fimkhur', 'careful'], ['hmanhmawh', 'hurried'],
+    ['leimin', 'a landslide'], ['kawng khur', 'a pothole'], ['kawng siam', 'road works']];
   // The coach's tips for the first rides, each shown until it has been done once
   const TIPS = ['steer', 'block', 'coin', 'queue', 'cross'];
   // Festivals: Krismas (from the first of December to Epiphany: Aizawl's streets hung with lights and
@@ -913,13 +914,37 @@
     const end = route.length - 40;
     while (nextRow < Math.min(end, s + VIEW * SEG + 40)) {
       if (!jams.some(j => nextRow > j.at - 70 && nextRow < j.at + 70) && !crossings.some(c => Math.abs(nextRow - c.at) < 30)) {     // none in a queue or on a zebra crossing
-        const blocked = Math.random() * 2 | 0, open = 1 - blocked;
-        things.push({ kind: ['rock', 'log', 'barrier'][Math.random() * 3 | 0], lane: blocked, at: nextRow, hit: false });
+        const t = roadblock(Math.random() * 2 | 0, nextRow), open = 1 - t.lane;
+        things.push(t);
         if (Math.random() < 0.7) for (let i = 1; i <= 4; i++) { things.push({ kind: 'coin', lane: open, at: nextRow + 4 + i * 3.2, got: false }); coinsPut++; }
+        nextRow += t.len / 2;
       }
       nextRow += Math.max(18, 1.3 * (v || 12)) + Math.random() * 18;
     }
   }
+
+  // What blocks a lane, as it does on Aizawl's roads: a car parked by the kerb (its hazard lights on), a goods
+  // truck unloading with its sacks set down behind it, a city bus at its stop (these by the kerb, in the left
+  // lane); road works behind barricades and cones, a pothole being mended, a landslide (leimin: more of them in
+  // the rain, and out of town). Each is as long and as wide as it is drawn.
+  const ROAD_EDGE = 3.9;       // (the road's half width, as drawn)
+  function roadblock(lane, at) {
+    const near = housesNear(Math.floor(at / SEG)), slide = (near <= 6 ? 0.3 : near >= 30 ? 0.04 : 0.12) * (cond.rain ? 2.5 : 1);
+    const pick = list => { let r = Math.random() * list.reduce((a, [, w]) => a + w, 0); for (const [k, w] of list) if ((r -= w) <= 0) return k; return list[0][0]; };
+    // (the tests may ask for one kind)
+    const kind = (window.__ride && window.__blockKind) || pick(lane === 0 ? [['parked', 0.34], ['unload', 0.12], ['busstop', near >= 18 ? 0.1 : 0.02], ['works', 0.18], ['pothole', 0.12], ['slide', slide]]
+      : [['works', 0.45], ['pothole', 0.3], ['slide', slide * 2]]);
+    const t = { kind, lane, at, hit: false, seed: Math.random(), back: 0 };
+    if (kind === 'parked' || kind === 'unload' || kind === 'busstop') {
+      const ck = kind === 'busstop' ? 'bus' : kind === 'unload' ? 'truck' : ['car', 'sedan', 'suv', 'taxi', 'car'][Math.random() * 5 | 0], K = KINDS[ck];
+      t.car = { kind: ck, col: K.cols[Math.random() * K.cols.length | 0], len: K.len, wid: K.wid, hgt: K.hgt, x: -(ROAD_EDGE - 0.25 - K.wid / 2), dir: 1, v: 0, vx: 0, slowing: false, at, hazard: true };
+      t.lane = 0; t.x = t.car.x; t.half = K.wid / 2; t.len = K.len; if (kind === 'unload') t.back = 1.7;     // (the sacks, behind the truck)
+    } else { t.x = LANES[lane]; t.half = 1.15; t.len = kind === 'works' ? 7 : kind === 'slide' ? 4.4 : 2.6; }
+    return t;
+  }
+  // the words for them, said the first time one is ahead
+  const BLOCK_WORDS = { parked: ['motor ding', 'a parked car · go round it'], unload: ['thil phurh', 'a load · a truck unloading, go round'], busstop: ['bus ding', 'the bus has stopped · go round'],
+    works: ['kawng siam', 'road works · go round'], pothole: ['kawng khur', 'a pothole · go round'], slide: ['leimin', 'a landslide · go round'] };
 
   // ---------- traffic: cars, bikes, buses and Aizawl's queues ----------
   const KINDS = {
@@ -948,7 +973,7 @@
     return out.slice(0, route.length > 2500 ? 3 : 2);
   }
   const carNear = (lane, from, to) => cars.some(c => c.lane === lane && c.at > from && c.at < to);
-  const thingNear = (lane, from, to) => things.some(t => t.kind !== 'coin' && t.lane === lane && t.at > from && t.at < to);
+  const thingNear = (lane, from, to) => things.some(t => t.kind !== 'coin' && t.lane === lane && t.at + t.len / 2 > from && t.at - t.len / 2 - t.back < to);
   function traffic(dt) {
     const far = s + VIEW * SEG - 6;
     // New traffic far ahead: slower cars on our side, and cars coming the other way
@@ -1008,7 +1033,7 @@
         if (g > -1 && g < gap) { gap = Math.max(0, g); aheadV = 0; }
       }
       if (d > 0) {
-        const block = things.find(t => t.kind !== 'coin' && t.lane === c.lane && t.at > c.at && t.at - c.at < 22);
+        const block = things.find(t => t.kind !== 'coin' && t.lane === c.lane && t.at + t.len / 2 > c.at && t.at - t.len / 2 - t.back - c.at < 22);
         if (block && !c.jam) {
           const other = 1 - c.lane;
           if (c.lane < 2 && !carNear(other, c.at - 8, c.at + 14) && !thingNear(other, c.at - 4, c.at + 24) && !(lane === other && Math.abs(s - c.at) < 8)) c.lane = other;
@@ -1025,6 +1050,7 @@
     cars = cars.filter(c => c.at > s - 12 && c.at < s + VIEW * SEG + 40);
     // Hints and words: a car for the first time, and the brake when a queue is ahead
     if (!eventWords.has('motor') && cars.some(c => c.dir > 0 && !c.two && c.at - s < 70 && c.at > s)) say('motor', 'car');
+    { const b = things.find(t => BLOCK_WORDS[t.kind] && !t.hit && t.at > s && t.at - s < 45); if (b && !eventWords.has(BLOCK_WORDS[b.kind][0])) say(...BLOCK_WORDS[b.kind]); }
     const queue = jams.find(j => (j.state === 'stopped' || j.state === 'waiting') && j.cars && j.cars.some(c => c.at - s < 120 && c.at > s));
     if (queue && !eventWords.has('tlar')) say('tlar', 'row · a queue ahead, hold Brake');
     brakeHint(!!queue && v > 4 && !braking);
@@ -1423,7 +1449,7 @@
       if (a.idx === route.curv.length - 1 || (a.wz <= route.length && a.wz + SEG > route.length)) finish(a);
       if (signAt.has(a.idx)) noHonking(a);
       if (walkSignAt.has(a.idx)) crossingSign(a);
-      for (const t of (by.get(i) || []).sort((p, q) => q.at - p.at)) t.dir ? vehicle(t, P, i) : t.look ? person(t, P, i) : thing(t, P, i);
+      for (const t of (by.get(i) || []).sort((p, q) => q.at - p.at)) t.dir ? vehicle(t, P, i) : t.car ? vehicle(t.car, P, i) : t.look ? person(t, P, i) : thing(t, P, i);
       ctx.globalAlpha = 1;
       ctx.restore();
     }
@@ -1573,17 +1599,21 @@
       ctx.fillStyle = '#ffd34d'; ctx.beginPath(); ctx.ellipse(x, y - r * 1.6, r * 0.72 * Math.max(.25, sq), r * 0.72, 0, 0, 7); ctx.fill();
       return;
     }
-    ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(x, y, 1.1 * k, 0.28 * k, 0, 0, 7); ctx.fill();
-    if (t.kind === 'rock') {
-      ctx.fillStyle = '#8a8f86'; ctx.beginPath(); ctx.moveTo(x - 1 * k, y); ctx.lineTo(x - 0.8 * k, y - 0.6 * k); ctx.lineTo(x - 0.2 * k, y - 1 * k); ctx.lineTo(x + 0.6 * k, y - 0.8 * k); ctx.lineTo(x + 1 * k, y - 0.2 * k); ctx.lineTo(x + 0.8 * k, y); ctx.fill();
-      ctx.fillStyle = '#b3b8ad'; ctx.beginPath(); ctx.moveTo(x - 0.7 * k, y - 0.55 * k); ctx.lineTo(x - 0.2 * k, y - 0.95 * k); ctx.lineTo(x + 0.1 * k, y - 0.7 * k); ctx.fill();
-    } else if (t.kind === 'log') {
-      ctx.fillStyle = '#8d5939'; ctx.beginPath(); ctx.roundRect(x - 1.1 * k, y - 0.7 * k, 2.2 * k, 0.6 * k, 0.3 * k); ctx.fill();
-      ctx.fillStyle = '#d29b68'; ctx.beginPath(); ctx.ellipse(x - 1.05 * k, y - 0.4 * k, 0.16 * k, 0.3 * k, 0, 0, 7); ctx.fill();
-    } else {
+    ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(x, y, 1.2 * k, 0.3 * k, 0, 0, 7); ctx.fill();
+    const cone = cx => { ctx.fillStyle = '#ff6a1a'; ctx.beginPath(); ctx.moveTo(cx - 0.2 * k, y); ctx.lineTo(cx, y - 0.7 * k); ctx.lineTo(cx + 0.2 * k, y); ctx.fill(); ctx.fillStyle = '#f6f4ee'; ctx.fillRect(cx - 0.11 * k, y - 0.42 * k, 0.22 * k, 0.1 * k); };
+    if (t.kind === 'slide') {      // a landslide: a heap of mud with rocks in it
+      ctx.fillStyle = '#6c5038'; ctx.beginPath(); ctx.ellipse(x, y, 1.3 * k, 0.55 * k, 0, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = '#8a8f86'; for (const [dx, r] of [[-0.6, 0.22], [0.3, 0.28], [0.85, 0.16]]) { ctx.beginPath(); ctx.arc(x + dx * k, y - r * k, r * k, 0, 7); ctx.fill(); }
+    } else if (t.kind === 'pothole') {      // a pothole, with cones either side
+      ctx.fillStyle = '#262321'; ctx.beginPath(); ctx.ellipse(x, y - 0.05 * k, 0.75 * k, 0.16 * k, 0, 0, 7); ctx.fill();
+      cone(x - 0.95 * k); cone(x + 0.95 * k);
+    } else {      // road works: the barricade, a cone, and the sign
       ctx.fillStyle = '#f3efe4'; ctx.fillRect(x - 1.1 * k, y - 1 * k, 2.2 * k, 0.45 * k);
       ctx.fillStyle = '#d4483b'; for (let j = 0; j < 4; j++) ctx.fillRect(x - 1.1 * k + j * 0.55 * k, y - 1 * k, 0.27 * k, 0.45 * k);
       ctx.fillStyle = '#4b4b4b'; ctx.fillRect(x - 0.95 * k, y - 0.55 * k, 0.12 * k, 0.55 * k); ctx.fillRect(x + 0.83 * k, y - 0.55 * k, 0.12 * k, 0.55 * k);
+      ctx.fillStyle = '#f2c230'; ctx.fillRect(x - 0.5 * k, y - 1.75 * k, 1 * k, 0.5 * k); ctx.fillStyle = '#231e16'; ctx.fillRect(x - 0.06 * k, y - 1.25 * k, 0.12 * k, 0.25 * k);
+      ctx.font = `800 ${Math.max(6, 0.17 * k)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('KAWNG SIAM', x, y - 1.6 * k); ctx.fillText('MEK', x, y - 1.4 * k);
+      cone(x + 1.35 * k);
     }
   }
   // A vehicle: from behind when it goes our way (tail lights glow when it slows), from the front
@@ -3117,10 +3147,13 @@ void main() {
       for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), k = 0.8 + rnd(Math.round(x * 50) + Math.round(z * 31), Math.round(y * 70)) * 0.4; p.setXYZ(i, x * k, y * k, z * k); }
       g.computeVertexNormals(); return g;
     })();
-    const logGeo = new T.CylinderGeometry(1, 1, 1, 10).rotateZ(Math.PI / 2);
-    const logMats = [new T.MeshLambertMaterial({ color: '#7a4b2f' }), ...Array(2).fill(new T.MeshLambertMaterial({ map: tex(32, 32, g => { g.fillStyle = '#d6a46c'; g.fillRect(0, 0, 32, 32); g.strokeStyle = '#a8743f'; g.lineWidth = 1.5; for (const r of [4, 8, 12]) { g.beginPath(); g.arc(16, 16, r, 0, 7); g.stroke(); } }) }))];
     const vBox = pool(box, plainMat, 400), vGlow = pool(box, glowMat, 300), tyreM = vpool(tyreGeo, 'tyre', 260), rimM = vpool(rimGeo, 'chrome', 260), spokeM = vpool(spokeGeo, 'chrome', 60), plateM = pool(plateGeo, plateMat, 120), haloM = pool(haloGeo, haloMat, 240), beamM = pool(beamGeo, beamMat, 60);
-    const coinM = pool(disc, coinMat, 60), rockM = pool(rockGeo, plainMat, 24), logM = pool(logGeo, logMats, 24), boardM = pool(box, stripeMat, 24);
+    const coinM = pool(disc, coinMat, 60), rockM = pool(rockGeo, plainMat, 60), boardM = pool(box, stripeMat, 24);
+    // for what blocks the road: traffic cones (and their white bands), the pothole, the road works' sign
+    const coneM = pool(new T.ConeGeometry(0.5, 1, 12).translate(0, 0.5, 0), plainMat, 80), bandM = pool(new T.CylinderGeometry(0.48, 0.58, 1, 12).translate(0, 0.5, 0), plainMat, 80);
+    const holeM = pool(new T.CircleGeometry(0.5, 16).rotateX(-Math.PI / 2), new T.MeshLambertMaterial({ polygonOffset: true, polygonOffsetFactor: -2 }), 24);
+    const signM = pool(new T.PlaneGeometry(1, 1), new T.MeshLambertMaterial({ map: tex(256, 128, g => { g.fillStyle = '#f2c230'; g.fillRect(0, 0, 256, 128); g.strokeStyle = '#231e16'; g.lineWidth = 8; g.strokeRect(6, 6, 244, 116);
+      g.fillStyle = '#231e16'; g.font = '800 40px "Plus Jakarta Sans", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('KAWNG', 128, 44); g.fillText('SIAM MEK', 128, 88); }), side: T.DoubleSide }), 12);
     const pUp = pool(capUp, plainMat, 80), pLimb = pool(capHang, plainMat, 700), pRound = pool(ball, plainMat, 320), pPuan = pool(skirt, puanMat, 30), pTorso = pool(torsoGeo, plainMat, 110), pBox = pool(box, plainMat, 260), pCone = pool(cone, plainMat, 30);
     const JACKETS = ['#2c3e50', '#7a3b2e', '#3b5f3a', '#1f3a68', '#5b4a3a', '#8e1b3a', '#d8d4cc', '#4a4f57'], HELMETS = ['#f2f2ee', '#231e16', '#c0392b', '#1565c0', '#f2c230', '#6b6e70'];
     const LEGS = ['#2c3e50', '#3b5b8a', '#34495e', '#1f1f1f', '#5b4a3a', '#46628f'], BAGS = ['#1f1f1f', '#2c3e50', '#7a3b2e', '#3b5f3a'];   // trousers and jeans; backpacks
@@ -3211,56 +3244,90 @@ void main() {
       }
     }
 
+    // A vehicle, in the frame set by base(): its body, wheels, lights, plates and rider (and its hazard lights, if on)
+    function drawCar(c, dt) {
+      put(shadows, 0, 0.03, 0, c.wid * 1.2, 1, c.len * 1.08, '#000');
+      const M = MODELS[c.kind], sl = c.len / M.len, sy = c.hgt / M.hgt, sw = M.single ? 1 : c.wid, stop = c.slowing ? '#ff3b2f' : '#8e2620';
+      put(M.pPaint, 0, 0, 0, sw, sy, sl, c.col); if (M.pGlass) put(M.pGlass, 0, 0, 0, sw, sy, sl, '#ffffff'); if (M.pTrim) put(M.pTrim, 0, 0, 0, sw, sy, sl, '#ffffff'); put(M.pChrome, 0, 0, 0, sw, sy, sl, '#ffffff');
+      // the wheels turn as it goes, to the eye no faster than about two turns a second: any faster and the
+      // spokes would seem to stand still or turn back, as wheels do in a film
+      c.spin = ((c.spin || 0) + Math.min(Math.abs(c.v) / (M.wheels[0][1] * sy), 13) * (mode === 'playing' ? dt : 0)) % (Math.PI * 2);
+      for (const [u, r] of M.wheels) for (const e of (M.single ? [0] : [-1, 1])) { const rr = r * sy; put(tyreM, e * sw * M.track, rr, u * sl, M.tw, rr, rr, '#ffffff'); put(M.spokes ? spokeM : rimM, e * sw * M.track, rr, u * sl, M.spokes ? 0.2 : M.tw, rr, rr, '#ffffff', c.spin); }
+      // lights: headlights in front, tail lights that glow brighter when it slows
+      const [hu, hv, hx, hw, hh] = M.head, [tu, tv, tx, tw, th] = M.tail;
+      for (const e of (M.single ? [0] : [-1, 1])) {
+        put(vGlow, e * sw * hx, (hv - hh / 2) * sy, hu * sl, sw * hw, hh * sy, 0.04, '#fffbe6');
+        put(vGlow, e * sw * tx, (tv - th / 2) * sy, tu * sl, sw * tw, th * sy, 0.04, stop);
+        // at night each lamp glows, and the headlamps throw their beam down the road ahead
+        if (cond.night) {
+          put(haloM, e * sw * hx, (hv - hh / 2) * sy, hu * sl + 0.08, 1.5, 1.5, 1.5, '#fff0d0');
+          put(haloM, e * sw * tx, (tv - th / 2) * sy, tu * sl - 0.08, 0.75, 0.75, 0.75, c.slowing ? '#ff4030' : '#a8221a');
+        }
+      }
+      if (cond.night) put(beamM, 0, 0.05, hu * sl + 0.1, M.single ? 2.4 : sw * 2.2, 1, 15, '#ffffff');
+      const yellow = c.kind === 'taxi' || c.kind === 'bus' ? '#ffd34d' : '#ffffff';
+      put(plateM, 0, M.plate[1] * sy, M.plate[0] * sl - 0.02, M.single ? 0.24 : 0.5, M.single ? 0.1 : 0.13, 1, yellow);
+      if (M.front) put(plateM, 0, M.front[1] * sy, M.front[0] * sl + 0.02, 0.5, 0.13, 1, yellow, 0, Math.PI);
+      if (c.kind === 'taxi') put(vGlow, 0, 1.47 * sy, -0.4 * sl, 0.5, 0.14, 0.24, '#ffd34d');                    // the roof sign
+      if (M.board) {     // the board over the windscreen, and the name along both sides and on the back
+        put(busBoardM, 0, M.board[1] * sy, M.board[0] * sl + 0.03, sw * M.board[2], M.board[3] * sy, 1, '#ffffff');
+        for (const e of [-1, 1]) put(busSideM, e * (sw / 2 + 0.015), 1.36 * sy, -0.6 * sl, 3.4, 0.42, 1, '#ffffff', 0, -e * Math.PI / 2);
+        put(busSideM, 0, 1.62 * sy, -4.05 * sl, 1.7, 0.21, 1, '#ffffff', 0, Math.PI);
+      }
+      if (M.rider) {     // the rider, and now and then someone behind
+        if (!c.jk) { const pick = a => a[Math.random() * a.length | 0]; c.jk = pick(JACKETS); c.hm = pick(HELMETS); c.lg = pick(LEGS); c.bag = Math.random() < 0.3 ? pick(BAGS) : ''; c.jk2 = pick(JACKETS); c.hm2 = pick(HELMETS); c.lg2 = pick(LEGS); }
+        rideOn(M.rider, c.jk, c.hm, c.lg, false, c.pillion ? '' : c.bag);
+        if (c.pillion) rideOn(M.rider, c.jk2, c.hm2, c.lg2, true, c.bag);
+      }
+      if (c.hazard && (time * 1.6) % 1 < 0.5) {     // the four indicators flashing together
+        const [hu, hv, hx, , hh] = M.head, [tu, tv, tx, , th] = M.tail;
+        for (const e of [-1, 1]) {
+          put(vGlow, e * (sw / 2 - 0.02), (hv - hh / 2) * sy, hu * sl - 0.05, 0.06, 0.08, 0.12, '#ffae1a'); put(vGlow, e * (sw / 2 - 0.02), (tv - th / 2) * sy, tu * sl + 0.05, 0.06, 0.08, 0.12, '#ffae1a');
+          if (cond.night) { put(haloM, e * (sw / 2), hv * sy, hu * sl, 0.9, 0.9, 0.9, '#ffb84a'); put(haloM, e * (sw / 2), tv * sy, tu * sl, 0.9, 0.9, 0.9, '#ffb84a'); }
+        }
+      }
+    }
     function placeAll(far, dt) {
       for (const m of pools) m.n = 0;
       const f = {};
       for (const c of cars) {
         if (c.at < s - 15 || c.at > s + far) continue;
         frame3(c.at, c.x, f); base(f, -Math.atan2(c.vx || 0, c.dir * Math.max(3, Math.abs(c.v))), c.dir < 0);   // heading the way it moves, also across
-        put(shadows, 0, 0.03, 0, c.wid * 1.2, 1, c.len * 1.08, '#000');
-        const M = MODELS[c.kind], sl = c.len / M.len, sy = c.hgt / M.hgt, sw = M.single ? 1 : c.wid, stop = c.slowing ? '#ff3b2f' : '#8e2620';
-        put(M.pPaint, 0, 0, 0, sw, sy, sl, c.col); if (M.pGlass) put(M.pGlass, 0, 0, 0, sw, sy, sl, '#ffffff'); if (M.pTrim) put(M.pTrim, 0, 0, 0, sw, sy, sl, '#ffffff'); put(M.pChrome, 0, 0, 0, sw, sy, sl, '#ffffff');
-        // the wheels turn as it goes, to the eye no faster than about two turns a second: any faster and the
-        // spokes would seem to stand still or turn back, as wheels do in a film
-        c.spin = ((c.spin || 0) + Math.min(Math.abs(c.v) / (M.wheels[0][1] * sy), 13) * (mode === 'playing' ? dt : 0)) % (Math.PI * 2);
-        for (const [u, r] of M.wheels) for (const e of (M.single ? [0] : [-1, 1])) { const rr = r * sy; put(tyreM, e * sw * M.track, rr, u * sl, M.tw, rr, rr, '#ffffff'); put(M.spokes ? spokeM : rimM, e * sw * M.track, rr, u * sl, M.spokes ? 0.2 : M.tw, rr, rr, '#ffffff', c.spin); }
-        // lights: headlights in front, tail lights that glow brighter when it slows
-        const [hu, hv, hx, hw, hh] = M.head, [tu, tv, tx, tw, th] = M.tail;
-        for (const e of (M.single ? [0] : [-1, 1])) {
-          put(vGlow, e * sw * hx, (hv - hh / 2) * sy, hu * sl, sw * hw, hh * sy, 0.04, '#fffbe6');
-          put(vGlow, e * sw * tx, (tv - th / 2) * sy, tu * sl, sw * tw, th * sy, 0.04, stop);
-          // at night each lamp glows, and the headlamps throw their beam down the road ahead
-          if (cond.night) {
-            put(haloM, e * sw * hx, (hv - hh / 2) * sy, hu * sl + 0.08, 1.5, 1.5, 1.5, '#fff0d0');
-            put(haloM, e * sw * tx, (tv - th / 2) * sy, tu * sl - 0.08, 0.75, 0.75, 0.75, c.slowing ? '#ff4030' : '#a8221a');
-          }
-        }
-        if (cond.night) put(beamM, 0, 0.05, hu * sl + 0.1, M.single ? 2.4 : sw * 2.2, 1, 15, '#ffffff');
-        const yellow = c.kind === 'taxi' || c.kind === 'bus' ? '#ffd34d' : '#ffffff';
-        put(plateM, 0, M.plate[1] * sy, M.plate[0] * sl - 0.02, M.single ? 0.24 : 0.5, M.single ? 0.1 : 0.13, 1, yellow);
-        if (M.front) put(plateM, 0, M.front[1] * sy, M.front[0] * sl + 0.02, 0.5, 0.13, 1, yellow, 0, Math.PI);
-        if (c.kind === 'taxi') put(vGlow, 0, 1.47 * sy, -0.4 * sl, 0.5, 0.14, 0.24, '#ffd34d');                    // the roof sign
-        if (M.board) {     // the board over the windscreen, and the name along both sides and on the back
-          put(busBoardM, 0, M.board[1] * sy, M.board[0] * sl + 0.03, sw * M.board[2], M.board[3] * sy, 1, '#ffffff');
-          for (const e of [-1, 1]) put(busSideM, e * (sw / 2 + 0.015), 1.36 * sy, -0.6 * sl, 3.4, 0.42, 1, '#ffffff', 0, -e * Math.PI / 2);
-          put(busSideM, 0, 1.62 * sy, -4.05 * sl, 1.7, 0.21, 1, '#ffffff', 0, Math.PI);
-        }
-        if (M.rider) {     // the rider, and now and then someone behind
-          if (!c.jk) { const pick = a => a[Math.random() * a.length | 0]; c.jk = pick(JACKETS); c.hm = pick(HELMETS); c.lg = pick(LEGS); c.bag = Math.random() < 0.3 ? pick(BAGS) : ''; c.jk2 = pick(JACKETS); c.hm2 = pick(HELMETS); c.lg2 = pick(LEGS); }
-          rideOn(M.rider, c.jk, c.hm, c.lg, false, c.pillion ? '' : c.bag);
-          if (c.pillion) rideOn(M.rider, c.jk2, c.hm2, c.lg2, true, c.bag);
-        }
+        drawCar(c, dt);
       }
       for (const t of things) {
-        if (t.got || t.at < s - 6 || t.at > s + far) continue;
+        if (t.got || t.at + (t.len || 0) / 2 < s - 8 || t.at - (t.len || 0) / 2 - (t.back || 0) > s + far) continue;     // (a bus or a truck is long: drawn till all of it is behind)
         frame3(t.at, LANES[t.lane], f); base(f);
         if (t.kind === 'coin') { put(coinM, 0, 0.62, 0, 0.38, 0.38, 0.09, '#ffd34d', 0, time * 5 + t.at); put(shadows, 0, 0.03, 0, 0.6, 1, 0.3, '#000'); continue; }
-        put(shadows, 0, 0.03, 0, 2.3, 1, 0.9, '#000');
-        if (t.kind === 'rock') { put(rockM, -0.25, 0.28, 0, 0.75, 0.55, 0.65, '#8a8f86', 0, t.at); put(rockM, 0.45, 0.18, 0.2, 0.45, 0.38, 0.4, '#9a9f95', 0, t.at * 3); }
-        else if (t.kind === 'log') put(logM, 0, 0.32, 0, 2.2, 0.32, 0.32, '#ffffff', 0, 0.12);
-        else {
-          put(boardM, 0, 0.55, 0, 2.2, 0.45, 0.1, '#ffffff');
-          for (const e of [-1, 1]) { put(vBox, e * 0.9, 0, 0, 0.1, 0.56, 0.1, '#4b4b4b'); put(vBox, e * 0.9, 0, 0, 0.5, 0.06, 0.4, '#4b4b4b'); put(vGlow, e * 0.95, 0.85, -0.06, 0.12, 0.12, 0.02, '#ff8a3d'); }
+        if (t.car) {     // a vehicle stopped by the kerb: drawn as the traffic is, its hazard lights flashing
+          frame3(t.at, t.car.x, f); base(f); drawCar(t.car, dt);
+          if (t.kind === 'unload') for (let i = 0; i < 5; i++)      // its sacks, set down on the road behind it
+            put(vBox, ((i % 3) - 1) * 0.62, i > 2 ? 0.42 : 0, -t.len / 2 - 0.55 - (i % 2) * 0.62, 0.58, 0.42, 0.85, i % 2 ? '#e4dccb' : '#cfc3a2', 0, (i * 0.7 + t.seed) % 0.5 - 0.25);
+          continue;
+        }
+        const cones = list => { for (const [x, z] of list) { put(coneM, x, 0, z, 0.36, 0.7, 0.36, '#ff6a1a'); put(bandM, x, 0.33, z, 0.3, 0.13, 0.3, '#f6f4ee'); put(vBox, x, 0, z, 0.44, 0.04, 0.44, '#2b2b2b'); } };
+        const side = t.lane === 0 ? 1 : -1;     // the side of it facing the open lane
+        if (t.kind === 'works') {      // road works: a barricade at each end, cones along it, the road dug up, earth and gravel heaped, a sign
+          put(shadows, 0, 0.03, 0, 2.6, 1, 7.4, '#000');
+          for (const z of [-3.3, 3.3]) {
+            put(boardM, 0, 0.55, z, 2.2, 0.45, 0.1, '#ffffff');
+            for (const e of [-1, 1]) { put(vBox, e * 0.9, 0, z, 0.1, 0.56, 0.1, '#4b4b4b'); put(vBox, e * 0.9, 0, z, 0.5, 0.06, 0.4, '#4b4b4b'); put(vGlow, e * 0.95, 0.85, z - 0.06, 0.12, 0.12, 0.02, (time * 2 + e) % 1 < 0.5 ? '#ff8a3d' : '#7a3a14'); }
+          }
+          cones([-2.2, -0.9, 0.4, 1.7].map(z => [side * 1.05, z]));
+          put(vBox, -side * 0.15, 0.0, 0.2, 1.3, 0.05, 4.6, '#3b3129');                                  // the trench, dug through the road
+          put(rockM, -side * 0.55, 0.15, -1.2, 0.75, 0.48, 1.0, '#7a644a', 0, t.seed * 6);              // earth dug out of it
+          put(rockM, -side * 0.5, 0.12, 1.4, 0.65, 0.4, 0.9, '#8f8c86', 0, t.seed * 9);                 // gravel to fill it
+          put(signM, side * 0.55, 1.05, -3.75, 1.15, 0.58, 1, '#ffffff', 0, Math.PI);                  // KAWNG SIAM MEK, facing the rider
+          for (const e of [-1, 1]) put(vBox, side * 0.55 + e * 0.5, 0, -3.72, 0.05, 0.8, 0.05, '#4b4b4b');
+        } else if (t.kind === 'pothole') {     // a pothole being mended: cones round it, the hole and the rainwater in it
+          put(holeM, 0, 0.035, 0, 1.5, 1, 1.15, '#262321', 0, t.seed * 3);
+          put(holeM, 0.1, 0.04, -0.05, 0.9, 1, 0.65, cond.rain ? '#8aa0ad' : '#5d6a70', 0, t.seed * 3);
+          cones([[-0.95, -1.1], [0.95, -1.1], [-0.95, 1.1], [0.95, 1.1]]);
+        } else if (t.kind === 'slide') {       // a landslide: mud across the lane, rocks in it, from the bank above
+          put(shadows, 0, 0.03, 0, 2.8, 1, 4.6, '#000');
+          put(rockM, 0, 0.05, 0, 1.35, 0.5, 2.1, '#6c5038', 0, t.seed * 4);
+          put(rockM, -side * 0.5, 0.12, -0.6, 0.9, 0.55, 1.1, '#5e4630', 0, t.seed * 7);
+          for (let i = 0; i < 5; i++) put(rockM, ((i * 0.37 + t.seed) % 1 - 0.5) * 2, 0.2, (i - 2) * 0.8, 0.28 + (i % 3) * 0.12, 0.24 + (i % 2) * 0.1, 0.3, i % 2 ? '#8a8f86' : '#9a9f95', 0, t.at + i);
         }
       }
       for (const p of peds) {
@@ -4217,9 +4284,9 @@ void main() {
     }
     // What the scooter meets: each coin once, the first obstacle ends the ride
     for (const t of things) {
-      if (t.got || t.hit || Math.abs(t.at - s) > 0.9) continue;
-      // as wide as it is drawn, with the scooter's own half width: a barrier or a log 2.2 m across, a rock about 1.9 m
-      if (Math.abs(LANES[t.lane] - px) > (t.kind === 'coin' ? 1.15 : t.kind === 'rock' ? 0.95 + 0.3 : 1.1 + 0.3)) continue;
+      // as long and as wide as it is drawn, with the scooter's own size: 0.9 m from its middle along, 0.3 m across
+      if (t.got || t.hit || (t.kind === 'coin' ? Math.abs(t.at - s) > 0.9 : s < t.at - t.len / 2 - t.back - 0.9 || s > t.at + t.len / 2 + 0.9)) continue;
+      if (t.kind === 'coin' ? Math.abs(LANES[t.lane] - px) > 1.15 : Math.abs(t.x - px) > t.half + 0.3) continue;
       if (t.kind === 'coin') {
         t.got = true; coins++; picked++; dailyAdd('coin', 1, picked); beep(880, 0.06); burst('#ffd34d');
         pops.push({ text: '+1', x: riderXY().x + (Math.random() - .5) * 30, y: riderXY().y - 110, life: 1 });
@@ -4231,7 +4298,7 @@ void main() {
         beep(160, 0.3, 'sawtooth'); burst('#c33f3f'); mode = 'crashing'; return;
       }
     }
-    things = things.filter(t => t.at > s - 8 && !t.got);
+    things = things.filter(t => t.at + (t.len || 0) / 2 > s - 10 && !t.got);
     tick(dt);
     const score = Math.floor((Math.floor(s) + coins * 25) * rideMult);
     if (best0 > 0 && !bestShown && score > best0) { bestShown = true; toast(L('New best!', 'A tha ber thar!')); }
@@ -4371,7 +4438,7 @@ void main() {
     if (mode !== 'playing' || S.tips.length >= TIPS.length) { showTip(null); return; }
     tipT += dt;
     const need = id => !S.tips.includes(id);
-    const block = things.find(t => t.kind !== 'coin' && !t.hit && t.at > s + 2 && t.at - s < 34 && t.lane === lane);
+    const block = things.find(t => t.kind !== 'coin' && !t.hit && t.at + t.len / 2 > s + 2 && t.at - t.len / 2 - t.back - s < 34 && t.lane === lane);
     const coinsAhead = things.find(t => t.kind === 'coin' && !t.got && t.at > s + 6 && t.at - s < 30);
     const queue = jams.find(j => (j.state === 'stopped' || j.state === 'waiting') && j.at - s < 130 && j.at - s > -10);
     const cross = crossings.find(c => c.state === 'crossing' && c.at - s < 90 && c.at > s - 2 && c.peds.some(p => Math.abs(p.x) < 4.8));

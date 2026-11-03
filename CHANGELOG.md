@@ -4,6 +4,28 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.51.0 (3 November 2026)
+
+### Aizawl Ride: roadblocks as Aizawl has them
+
+- The logs, rocks and barriers in the road are gone. What blocks a lane now
+  is what blocks one in Aizawl:
+  - a car parked by the kerb, its hazard lights flashing;
+  - a goods truck unloading, its sacks set down on the road behind it;
+  - an Aizawl City Bus at its stop;
+  - road works: barricades at each end with flashing lamps, cones along the
+    side, the road dug up, earth and gravel heaped, and a yellow
+    KAWNG SIAM MEK sign;
+  - a pothole being mended, with cones round it and rainwater in it;
+  - a landslide (leimin) of mud and rocks across the lane, more of them in the
+    rain and out of town.
+- Parked vehicles, trucks and buses stand by the kerb, in the left lane.
+  Each roadblock is as long as it is drawn, so a bus or a truck takes longer
+  to get past.
+- The first time each kind is ahead, its Mizo word is shown: motor ding,
+  thil phurh, bus ding, kawng siam, kawng khur, leimin. Leimin, kawng khur and
+  kawng siam are in the end-of-ride word questions too.
+
 ## 1.50.0 (3 November 2026)
 
 ### Aizawl Ride: no branches over the road, and betel-nut palms
