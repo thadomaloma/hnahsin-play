@@ -917,13 +917,13 @@
   }
   let cars = [], jams = [], braking = false, carT = 0, oncomingT = 0, eventWords = new Set();
   let peds = [], crossings = [], pedT = 0, stillT = 0, slowDone = false, jnMet = new Set(), pedSeeded = false;     // (how long stopped at a crossing: a secret badge; the junctions whose people are out, this ride)
-  let s, v, px, pvx, pax, laneFrom, laneV, laneA, laneTo, laneT, lane, coins, picked, coinsPut, rideMult, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
+  let s, v, px, pvx, pax, laneFrom, laneV, laneA, laneTo, laneT, lane, coins, picked, coinsPut, rideMult, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, dust, time, lean, crashT, crashDir, best0, bestShown;
   let soundOn = S.sound;
 
   function reset() {
     prepRoute();
     s = 0; v = 0; lane = 1; px = 0; pvx = 0; pax = 0; laneFrom = laneV = laneA = laneTo = 0; laneT = LANE_T; coins = 0; time = 0; bgX = 0; shake = 0; lean = 0; crashT = 0; crashDir = 1;
-    things = []; sparks = []; pops = []; nextRow = 70; lastOpen = 1; passed = new Set();
+    things = []; sparks = []; pops = []; dust = []; nextRow = 70; lastOpen = 1; passed = new Set();
     cars = []; jams = planJams(); crossings = planCrossings(); peds = []; pedT = 0; jnMet = new Set(); pedSeeded = false; buildStrip(); prepMini(); braking = false; carT = 3; oncomingT = 5; eventWords = new Set(); brakeHint(false);
     best0 = bestOf(route.id); bestShown = false; wordsSeen = new Set(); wordT = 4; picked = 0; coinsPut = 0; rideMult = multOf(rankOf()); stillT = 0; slowDone = false;
     plan(); hud(true);
@@ -1153,15 +1153,41 @@
   // the footpath and back; people waiting for the bus by its door, someone getting on and someone off; a
   // taxi's passenger getting in or out. (Where there is no footpath, they keep to the road's edge.)
   const WORKER = [{ shirt: '#ff7a1a', lower: '#3a3a3a', hair: '#1d1b22' }, { shirt: '#ff8f2e', lower: '#2c3e50', hair: '#1d1b22' }], PORTER = { shirt: '#6b7f5a', lower: '#3a3a3a', hair: '#1d1b22' };
+  // Worker activity types with their tools and animation properties
+  const WORKER_ACTIVITY = {
+    DIGGER:      { tool: 'shovel',     phaseSpeed: 3.0, phaseOffset: 0,     desc: 'digging with shovel' },
+    PICKAXE:     { tool: 'pickaxe',    phaseSpeed: 2.5, phaseOffset: Math.PI, desc: 'breaking ground with pickaxe' },
+    LIFTER:      { tool: 'bucket',     phaseSpeed: 1.8, phaseOffset: Math.PI/2, desc: 'lifting and moving materials' },
+    CARRIER:     { tool: 'bucket',     phaseSpeed: 1.5, phaseOffset: Math.PI, desc: 'carrying bucket' },
+    WHEELBARROW: { tool: 'wheelbarrow',phaseSpeed: 2.0, phaseOffset: 0,     desc: 'pushing wheelbarrow' },
+    HAMMERER:    { tool: 'hammer',     phaseSpeed: 4.0, phaseOffset: 0,     desc: 'hammering road surface' },
+    FLAGGER:     { tool: 'flag',       phaseSpeed: 2.0, phaseOffset: 0,     desc: 'directing traffic with flag' },
+    INSPECTOR:   { tool: 'clipboard',  phaseSpeed: 0.5, phaseOffset: 0,     desc: 'inspecting work, making notes' }
+  };
   function crew(t) {
     const i = Math.floor(t.at / SEG), walk = walkHere(i, -1), path = walk ? -5.3 : -3.75, side = t.lane === 0 ? 1 : -1;
     const add = (at, x, o) => { const p = newPed(at, x, 0, 0); Object.assign(p, o); peds.push(p); return p; };
+    // Pick random activity variations for each site to avoid synchronized movements
+    const digAct = Math.random() < 0.5 ? 'DIGGER' : 'PICKAXE';
+    const liftAct = Math.random() < 0.5 ? 'LIFTER' : 'CARRIER';
+    const hammerAct = 'HAMMERER';
     if (t.kind === 'works') {
-      add(t.at + 0.4, t.x - side * 0.15 + 0.45, { look: WORKER[0], aim: -Math.PI / 2, hat: '#f2c230', tool: 'shovel' });
-      add(t.at + 1.9, t.x + side * 0.4, { look: WORKER[1], aim: Math.PI / 2 * side, hat: '#f2c230', tool: 'shovel' });     // (beside the trench, facing it)
-      add(t.at - 4.5, t.x + side * 0.95, { look: WORKER[0], aim: Math.PI, hat: '#f2c230', tool: 'flag' });     // facing the traffic, by the sign
+      // Worker 1: digging/breaking ground (beside the trench)
+      add(t.at + 0.4, t.x - side * 0.15 + 0.45, { look: WORKER[0], aim: -Math.PI / 2, hat: '#f2c230', tool: WORKER_ACTIVITY[digAct].tool, activity: digAct, phase: WORKER_ACTIVITY[digAct].phaseOffset });
+      // Worker 2: lifting/carrying materials (beside the trench, facing it)
+      add(t.at + 1.9, t.x + side * 0.4, { look: WORKER[1], aim: Math.PI / 2 * side, hat: '#f2c230', tool: WORKER_ACTIVITY[liftAct].tool, activity: liftAct, phase: WORKER_ACTIVITY[liftAct].phaseOffset });
+      // Worker 3: flagger (facing the traffic, by the sign)
+      add(t.at - 4.5, t.x + side * 0.95, { look: WORKER[0], aim: Math.PI, hat: '#f2c230', tool: 'flag', activity: 'FLAGGER', phase: 0 });
+      // Worker 4: hammerer (at the far end, repairing surface)
+      add(t.at + 3.5, t.x - side * 0.2, { look: WORKER[1], aim: -Math.PI / 2, hat: '#f2c230', tool: 'hammer', activity: 'HAMMERER', phase: Math.PI * 0.7 });
+      // Worker 5: wheelbarrow (moving gravel/debris between trench and pile)
+      add(t.at + 2.0, t.x - side * 0.5, { look: WORKER[0], aim: -Math.PI / 2 * side, hat: '#f2c230', tool: 'wheelbarrow', activity: 'WHEELBARROW', phase: Math.PI * 0.3 });
+      // Worker 6: inspector (near the sign, observing)
+      add(t.at - 3.0, t.x + side * 0.6, { look: WORKER[0], aim: Math.PI * 0.3, hat: '#f2c230', tool: 'clipboard', activity: 'INSPECTOR', phase: Math.PI * 1.5 });
     } else if (t.kind === 'pothole') {
-      add(t.at + 1.5, t.x + side * 0.35, { look: WORKER[1], aim: Math.PI, hat: '#f2c230', tool: 'shovel' });
+      // Pothole: one digger, one hammerer
+      add(t.at + 1.5, t.x + side * 0.35, { look: WORKER[1], aim: Math.PI, hat: '#f2c230', tool: WORKER_ACTIVITY[digAct].tool, activity: digAct, phase: WORKER_ACTIVITY[digAct].phaseOffset });
+      add(t.at + 0.5, t.x - side * 0.3, { look: WORKER[0], aim: Math.PI, hat: '#f2c230', tool: 'hammer', activity: 'HAMMERER', phase: Math.PI * 0.5 });
     } else if (t.kind === 'unload') {
       const at = t.at - t.len / 2 - 0.9, to = walkHere(Math.floor(at / SEG), -1) ? -5.3 : -3.75;
       for (let k = 0; k < 2; k++) add(at - k * 0.7, t.x - 0.3 - k * 0.9, { look: PORTER, shuttle: [to, t.x - 0.3], vx: (k ? 1 : -1) * 0.9, carry: '#e4dccb' });
@@ -1240,9 +1266,11 @@
         if (Math.abs(p.x) > 5.4 && Math.sign(p.x) === Math.sign(p.vx)) { p.vx = 0; p.va = Math.random() < 0.5 ? 1 : -1; p.cross = null; }
       }
       p.phase += (Math.abs(p.va) + Math.abs(p.vx)) * dt * 5;
-      // Road workers: animate digging (shovel) or flag waving
-      if (p.tool === 'shovel') { p.phase += dt * 3; }                       // digging motion
-      else if (p.tool === 'flag') { p.phase += dt * 2; }                    // flag waving motion
+      // Road workers: animate based on activity type
+      if (p.activity && WORKER_ACTIVITY[p.activity]) {
+        p.phase += dt * WORKER_ACTIVITY[p.activity].phaseSpeed;
+      } else if (p.tool === 'shovel') { p.phase += dt * 3; }                // digging motion (legacy)
+      else if (p.tool === 'flag') { p.phase += dt * 2; }                    // flag waving motion (legacy)
       if (p.phase > Math.PI * 4) p.phase -= Math.PI * 4;
     }
     peds = peds.filter(p => p.at > s - 10 && p.at < s + VIEW * SEG + 20 && !p.gone);
@@ -1561,14 +1589,20 @@
       ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(x, y, 0.3 * k, 0.07 * k, 0, 0, 7); ctx.fill();
       if (a.f > 0.3) ctx.globalAlpha = ga * (1 - (a.f - 0.3) * 0.7);
       ctx.drawImage(sp.c, x - sp.c.width * sc / 2, y - (sp.c.height - 1) * sc, sp.c.width * sc, sp.c.height * sc);
-      // Tools for road workers (hat, shovel, flag) - walking mode
+      // Tools for road workers (hat, shovel, pickaxe, bucket, wheelbarrow, hammer, flag, clipboard) - walking mode
       if (p.hat || p.tool) {
         g.save();
         g.translate(x, y);
         g.scale(sc, sc);
         if (p.hat) { g.fillStyle = p.hat; g.beginPath(); g.arc(0, -0.56 * 1.7 * PXM, 0.135 * 1.7 * PXM, 0, 7); g.fill(); g.beginPath(); g.arc(0.04 * 1.7 * PXM, -0.6 * 1.7 * PXM, 0.1 * 1.7 * PXM, 0, 7); g.fill(); }
-        if (p.tool === 'shovel') { const ph = p.phase * Math.PI / 2; const dig = Math.sin(ph) * 0.3; g.strokeStyle = '#7a5a3a'; g.lineWidth = 0.022 * 1.7 * PXM; g.beginPath(); g.moveTo(0.2 * 1.7 * PXM, 1.02 * 1.7 * PXM + dig); g.lineTo(0.28 * 1.7 * PXM, 0.6 * 1.7 * PXM + dig); g.stroke(); g.fillStyle = '#8d9092'; g.fillRect(0.2 * 1.7 * PXM, 0.0 + dig, 0.22 * 1.7 * PXM, 0.03 * 1.7 * PXM); }
-        if (p.tool === 'flag') { const flagColor = (now * 1.2) % 1 < 0.5 ? '#d32f2f' : '#c62828'; g.strokeStyle = '#5a4636'; g.lineWidth = 0.018 * 1.7 * PXM; g.beginPath(); g.moveTo(0.3 * 1.7 * PXM, 0.98 * 1.7 * PXM); g.lineTo(0.22 * 1.7 * PXM, -1.07 * 1.7 * PXM); g.stroke(); g.fillStyle = flagColor; g.fillRect(0.3 * 1.7 * PXM, 1.8 * 1.7 * PXM, 0.02 * 1.7 * PXM, 0.36 * 1.7 * PXM); }
+        const ph = p.phase * Math.PI / 2;
+        if (p.tool === 'shovel') { const dig = Math.sin(ph) * 0.3; g.strokeStyle = '#7a5a3a'; g.lineWidth = 0.022 * 1.7 * PXM; g.beginPath(); g.moveTo(0.2 * 1.7 * PXM, 1.02 * 1.7 * PXM + dig); g.lineTo(0.28 * 1.7 * PXM, 0.6 * 1.7 * PXM + dig); g.stroke(); g.fillStyle = '#8d9092'; g.fillRect(0.2 * 1.7 * PXM, 0.0 + dig, 0.22 * 1.7 * PXM, 0.03 * 1.7 * PXM); }
+        else if (p.tool === 'pickaxe') { const swing = Math.sin(ph) * 0.4; g.strokeStyle = '#5a4636'; g.lineWidth = 0.022 * 1.7 * PXM; g.beginPath(); g.moveTo(0.25 * 1.7 * PXM, 1.0 * 1.7 * PXM + swing); g.lineTo(0.15 * 1.7 * PXM, 0.5 * 1.7 * PXM + swing); g.stroke(); g.fillStyle = '#4a3a2a'; g.beginPath(); g.moveTo(0.15 * 1.7 * PXM, 0.5 * 1.7 * PXM + swing); g.lineTo(0.08 * 1.7 * PXM, 0.4 * 1.7 * PXM + swing); g.lineTo(0.22 * 1.7 * PXM, 0.45 * 1.7 * PXM + swing); g.closePath(); g.fill(); }
+        else if (p.tool === 'bucket') { const lift = Math.sin(ph) * 0.15; g.fillStyle = '#6b5b4b'; g.beginPath(); g.arc(0.25 * 1.7 * PXM, 0.8 * 1.7 * PXM + lift, 0.12 * 1.7 * PXM, 0, 7); g.fill(); g.strokeStyle = '#8d9092'; g.lineWidth = 0.015 * 1.7 * PXM; g.beginPath(); g.arc(0.25 * 1.7 * PXM, 0.8 * 1.7 * PXM + lift, 0.12 * 1.7 * PXM, 0, 7); g.stroke(); g.strokeStyle = '#5a4636'; g.lineWidth = 0.02 * 1.7 * PXM; g.beginPath(); g.moveTo(0.37 * 1.7 * PXM, 0.85 * 1.7 * PXM + lift); g.quadraticCurveTo(0.3 * 1.7 * PXM, 1.1 * 1.7 * PXM + lift, 0.25 * 1.7 * PXM, 0.92 * 1.7 * PXM + lift); g.stroke(); }
+        else if (p.tool === 'wheelbarrow') { const push = Math.sin(ph) * 0.05; g.fillStyle = '#5a4636'; g.fillRect(0.15 * 1.7 * PXM, 0.85 * 1.7 * PXM + push, 0.3 * 1.7 * PXM, 0.25 * 1.7 * PXM); g.fillStyle = '#8d9092'; g.beginPath(); g.arc(0.45 * 1.7 * PXM, 1.1 * 1.7 * PXM + push, 0.06 * 1.7 * PXM, 0, 7); g.fill(); g.fillStyle = '#6b5b4b'; g.fillRect(0.18 * 1.7 * PXM, 0.8 * 1.7 * PXM + push, 0.1 * 1.7 * PXM, 0.05 * 1.7 * PXM); }
+        else if (p.tool === 'hammer') { const hit = Math.sin(ph * 2) > 0 ? 0.1 : 0; g.strokeStyle = '#5a4636'; g.lineWidth = 0.02 * 1.7 * PXM; g.beginPath(); g.moveTo(0.25 * 1.7 * PXM, 1.0 * 1.7 * PXM - hit); g.lineTo(0.2 * 1.7 * PXM, 0.7 * 1.7 * PXM - hit); g.stroke(); g.fillStyle = '#3a3a3a'; g.fillRect(0.18 * 1.7 * PXM, 0.7 * 1.7 * PXM - hit, 0.1 * 1.7 * PXM, 0.18 * 1.7 * PXM); }
+        else if (p.tool === 'flag') { const flagColor = (now * 1.2) % 1 < 0.5 ? '#d32f2f' : '#c62828'; g.strokeStyle = '#5a4636'; g.lineWidth = 0.018 * 1.7 * PXM; g.beginPath(); g.moveTo(0.3 * 1.7 * PXM, 0.98 * 1.7 * PXM); g.lineTo(0.22 * 1.7 * PXM, -1.07 * 1.7 * PXM); g.stroke(); g.fillStyle = flagColor; g.fillRect(0.3 * 1.7 * PXM, 1.8 * 1.7 * PXM, 0.02 * 1.7 * PXM, 0.36 * 1.7 * PXM); }
+        else if (p.tool === 'clipboard') { g.fillStyle = '#2a2a2a'; g.fillRect(0.2 * 1.7 * PXM, 0.7 * 1.7 * PXM, 0.18 * 1.7 * PXM, 0.25 * 1.7 * PXM); g.fillStyle = '#f0f0f0'; g.fillRect(0.21 * 1.7 * PXM, 0.71 * 1.7 * PXM, 0.16 * 1.7 * PXM, 0.23 * 1.7 * PXM); g.strokeStyle = '#8d9092'; g.lineWidth = 0.01 * 1.7 * PXM; g.strokeRect(0.27 * 1.7 * PXM, 0.7 * 1.7 * PXM, 0.11 * 1.7 * PXM, 0.04 * 1.7 * PXM); }
         g.restore();
       }
       ctx.globalAlpha = ga;
@@ -1592,10 +1626,16 @@
       g.translate(x, y);
       g.scale(sc, sc);
       paintPerson(g, 0.62 * PXM, 1.7 * PXM, L, front, 0, 0, idleTime);
-      // Tools for road workers (hat, shovel, flag)
+      // Tools for road workers (hat, shovel, pickaxe, bucket, wheelbarrow, hammer, flag, clipboard)
       if (p.hat) { g.fillStyle = p.hat; g.beginPath(); g.arc(0, -0.56 * 1.7 * PXM, 0.135 * 1.7 * PXM, 0, 7); g.fill(); g.beginPath(); g.arc(0.04 * 1.7 * PXM, -0.6 * 1.7 * PXM, 0.1 * 1.7 * PXM, 0, 7); g.fill(); }
-      if (p.tool === 'shovel') { const ph = p.phase * Math.PI / 2; const dig = Math.sin(ph) * 0.3; g.strokeStyle = '#7a5a3a'; g.lineWidth = 0.022 * 1.7 * PXM; g.beginPath(); g.moveTo(0.2 * 1.7 * PXM, 1.02 * 1.7 * PXM + dig); g.lineTo(0.28 * 1.7 * PXM, 0.6 * 1.7 * PXM + dig); g.stroke(); g.fillStyle = '#8d9092'; g.fillRect(0.2 * 1.7 * PXM, 0.0 + dig, 0.22 * 1.7 * PXM, 0.03 * 1.7 * PXM); }
-      if (p.tool === 'flag') { const flagColor = (now * 1.2) % 1 < 0.5 ? '#d32f2f' : '#c62828'; g.strokeStyle = '#5a4636'; g.lineWidth = 0.018 * 1.7 * PXM; g.beginPath(); g.moveTo(0.3 * 1.7 * PXM, 0.98 * 1.7 * PXM); g.lineTo(0.22 * 1.7 * PXM, -1.07 * 1.7 * PXM); g.stroke(); g.fillStyle = flagColor; g.fillRect(0.3 * 1.7 * PXM, 1.8 * 1.7 * PXM, 0.02 * 1.7 * PXM, 0.36 * 1.7 * PXM); }
+      const ph = p.phase * Math.PI / 2;
+      if (p.tool === 'shovel') { const dig = Math.sin(ph) * 0.3; g.strokeStyle = '#7a5a3a'; g.lineWidth = 0.022 * 1.7 * PXM; g.beginPath(); g.moveTo(0.2 * 1.7 * PXM, 1.02 * 1.7 * PXM + dig); g.lineTo(0.28 * 1.7 * PXM, 0.6 * 1.7 * PXM + dig); g.stroke(); g.fillStyle = '#8d9092'; g.fillRect(0.2 * 1.7 * PXM, 0.0 + dig, 0.22 * 1.7 * PXM, 0.03 * 1.7 * PXM); }
+      else if (p.tool === 'pickaxe') { const swing = Math.sin(ph) * 0.4; g.strokeStyle = '#5a4636'; g.lineWidth = 0.022 * 1.7 * PXM; g.beginPath(); g.moveTo(0.25 * 1.7 * PXM, 1.0 * 1.7 * PXM + swing); g.lineTo(0.15 * 1.7 * PXM, 0.5 * 1.7 * PXM + swing); g.stroke(); g.fillStyle = '#4a3a2a'; g.beginPath(); g.moveTo(0.15 * 1.7 * PXM, 0.5 * 1.7 * PXM + swing); g.lineTo(0.08 * 1.7 * PXM, 0.4 * 1.7 * PXM + swing); g.lineTo(0.22 * 1.7 * PXM, 0.45 * 1.7 * PXM + swing); g.closePath(); g.fill(); }
+      else if (p.tool === 'bucket') { const lift = Math.sin(ph) * 0.15; g.fillStyle = '#6b5b4b'; g.beginPath(); g.arc(0.25 * 1.7 * PXM, 0.8 * 1.7 * PXM + lift, 0.12 * 1.7 * PXM, 0, 7); g.fill(); g.strokeStyle = '#8d9092'; g.lineWidth = 0.015 * 1.7 * PXM; g.beginPath(); g.arc(0.25 * 1.7 * PXM, 0.8 * 1.7 * PXM + lift, 0.12 * 1.7 * PXM, 0, 7); g.stroke(); g.strokeStyle = '#5a4636'; g.lineWidth = 0.02 * 1.7 * PXM; g.beginPath(); g.moveTo(0.37 * 1.7 * PXM, 0.85 * 1.7 * PXM + lift); g.quadraticCurveTo(0.3 * 1.7 * PXM, 1.1 * 1.7 * PXM + lift, 0.25 * 1.7 * PXM, 0.92 * 1.7 * PXM + lift); g.stroke(); }
+      else if (p.tool === 'wheelbarrow') { const push = Math.sin(ph) * 0.05; g.fillStyle = '#5a4636'; g.fillRect(0.15 * 1.7 * PXM, 0.85 * 1.7 * PXM + push, 0.3 * 1.7 * PXM, 0.25 * 1.7 * PXM); g.fillStyle = '#8d9092'; g.beginPath(); g.arc(0.45 * 1.7 * PXM, 1.1 * 1.7 * PXM + push, 0.06 * 1.7 * PXM, 0, 7); g.fill(); g.fillStyle = '#6b5b4b'; g.fillRect(0.18 * 1.7 * PXM, 0.8 * 1.7 * PXM + push, 0.1 * 1.7 * PXM, 0.05 * 1.7 * PXM); }
+      else if (p.tool === 'hammer') { const hit = Math.sin(ph * 2) > 0 ? 0.1 : 0; g.strokeStyle = '#5a4636'; g.lineWidth = 0.02 * 1.7 * PXM; g.beginPath(); g.moveTo(0.25 * 1.7 * PXM, 1.0 * 1.7 * PXM - hit); g.lineTo(0.2 * 1.7 * PXM, 0.7 * 1.7 * PXM - hit); g.stroke(); g.fillStyle = '#3a3a3a'; g.fillRect(0.18 * 1.7 * PXM, 0.7 * 1.7 * PXM - hit, 0.1 * 1.7 * PXM, 0.18 * 1.7 * PXM); }
+      else if (p.tool === 'flag') { const flagColor = (now * 1.2) % 1 < 0.5 ? '#d32f2f' : '#c62828'; g.strokeStyle = '#5a4636'; g.lineWidth = 0.018 * 1.7 * PXM; g.beginPath(); g.moveTo(0.3 * 1.7 * PXM, 0.98 * 1.7 * PXM); g.lineTo(0.22 * 1.7 * PXM, -1.07 * 1.7 * PXM); g.stroke(); g.fillStyle = flagColor; g.fillRect(0.3 * 1.7 * PXM, 1.8 * 1.7 * PXM, 0.02 * 1.7 * PXM, 0.36 * 1.7 * PXM); }
+      else if (p.tool === 'clipboard') { g.fillStyle = '#2a2a2a'; g.fillRect(0.2 * 1.7 * PXM, 0.7 * 1.7 * PXM, 0.18 * 1.7 * PXM, 0.25 * 1.7 * PXM); g.fillStyle = '#f0f0f0'; g.fillRect(0.21 * 1.7 * PXM, 0.71 * 1.7 * PXM, 0.16 * 1.7 * PXM, 0.23 * 1.7 * PXM); g.strokeStyle = '#8d9092'; g.lineWidth = 0.01 * 1.7 * PXM; g.strokeRect(0.27 * 1.7 * PXM, 0.7 * 1.7 * PXM, 0.11 * 1.7 * PXM, 0.04 * 1.7 * PXM); }
       g.restore();
 
       ctx.globalAlpha = ga;
@@ -1808,9 +1848,22 @@
     ctx.restore();
   }
   const P = Array.from({ length: VIEW + 1 }, () => ({}));   // the projected road, reused every picture
-  // Sparks, exhaust puffs and the +1s, over the picture
+  // Sparks, exhaust puffs, dust and the +1s, over the picture
   function effects() {
     for (const p of sparks) { ctx.globalAlpha = Math.max(0, p.life) * (p.a || 1); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); }
+    // Dust particles (3D positions projected to 2D)
+    for (const p of dust) {
+      if (p.life > 0) {
+        const alpha = Math.max(0, p.life) * 0.6;
+        if (alpha > 0.05) {
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = p.c;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, 7);
+          ctx.fill();
+        }
+      }
+    }
     ctx.font = '800 18px "Plus Jakarta Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (const p of pops) { ctx.globalAlpha = Math.max(0, p.life); ctx.lineWidth = 3; ctx.strokeStyle = '#7a4b00'; ctx.strokeText(p.text, p.x, p.y); ctx.fillStyle = '#ffd34d'; ctx.fillText(p.text, p.x, p.y); }
     ctx.globalAlpha = 1;
@@ -3458,6 +3511,112 @@ void main() {
     const busBoardMat = new T.MeshBasicMaterial({ map: letters(512, 56, '#141414', '#ffb21a', 40), toneMapped: false });
     const textGeo = new T.PlaneGeometry(1, 1), busSideM = pool(textGeo, busSideMat, 36), busBoardM = pool(textGeo, busBoardMat, 12);
     const MODELS = { car: hatchback(), sedan: sedan(), suv: jeep(), bus: cityBus(), truck: truck(), scooter: scooter(), bike: motorbike(), classic: classic(), sport: sport() };
+    // Construction machinery models (procedural geometry)
+    function excavator() {
+      const P = parts(), H = parts();
+      const YELLOW = '#f2c230', DK = '#1b1c1e', GREY = '#5a5a5a', BLACK = '#1a1a1a';
+      // Tracks (crawler)
+      P.box(0, 0.4, 0, 3.5, 0.5, 2.0, BLACK);
+      for (const e of [-1, 1]) {
+        P.box(0, 0.3, e * 1.1, 3.5, 0.3, 0.15, DK);
+        for (let u = -1.5; u <= 1.5; u += 0.3) P.box(u, 0.2, e * 1.1, 0.28, 0.2, 0.1, BLACK);  // track pads
+      }
+      // Body / house
+      P.box(0, 1.2, 0, 2.2, 1.4, 1.8, YELLOW);
+      // Cab
+      P.box(1.2, 2.1, 0, 0.8, 1.0, 1.6, YELLOW);
+      H.box(1.2, 2.3, 0.85, 0.75, 0.7, 0.04); H.box(1.2, 2.3, -0.85, 0.75, 0.7, 0.04);  // cab windows
+      // Counterweight
+      P.box(-1.5, 1.5, 0, 0.6, 1.0, 1.6, GREY);
+      // Boom
+      P.box(0.5, 2.2, 0, 2.5, 0.3, 0.3, YELLOW);
+      // Arm (stick)
+      P.box(2.0, 2.2, 0, 1.8, 0.25, 0.25, YELLOW);
+      // Bucket
+      P.box(3.3, 1.9, 0, 0.6, 0.5, 0.4, GREY);
+      // Hydraulic cylinders
+      H.rod(0.5, 2.0, 0.2, 1.5, 2.5, 0.2, 0.05, '#888888');
+      H.rod(0.5, 2.0, -0.2, 1.5, 2.5, -0.2, 0.05, '#888888');
+      H.rod(2.0, 2.0, 0.2, 3.0, 2.0, 0.2, 0.04, '#888888');
+      H.rod(2.0, 2.0, -0.2, 3.0, 2.0, -0.2, 0.04, '#888888');
+      // Swing bearing
+      P.box(0, 1.8, 0, 0.8, 0.4, 0.8, GREY);
+      return { paint: P.done(), chrome: H.done(), len: 3.5, hgt: 2.6, wheels: [[1.5, 0.25], [-1.5, 0.25]], track: 1.1, tw: 0.5, single: true,
+        head: [1.8, 2.2, 0.15, 0.1, 0.05], tail: [-1.8, 1.5, 0.15, 0.1, 0.05], plate: [0, 1.5] };
+    }
+    function roller() {
+      const P = parts(), H = parts();
+      const YELLOW = '#f2c230', DK = '#1b1c1e', GREY = '#5a5a5a';
+      // Frame
+      P.box(0, 1.0, 0, 2.5, 0.4, 1.5, DK);
+      // Front drum (smooth)
+      P.box(1.5, 1.0, 0, 1.0, 1.2, 1.3, GREY);
+      // Rear drum (or tires)
+      P.box(-1.5, 1.0, 0, 1.0, 1.2, 1.3, GREY);
+      // Engine hood
+      P.box(0, 2.0, 0, 1.5, 1.0, 1.4, YELLOW);
+      // Operator platform / canopy
+      P.box(0, 2.7, 0, 1.8, 0.1, 1.6, DK);
+      H.box(0, 2.9, 0, 0.1, 0.4, 1.6, GREY);  // canopy supports
+      // Water tanks
+      P.box(1.8, 1.8, 0.8, 0.5, 0.6, 0.3, '#3a7ab5');
+      P.box(-1.8, 1.8, 0.8, 0.5, 0.6, 0.3, '#3a7ab5');
+      return { paint: P.done(), chrome: H.done(), len: 3.0, hgt: 2.8, wheels: [[1.5, 0.6], [-1.5, 0.6]], track: 0.65, tw: 0.6,
+        head: [2.0, 1.2, 0.15, 0.1, 0.05], tail: [-2.0, 1.2, 0.15, 0.1, 0.05], plate: [0, 1.5] };
+    }
+    function dumptruck() {
+      const P = parts(), G = parts(), H = parts();
+      const YELLOW = '#f2c230', DK = '#1b1c1e', WOOD = '#9c6b3d', GREY = '#5a5a5a';
+      const wh = [2.0, -1.5];
+      // Cab
+      P.box(2.8, 1.2, 0, 1.8, 1.3, 1.6, YELLOW);
+      G.box(3.5, 1.5, 0, 0.6, 0.8, 1.55);  // windscreen
+      G.box(2.5, 1.4, 0, 0.5, 0.7, 1.55);  // side windows
+      // Chassis
+      P.box(0, 0.7, 0, 4.5, 0.3, 1.8, DK);
+      // Dump bed
+      P.box(-1.0, 1.2, 0, 3.5, 0.1, 1.7, GREY);  // bed floor
+      P.box(-1.0, 1.2, 0.85, 3.5, 1.2, 0.1, GREY);  // right side
+      P.box(-1.0, 1.2, -0.85, 3.5, 1.2, 0.1, GREY);  // left side
+      P.box(-2.7, 1.2, 0, 0.1, 1.2, 1.7, GREY);  // tailgate
+      // Hydraulic cylinder
+      H.rod(0.5, 0.85, 0, -1.0, 1.5, 0, 0.08, '#888888');
+      // Wheels (dual rear)
+      for (const u of wh) P.disc(u, 0.5, 0, 0.55, 0.6, DK);
+      for (const e of [-1, 1]) { P.disc(2.0, 0.5, e * 0.45, 0.55, 0.6, DK); P.disc(-1.5, 0.5, e * 0.45, 0.55, 0.6, DK); }
+      // Mirrors
+      for (const e of [-1, 1]) H.box(3.2, 1.6, e * 0.85, 0.05, 0.15, 0.25, DK);
+      return { paint: P.done(), glass: G.done(), chrome: H.done(), len: 6.0, hgt: 2.5, wheels: [[2.8, 0.5], [2.0, 0.5], [-1.5, 0.5]], track: 0.45, tw: 0.32,
+        head: [3.7, 1.3, 0.2, 0.15, 0.08], tail: [-2.7, 1.5, 0.2, 0.1, 0.15], plate: [-2.8, 1.0], front: [3.7, 0.5] };
+    }
+    function mixer() {
+      const P = parts(), H = parts();
+      const YELLOW = '#f2c230', DK = '#1b1c1e', GREY = '#5a5a5a', DRUM = '#8b7355';
+      const wh = [2.3, -1.7];
+      // Cab
+      P.box(2.8, 1.2, 0, 1.6, 1.3, 1.6, YELLOW);
+      // Chassis
+      P.box(0, 0.7, 0, 4.5, 0.3, 1.8, DK);
+      // Mixer drum (tilted)
+      P.box(-0.8, 1.6, 0, 2.5, 1.8, 1.8, DRUM);
+      // Drum opening
+      H.box(-0.8, 2.5, 0, 1.5, 0.05, 1.5, '#3a3a3a');
+      // Engine hood
+      P.box(2.0, 1.0, 0, 1.5, 0.8, 1.5, YELLOW);
+      // Chute
+      H.box(-2.2, 1.2, 0, 0.8, 0.5, 0.6, GREY);
+      // Wheels
+      for (const u of wh) P.disc(u, 0.5, 0, 0.55, 0.6, DK);
+      for (const e of [-1, 1]) P.disc(2.3, 0.5, e * 0.4, 0.55, 0.6, DK);
+      // Mirrors
+      for (const e of [-1, 1]) H.box(3.2, 1.6, e * 0.85, 0.05, 0.15, 0.25, DK);
+      return { paint: P.done(), chrome: H.done(), len: 6.0, hgt: 2.8, wheels: [[2.8, 0.5], [2.3, 0.5], [-1.7, 0.5]], track: 0.4, tw: 0.32,
+        head: [3.6, 1.3, 0.2, 0.15, 0.08], tail: [-2.5, 1.5, 0.2, 0.1, 0.15], plate: [-2.5, 1.0], front: [3.6, 0.5] };
+    }
+    MODELS.excavator = excavator();
+    MODELS.roller = roller();
+    MODELS.dumptruck = dumptruck();
+    MODELS.mixer = mixer();
     MODELS.taxi = MODELS.car;
     for (const M of new Set(Object.values(MODELS))) {
       const max = M === MODELS.bus || M === MODELS.truck ? 12 : 60;
@@ -3469,11 +3628,17 @@ void main() {
     const shadows = pool(blob, shadowMat, 200);
     // a limb from (y0, z0) to (y1, z1) at x; an arm from the shoulder, its upper arm and forearm at
     // angles forward of straight down; it gives back the elbow and the hand
-    // what a roadblock's people have with them: a hard hat, a shovel or a red flag, a sack on the shoulder
+    // what a roadblock's people have with them: a hard hat, a shovel or a red flag, a sack on the shoulder, pickaxe, bucket, wheelbarrow, hammer, clipboard
     const gear = (p, real) => {
       if (p.hat) { put(pRound, 0, real ? 1.6 : 1.74, 0.0, 0.135, 0.085, 0.145, p.hat); put(pRound, 0, real ? 1.56 : 1.7, 0.04, 0.16, 0.02, 0.17, p.hat); }     // a hard hat, and its brim
-      if (p.tool === 'shovel') { const ph = p.phase * Math.PI / 2; const dig = Math.sin(ph) * 0.3; limbTo(pLimb, 0.2, 1.02, 0.28 + dig, 0.08 + dig, 0.6 + dig, 0.022, '#7a5a3a'); put(pBox, 0.2, 0.0 + dig, 0.64 + dig, 0.22, 0.03, 0.26, '#8d9092'); }
-      if (p.tool === 'flag') { limbTo(pLimb, 0.3, 0.98, 0.22, 2.05, 0.3, 0.018, '#5a4636'); put(pBox, 0.3, 1.8, 0.3, 0.02, 0.26, 0.36, (time * 1.2) % 1 < 0.5 ? '#d32f2f' : '#c62828'); }     // (held up, beside the head)
+      const ph = p.phase * Math.PI / 2;
+      if (p.tool === 'shovel') { const dig = Math.sin(ph) * 0.3; limbTo(pLimb, 0.2, 1.02, 0.28 + dig, 0.08 + dig, 0.6 + dig, 0.022, '#7a5a3a'); put(pBox, 0.2, 0.0 + dig, 0.64 + dig, 0.22, 0.03, 0.26, '#8d9092'); }
+      else if (p.tool === 'pickaxe') { const swing = Math.sin(ph) * 0.4; limbTo(pLimb, 0.25, 1.0, 0.15 + swing, 0.08 + swing, 0.5 + swing, 0.022, '#5a463a'); put(pBox, 0.15, 0.0 + swing, 0.54 + swing, 0.22, 0.03, 0.15, '#4a3a2a'); }
+      else if (p.tool === 'bucket') { const lift = Math.sin(ph) * 0.15; put(pRound, 0.25, 0.8 + lift, 0.0, 0.12, 0.12, 0.18, '#6b5b4b'); limbTo(pLimb, 0.35, 0.85 + lift, 0.0, 0.3, 1.1 + lift, 0.018, '#5a4636'); }
+      else if (p.tool === 'wheelbarrow') { const push = Math.sin(ph) * 0.05; put(pBox, 0.3, 0.85 + push, 0.0, 0.3, 0.25, 0.4, '#5a4636'); put(pRound, 0.45, 1.1 + push, 0.2, 0.06, 0.06, 0.06, '#8d9092'); put(pLimb, 0.18, 0.8 + push, 0.0, 0.18, 0.8 + push, 0.1, 0.04, '#6b5b4b'); }
+      else if (p.tool === 'hammer') { const hit = Math.sin(ph * 2) > 0 ? 0.1 : 0; limbTo(pLimb, 0.25, 1.0 - hit, 0.2, 0.7 - hit, 0.0, 0.02, '#5a4636'); put(pBox, 0.18, 0.7 - hit, 0.1, 0.1, 0.18, 0.15, '#3a3a3a'); }
+      else if (p.tool === 'flag') { limbTo(pLimb, 0.3, 0.98, 0.22, 2.05, 0.3, 0.018, '#5a4636'); put(pBox, 0.3, 1.8, 0.3, 0.02, 0.26, 0.36, (time * 1.2) % 1 < 0.5 ? '#d32f2f' : '#c62828'); }     // (held up, beside the head)
+      else if (p.tool === 'clipboard') { put(pBox, 0.2, 0.7, 0.0, 0.18, 0.25, 0.02, '#2a2a2a'); put(pBox, 0.21, 0.71, 0.01, 0.16, 0.23, 0.015, '#f0f0f0'); }
       if (p.carry && p.vx < 0) put(pBox, -0.14, 1.48, 0, 0.36, 0.26, 0.58, p.carry);
       if (p.dog) {     // a dog on a lead, trotting a little ahead on the left: body, head and ears, tail, four legs, and the lead to the hand
         const d = p.dog, dx = -0.42, dz = 0.95, ph = p.phase * Math.PI / 2, s0 = 1 / (p.sc || 1);
@@ -3667,6 +3832,32 @@ void main() {
         }
       }
     }
+    // Draw construction machinery with animation
+    function drawMachinery(M, dt, anim) {
+      if (!M) return;
+      const sl = 1, sy = 1, sw = 1; // machinery drawn at 1:1 scale
+      put(M.pPaint, 0, 0, 0, sw, sy, sl, '#f2c230');
+      if (M.pGlass) put(M.pGlass, 0, 0, 0, sw, sy, sl, '#ffffff');
+      if (M.pTrim) put(M.pTrim, 0, 0, 0, sw, sy, sl, '#ffffff');
+      if (M.pChrome) put(M.pChrome, 0, 0, 0, sw, sy, sl, '#ffffff');
+      put(shadows, 0, 0.03, 0, M.wid || 2.5, 1, M.len || 3.0, '#000');
+      // Wheels/tracks
+      for (const [u, r] of M.wheels) for (const e of (M.single ? [0] : [-1, 1])) {
+        const rr = r * sy;
+        const spin = ((M.spin || 0) + (anim.tilt ? 0 : dt * (anim.drumRot ? 2 : 1))) % (Math.PI * 2);
+        M.spin = spin;
+        put(tyreM, e * sw * M.track, rr, u * sl, M.tw, rr, rr, '#ffffff');
+        put(M.spokes ? spokeM : rimM, e * sw * M.track, rr, u * sl, M.spokes ? 0.2 : M.tw, rr, rr, '#ffffff', spin);
+      }
+      // Hazard lights on machinery
+      if ((time * 1.6) % 1 < 0.5) {
+        const [hu, hv, hx, hw, hh] = M.head || [0, 1.5, 0.2, 0.1, 0.05];
+        for (const e of [-1, 1]) {
+          put(vGlow, e * sw * hx, (hv - hh / 2) * sy, 0, 0.06, 0.08, 0.12, '#ffae1a');
+          if (cond.night) put(haloM, e * sw * hx, hv * sy, 0, 0.9, 0.9, 0.9, '#ffb84a');
+        }
+      }
+    }
     function placeAll(far, dt) {
       for (const m of pools) m.n = 0;
       const f = {};
@@ -3687,7 +3878,7 @@ void main() {
         }
         const cones = list => { for (const [x, z] of list) { put(coneM, x, 0, z, 0.36, 0.7, 0.36, '#ff6a1a'); put(bandM, x, 0.33, z, 0.3, 0.13, 0.3, '#f6f4ee'); put(vBox, x, 0, z, 0.44, 0.04, 0.44, '#2b2b2b'); } };
         const side = t.lane === 0 ? 1 : -1;     // the side of it facing the open lane
-        if (t.kind === 'works') {      // road works: a barricade at each end, cones along it, the road dug up, earth and gravel heaped, a sign
+        if (t.kind === 'works') {      // road works: a barricade at each end, cones along it, the road dug up, earth and gravel heaped, a sign + machinery
           put(shadows, 0, 0.03, 0, 2.6, 1, 7.4, '#000');
           for (const z of [-3.3, 3.3]) {
             put(boardM, 0, 0.55, z, 2.2, 0.45, 0.1, '#ffffff');
@@ -3699,6 +3890,40 @@ void main() {
           put(rockM, -side * 0.5, 0.12, 1.4, 0.65, 0.4, 0.9, '#8f8c86', 0, t.seed * 9);                 // gravel to fill it
           put(signM, -side * 0.3, 1.05, -3.75, 1.15, 0.58, 1, '#ffffff', 0, Math.PI);                 // KAWNG SIAM MEK, facing the rider
           for (const e of [-1, 1]) put(vBox, -side * 0.3 + e * 0.5, 0, -3.72, 0.05, 0.8, 0.05, '#4b4b4b');
+
+          // Construction machinery (animated)
+          const M_EXC = MODELS.excavator, M_ROL = MODELS.roller, M_DUMP = MODELS.dumptruck, M_MIX = MODELS.mixer;
+          const seed = t.seed || 1;
+          // Excavator: positioned near the trench, arm swings and bucket curls
+          const excPhase = (time * 0.4 + seed) % (Math.PI * 2);
+          const excSwing = Math.sin(excPhase) * 0.8;  // body rotation
+          const excArm = Math.sin(excPhase * 0.7) * 0.6 + 0.3;  // boom angle
+          const excBucket = Math.sin(excPhase * 0.5) * 0.4 + 0.2;  // bucket curl
+          frame3(t.at - 2.0, LANES[t.lane] - side * 2.5, f);
+          base(f, excSwing, false);
+          drawMachinery(M_EXC, dt, { swing: excSwing, arm: excArm, bucket: excBucket });
+
+          // Roller: positioned further back, slow forward/back with vibration
+          const rolPhase = (time * 0.3 + seed * 2) % (Math.PI * 2);
+          const rolPos = Math.sin(rolPhase) * 1.5;
+          const rolVib = Math.sin(time * 30) * 0.02;
+          frame3(t.at + 3.0 + rolPos, LANES[t.lane] - side * 2.0, f);
+          base(f, rolVib, false);
+          drawMachinery(M_ROL, dt, { vibrate: rolVib });
+
+          // Dumptruck: positioned to the side, bed tilts up/down
+          const dumpPhase = (time * 0.2 + seed * 3) % (Math.PI * 2);
+          const dumpTilt = Math.max(0, Math.sin(dumpPhase)) * 0.8;
+          frame3(t.at + 1.0, LANES[t.lane] + side * 2.5, f);
+          base(f, 0, false);
+          drawMachinery(M_DUMP, dt, { tilt: dumpTilt });
+
+          // Mixer: positioned near gravel, drum rotates
+          const mixPhase = (time * 1.5 + seed * 4) % (Math.PI * 2);
+          frame3(t.at - 1.0, LANES[t.lane] + side * 3.0, f);
+          base(f, 0, false);
+          drawMachinery(M_MIX, dt, { drumRot: mixPhase });
+
         } else if (t.kind === 'pothole') {     // a pothole being mended: cones round it, the hole and the rainwater in it
           put(holeM, 0, 0.035, 0, 1.5, 1, 1.15, '#262321', 0, t.seed * 3);
           put(holeM, 0.1, 0.04, -0.05, 0.9, 1, 0.65, cond.rain ? '#8aa0ad' : '#5d6a70', 0, t.seed * 3);
@@ -4678,6 +4903,94 @@ void main() {
       }
     }
     things = things.filter(t => t.at + (t.len || 0) / 2 > s - 10 && !t.got);
+    // Emit dust from construction sites
+    if (!reduce) {
+      for (const t of things) {
+        if (t.kind === 'works' && Math.abs(t.at - s) < 40) {
+          const side = t.lane === 0 ? 1 : -1;
+          // Dust from excavator digging
+          if (Math.random() < dt * 8) {
+            const phase = (time * 0.4 + (t.seed || 1)) % (Math.PI * 2);
+            if (Math.sin(phase) > 0.3) { // excavator digging motion
+              dust.push({
+                x: riderXY().x + (t.at - s) * 0.5 + (Math.random() - 0.5) * 20,
+                y: riderXY().y - 40 + Math.random() * 30,
+                z: 0,
+                vx: (Math.random() - 0.5) * 10,
+                vy: Math.random() * 20 + 10,
+                vz: (Math.random() - 0.5) * 10,
+                r: 2 + Math.random() * 4,
+                life: 1.5 + Math.random() * 1,
+                decay: 0.5 + Math.random() * 0.5,
+                c: '#8a7a6a'
+              });
+            }
+          }
+          // Dust from roller
+          if (Math.random() < dt * 5) {
+            dust.push({
+              x: riderXY().x + (t.at - s) * 0.5 + (Math.random() - 0.5) * 30,
+              y: riderXY().y - 40 + Math.random() * 20,
+              z: 0,
+              vx: (Math.random() - 0.5) * 5,
+              vy: Math.random() * 15 + 5,
+              vz: (Math.random() - 0.5) * 5,
+              r: 3 + Math.random() * 5,
+              life: 2 + Math.random() * 1,
+              decay: 0.4 + Math.random() * 0.3,
+              c: '#9a8a7a'
+            });
+          }
+          // Dust from dumptruck
+          if (Math.random() < dt * 4) {
+            dust.push({
+              x: riderXY().x + (t.at - s) * 0.5 + (Math.random() - 0.5) * 25,
+              y: riderXY().y - 40 + Math.random() * 25,
+              z: 0,
+              vx: (Math.random() - 0.5) * 8,
+              vy: Math.random() * 18 + 8,
+              vz: (Math.random() - 0.5) * 8,
+              r: 2 + Math.random() * 4,
+              life: 1.5 + Math.random() * 1,
+              decay: 0.5 + Math.random() * 0.4,
+              c: '#7a6a5a'
+            });
+          }
+          // Dust from hammering
+          if (Math.random() < dt * 6) {
+            dust.push({
+              x: riderXY().x + (t.at - s) * 0.5 + (Math.random() - 0.5) * 15,
+              y: riderXY().y - 40 + Math.random() * 35,
+              z: 0,
+              vx: (Math.random() - 0.5) * 15,
+              vy: Math.random() * 25 + 15,
+              vz: (Math.random() - 0.5) * 15,
+              r: 1 + Math.random() * 3,
+              life: 1 + Math.random() * 0.8,
+              decay: 0.7 + Math.random() * 0.5,
+              c: '#aa9a8a'
+            });
+          }
+        }
+        // Pothole repair dust
+        if (t.kind === 'pothole' && Math.abs(t.at - s) < 30) {
+          if (Math.random() < dt * 3) {
+            dust.push({
+              x: riderXY().x + (t.at - s) * 0.5 + (Math.random() - 0.5) * 10,
+              y: riderXY().y - 40 + Math.random() * 20,
+              z: 0,
+              vx: (Math.random() - 0.5) * 8,
+              vy: Math.random() * 15 + 5,
+              vz: (Math.random() - 0.5) * 8,
+              r: 1 + Math.random() * 3,
+              life: 1 + Math.random() * 0.5,
+              decay: 0.6 + Math.random() * 0.4,
+              c: '#6a5a4a'
+            });
+          }
+        }
+      }
+    }
     tick(dt);
     const score = Math.floor((Math.floor(s) + coins * 25) * rideMult);
     if (best0 > 0 && !bestShown && score > best0) { bestShown = true; toast(L('New best!', 'A tha ber thar!')); }
@@ -4694,12 +5007,21 @@ void main() {
     if (s >= route.length) return end(true);
     hud();
   }
-  // Sparks, exhaust puffs and the +1s drift and fade
+  // Sparks, exhaust puffs, dust and the +1s drift and fade
   function tick(dt) {
     for (const p of sparks) { p.x += p.vx * dt; p.y += p.vy * dt; if (p.puff) { p.r += dt * 9; p.vy *= 1 - dt * 2; } else p.vy += 300 * dt; p.life -= dt * 1.4; }
     sparks = sparks.filter(p => p.life > 0);
     for (const p of pops) { p.y -= dt * 60; p.life -= dt * 1.5; }
     pops = pops.filter(p => p.life > 0);
+    // Dust particles from construction sites
+    for (const p of dust) {
+      p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+      p.vy -= 9.8 * dt * 0.5; // gravity
+      p.vx *= 0.98; p.vz *= 0.98; // air resistance
+      p.life -= dt * p.decay;
+      p.r += dt * 5; // expand
+    }
+    dust = dust.filter(p => p.life > 0 && p.r < 30);
   }
   function burst(c) {
     if (reduce) return;
