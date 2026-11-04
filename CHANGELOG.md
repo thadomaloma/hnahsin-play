@@ -4,6 +4,25 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.53.0 (4 November 2026)
+
+### Aizawl Ride: junctions, busier streets, children and more two-wheelers
+
+- Where another road meets yours, as it does on the real map (from
+  OpenStreetMap: main roads and streets, up to about six to a kilometre), there is a
+  junction now. The kerb and footpath open, and the side road goes off up or
+  down the hillside, no steeper than 1 in 10, with a white line where it meets
+  your road and dashes up its middle. Nothing is built on it: no houses, trees
+  or poles.
+- Queues wait just before the junctions with main roads, and they are longer
+  (6 to 11 vehicles). There is a zebra crossing just before many junctions,
+  with up to 7 crossings on a road.
+- People stand and walk at the corners of each junction. There are more people
+  walking on the footpaths too, and children among them, in their school
+  uniforms with their school bags.
+- There is more traffic both ways, and more than half of it is two-wheelers:
+  scooters, motorbikes and sports bikes.
+
 ## 1.52.0 (4 November 2026)
 
 ### Aizawl Ride: people at the roadblocks, and no landslides

@@ -893,7 +893,7 @@
     return { night: /[?&]night\b/.test(q) || (!/[?&]day\b/.test(q) && (h >= 18.5 || h < 5.5)), rain: /[?&]rain\b/.test(q) || (!/[?&]dry\b/.test(q) && Math.random() < (m >= 5 && m <= 8 ? 0.4 : 0.12)) };
   }
   let cars = [], jams = [], braking = false, carT = 0, oncomingT = 0, eventWords = new Set();
-  let peds = [], crossings = [], pedT = 0, stillT = 0, slowDone = false;     // (how long stopped at a crossing: a secret badge)
+  let peds = [], crossings = [], pedT = 0, stillT = 0, slowDone = false, jnMet = new Set();     // (the junctions whose people are out, this ride)     // (how long stopped at a crossing: a secret badge)
   let s, v, px, pvx, pax, laneFrom, laneV, laneA, laneTo, laneT, lane, coins, picked, coinsPut, rideMult, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
   let soundOn = S.sound;
 
@@ -901,7 +901,7 @@
     prepRoute();
     s = 0; v = 0; lane = 1; px = 0; pvx = 0; pax = 0; laneFrom = laneV = laneA = laneTo = 0; laneT = LANE_T; coins = 0; time = 0; bgX = 0; shake = 0; lean = 0; crashT = 0; crashDir = 1;
     things = []; sparks = []; pops = []; nextRow = 70; lastOpen = 1; passed = new Set();
-    cars = []; jams = planJams(); crossings = planCrossings(); peds = []; pedT = 0; buildStrip(); prepMini(); braking = false; carT = 3; oncomingT = 5; eventWords = new Set(); brakeHint(false);
+    cars = []; jams = planJams(); crossings = planCrossings(); peds = []; pedT = 0; jnMet = new Set(); buildStrip(); prepMini(); braking = false; carT = 3; oncomingT = 5; eventWords = new Set(); brakeHint(false);
     best0 = bestOf(route.id); bestShown = false; wordsSeen = new Set(); wordT = 4; picked = 0; coinsPut = 0; rideMult = multOf(rankOf()); stillT = 0; slowDone = false;
     plan(); hud(true);
     if (R3) R3.setPlan();
@@ -963,14 +963,16 @@
     sport: { len: 2.0, wid: 0.8, hgt: 1.12, two: true, cols: ['#1b1b1b', '#c0392b', '#1565c0', '#f4f4f0', '#2e7d32'] },
   };
   // Aizawl's traffic: two-wheelers more than anything; the queues have no buses or trucks
-  const KIND_MIX = ['car', 'sedan', 'taxi', 'taxi', 'suv', 'scooter', 'scooter', 'scooter', 'bike', 'bike', 'classic', 'sport', 'bus', 'truck'], JAM_MIX = KIND_MIX.filter(k => k !== 'bus' && k !== 'truck');
+  // (more than half of it two-wheelers, as on Aizawl's roads)
+  const KIND_MIX = ['car', 'sedan', 'taxi', 'taxi', 'suv', 'scooter', 'scooter', 'scooter', 'scooter', 'scooter', 'bike', 'bike', 'bike', 'bike', 'classic', 'sport', 'sport', 'bus', 'truck'], JAM_MIX = KIND_MIX.filter(k => k !== 'bus' && k !== 'truck');
   // (on a two-wheeler, now and then someone rides behind)
   const newCar = (kind, lane, at, v, dir) => { const K = KINDS[kind]; return { kind, lane, at, v, cruise: Math.abs(v), dir, x: LANES[lane], len: K.len, wid: K.wid, hgt: K.hgt, col: K.cols[Math.random() * K.cols.length | 0], hit: false, slowing: false, two: !!K.two, pillion: !!K.two && Math.random() < 0.3 }; };
   // Jams wait where the road is busy: at the veng and named places along it, spaced apart
   function planJams() {
-    const out = [], spots = route.places.map(p => p[0] * SEG).filter(m => m > 260 && m < route.length - 180);
-    if (route.length > 1200) spots.push(route.length * 0.45);
-    for (const m of spots.sort((a, b) => a - b)) if (!out.length || m - out[out.length - 1].at > 420) out.push({ at: m, n: 4 + (Math.random() * 4 | 0), state: 'far', wait: 6 + Math.random() * 3, broke: false });
+    // at the places along the road, and where a main road meets it (the queue just before the junction)
+    const out = [], spots = [...route.places.map(p => p[0] * SEG), ...(route.junctions || []).filter(q => q[2] === 0).map(q => q[0] * SEG - 34)].filter(m => m > 260 && m < route.length - 180);
+    if (route.length > 1200 && !spots.length) spots.push(route.length * 0.45);
+    for (const m of spots.sort((a, b) => a - b)) if (!out.length || m - out[out.length - 1].at > 420) out.push({ at: m, n: 6 + (Math.random() * 6 | 0), state: 'far', wait: 6 + Math.random() * 3, broke: false });
     return out.slice(0, route.length > 2500 ? 3 : 2);
   }
   const carNear = (lane, from, to) => cars.some(c => c.lane === lane && c.at > from && c.at < to);
@@ -981,11 +983,11 @@
     if (time > 3 && (carT -= dt) <= 0 && far < route.length - 30) {
       const lane = Math.random() * 2 | 0;
       if (!carNear(lane, far - 25, far + 25) && !thingNear(lane, far - 12, far + 12) && !jams.some(j => Math.abs(far - j.at) < 90)) cars.push(newCar(KIND_MIX[Math.random() * KIND_MIX.length | 0], lane, far, 7 + Math.random() * 4, 1));
-      carT = 3 + Math.random() * 3;
+      carT = 1.8 + Math.random() * 2.2;
     }
     if (time > 5 && (oncomingT -= dt) <= 0 && far < route.length - 30) {
       if (!carNear(2, far - 30, far + 30)) cars.push(newCar(KIND_MIX[Math.random() * KIND_MIX.length | 0], 2, far, -(9 + Math.random() * 4), -1));
-      oncomingT = 2 + Math.random() * 2.5;
+      oncomingT = 1.2 + Math.random() * 1.8;
     }
     // Jams: when you come near, a queue is waiting in both our lanes; after a while it moves off
     for (const j of jams) {
@@ -1073,11 +1075,17 @@
     { shirt: '#5a7f9c', lower: '#6b5a48', hair: '#cfcac2', elder: 1, stick: 1, jacket: 1 },  // an elder with a stick
     { shirt: '#ffffff', lower: '#1f3a68', stripes: '#c8323d', hair: '#1d1b22', long: 1, bag: '#8e2b2b' },   // a schoolgirl in her puan
     { shirt: '#4a4f57', lower: '#2b2b2b', hair: '#1d1b22', jacket: 1 },                  // a man in a jacket
+    // children: in their school uniforms, with their school bags, and one in play clothes
+    { shirt: '#ffffff', lower: '#1f3a68', hair: '#1d1b22', bag: '#c0392b', child: 1 },
+    { shirt: '#ffffff', lower: '#1f3a68', stripes: '#1f3a68', hair: '#1d1b22', bag: '#1565c0', bun: 1, child: 1 },
+    { shirt: '#dfe9f5', lower: '#5a4a3a', hair: '#1d1b22', bag: '#2e7d32', child: 1 },
+    { shirt: '#f2c230', lower: '#2c3e50', hair: '#1d1b22', child: 1 },
   ];
   // Zebra crossings near the named places and every 380 m or so: each at the nearest spot (within
   // 120 m) with a footpath on both sides for a few metres, and no queue close by
   function planCrossings() {
-    const out = [], spots = route.places.map(p => p[0] * SEG);
+    // (and just before each junction, where people cross most)
+    const out = [], spots = [...route.places.map(p => p[0] * SEG), ...(route.junctions || []).map(q => q[0] * SEG - 9)];
     for (let m = 300; m < route.length - 120; m += 380) spots.push(m);
     const ok = m => {
       if (m < 160 || m > route.length - 90 || jams.some(j => Math.abs(j.at - m) < 110)) return false;
@@ -1087,9 +1095,9 @@
     for (const m0 of spots.sort((a, b) => a - b)) {
       let m = null;
       for (let d = 0; d <= 120 && m === null; d += 8) for (const t of d ? [m0 + d, m0 - d] : [m0]) if (m === null && ok(t)) m = t;
-      if (m !== null && (!out.length || m - out[out.length - 1].at > 260)) out.push({ at: m, state: 'far', minV: 99, miss: false });
+      if (m !== null && (!out.length || m - out[out.length - 1].at > 200)) out.push({ at: m, state: 'far', minV: 99, miss: false });
     }
-    return out.slice(0, 4);
+    return out.slice(0, 7);
   }
   const newPed = (at, x, va, vx) => ({ at, x, va, vx, look: LOOKS[Math.random() * LOOKS.length | 0], phase: Math.random() * 4, cross: null });
   // The people of a roadblock, set out as it comes near. Road workers in orange with yellow hard hats, one
@@ -1123,13 +1131,26 @@
   }
   function people(dt) {
     const far = s + VIEW * SEG - 8;
-    if ((pedT -= dt) <= 0 && peds.length < 14) {
+    if ((pedT -= dt) <= 0 && peds.length < 24) {
       const i = Math.floor(far / SEG);
       if (far < route.length && footpath(i)) {
         const side = Math.random() < 0.5 ? -1 : 1;
         if (sideAt(i, side) > -2.5 && walkHere(i, side)) peds.push(newPed(far, side * (5.1 + Math.random() * 0.8), (Math.random() < 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.6), 0));
       }
-      pedT = 0.6 + Math.random() * 1.2;
+      pedT = 0.35 + Math.random() * 0.8;
+    }
+    // At each junction, as it comes near, people at its corners: waiting to cross, standing talking, walking on
+    for (const q of route.junctions || []) {
+      const at = q[0] * SEG; if (jnMet.has(q) || at - s > 170 || at < s) continue; jnMet.add(q);
+      for (const e of [-1, 1]) {
+        const k = Math.floor((at + e * 7) / SEG);
+        if (!walkHere(k, q[1])) continue;
+        for (let m = 0; m < 2 + (Math.random() * 3 | 0); m++) {
+          const p = newPed(at + e * (6 + m * 1.1), q[1] * (5.2 + Math.random() * 0.7), Math.random() < 0.4 ? (Math.random() < 0.5 ? 1 : -1) * 0.9 : 0, 0);
+          if (!p.va) p.aim = q[1] > 0 ? -Math.PI / 2 * (Math.random() < 0.5 ? 1 : -1) : Math.PI / 2 * (Math.random() < 0.5 ? 1 : -1);
+          peds.push(p);
+        }
+      }
     }
     // the people of each roadblock, as it comes near
     for (const t of things) if (t.kind !== 'coin' && !t.crew && t.at - s < 170) { t.crew = true; crew(t); }
@@ -2244,7 +2265,18 @@ void main() {
       const grid = new Map();
       for (let k = 0; k < n - 1; k++) { const key = Math.floor(P[k].x / 12) + ',' + Math.floor(P[k].z / 12); (grid.get(key) || grid.set(key, []).get(key)).push(k); }
       for (const sd of [-1, 1]) for (let k = 0; k < n; k++) if (gone[sd][k]) ext[sd][k] = 0;
-      return { n, P, R, F, yaw, Y, ext, grid, bare, gone, half, minY: Math.min(...Y) };
+      // The junctions: where another road meets this one, an opening on that side about 8 m wide (the samples
+      // either side of it), with no kerb or footpath across it, and the side road going off up or down the
+      // hillside (not where this side is cut short, or another stretch of the road is right there)
+      const junc = { '-1': new Uint8Array(n), '1': new Uint8Array(n) }, jns = [];
+      for (const [i, sd, c] of route.junctions || []) {
+        if (i < 3 || i > n - 4) continue;
+        let ok = true; for (let k = i - 1; k <= i + 1; k++) if (gone[sd][k] || bare[sd][k] || ext[sd][k] < 24) ok = false;
+        if (!ok) continue;
+        for (let k = i - 1; k <= i + 1; k++) { junc[sd][k] = 1; bare[sd][k] = true; }
+        jns.push([i, sd, c]);
+      }
+      return { n, P, R, F, yaw, Y, ext, grid, bare, gone, half, junc, jns, minY: Math.min(...Y) };
     }
     // Would a thing at (x, z), r metres round and from height y0 to y1, stand on the road anywhere along
     // it? Aizawl's roads loop round the hills and come back past themselves, so a house beside one
@@ -2291,9 +2323,13 @@ void main() {
     function groundAt(k, sd, o) {
       const g = sideAt(k, sd), E = edge(k, sd);
       const base = o <= 30 ? g * o / 30 : g * (1 + (o - 30) / 30 * 0.6), bump = o > 14 ? (rnd(k * 0.37, o + sd) - 0.5) * 1.2 : 0;
-      if (g > 2.5) return o <= E ? 0.15 : Math.max(o < E + 0.05 ? 0.15 : Math.min(12, g * 0.7), base) + bump;
-      return o <= E + 0.3 ? 0.15 : base + bump;
+      const v = g > 2.5 ? (o <= E ? 0.15 : Math.max(o < E + 0.05 ? 0.15 : Math.min(12, g * 0.7), base) + bump) : o <= E + 0.3 ? 0.15 : base + bump;
+      // in a junction's opening, the side road: level with the road at its edge, then up or down the hillside,
+      // no steeper than 1 in 10
+      if (W3 && W3.junc && W3.junc[sd][k]) return o <= HALF + 0.3 ? 0 : clamp(v, -(o - HALF - 0.3) * 0.1, (o - HALF - 0.3) * 0.1);
+      return v;
     }
+    const nearJunc = (k, sd, r = 3) => { for (let kk = Math.max(0, k - r); kk <= Math.min(W3.n - 1, k + r); kk++) if (W3.junc[sd][kk]) return true; return false; };
     function strip() {
       const p = [], c = [], by = [], what = [];      // by: the sample that built each corner, and what it is (kept for the tests, not drawn)
       return {
@@ -2362,7 +2398,7 @@ void main() {
           let h = null;
           if (rnd(k, 10 + j + sd * 7) <= dens * 1.15 && !(j === 2 && dens < 0.4)) {
             const w = 3.6 + rnd(k, j * 3 + sd) * 2.2, d = 5 + rnd(k, j * 5 + sd) * 3, off = E + 1.6 + j * 7 + rnd(k, j + 4) * 1.2 + w / 2;     // w across, d along the road
-            if (off + w / 2 <= ext[sd][k] && !crowdedAt(k, sd, off - w / 2) && !crowdedAt(k, sd, off + w / 2)) {
+            if (off + w / 2 <= ext[sd][k] && !crowdedAt(k, sd, off - w / 2) && !crowdedAt(k, sd, off + w / 2) && !nearJunc(k, sd)) {     // (none on a side road)
               const gy = groundAt(k, sd, off), hh = tall ? Math.max(3, tall * (0.8 + rnd(k, j + 9) * 0.35)) : 3 + rnd(k, j + 7) * 5 + j * 2;
               // its foot goes down to the lowest ground under it (across it, and along the road where it climbs):
               // on a slope an Aizawl house has a storey more on its downhill side, never a gap beneath
@@ -2503,8 +2539,8 @@ void main() {
             const oa0 = Math.min(ca[c], xa), oa1 = Math.min(ca[c + 1], xa), ob0 = Math.min(cb[c], xb), ob1 = Math.min(cb[c + 1], xb);
             if (oa1 - oa0 < 0.01 && ob1 - ob0 < 0.01) continue;
             // in town the ground between the houses is concrete and bare earth; out of it, and further out, the green of the hills
-            const town = housesOn(sd, k) >= 4;
-            const hex = c === 0 && g > 2.5 ? (footpath(k) ? (even ? '#a19c90' : '#9a958a') : (even ? '#5c8a47' : '#62904c'))
+            const town = housesOn(sd, k) >= 4, jn = W3.junc[sd][k] && W3.junc[sd][k + 1];
+            const hex = jn ? (even ? '#5b5e5c' : '#565957') : c === 0 && g > 2.5 ? (footpath(k) ? (even ? '#a19c90' : '#9a958a') : (even ? '#5c8a47' : '#62904c'))
               : town && c <= 3 ? (g < -2.5 ? (even ? '#958e7e' : '#8f8878') : (even ? '#aaa393' : '#a49d8d')) : town && c === 4 ? (even ? '#8b8f6e' : '#868a69')
               : g < -2.5 ? (even ? '#4f7d41' : '#548346') : c > 3 ? (even ? '#5b8a45' : '#578641') : (even ? '#6a9a4f' : '#64944a');
             st.quad(pt(k, sd * oa0, gAt(k, oa0)), pt(k, sd * oa1, gAt(k, oa1)), pt(k + 1, sd * ob1, gAt(k + 1, ob1)), pt(k + 1, sd * ob0, gAt(k + 1, ob0)), hex);
@@ -2515,6 +2551,15 @@ void main() {
             for (let c = 0; c < cols.length - 1; c++) if (o <= cols[c + 1] + 1e-6) { const t = cols[c + 1] > cols[c] ? clamp((o - cols[c]) / (cols[c + 1] - cols[c]), 0, 1) : 0; return gAt(k, cols[c]) + (gAt(k, cols[c + 1]) - gAt(k, cols[c])) * t; }
             return gAt(k, cols[cols.length - 1]);
           };
+          // a junction's side road: a white line across it where it meets the road, and dashes up its middle
+          if (W3.junc[sd][k] && W3.junc[sd][k + 1]) {
+            st.kind = 'road';
+            const lh = (kk, o) => groundAt(kk, sd, o) + 0.04;
+            st.quad(pt(k, sd * (HALF + 1.1), lh(k, HALF + 1.1)), pt(k, sd * (HALF + 1.45), lh(k, HALF + 1.45)), pt(k + 1, sd * (HALF + 1.45), lh(k + 1, HALF + 1.45)), pt(k + 1, sd * (HALF + 1.1), lh(k + 1, HALF + 1.1)), '#f4efd9');
+            if (W3.junc[sd][k - 1]) for (let o = HALF + 3; o + 2 < Math.min(60, ext[sd][k]) - 1; o += 4.5)
+              st.quad(pt(k, sd * o, drawnAt(o) + 0.04, -0.1), pt(k, sd * (o + 2), drawnAt(o + 2) + 0.04, -0.1), pt(k, sd * (o + 2), drawnAt(o + 2) + 0.04, 0.1), pt(k, sd * o, drawnAt(o) + 0.04, 0.1), '#e9e4d0');
+            st.kind = 'ground';
+          }
           const crowded = o => crowdedAt(k, sd, o);
           // Houses, from the plan; where the ground falls, they stand on it and reach up to the road
           for (let j = 0; j < 3; j++) {
@@ -2554,7 +2599,7 @@ void main() {
             }
           }
           // Bamboo (mau), broad-leaved trees and banana plants where the map has few houses; pines on high ground
-          if (housesOn(sd, k) <= 1) for (let j = 0; j < 3; j++) {
+          if (housesOn(sd, k) <= 1 && !nearJunc(k, sd, 2)) for (let j = 0; j < 3; j++) {
             if (rnd(k, 40 + j + sd) > 0.55) continue;
             const off = E + 2 + j * 9 + rnd(k, 50 + j) * 7;
             if (off > ext[sd][k] - 1) continue;
@@ -2569,7 +2614,7 @@ void main() {
             TW[kind].push({ p: tp, yaw: yw, s: [sc, sy, sc], c: TINT[(k + j) % TINT.length] });
           }
           // low ferns and grass on the bank beside the road (fewer in town)
-          for (let j = 0; j < 2; j++) {
+          for (let j = 0; j < 2 && !nearJunc(k, sd, 1); j++) {
             if (rnd(k, 80 + j + sd * 3) > (housesOn(sd, k) <= 1 ? 0.6 : 0.2)) continue;
             const off = (!bareSide && [k - 1, k, k + 1].some(kk => footpath(kk) && sideAt(kk, sd) > -2.5) ? FOOT + 0.9 : E + 0.5) + j * 2.5 + rnd(k, 90 + j) * 2;
             if (off > Math.max(HALF, ext[sd][k]) - 0.3) continue;
@@ -3371,7 +3416,7 @@ void main() {
         if (p.at < s - 6 || p.at > s + far) continue;
         frame3(p.at, p.x, f); f.pitch = 0; f.y += Math.abs(p.x) > HALF ? 0.15 : 0;     // on the footpath, or on the road
         const face = p.vx ? (p.vx > 0 ? -Math.PI / 2 : Math.PI / 2) : p.va ? (p.va < 0 ? Math.PI : 0) : p.aim ?? 0;
-        if (p.face === undefined) { p.face = face; p.sc = 0.93 + Math.random() * 0.12; }
+        if (p.face === undefined) { p.face = face; p.sc = p.look.child ? 0.6 + Math.random() * 0.14 : 0.93 + Math.random() * 0.12; }     // (a child, smaller)
         let turn = face - p.face; turn -= Math.round(turn / (Math.PI * 2)) * Math.PI * 2;
         p.face += turn * Math.min(1, dt * 7);                 // turning round takes a moment
         base(f, p.face, false, p.sc);
@@ -4689,7 +4734,7 @@ void main() {
   let cityP = null;
   function loadCity() {      // fetched once, however many ask for it at the same time (and again after a failure)
     if (CITY) return Promise.resolve(CITY);
-    return cityP || (cityP = fetch('ride/city.json?v=b072f0de').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => (CITY = d)).catch(e => { cityP = null; throw e; }));
+    return cityP || (cityP = fetch('ride/city.json?v=9463910e').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => (CITY = d)).catch(e => { cityP = null; throw e; }));
   }
   const vengOf = id => CITY.veng.find(v => v.id === id) || CITY.veng[0];
   // A packed list of small numbers (one character each) back into numbers
@@ -4702,7 +4747,7 @@ void main() {
       id: 'city:' + j.id, from: j.from, to: j.to, fromId: j.a, toId: j.b, length: j.length, roads: j.roads, places: j.places,
       curv: unpack(j.c, -45, 12), height, grade: dh.map(d => d * 25),       // decimetres per 4 m, as 1/1000
       sideL: unpack(j.sl, -45), sideR: unpack(j.sr, -45), housesL: unpack(j.hl, 0), housesR: unpack(j.hr, 0),
-      tallL: unpack(j.tl, 0), tallR: unpack(j.tr, 0), path: j.p,
+      tallL: unpack(j.tl, 0), tallR: unpack(j.tr, 0), path: j.p, junctions: j.jn || [],
     };
   }
   const jobsFrom = id => CITY.jobs.filter(j => j.a === id).sort((p, q) => p.length - q.length);
