@@ -60,8 +60,8 @@
   .field svg.hills { position: absolute; inset: auto 0 0 0; width: 100%; height: 100%; }
   .flower { position: absolute; bottom: 0; width: var(--s); transform-origin: 50% 100%; animation: sway 4s ease-in-out infinite alternate; animation-delay: var(--d); }
   .flower svg { width: 100%; height: auto; aspect-ratio: 1; }
-  .flower .stem { width: 4px; height: calc(var(--s) * .9); margin: -6px auto 0; background: var(--leaf-deep); border-radius: 4px; }
-  .flower.more { z-index: 1; } .flower.more .stem { width: 3px; }
+  .flower .stem { display: block; width: calc(var(--s) * .4); height: calc(var(--s) * .9); margin: -6px auto 0; overflow: visible; }     /* its stem and leaves */
+  .flower.more { z-index: 1; }
   /* on a phone, fewer of them, so the hill is not a crowd */
   @media (max-width: 640px) { .flower.wide { display: none; } }
   @keyframes sway { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
@@ -392,14 +392,36 @@
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
-    <!-- A cosmos flower, the app's mark. Colour comes from --petal-fill. -->
+    <!-- A cosmos flower (hnahsin), the app's mark: eight broad petals notched at the tip, each with its faint
+         ridges and shading, round a disc of tiny florets. Colour comes from --petal-fill (and --disc, --disc-2). -->
+    <linearGradient id="petal-shade" gradientUnits="userSpaceOnUse" x1="0" y1="-9" x2="0" y2="-47">
+      <stop offset="0" stop-color="#3a0020" stop-opacity=".28"/><stop offset=".38" stop-color="#3a0020" stop-opacity="0"/>
+      <stop offset=".8" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".22"/>
+    </linearGradient>
     <symbol id="cosmos" viewBox="-50 -50 100 100">
-      <g style="fill: var(--petal-fill, #f06292); stroke: var(--petal-edge, none); stroke-width: 3.5; stroke-linejoin: round">
-        <path id="petal" d="M0-9C9-18 13-34 7-47L3-42 0-48-3-42-7-47C-13-34-9-18 0-9Z"/>
-        <use href="#petal" transform="rotate(45)"/><use href="#petal" transform="rotate(90)"/><use href="#petal" transform="rotate(135)"/>
-        <use href="#petal" transform="rotate(180)"/><use href="#petal" transform="rotate(225)"/><use href="#petal" transform="rotate(270)"/><use href="#petal" transform="rotate(315)"/>
+      <g id="petal">
+        <path d="M0-9C6-12 15-29 14-43L10.5-40.5 7-46.5 3.5-42 0-47.5-3.5-42-7-46.5-10.5-40.5-14-43C-15-29-6-12 0-9Z" style="fill: var(--petal-fill, #f06292); stroke: var(--petal-edge, none); stroke-width: 3.5; stroke-linejoin: round"/>
+        <path d="M0-9C6-12 15-29 14-43L10.5-40.5 7-46.5 3.5-42 0-47.5-3.5-42-7-46.5-10.5-40.5-14-43C-15-29-6-12 0-9Z" fill="url(#petal-shade)"/>
+        <path d="M0-12V-44M-1.5-12-7.5-41M1.5-12 7.5-41M-3-13-11.5-38M3-13 11.5-38" fill="none" stroke="#3a0020" stroke-opacity=".1" stroke-width=".9" stroke-linecap="round"/>
       </g>
-      <circle r="12" style="fill: var(--disc, #f2a516)"/><circle r="8" style="fill: var(--disc-2, #ffc94a)"/>
+      <use href="#petal" transform="rotate(44)"/><use href="#petal" transform="rotate(91)"/><use href="#petal" transform="rotate(134)"/>
+      <use href="#petal" transform="rotate(181)"/><use href="#petal" transform="rotate(226)"/><use href="#petal" transform="rotate(269)"/><use href="#petal" transform="rotate(316)"/>
+      <circle r="13" style="fill: var(--disc, #f2a516)"/>
+      <g style="fill: var(--disc-2, #ffc94a)"><circle cx="10.20" cy="0.00" r="1.5"/><circle cx="9.19" cy="4.43" r="1.5"/><circle cx="6.36" cy="7.97" r="1.5"/><circle cx="2.27" cy="9.94" r="1.5"/><circle cx="-2.27" cy="9.94" r="1.5"/><circle cx="-6.36" cy="7.97" r="1.5"/><circle cx="-9.19" cy="4.43" r="1.5"/><circle cx="-10.20" cy="0.00" r="1.5"/><circle cx="-9.19" cy="-4.43" r="1.5"/><circle cx="-6.36" cy="-7.97" r="1.5"/><circle cx="-2.27" cy="-9.94" r="1.5"/><circle cx="2.27" cy="-9.94" r="1.5"/><circle cx="6.36" cy="-7.97" r="1.5"/><circle cx="9.19" cy="-4.43" r="1.5"/></g>
+      <circle r="8.2" style="fill: var(--disc-2, #ffc94a)"/>
+      <g style="fill: var(--disc, #f2a516)" opacity=".75"><circle cx="5.26" cy="1.92" r="1.2"/><circle cx="2.80" cy="4.85" r="1.2"/><circle cx="-0.97" cy="5.51" r="1.2"/><circle cx="-4.29" cy="3.60" r="1.2"/><circle cx="-5.60" cy="0.00" r="1.2"/><circle cx="-4.29" cy="-3.60" r="1.2"/><circle cx="-0.97" cy="-5.51" r="1.2"/><circle cx="2.80" cy="-4.85" r="1.2"/><circle cx="5.26" cy="-1.92" r="1.2"/></g>
+      <circle r="3" fill="#7a3d00" opacity=".25"/>
+    </symbol>
+    <!-- its leaf: cut fine, a midrib with pairs of thread-like lobes, the lower ones forked again -->
+    <symbol id="cosmos-leaf" viewBox="0 -10 24 20" overflow="visible">
+      <path d="M0 0Q9 -1.5 20 -2.6M3 -0.36Q4.30 -3.61 6.58 -5.88M4.62 -3.09L7.88 -2.63M3 -0.36Q4.30 2.89 6.58 5.16M4.62 2.37L7.88 1.92M6.5 -0.78Q7.90 -4.28 10.35 -6.73M8.25 -3.72L11.75 -3.23M6.5 -0.78Q7.90 2.72 10.35 5.17M8.25 2.16L11.75 1.67M10 -1.20Q11.30 -4.45 13.57 -6.72M11.62 -3.93L14.88 -3.47M10 -1.20Q11.30 2.05 13.57 4.32M11.62 1.53L14.88 1.07M13.5 -1.62Q14.60 -4.37 16.52 -6.29M13.5 -1.62Q14.60 1.13 16.52 3.05M16.5 -1.98Q17.30 -3.98 18.70 -5.38M16.5 -1.98Q17.30 0.02 18.70 1.42" fill="none" style="stroke: var(--leaf-deep, #4a9a3e)" stroke-width="1.05" stroke-linecap="round"/>
+    </symbol>
+    <!-- its stem, bending a little, with a leaf on either side and a small one lower down -->
+    <symbol id="cosmos-stem" viewBox="0 0 40 90" overflow="visible">
+      <path d="M20 0C19 22 22 46 20.5 90" fill="none" style="stroke: var(--leaf-deep, #4a9a3e)" stroke-width="2.4" stroke-linecap="round"/>
+      <use href="#cosmos-leaf" x="0" y="-10" width="24" height="20" transform="translate(20.2 26) rotate(-28) scale(.95)"/>
+      <use href="#cosmos-leaf" x="0" y="-10" width="24" height="20" transform="translate(20.4 46) rotate(208) scale(1)"/>
+      <use href="#cosmos-leaf" x="0" y="-10" width="24" height="20" transform="translate(20.6 66) rotate(-35) scale(.75)"/>
     </symbol>
   </defs>
 </svg>
@@ -436,19 +458,19 @@
       <path d="M0 120C240 60 420 70 640 110S1100 150 1440 80V230H0Z" fill="#8fd27a"/>
       <path id="hill-front" d="M0 170C300 120 520 140 760 165S1200 190 1440 140V230H0Z" fill="#6dbe5e"/>
     </svg>
-    <div class="flower" style="left:3%;--s:clamp(54px,9vw,96px);--d:-1s"><svg style="--petal-fill:#f06292"><use href="#cosmos"/></svg><div class="stem"></div></div>
-    <div class="flower" style="left:12%;--s:clamp(38px,6vw,64px);--d:-2.5s"><svg style="--petal-fill:#fbe4ee"><use href="#cosmos"/></svg><div class="stem"></div></div>
-    <div class="flower" style="left:24%;--s:clamp(30px,4.5vw,48px);--d:-.5s"><svg style="--petal-fill:#9c7cf0"><use href="#cosmos"/></svg><div class="stem"></div></div>
-    <div class="flower" style="right:24%;--s:clamp(32px,5vw,52px);--d:-3s"><svg style="--petal-fill:#f48fb1"><use href="#cosmos"/></svg><div class="stem"></div></div>
-    <div class="flower" style="right:11%;--s:clamp(48px,8vw,84px);--d:-1.8s"><svg style="--petal-fill:#9c7cf0"><use href="#cosmos"/></svg><div class="stem"></div></div>
-    <div class="flower" style="right:2%;--s:clamp(36px,6vw,60px);--d:-.9s"><svg style="--petal-fill:#fbe4ee"><use href="#cosmos"/></svg><div class="stem"></div></div>
+    <div class="flower" style="left:3%;--s:clamp(54px,9vw,96px);--d:-1s"><svg style="--petal-fill:#f06292"><use href="#cosmos"/></svg><svg class="stem"><use href="#cosmos-stem" width="100%" height="100%"/></svg></div>
+    <div class="flower" style="left:12%;--s:clamp(38px,6vw,64px);--d:-2.5s"><svg style="--petal-fill:#fbe4ee"><use href="#cosmos"/></svg><svg class="stem"><use href="#cosmos-stem" width="100%" height="100%"/></svg></div>
+    <div class="flower" style="left:24%;--s:clamp(30px,4.5vw,48px);--d:-.5s"><svg style="--petal-fill:#9c7cf0"><use href="#cosmos"/></svg><svg class="stem"><use href="#cosmos-stem" width="100%" height="100%"/></svg></div>
+    <div class="flower" style="right:24%;--s:clamp(32px,5vw,52px);--d:-3s"><svg style="--petal-fill:#f48fb1"><use href="#cosmos"/></svg><svg class="stem"><use href="#cosmos-stem" width="100%" height="100%"/></svg></div>
+    <div class="flower" style="right:11%;--s:clamp(48px,8vw,84px);--d:-1.8s"><svg style="--petal-fill:#9c7cf0"><use href="#cosmos"/></svg><svg class="stem"><use href="#cosmos-stem" width="100%" height="100%"/></svg></div>
+    <div class="flower" style="right:2%;--s:clamp(36px,6vw,60px);--d:-.9s"><svg style="--petal-fill:#fbe4ee"><use href="#cosmos"/></svg><svg class="stem"><use href="#cosmos-stem" width="100%" height="100%"/></svg></div>
     <!-- more of the colours hnahsin comes in: orange and yellow, crimson and magenta, the candy stripe, the chocolate cosmos -->
-    <div class="flower more" style="left:7.5%;--s:clamp(28px,4.4vw,50px);--d:-1.4s"><svg style="--petal-fill:#ff8f00;--disc:#e65100;--disc-2:#ffb300"><use href="#cosmos"/></svg><div class="stem"></div></div>
-    <div class="flower more" style="left:17.5%;--s:clamp(26px,4vw,46px);--d:-2.1s"><svg style="--petal-fill:#c2185b"><use href="#cosmos"/></svg><div class="stem"></div></div>
-    <div class="flower more wide" style="left:31%;--s:clamp(24px,3.4vw,40px);--d:-.2s"><svg style="--petal-fill:#ffffff;--petal-edge:#e91e63"><use href="#cosmos"/></svg><div class="stem"></div></div>
-    <div class="flower more wide" style="right:31%;--s:clamp(24px,3.4vw,40px);--d:-2.8s"><svg style="--petal-fill:#d81b60"><use href="#cosmos"/></svg><div class="stem"></div></div>
-    <div class="flower more" style="right:17.5%;--s:clamp(26px,4vw,46px);--d:-1.1s"><svg style="--petal-fill:#fdd835;--disc:#f57f17;--disc-2:#fbc02d"><use href="#cosmos"/></svg><div class="stem"></div></div>
-    <div class="flower more" style="right:6.5%;--s:clamp(28px,4.4vw,50px);--d:-3.3s"><svg style="--petal-fill:#6d1b2b;--disc:#2b0d0f;--disc-2:#4a1a14"><use href="#cosmos"/></svg><div class="stem"></div></div>
+    <div class="flower more" style="left:7.5%;--s:clamp(28px,4.4vw,50px);--d:-1.4s"><svg style="--petal-fill:#ff8f00;--disc:#e65100;--disc-2:#ffb300"><use href="#cosmos"/></svg><svg class="stem"><use href="#cosmos-stem" width="100%" height="100%"/></svg></div>
+    <div class="flower more" style="left:17.5%;--s:clamp(26px,4vw,46px);--d:-2.1s"><svg style="--petal-fill:#c2185b"><use href="#cosmos"/></svg><svg class="stem"><use href="#cosmos-stem" width="100%" height="100%"/></svg></div>
+    <div class="flower more wide" style="left:31%;--s:clamp(24px,3.4vw,40px);--d:-.2s"><svg style="--petal-fill:#ffffff;--petal-edge:#e91e63"><use href="#cosmos"/></svg><svg class="stem"><use href="#cosmos-stem" width="100%" height="100%"/></svg></div>
+    <div class="flower more wide" style="right:31%;--s:clamp(24px,3.4vw,40px);--d:-2.8s"><svg style="--petal-fill:#d81b60"><use href="#cosmos"/></svg><svg class="stem"><use href="#cosmos-stem" width="100%" height="100%"/></svg></div>
+    <div class="flower more" style="right:17.5%;--s:clamp(26px,4vw,46px);--d:-1.1s"><svg style="--petal-fill:#fdd835;--disc:#f57f17;--disc-2:#fbc02d"><use href="#cosmos"/></svg><svg class="stem"><use href="#cosmos-stem" width="100%" height="100%"/></svg></div>
+    <div class="flower more" style="right:6.5%;--s:clamp(28px,4.4vw,50px);--d:-3.3s"><svg style="--petal-fill:#6d1b2b;--disc:#2b0d0f;--disc-2:#4a1a14"><use href="#cosmos"/></svg><svg class="stem"><use href="#cosmos-stem" width="100%" height="100%"/></svg></div>
     <div class="kid mami"><canvas></canvas></div>
     <div class="kid rova"><canvas></canvas></div>
     <div class="hello" aria-hidden="true">Chibai!</div>
@@ -520,14 +542,14 @@
     <path class="h3" d="M0 102C320 78 600 86 860 98S1260 116 1440 96V120H0Z"/>
   </svg>
   <div class="foot-flowers" aria-hidden="true">
-      <div class="flower" style="left:3%;--s:clamp(30px,3.6vw,46px);--d:-1s"><svg style="--petal-fill:#d81b60"><use href="#cosmos"/></svg><div class="stem"></div></div>
-      <div class="flower" style="left:9%;--s:clamp(22px,2.6vw,34px);--d:-2.2s"><svg style="--petal-fill:#ffffff;--petal-edge:#e91e63"><use href="#cosmos"/></svg><div class="stem"></div></div>
-      <div class="flower wide" style="left:15%;--s:clamp(26px,3vw,40px);--d:-.4s"><svg style="--petal-fill:#ff8f00;--disc:#e65100;--disc-2:#ffb300"><use href="#cosmos"/></svg><div class="stem"></div></div>
-      <div class="flower wide" style="left:22%;--s:clamp(20px,2.2vw,30px);--d:-3s"><svg style="--petal-fill:#b39ddb"><use href="#cosmos"/></svg><div class="stem"></div></div>
-      <div class="flower wide" style="right:24%;--s:clamp(20px,2.2vw,30px);--d:-1.6s"><svg style="--petal-fill:#fbe4ee"><use href="#cosmos"/></svg><div class="stem"></div></div>
-      <div class="flower wide" style="right:16%;--s:clamp(26px,3vw,40px);--d:-2.6s"><svg style="--petal-fill:#fdd835;--disc:#f57f17;--disc-2:#fbc02d"><use href="#cosmos"/></svg><div class="stem"></div></div>
-      <div class="flower" style="right:9%;--s:clamp(30px,3.6vw,46px);--d:-.8s"><svg style="--petal-fill:#f48fb1"><use href="#cosmos"/></svg><div class="stem"></div></div>
-      <div class="flower" style="right:3%;--s:clamp(24px,2.8vw,38px);--d:-1.9s"><svg style="--petal-fill:#6d1b2b;--disc:#2b0d0f;--disc-2:#4a1a14"><use href="#cosmos"/></svg><div class="stem"></div></div>
+      <div class="flower" style="left:3%;--s:clamp(30px,3.6vw,46px);--d:-1s"><svg style="--petal-fill:#d81b60"><use href="#cosmos"/></svg><svg class="stem"><use href="#cosmos-stem" width="100%" height="100%"/></svg></div>
+      <div class="flower" style="left:9%;--s:clamp(22px,2.6vw,34px);--d:-2.2s"><svg style="--petal-fill:#ffffff;--petal-edge:#e91e63"><use href="#cosmos"/></svg><svg class="stem"><use href="#cosmos-stem" width="100%" height="100%"/></svg></div>
+      <div class="flower wide" style="left:15%;--s:clamp(26px,3vw,40px);--d:-.4s"><svg style="--petal-fill:#ff8f00;--disc:#e65100;--disc-2:#ffb300"><use href="#cosmos"/></svg><svg class="stem"><use href="#cosmos-stem" width="100%" height="100%"/></svg></div>
+      <div class="flower wide" style="left:22%;--s:clamp(20px,2.2vw,30px);--d:-3s"><svg style="--petal-fill:#b39ddb"><use href="#cosmos"/></svg><svg class="stem"><use href="#cosmos-stem" width="100%" height="100%"/></svg></div>
+      <div class="flower wide" style="right:24%;--s:clamp(20px,2.2vw,30px);--d:-1.6s"><svg style="--petal-fill:#fbe4ee"><use href="#cosmos"/></svg><svg class="stem"><use href="#cosmos-stem" width="100%" height="100%"/></svg></div>
+      <div class="flower wide" style="right:16%;--s:clamp(26px,3vw,40px);--d:-2.6s"><svg style="--petal-fill:#fdd835;--disc:#f57f17;--disc-2:#fbc02d"><use href="#cosmos"/></svg><svg class="stem"><use href="#cosmos-stem" width="100%" height="100%"/></svg></div>
+      <div class="flower" style="right:9%;--s:clamp(30px,3.6vw,46px);--d:-.8s"><svg style="--petal-fill:#f48fb1"><use href="#cosmos"/></svg><svg class="stem"><use href="#cosmos-stem" width="100%" height="100%"/></svg></div>
+      <div class="flower" style="right:3%;--s:clamp(24px,2.8vw,38px);--d:-1.9s"><svg style="--petal-fill:#6d1b2b;--disc:#2b0d0f;--disc-2:#4a1a14"><use href="#cosmos"/></svg><svg class="stem"><use href="#cosmos-stem" width="100%" height="100%"/></svg></div>
   </div>
   <div class="wrap foot-grid">
     <div class="foot-brand-col">
