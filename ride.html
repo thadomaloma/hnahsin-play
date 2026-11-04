@@ -893,7 +893,7 @@
     return { night: /[?&]night\b/.test(q) || (!/[?&]day\b/.test(q) && (h >= 18.5 || h < 5.5)), rain: /[?&]rain\b/.test(q) || (!/[?&]dry\b/.test(q) && Math.random() < (m >= 5 && m <= 8 ? 0.4 : 0.12)) };
   }
   let cars = [], jams = [], braking = false, carT = 0, oncomingT = 0, eventWords = new Set();
-  let peds = [], crossings = [], pedT = 0, stillT = 0, slowDone = false, jnMet = new Set();     // (the junctions whose people are out, this ride)     // (how long stopped at a crossing: a secret badge)
+  let peds = [], crossings = [], pedT = 0, stillT = 0, slowDone = false, jnMet = new Set(), pedSeeded = false;     // (how long stopped at a crossing: a secret badge; the junctions whose people are out, this ride)
   let s, v, px, pvx, pax, laneFrom, laneV, laneA, laneTo, laneT, lane, coins, picked, coinsPut, rideMult, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
   let soundOn = S.sound;
 
@@ -901,7 +901,7 @@
     prepRoute();
     s = 0; v = 0; lane = 1; px = 0; pvx = 0; pax = 0; laneFrom = laneV = laneA = laneTo = 0; laneT = LANE_T; coins = 0; time = 0; bgX = 0; shake = 0; lean = 0; crashT = 0; crashDir = 1;
     things = []; sparks = []; pops = []; nextRow = 70; lastOpen = 1; passed = new Set();
-    cars = []; jams = planJams(); crossings = planCrossings(); peds = []; pedT = 0; jnMet = new Set(); buildStrip(); prepMini(); braking = false; carT = 3; oncomingT = 5; eventWords = new Set(); brakeHint(false);
+    cars = []; jams = planJams(); crossings = planCrossings(); peds = []; pedT = 0; jnMet = new Set(); pedSeeded = false; buildStrip(); prepMini(); braking = false; carT = 3; oncomingT = 5; eventWords = new Set(); brakeHint(false);
     best0 = bestOf(route.id); bestShown = false; wordsSeen = new Set(); wordT = 4; picked = 0; coinsPut = 0; rideMult = multOf(rankOf()); stillT = 0; slowDone = false;
     plan(); hud(true);
     if (R3) R3.setPlan();
@@ -935,7 +935,10 @@
     // (the tests may ask for one kind)
     const kind = (window.__ride && window.__blockKind) || pick(lane === 0 ? [['parked', 0.36], ['unload', 0.14], ['busstop', near >= 18 ? 0.12 : 0.02], ['works', 0.2], ['pothole', 0.14]]
       : [['works', 0.58], ['pothole', 0.42]]);
-    const t = { kind: kind === 'busstop' && !walkHere(Math.floor((at + 3.3) / SEG), -1) ? 'parked' : kind, lane, at, hit: false, seed: Math.random(), back: 0 };     // (a bus stops where there is a footpath)
+    // (a bus stops where there is a footpath; nothing parks across a side road on the left, road works go there instead)
+    const mouth = (route.junctions || []).some(q => q[1] < 0 && Math.abs(q[0] * SEG - at) < 12);
+    const vehicle = kind === 'parked' || kind === 'unload' || kind === 'busstop';
+    const t = { kind: vehicle && mouth ? 'works' : kind === 'busstop' && !walkHere(Math.floor((at + 3.3) / SEG), -1) ? 'parked' : kind, lane, at, hit: false, seed: Math.random(), back: 0 };
     if (t.kind === 'parked' || t.kind === 'unload' || t.kind === 'busstop') {
       const ck = t.kind === 'busstop' ? 'bus' : t.kind === 'unload' ? 'truck' : ['car', 'sedan', 'suv', 'taxi', 'car'][Math.random() * 5 | 0], K = KINDS[ck];
       t.car = { kind: ck, col: K.cols[Math.random() * K.cols.length | 0], len: K.len, wid: K.wid, hgt: K.hgt, x: -(ROAD_EDGE - 0.25 - K.wid / 2), dir: 1, v: 0, vx: 0, slowing: false, at, hazard: true };
@@ -970,9 +973,13 @@
   // Jams wait where the road is busy: at the veng and named places along it, spaced apart
   function planJams() {
     // at the places along the road, and where a main road meets it (the queue just before the junction)
-    const out = [], spots = [...route.places.map(p => p[0] * SEG), ...(route.junctions || []).filter(q => q[2] === 0).map(q => q[0] * SEG - 34)].filter(m => m > 260 && m < route.length - 180);
-    if (route.length > 1200 && !spots.length) spots.push(route.length * 0.45);
-    for (const m of spots.sort((a, b) => a - b)) if (!out.length || m - out[out.length - 1].at > 420) out.push({ at: m, n: 6 + (Math.random() * 6 | 0), state: 'far', wait: 6 + Math.random() * 3, broke: false });
+    // (the queue reaches forward from its spot, two abreast, 7 m a pair: at a junction it ends 5 m before it)
+    const out = [], spots = [...route.places.map(p => [p[0] * SEG, false]), ...(route.junctions || []).filter(q => q[2] === 0).map(q => [q[0] * SEG, true])];
+    if (route.length > 1200 && !spots.length) spots.push([route.length * 0.45, false]);
+    for (const [m0, jn] of spots.sort((a, b) => a[0] - b[0])) {
+      const n = 6 + (Math.random() * 6 | 0), m = jn ? m0 - 5 - Math.ceil(n / 2) * 7 : m0;
+      if (m > 260 && m < route.length - 180 && (!out.length || m - out[out.length - 1].at > 420)) out.push({ at: m, n, state: 'far', wait: 6 + Math.random() * 3, broke: false });
+    }
     return out.slice(0, route.length > 2500 ? 3 : 2);
   }
   const carNear = (lane, from, to) => cars.some(c => c.lane === lane && c.at > from && c.at < to);
@@ -1085,7 +1092,7 @@
   // 120 m) with a footpath on both sides for a few metres, and no queue close by
   function planCrossings() {
     // (and just before each junction, where people cross most)
-    const out = [], spots = [...route.places.map(p => p[0] * SEG), ...(route.junctions || []).map(q => q[0] * SEG - 9)];
+    const out = [], spots = [...route.places.map(p => p[0] * SEG), ...(route.junctions || []).map(q => q[0] * SEG - 14)];
     for (let m = 300; m < route.length - 120; m += 380) spots.push(m);
     const ok = m => {
       if (m < 160 || m > route.length - 90 || jams.some(j => Math.abs(j.at - m) < 110)) return false;
@@ -1099,7 +1106,25 @@
     }
     return out.slice(0, 7);
   }
-  const newPed = (at, x, va, vx) => ({ at, x, va, vx, look: LOOKS[Math.random() * LOOKS.length | 0], phase: Math.random() * 4, cross: null });
+  // (each has an umbrella ready for the rain: in Aizawl most are black, some bright)
+  const UMBRELLAS = ['#1b1b1b', '#1b1b1b', '#1b1b1b', '#2c3e50', '#1565c0', '#c0392b', '#6a1b9a', '#2e7d32', '#f2c230', '#d81b60'];
+  const ADULTS = LOOKS.filter(L => !L.child), KIDS = LOOKS.filter(L => L.child);
+  const newPed = (at, x, va, vx, look) => ({ at, x, va, vx, look: look || LOOKS[Math.random() * LOOKS.length | 0], phase: Math.random() * 4, cross: null, umb: UMBRELLAS[Math.random() * UMBRELLAS.length | 0] });
+  // what a person wears as drawn: in the rain, the umbrella up (not the road workers or porters, whose hands are full)
+  const lookOf = p => (cond.rain && p.umb && !p.tool && !p.carry && !p.look.umbrella ? p.lookU || (p.lookU = { ...p.look, umbrella: p.umb }) : p.look);
+  const DOGS = ['#8d5a33', '#2b2522', '#e9dcc4', '#c9a06a', '#6b6b6b'];
+  // People walking the footpaths, coming into view far ahead: on their own, a parent with a child, two children
+  // together, or someone walking their dog on a lead
+  function walker(at, i) {
+    const side = Math.random() < 0.5 ? -1 : 1;
+    if (!(sideAt(i, side) > -2.5 && walkHere(i, side))) return;
+    const x = side * (5.1 + Math.random() * 0.8), va = (Math.random() < 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.5), r = Math.random();
+    const pick = a => a[Math.random() * a.length | 0], inner = side * (Math.abs(x) < 5.5 ? 0.5 : -0.5);
+    if (r < 0.22) { peds.push(newPed(at, x, va * 0.8, 0, pick(ADULTS))); peds.push(newPed(at + 0.2, x + inner, va * 0.8, 0, pick(KIDS))); }      // a parent and a child
+    else if (r < 0.32) { peds.push(newPed(at, x, va, 0, pick(KIDS))); peds.push(newPed(at + 0.5, x + inner, va, 0, pick(KIDS))); }               // two children
+    else if (r < 0.4) { const p = newPed(at, x, va * 0.85, 0, pick(ADULTS)); p.dog = pick(DOGS); peds.push(p); }                                   // with a dog
+    else peds.push(newPed(at, x, va, 0));
+  }
   // The people of a roadblock, set out as it comes near. Road workers in orange with yellow hard hats, one
   // digging and one with a red flag for the traffic; porters (hlawhfa) carrying the sacks from the truck to
   // the footpath and back; people waiting for the bus by its door, someone getting on and someone off; a
@@ -1115,9 +1140,9 @@
     } else if (t.kind === 'pothole') {
       add(t.at + 1.5, t.x + side * 0.35, { look: WORKER[1], aim: Math.PI, hat: '#f2c230', tool: 'shovel' });
     } else if (t.kind === 'unload') {
-      const at = t.at - t.len / 2 - 0.9;
-      for (let k = 0; k < 2; k++) add(at - k * 0.7, t.x - 0.3 - k * 0.9, { look: PORTER, shuttle: [path, t.x - 0.3], vx: (k ? 1 : -1) * 0.9, carry: '#e4dccb' });
-    } else if (t.kind === 'busstop' && walk) {
+      const at = t.at - t.len / 2 - 0.9, to = walkHere(Math.floor(at / SEG), -1) ? -5.3 : -3.75;
+      for (let k = 0; k < 2; k++) add(at - k * 0.7, t.x - 0.3 - k * 0.9, { look: PORTER, shuttle: [to, t.x - 0.3], vx: (k ? 1 : -1) * 0.9, carry: '#e4dccb' });
+    } else if (t.kind === 'busstop' && walkHere(Math.floor((t.at + 3.3) / SEG), -1)) {
       const door = t.at + 3.3;
       for (let k = 0; k < 3; k++) add(door - 1 - k * 0.9, -5.4 - (k % 2) * 0.4, { aim: -Math.PI / 2 });                    // waiting, facing the bus
       add(door, -5.2, { vx: 0.9, board: -3.8, hold: true });                                                              // getting on
@@ -1131,13 +1156,12 @@
   }
   function people(dt) {
     const far = s + VIEW * SEG - 8;
-    if ((pedT -= dt) <= 0 && peds.length < 24) {
+    // (at the start, the footpaths ahead are filled at once, as they would be already)
+    if (!pedSeeded) { pedSeeded = true; for (let at = s + 14; at < Math.min(far, route.length); at += 7 + Math.random() * 6) if (footpath(Math.floor(at / SEG))) walker(at, Math.floor(at / SEG)); }
+    if ((pedT -= dt) <= 0 && peds.length < 50) {
       const i = Math.floor(far / SEG);
-      if (far < route.length && footpath(i)) {
-        const side = Math.random() < 0.5 ? -1 : 1;
-        if (sideAt(i, side) > -2.5 && walkHere(i, side)) peds.push(newPed(far, side * (5.1 + Math.random() * 0.8), (Math.random() < 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.6), 0));
-      }
-      pedT = 0.35 + Math.random() * 0.8;
+      if (far < route.length && footpath(i)) walker(far, i);
+      pedT = 0.16 + Math.random() * 0.4;
     }
     // At each junction, as it comes near, people at its corners: waiting to cross, standing talking, walking on
     for (const q of route.junctions || []) {
@@ -1309,9 +1333,10 @@
     const a = P[i], b = P[i + 1], u = (p.at - a.wz) / SEG;
     const k = a.k + (b.k - a.k) * u, x = a.x + (b.x - a.x) * u + p.x * k, y = a.y + (b.y - a.y) * u;
     if (k * 1.65 < 4 || x < -k || x > W + k) return;
-    const front = p.vx ? true : p.va < 0, frame = Math.floor(p.phase) % 4, li = LOOKS.indexOf(p.look);
-    const sp = sprite(`p${li}${front ? 'f' : 'b'}${frame}`, 0.62, 1.7, (g, w, h) => paintPerson(g, w, h, p.look, front, frame));
-    const sc = k / PXM, ga = ctx.globalAlpha;
+    const front = p.vx ? true : p.va < 0, frame = Math.floor(p.phase) % 4, L = lookOf(p), li = LOOKS.indexOf(p.look);
+    const sp = sprite(`p${li}${L.umbrella || ''}${front ? 'f' : 'b'}${frame}`, 0.62, 1.7, (g, w, h) => paintPerson(g, w, h, L, front, frame));
+    const sc = k / PXM * (p.look.child ? 0.68 : 1), ga = ctx.globalAlpha;     // (a child, smaller)
+    if (p.dog) { ctx.fillStyle = p.dog; ctx.beginPath(); ctx.ellipse(x - 0.45 * k, y - 0.3 * k, 0.28 * k, 0.12 * k, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(x - 0.45 * k + (front ? 0 : 0.22 * k), y - 0.42 * k, 0.1 * k, 0, 7); ctx.fill(); }   // a dog beside
     ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(x, y, 0.3 * k, 0.07 * k, 0, 0, 7); ctx.fill();
     if (a.f > 0.3) ctx.globalAlpha = ga * (1 - (a.f - 0.3) * 0.7);
     ctx.drawImage(sp.c, x - sp.c.width * sc / 2, y - (sp.c.height - 1) * sc, sp.c.width * sc, sp.c.height * sc);
@@ -3198,6 +3223,19 @@ void main() {
       if (p.tool === 'shovel') { limbTo(pLimb, 0.2, 1.02, 0.28, 0.08, 0.6, 0.022, '#7a5a3a'); put(pBox, 0.2, 0.0, 0.64, 0.22, 0.03, 0.26, '#8d9092'); }
       if (p.tool === 'flag') { limbTo(pLimb, 0.3, 0.98, 0.22, 2.05, 0.3, 0.018, '#5a4636'); put(pBox, 0.3, 1.8, 0.3, 0.02, 0.26, 0.36, (time * 1.2) % 1 < 0.5 ? '#d32f2f' : '#c62828'); }     // (held up, beside the head)
       if (p.carry && p.vx < 0) put(pBox, -0.14, 1.48, 0, 0.36, 0.26, 0.58, p.carry);
+      if (p.dog) {     // a dog on a lead, trotting a little ahead on the left: body, head and ears, tail, four legs, and the lead to the hand
+        const d = p.dog, dx = -0.42, dz = 0.95, ph = p.phase * Math.PI / 2, s0 = 1 / (p.sc || 1);
+        put(pRound, dx, 0.42 * s0, dz, 0.11 * s0, 0.12 * s0, 0.29 * s0, d);                                            // the body
+        put(pRound, dx, 0.47 * s0, dz + 0.26 * s0, 0.08 * s0, 0.09 * s0, 0.09 * s0, d);                                  // the neck and chest
+        put(pRound, dx, 0.58 * s0, dz + 0.36 * s0, 0.085 * s0, 0.085 * s0, 0.1 * s0, d);                                 // the head
+        put(pRound, dx, 0.55 * s0, dz + 0.46 * s0, 0.045 * s0, 0.04 * s0, 0.06 * s0, d);                                 // the muzzle
+        put(pRound, dx, 0.56 * s0, dz + 0.51 * s0, 0.022 * s0, 0.02 * s0, 0.02 * s0, '#1b1716');                        // the nose
+        for (const e of [-1, 1]) put(pBox, dx + e * 0.055 * s0, 0.62 * s0, dz + 0.33 * s0, 0.035 * s0, 0.09 * s0, 0.05 * s0, d);   // the ears
+        limbTo(pLimb, dx, 0.46 * s0, dz - 0.27 * s0, 0.6 * s0, dz - 0.4 * s0, 0.025 * s0, d);                         // the tail, up and wagging
+        for (const [e, u] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) { const sw = Math.sin(ph + (e * u > 0 ? 0 : Math.PI)) * 0.09 * s0;
+          limbTo(pLimb, dx + e * 0.06 * s0, 0.38 * s0, dz + u * 0.18 * s0, 0.02, dz + u * 0.18 * s0 + sw, 0.045 * s0, d); }
+        limbTo(pLimb, -0.32, 0.88, 0.14, 0.44 * s0, dz + 0.22 * s0, 0.008, '#c0392b');                                   // the lead
+      }
     };
     const limbTo = (m, x, y0, z0, y1, z1, w, col) => put(m, x, y0, z0, w, Math.hypot(y1 - y0, z1 - z0) / 2, w, col, Math.atan2(-(z1 - z0), -(y1 - y0)));
     const armTo = (x, y, z, ua, fa, top, low) => {
@@ -3241,7 +3279,8 @@ void main() {
     const holeM = pool(new T.CircleGeometry(0.5, 16).rotateX(-Math.PI / 2), new T.MeshLambertMaterial({ polygonOffset: true, polygonOffsetFactor: -2 }), 24);
     const signM = pool(new T.PlaneGeometry(1, 1), new T.MeshLambertMaterial({ map: tex(256, 128, g => { g.fillStyle = '#f2c230'; g.fillRect(0, 0, 256, 128); g.strokeStyle = '#231e16'; g.lineWidth = 8; g.strokeRect(6, 6, 244, 116);
       g.fillStyle = '#231e16'; g.font = '800 40px "Plus Jakarta Sans", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('KAWNG', 128, 44); g.fillText('SIAM MEK', 128, 88); }), side: T.DoubleSide }), 12);
-    const pUp = pool(capUp, plainMat, 80), pLimb = pool(capHang, plainMat, 700), pRound = pool(ball, plainMat, 320), pPuan = pool(skirt, puanMat, 30), pTorso = pool(torsoGeo, plainMat, 110), pBox = pool(box, plainMat, 260), pCone = pool(cone, plainMat, 30);
+    // (room for a busy street: the people on the footpaths and at the junctions, the riders of the two-wheelers)
+    const pUp = pool(capUp, plainMat, 160), pLimb = pool(capHang, plainMat, 1100), pRound = pool(ball, plainMat, 560), pPuan = pool(skirt, puanMat, 60), pTorso = pool(torsoGeo, plainMat, 180), pBox = pool(box, plainMat, 420), pCone = pool(cone, plainMat, 40);
     const JACKETS = ['#2c3e50', '#7a3b2e', '#3b5f3a', '#1f3a68', '#5b4a3a', '#8e1b3a', '#d8d4cc', '#4a4f57'], HELMETS = ['#f2f2ee', '#231e16', '#c0392b', '#1565c0', '#f2c230', '#6b6e70'];
     const LEGS = ['#2c3e50', '#3b5b8a', '#34495e', '#1f1f1f', '#5b4a3a', '#46628f'], BAGS = ['#1f1f1f', '#2c3e50', '#7a3b2e', '#3b5f3a'];   // trousers and jeans; backpacks
 
@@ -3301,12 +3340,14 @@ void main() {
     const SHOES = ['#231e16', '#2a2522', '#4a3426', '#6b4a33'], GREY = '#cfcac2';
     // someone walking, standing or crossing, at the frame set by base(): the next free body of their kind,
     // dressed in their look, walking as fast as they go
+    // a person's skin, the same each time (also for those not dressed from LOOKS: the road workers, the porters)
+    const skinOf = p => SKIN[p.skin ?? (p.skin = Math.floor(Math.random() * SKIN.length))];
     function person(p, dt) {
       const L = p.look, kind = L.stripes ? PEOPLE.woman : PEOPLE.man;
       let it = PEOPLE.live.get(p);
       if (!it) {
         it = kind.free.pop() || kind.make(); PEOPLE.live.set(p, it); it.root.visible = true;
-        const u = it.mat.userData.u, skin = SKIN[LOOKS.indexOf(L) % SKIN.length];
+        const u = it.mat.userData.u, skin = skinOf(p);
         u.uSkin.value.set(skin).multiplyScalar(1.05); u.uShirt.value.set(L.shirt); u.uPants.value.set(L.lower); u.uStripe.value.set(L.stripes || L.lower);
         u.uShoe.value.set(SHOES[(Math.random() * SHOES.length) | 0]); u.uHair.value.set(L.elder ? GREY : L.hair); u.uLong.value = L.jacket || L.elder ? 1 : 0;
         const pick = kind.female ? (L.bun ? 'Buns' : L.long ? 'Long' : Math.random() < 0.5 ? 'Buns' : 'Long') : (Math.random() < 0.6 ? 'SimpleParted' : 'Buzzed');
@@ -3347,11 +3388,11 @@ void main() {
         put(vGlow, e * sw * tx, (tv - th / 2) * sy, tu * sl, sw * tw, th * sy, 0.04, stop);
         // at night each lamp glows, and the headlamps throw their beam down the road ahead
         if (cond.night) {
-          put(haloM, e * sw * hx, (hv - hh / 2) * sy, hu * sl + 0.08, 1.5, 1.5, 1.5, '#fff0d0');
+          if (!c.hazard) put(haloM, e * sw * hx, (hv - hh / 2) * sy, hu * sl + 0.08, 1.5, 1.5, 1.5, '#fff0d0');     // (a parked one's headlamps are off)
           put(haloM, e * sw * tx, (tv - th / 2) * sy, tu * sl - 0.08, 0.75, 0.75, 0.75, c.slowing ? '#ff4030' : '#a8221a');
         }
       }
-      if (cond.night) put(beamM, 0, 0.05, hu * sl + 0.1, M.single ? 2.4 : sw * 2.2, 1, 15, '#ffffff');
+      if (cond.night && !c.hazard) put(beamM, 0, 0.05, hu * sl + 0.1, M.single ? 2.4 : sw * 2.2, 1, 15, '#ffffff');
       const yellow = c.kind === 'taxi' || c.kind === 'bus' ? '#ffd34d' : '#ffffff';
       put(plateM, 0, M.plate[1] * sy, M.plate[0] * sl - 0.02, M.single ? 0.24 : 0.5, M.single ? 0.1 : 0.13, 1, yellow);
       if (M.front) put(plateM, 0, M.front[1] * sy, M.front[0] * sl + 0.02, 0.5, 0.13, 1, yellow, 0, Math.PI);
@@ -3412,6 +3453,8 @@ void main() {
           cones([[-0.95, -1.1], [0.95, -1.1], [-0.95, 1.1], [0.95, 1.1]]);
         }
       }
+      // real bodies for the nearest 16 people (the others, further off, in the simple ones), so a busy street stays smooth
+      const real = new Set(peds.filter(p => p.at > s - 6 && p.at < s + far).sort((a, b) => Math.abs(a.at - s) - Math.abs(b.at - s)).slice(0, 16));
       for (const p of peds) {
         if (p.at < s - 6 || p.at > s + far) continue;
         frame3(p.at, p.x, f); f.pitch = 0; f.y += Math.abs(p.x) > HALF ? 0.15 : 0;     // on the footpath, or on the road
@@ -3421,9 +3464,9 @@ void main() {
         p.face += turn * Math.min(1, dt * 7);                 // turning round takes a moment
         base(f, p.face, false, p.sc);
         put(shadows, 0, 0.02, 0, 0.6, 1, 0.6, '#000');
-        if (PEOPLE && level > 0) {        // a real body; what they carry is drawn with it
+        if (PEOPLE && level > 0 && real.has(p)) {        // a real body (for the nearest people); what they carry is drawn with it
           person(p, dt);
-          const L = p.look;
+          const L = lookOf(p);
           if (L.bag) put(pBox, 0, 0.98, -0.16, 0.3, 0.36, 0.13, L.bag);                                     // a school bag on the back
           if (L.umbrella) { put(pBox, 0.2, 1.05, 0.22, 0.025, 0.95, 0.025, '#231e16'); put(pCone, 0.2, 1.95, 0.22, 0.62, 0.3, 0.62, L.umbrella); }
           if (L.stick) limbTo(pLimb, 0.26, 0.86, 0.2, 0.02, 0.32, 0.03, '#6b4a2f');                        // the walking stick
@@ -3431,7 +3474,7 @@ void main() {
         }
         // A walk: each leg swings from the hip and bends at the knee as it comes forward; the arms
         // swing against the legs. An elder stoops a little and takes shorter steps.
-        const L = p.look, ph = p.phase * Math.PI / 2, old = L.elder ? 1 : 0, stoop = old * 0.22, skin = SKIN[LOOKS.indexOf(L) % SKIN.length];
+        const L = lookOf(p), ph = p.phase * Math.PI / 2, old = L.elder ? 1 : 0, stoop = old * 0.22, skin = skinOf(p);
         const H = 0.86 + Math.abs(Math.cos(ph)) * 0.025, sh = H + 0.55 - stoop * 0.08, fw = stoop * 0.6;
         for (const e of [-1, 1]) {
           const lp = ph + (e > 0 ? 0 : Math.PI), th = Math.sin(lp) * (old ? 0.26 : 0.42), kn = 0.08 + Math.max(0, Math.cos(lp)) * (old ? 0.35 : 0.6);
@@ -3493,6 +3536,7 @@ void main() {
     const signMats = new Map(), signMat = t => signMats.get(t) || signMats.set(t, new T.MeshLambertMaterial({ map: t, transparent: true })).get(t);
     const finishMat = new T.MeshLambertMaterial({ map: checkTex, side: T.DoubleSide });
     function sign(at, lat, t, w, h, post) {
+      if (nearJunc(Math.floor(at / SEG), Math.sign(lat) || 1, 1)) at -= 10;     // (not standing in a side road)
       const k = Math.floor(at / SEG);
       let f = frame3(at, lat, {});
       // beside a footpath, out past it: on a bend a little further out, so people walk by
@@ -4943,7 +4987,7 @@ void main() {
   // (the tests may ask for only some roads: window.__only, a list of route ids)
   const testRoutes = () => [...DATA.routes, ...CITY.jobs.map(routeOf)].filter(r => !window.__only || window.__only.includes(r.id));
   if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ kind: c.kind, lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, wid: c.wid, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
-    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)) })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1, speed = 0) => { const c = newCar(kind, lane, s + ahead, dir * speed, dir); c.cruise = speed; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), holes: () => R3 && R3.holesSeen(), sizes: () => R3 && R3.sizes(), under: (k, lat) => R3 && R3.under(k, lat), probe: (k, lat, al) => R3 && R3.probe(k, lat, al), mem: () => R3 && R3.mem(), walker: (ahead, x, va = 1, vx = 0, look) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; peds.push(p); return peds.length; },
+    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)), dog: !!p.dog, child: !!p.look.child })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1, speed = 0) => { const c = newCar(kind, lane, s + ahead, dir * speed, dir); c.cruise = speed; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), holes: () => R3 && R3.holesSeen(), sizes: () => R3 && R3.sizes(), under: (k, lat) => R3 && R3.under(k, lat), probe: (k, lat, al) => R3 && R3.probe(k, lat, al), mem: () => R3 && R3.mem(), walker: (ahead, x, va = 1, vx = 0, look, dog) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; if (dog) p.dog = dog; peds.push(p); return peds.length; },
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
     // for the tests: ride a given road; and every road with how many crossings and jams it has
     useRoute: id => { route = [...DATA.routes, ...CITY.jobs.map(routeOf)].find(r => r.id === id); reset(); return route.length; }, go: () => start(),

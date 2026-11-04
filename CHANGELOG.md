@@ -4,6 +4,39 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.54.0 (4 November 2026)
+
+### Aizawl Ride: busy footpaths, families, dogs and umbrellas
+
+- About twice as many people walk the footpaths, and the footpaths ahead are
+  full from the start of a ride, not only as people come into view.
+- Some walk together: a parent with a child, two children together (in their
+  school uniforms), or someone walking their dog on a red lead. The dogs
+  trot along beside, brown, black, white, tan or grey, their tails up.
+- In the rain everyone on foot has an umbrella up: most of them black, as in
+  Aizawl, some blue, red, purple, green, yellow or pink. The road workers and
+  the porters, whose hands are full, do not.
+- Children are smaller in the 2D view too.
+
+### Aizawl Ride: fixes to the last days' changes
+
+- The road workers, the porters and some taxi passengers had no skin colour
+  and showed pale white; they have their own now.
+- Parked vehicles with their hazard lights on no longer have their headlamps
+  and beams on at night.
+- Nothing parks across a side road on the left any more (no car, truck or bus
+  stopped in a junction's opening); road works go there instead.
+- A long queue before a junction with a main road reached through the
+  junction; it now ends 5 m before it.
+- The zebra crossing before a junction was often moved away, as it fell in the
+  junction's opening; it is a little further back now, so more junctions have
+  one.
+- A sign no longer stands in a side road.
+- People at a bus stop, and porters, check for a footpath where they stand.
+- Busy streets stay smooth: only the 16 nearest people have full bodies (those
+  further off are drawn simply), and there is room for many more people and
+  riders, so none lose an arm, a leg or a head.
+
 ## 1.53.0 (4 November 2026)
 
 ### Aizawl Ride: junctions, busier streets, children and more two-wheelers
