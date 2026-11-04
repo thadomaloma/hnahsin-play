@@ -1,0 +1,35 @@
+<!-- Custom SVG for Hnahsin Vocabulary -->
+<!-- Mizo: dâwrkai -->
+<!-- English: Shopkeeper -->
+<!-- Category: occupations -->
+<!-- License: Project-owned (CC0 compatible) -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Occupations template: Person with tools -->
+  <defs>
+    <style>
+      .skin { fill: #FFDBAC; }
+      .hair { fill: #3D2B1F; }
+      .uniform { fill: #4A90D9; }
+      .tool { fill: #795548; }
+    </style>
+  </defs>
+  <!-- Background -->
+  <circle cx="100" cy="100" r="90" fill="#F5F5F5"/>
+  <!-- Person -->
+  <g transform="translate(100, 100)">
+    <!-- Head -->
+    <circle class="skin" cy="-40" r="20"/>
+    <!-- Hair -->
+    <path class="hair" d="M-20,-40 Q0,-65 20,-40 Q25,-35 20,-20 Q25,-10 0,0 Q-25,-10 -20,-20 Q-25,-35 -20,-40Z"/>
+    <!-- Body -->
+    <rect class="uniform" x="-18" y="-18" width="36" height="40" rx="3"/>
+    <!-- Tool in hand -->
+    <rect class="tool" x="18" y="-10" width="6" height="35" rx="2"/>
+    <rect class="tool" x="15" y="-20" width="20" height="8" rx="2"/>
+    <!-- Legs -->
+    <rect class="uniform" x="-12" y="22" width="10" height="25" rx="2"/>
+    <rect class="uniform" x="2" y="22" width="10" height="25" rx="2"/>
+  </g>
+  <!-- Occupation label -->
+  <text x="100" y="180" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#666">dâwrkai</text>
+</svg>

@@ -1,0 +1,36 @@
+<!-- Custom SVG for Hnahsin Vocabulary -->
+<!-- Mizo: bêngbel -->
+<!-- English: To establish firmly -->
+<!-- Category: actions -->
+<!-- License: Project-owned (CC0 compatible) -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Action template: Person performing action -->
+  <defs>
+    <style>
+      .skin { fill: #FFDBAC; }
+      .hair { fill: #3D2B1F; }
+      .clothes { fill: #4A90D9; }
+      .accent { fill: #E8A87C; }
+      .outline { stroke: #3D2B1F; stroke-width: 2; fill: none; }
+    </style>
+  </defs>
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="90" fill="#F5F5F5"/>
+  <!-- Person silhouette performing action -->
+  <g transform="translate(100, 100)">
+    <!-- Head -->
+    <circle class="skin" cy="-40" r="20"/>
+    <!-- Hair -->
+    <path class="hair" d="M-20,-40 Q0,-65 20,-40 Q25,-35 20,-20 Q25,-10 0,0 Q-25,-10 -20,-20 Q-25,-35 -20,-40Z"/>
+    <!-- Body -->
+    <rect class="clothes" x="-18" y="-18" width="36" height="40" rx="3"/>
+    <!-- Arms (action pose) -->
+    <path class="outline" d="M-18,5 Q-35,0 -45,-10" stroke-width="8" stroke-linecap="round" stroke="#4A90D9"/>
+    <path class="outline" d="M18,5 Q35,10 45,0" stroke-width="8" stroke-linecap="round" stroke="#4A90D9"/>
+    <!-- Legs -->
+    <rect class="clothes" x="-12" y="22" width="10" height="25" rx="2"/>
+    <rect class="clothes" x="2" y="22" width="10" height="25" rx="2"/>
+  </g>
+  <!-- Action indicator -->
+  <text x="100" y="180" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#666">bêngbel</text>
+</svg>

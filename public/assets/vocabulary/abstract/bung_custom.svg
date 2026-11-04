@@ -1,0 +1,28 @@
+<!-- Custom SVG for Hnahsin Vocabulary -->
+<!-- Mizo: bung -->
+<!-- English: Part -->
+<!-- Category: abstract -->
+<!-- License: Project-owned (CC0 compatible) -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Abstract concept template: Symbolic representation -->
+  <defs>
+    <style>
+      .primary { fill: #4A90D9; }
+      .secondary { fill: #E8A87C; }
+      .accent { fill: #6BCB77; }
+      .bg { fill: #F5F5F5; }
+    </style>
+  </defs>
+  <!-- Background -->
+  <rect class="bg" width="200" height="200"/>
+  <!-- Central symbol area -->
+  <circle cx="100" cy="90" r="50" fill="none" stroke="#4A90D9" stroke-width="3" stroke-dasharray="8,4"/>
+  <!-- Geometric pattern -->
+  <g transform="translate(100, 90)">
+    <polygon class="primary" points="0,-30 26,-9 26,21 0,39 -26,21 -26,-9" fill-opacity="0.3"/>
+    <circle class="secondary" r="15" fill-opacity="0.5"/>
+    <rect class="accent" x="-10" y="-10" width="20" height="20" transform="rotate(45)" fill-opacity="0.4"/>
+  </g>
+  <!-- Concept label -->
+  <text x="100" y="175" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#666">bung</text>
+</svg>

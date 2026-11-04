@@ -1,0 +1,1002 @@
+{
+  "aite chhin": {
+    "mizo": "aite chhin",
+    "english": "To try out",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "aite_chhin_custom.svg",
+    "status": "custom_generated"
+  },
+  "amaherawhchu": {
+    "mizo": "amaherawhchu",
+    "english": "However",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "amaherawhchu_custom.svg",
+    "status": "custom_generated"
+  },
+  "arbawm": {
+    "mizo": "arbawm",
+    "english": "Chicken coop",
+    "category": "household",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "arbawm_custom.svg",
+    "status": "custom_generated"
+  },
+  "arte lukâwn": {
+    "mizo": "arte lukâwn",
+    "english": "Empty-handed",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "arte_lukawn_custom.svg",
+    "status": "custom_generated"
+  },
+  "a ruh langin": {
+    "mizo": "a ruh langin",
+    "english": "Plainly",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "a_ruh_langin_custom.svg",
+    "status": "custom_generated"
+  },
+  "au": {
+    "mizo": "au",
+    "english": "To call out",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "au_twemoji.svg",
+    "status": "downloaded"
+  },
+  "auh": {
+    "mizo": "auh",
+    "english": "To hail",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "auh_twemoji.svg",
+    "status": "downloaded"
+  },
+  "avângin": {
+    "mizo": "avângin",
+    "english": "Because of",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "avangin_custom.svg",
+    "status": "custom_generated"
+  },
+  "awm": {
+    "mizo": "awm",
+    "english": "To be",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "awm_custom.svg",
+    "status": "custom_generated"
+  },
+  "awmkhauh": {
+    "mizo": "awmkhauh",
+    "english": "Stern",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "awmkhauh_custom.svg",
+    "status": "custom_generated"
+  },
+  "bathlar": {
+    "mizo": "bathlar",
+    "english": "Veranda",
+    "category": "nature",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "bathlar_custom.svg",
+    "status": "custom_generated"
+  },
+  "bauh": {
+    "mizo": "bauh",
+    "english": "To bark",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "bauh_twemoji.svg",
+    "status": "downloaded"
+  },
+  "beidawng": {
+    "mizo": "beidawng",
+    "english": "Disheartened",
+    "category": "emotions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "beidawng_twemoji.svg",
+    "status": "downloaded"
+  },
+  "beidawnna": {
+    "mizo": "beidawnna",
+    "english": "Despair",
+    "category": "emotions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "beidawnna_twemoji.svg",
+    "status": "downloaded"
+  },
+  "beidawnthlâk": {
+    "mizo": "beidawnthlâk",
+    "english": "Discouraging",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "beidawnthlak_custom.svg",
+    "status": "custom_generated"
+  },
+  "beihpui": {
+    "mizo": "beihpui",
+    "english": "Concerted campaign",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "beihpui_custom.svg",
+    "status": "custom_generated"
+  },
+  "beisei": {
+    "mizo": "beisei",
+    "english": "To hope",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "beisei_twemoji.svg",
+    "status": "downloaded"
+  },
+  "beitham": {
+    "mizo": "beitham",
+    "english": "Small",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "beitham_custom.svg",
+    "status": "custom_generated"
+  },
+  "belmang": {
+    "mizo": "belmang",
+    "english": "Soot",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "belmang_custom.svg",
+    "status": "custom_generated"
+  },
+  "bêngbel": {
+    "mizo": "bêngbel",
+    "english": "To establish firmly",
+    "category": "actions",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "bengbel_custom.svg",
+    "status": "custom_generated"
+  },
+  "bengbung": {
+    "mizo": "bengbung",
+    "english": "Traditional wooden xylophone",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "bengbung_custom.svg",
+    "status": "custom_generated"
+  },
+  "bengchheng": {
+    "mizo": "bengchheng",
+    "english": "noisy",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "bengchheng_custom.svg",
+    "status": "custom_generated"
+  },
+  "beng sika ngaihtuah": {
+    "mizo": "beng sika ngaihtuah",
+    "english": "To consider carefully",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "beng_sika_ngaihtuah_custom.svg",
+    "status": "custom_generated"
+  },
+  "berampu": {
+    "mizo": "berampu",
+    "english": "Shepherd",
+    "category": "occupations",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "berampu_custom.svg",
+    "status": "custom_generated"
+  },
+  "bet": {
+    "mizo": "bet",
+    "english": "To stick",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "bet_twemoji.svg",
+    "status": "downloaded"
+  },
+  "bilh": {
+    "mizo": "bilh",
+    "english": "To tuck in",
+    "category": "abstract",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "bilh_twemoji.svg",
+    "status": "downloaded"
+  },
+  "boruak": {
+    "mizo": "boruak",
+    "english": "Air",
+    "category": "nature",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "boruak_twemoji.svg",
+    "status": "downloaded"
+  },
+  "buaina": {
+    "mizo": "buaina",
+    "english": "Trouble",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "buaina_custom.svg",
+    "status": "custom_generated"
+  },
+  "buhchiûm": {
+    "mizo": "buhchiûm",
+    "english": "Pupa",
+    "category": "nature",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "buhchium_custom.svg",
+    "status": "custom_generated"
+  },
+  "buh leh bal": {
+    "mizo": "buh leh bal",
+    "english": "Food crops",
+    "category": "nature",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "buh_leh_bal_twemoji.svg",
+    "status": "downloaded"
+  },
+  "bung": {
+    "mizo": "bung",
+    "english": "Part",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "bung_custom.svg",
+    "status": "custom_generated"
+  },
+  "bungrua": {
+    "mizo": "bungrua",
+    "english": "Belongings",
+    "category": "household",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "bungrua_twemoji.svg",
+    "status": "downloaded"
+  },
+  "châkkhai": {
+    "mizo": "châkkhai",
+    "english": "Need",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "chakkhai_custom.svg",
+    "status": "custom_generated"
+  },
+  "changkâng": {
+    "mizo": "changkâng",
+    "english": "To develop",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "changkang_custom.svg",
+    "status": "custom_generated"
+  },
+  "changkang": {
+    "mizo": "changkang",
+    "english": "Developed",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "changkang_custom_1.svg",
+    "status": "custom_generated"
+  },
+  "changkânna": {
+    "mizo": "changkânna",
+    "english": "Progress",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "changkanna_custom.svg",
+    "status": "custom_generated"
+  },
+  "chanvo": {
+    "mizo": "chanvo",
+    "english": "Share",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "chanvo_custom.svg",
+    "status": "custom_generated"
+  },
+  "chatuan": {
+    "mizo": "chatuan",
+    "english": "Forever",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "chatuan_custom.svg",
+    "status": "custom_generated"
+  },
+  "chawchhun": {
+    "mizo": "chawchhun",
+    "english": "Lunch",
+    "category": "nature",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "chawchhun_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chawhnu": {
+    "mizo": "chawhnu",
+    "english": "Afternoon",
+    "category": "nature",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "chawhnu_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chawimawi": {
+    "mizo": "chawimawi",
+    "english": "To honour",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "chawimawi_custom.svg",
+    "status": "custom_generated"
+  },
+  "chawm": {
+    "mizo": "chawm",
+    "english": "To feed",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "chawm_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chêng": {
+    "mizo": "chêng",
+    "english": "To live",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "cheng_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chetsual": {
+    "mizo": "chetsual",
+    "english": "To have a mishap",
+    "category": "nature",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "chetsual_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chhak": {
+    "mizo": "chhak",
+    "english": "East",
+    "category": "nature",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "chhak_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chhar": {
+    "mizo": "chhar",
+    "english": "To find",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "chhar_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chhawm": {
+    "mizo": "chhawm",
+    "english": "To adopt",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "chhawm_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chhawmdawl": {
+    "mizo": "chhawmdawl",
+    "english": "To support",
+    "category": "household",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "chhawmdawl_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chhêk khâwm": {
+    "mizo": "chhêk khâwm",
+    "english": "To accumulate",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "chhek_khawm_custom.svg",
+    "status": "custom_generated"
+  },
+  "chhiarkawp": {
+    "mizo": "chhiarkawp",
+    "english": "Arithmetic",
+    "category": "household",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "chhiarkawp_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chhiatna": {
+    "mizo": "chhiatna",
+    "english": "Harm",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "chhiatna_custom.svg",
+    "status": "custom_generated"
+  },
+  "chhim": {
+    "mizo": "chhim",
+    "english": "South",
+    "category": "nature",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "chhim_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chhinchhiah": {
+    "mizo": "chhinchhiah",
+    "english": "To mark",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "chhinchhiah_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chhinchhiahna": {
+    "mizo": "chhinchhiahna",
+    "english": "Mark",
+    "category": "household",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "chhinchhiahna_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chho": {
+    "mizo": "chho",
+    "english": "To go up",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "chho_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chhuah": {
+    "mizo": "chhuah",
+    "english": "To go out",
+    "category": "abstract",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "chhuah_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chhuahsan": {
+    "mizo": "chhuahsan",
+    "english": "To leave behind",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "chhuahsan_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chhuanawm": {
+    "mizo": "chhuanawm",
+    "english": "Admirable",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "chhuanawm_custom.svg",
+    "status": "custom_generated"
+  },
+  "chhuang": {
+    "mizo": "chhuang",
+    "english": "To be proud of",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "chhuang_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chhuat": {
+    "mizo": "chhuat",
+    "english": "floor",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "chhuat_custom.svg",
+    "status": "custom_generated"
+  },
+  "chhui": {
+    "mizo": "chhui",
+    "english": "To trace",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "chhui_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chhuk chho": {
+    "mizo": "chhuk chho",
+    "english": "Up and down",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "chhuk_chho_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chi-ai": {
+    "mizo": "chi-ai",
+    "english": "To be flustered",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "chi_ai_custom.svg",
+    "status": "custom_generated"
+  },
+  "chini": {
+    "mizo": "chini",
+    "english": "Sugar",
+    "category": "food",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "chini_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chirhtheh": {
+    "mizo": "chirhtheh",
+    "english": "To splash or spatter mud",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "chirhtheh_twemoji.svg",
+    "status": "downloaded"
+  },
+  "choka": {
+    "mizo": "choka",
+    "english": "kitchen",
+    "category": "nature",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "choka_twemoji.svg",
+    "status": "downloaded"
+  },
+  "chum": {
+    "mizo": "chum",
+    "english": "Chubby",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "chum_custom.svg",
+    "status": "custom_generated"
+  },
+  "chungchuang": {
+    "mizo": "chungchuang",
+    "english": "Exceptional",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "chungchuang_custom.svg",
+    "status": "custom_generated"
+  },
+  "chungtlak": {
+    "mizo": "chungtlak",
+    "english": "To dominate",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "chungtlak_custom.svg",
+    "status": "custom_generated"
+  },
+  "chuvangin": {
+    "mizo": "chuvangin",
+    "english": "Therefore",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "chuvangin_custom.svg",
+    "status": "custom_generated"
+  },
+  "dahkham": {
+    "mizo": "dahkham",
+    "english": "To pawn",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "dahkham_twemoji.svg",
+    "status": "downloaded"
+  },
+  "daih": {
+    "mizo": "daih",
+    "english": "To be enough",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "daih_twemoji.svg",
+    "status": "downloaded"
+  },
+  "dam": {
+    "mizo": "dam",
+    "english": "Alive",
+    "category": "emotions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "dam_twemoji.svg",
+    "status": "downloaded"
+  },
+  "dân": {
+    "mizo": "dân",
+    "english": "Law",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "dan_custom.svg",
+    "status": "custom_generated"
+  },
+  "danglam": {
+    "mizo": "danglam",
+    "english": "Different",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "danglam_custom.svg",
+    "status": "custom_generated"
+  },
+  "darbu": {
+    "mizo": "darbu",
+    "english": "Set of small gongs",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "darbu_custom.svg",
+    "status": "custom_generated"
+  },
+  "dawklak": {
+    "mizo": "dawklak",
+    "english": "Habitual",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "dawklak_custom.svg",
+    "status": "custom_generated"
+  },
+  "dawlh": {
+    "mizo": "dawlh",
+    "english": "To swallow whole",
+    "category": "actions",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "dawlh_custom.svg",
+    "status": "custom_generated"
+  },
+  "dawngtu": {
+    "mizo": "dawngtu",
+    "english": "Recipient",
+    "category": "occupations",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "dawngtu_custom.svg",
+    "status": "custom_generated"
+  },
+  "dâwrkai": {
+    "mizo": "dâwrkai",
+    "english": "Shopkeeper",
+    "category": "occupations",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "dawrkai_custom.svg",
+    "status": "custom_generated"
+  },
+  "dâwt": {
+    "mizo": "dâwt",
+    "english": "Lie",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "dawt_twemoji.svg",
+    "status": "downloaded"
+  },
+  "dêng": {
+    "mizo": "dêng",
+    "english": "To pound",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "deng_twemoji.svg",
+    "status": "downloaded"
+  },
+  "dengkhâwng": {
+    "mizo": "dengkhâwng",
+    "english": "Blunt",
+    "category": "nature",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "dengkhawng_custom.svg",
+    "status": "custom_generated"
+  },
+  "dikna": {
+    "mizo": "dikna",
+    "english": "Righteousness",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "dikna_custom.svg",
+    "status": "custom_generated"
+  },
+  "dîl": {
+    "mizo": "dîl",
+    "english": "To ask for",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "dil_twemoji.svg",
+    "status": "downloaded"
+  },
+  "dîlna": {
+    "mizo": "dîlna",
+    "english": "Request",
+    "category": "household",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "dilna_twemoji.svg",
+    "status": "downloaded"
+  },
+  "dimdawi": {
+    "mizo": "dimdawi",
+    "english": "To handle gently",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "dimdawi_twemoji.svg",
+    "status": "downloaded"
+  },
+  "dingchang": {
+    "mizo": "dingchang",
+    "english": "To prosper",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "dingchang_twemoji.svg",
+    "status": "downloaded"
+  },
+  "ding lam": {
+    "mizo": "ding lam",
+    "english": "right-hand side",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "ding_lam_custom.svg",
+    "status": "custom_generated"
+  },
+  "diriamna": {
+    "mizo": "diriamna",
+    "english": "Mockery",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "diriamna_custom.svg",
+    "status": "custom_generated"
+  },
+  "duham": {
+    "mizo": "duham",
+    "english": "Greedy",
+    "category": "emotions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "duham_twemoji.svg",
+    "status": "downloaded"
+  },
+  "duhsakna": {
+    "mizo": "duhsakna",
+    "english": "Goodwill",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "duhsakna_custom.svg",
+    "status": "custom_generated"
+  },
+  "duhthusam": {
+    "mizo": "duhthusam",
+    "english": "Heart's desire",
+    "category": "emotions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "duhthusam_twemoji.svg",
+    "status": "downloaded"
+  },
+  "duk": {
+    "mizo": "duk",
+    "english": "Dark-coloured",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "duk_custom.svg",
+    "status": "custom_generated"
+  },
+  "e khai": {
+    "mizo": "e khai",
+    "english": "Oh!",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "e_khai_custom.svg",
+    "status": "custom_generated"
+  },
+  "engthâwl": {
+    "mizo": "engthâwl",
+    "english": "Carefree",
+    "category": "actions",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "engthawl_custom.svg",
+    "status": "custom_generated"
+  },
+  "enkawl": {
+    "mizo": "enkawl",
+    "english": "To care for",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "enkawl_twemoji.svg",
+    "status": "downloaded"
+  },
+  "enkawlna": {
+    "mizo": "enkawlna",
+    "english": "Care",
+    "category": "abstract",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "enkawlna_custom.svg",
+    "status": "custom_generated"
+  },
+  "enkawlsak": {
+    "mizo": "enkawlsak",
+    "english": "To look after something for someone",
+    "category": "actions",
+    "source": "Twemoji",
+    "license": "CC BY 4.0",
+    "attribution": "Twitter Twemoji",
+    "file": "enkawlsak_twemoji.svg",
+    "status": "downloaded"
+  },
+  "enkawltu": {
+    "mizo": "enkawltu",
+    "english": "Caretaker",
+    "category": "occupations",
+    "source": "Custom SVG",
+    "license": "Project-owned (CC0 compatible)",
+    "attribution": "Hnahsin Project",
+    "file": "enkawltu_custom.svg",
+    "status": "custom_generated"
+  }
+}

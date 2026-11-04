@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect width="200" height="200" fill="#f0f0f0"/>
+  <text x="100" y="90" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#666">[PLACEHOLDER]</text>
+  <text x="100" y="110" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#999">engthâwl</text>
+  <text x="100" y="130" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#999">Carefree</text>
+  <text x="100" y="150" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#aaa">Source: Custom SVG, unDraw</text>
+</svg>
