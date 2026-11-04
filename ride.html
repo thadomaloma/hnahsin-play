@@ -1131,7 +1131,7 @@
   // (each has an umbrella ready for the rain: in Aizawl most are black, some bright)
   const UMBRELLAS = ['#1b1b1b', '#1b1b1b', '#1b1b1b', '#2c3e50', '#1565c0', '#c0392b', '#6a1b9a', '#2e7d32', '#f2c230', '#d81b60'];
   const ADULTS = LOOKS.filter(L => !L.child), KIDS = LOOKS.filter(L => L.child);
-  const newPed = (at, x, va, vx, look) => ({ at, x, va, vx, look: look || LOOKS[Math.random() * LOOKS.length | 0], phase: Math.random() * 4, cross: null, umb: UMBRELLAS[Math.random() * UMBRELLAS.length | 0] });
+  const newPed = (at, x, va, vx, look) => ({ at, x, va, vx, look: look || LOOKS[Math.random() * LOOKS.length | 0], phase: Math.random() * Math.PI * 2, cross: null, umb: UMBRELLAS[Math.random() * UMBRELLAS.length | 0], idleSeed: Math.random() * 1000 });
   // what a person wears as drawn: in the rain, the umbrella up (not the road workers or porters, whose hands are full)
   const lookOf = p => (cond.rain && p.umb && !p.tool && !p.carry && !p.look.umbrella ? p.lookU || (p.lookU = { ...p.look, umbrella: p.umb }) : p.look);
   const DOGS = ['#8d5a33', '#2b2522', '#e9dcc4', '#c9a06a', '#6b6b6b'];
@@ -1238,7 +1238,8 @@
         if (p.startled > 0 && (p.startled -= dt) <= 0) p.vx = -p.vx;     // after a hop back, on across
         if (Math.abs(p.x) > 5.4 && Math.sign(p.x) === Math.sign(p.vx)) { p.vx = 0; p.va = Math.random() < 0.5 ? 1 : -1; p.cross = null; }
       }
-      p.phase += (Math.abs(p.va) + Math.abs(p.vx)) * dt * 2.6;
+      p.phase += (Math.abs(p.va) + Math.abs(p.vx)) * dt * 5;
+      if (p.phase > Math.PI * 4) p.phase -= Math.PI * 4;
     }
     peds = peds.filter(p => p.at > s - 10 && p.at < s + VIEW * SEG + 20 && !p.gone);
     if (!eventWords.has('mi') && peds.some(p => p.at - s < 40 && p.at > s)) say('mi', 'person');
@@ -1330,39 +1331,257 @@
       R(-w * 0.48, -h * 0.29, w * 0.96, h * 0.09, '#3a3c3b', 3);
     }
   }
-  function paintPerson(g, w, h, L, front, frame) {
-    const sw = Math.sin(frame / 4 * Math.PI * 2), skin = '#d9a47c';
+  function paintPerson(g, w, h, L, front, frame, speed = 0, idleTime = 0) {
+    const skin = '#d9a47c';
     g.lineCap = 'round';
-    // legs, swinging as they walk
-    g.strokeStyle = L.lower; g.lineWidth = w * 0.18;
-    for (const e of [-1, 1]) { g.beginPath(); g.moveTo(e * w * 0.12, -h * 0.46); g.lineTo(e * w * 0.12 + sw * e * w * 0.08, -h * 0.03); g.stroke(); }
-    g.fillStyle = '#231e16'; for (const e of [-1, 1]) { g.beginPath(); g.ellipse(e * w * 0.12 + sw * e * w * 0.08, -h * 0.02, w * 0.11, h * 0.02, 0, 0, 7); g.fill(); }
-    // a puan (with its stripes) or trousers' top, then the shirt
-    if (L.stripes) { g.fillStyle = L.lower; g.fillRect(-w * 0.27, -h * 0.5, w * 0.54, h * 0.36); g.fillStyle = L.stripes; for (const y of [0.42, 0.3, 0.22]) g.fillRect(-w * 0.27, -h * y, w * 0.54, h * 0.025); }
-    g.fillStyle = L.shirt; g.beginPath(); g.roundRect(-w * 0.28, -h * 0.8, w * 0.56, h * 0.36, w * 0.14); g.fill();
-    if (L.bag && !front) { g.fillStyle = L.bag; g.beginPath(); g.roundRect(-w * 0.22, -h * 0.76, w * 0.44, h * 0.24, 4); g.fill(); }
-    // arms
-    g.strokeStyle = L.shirt; g.lineWidth = w * 0.13;
-    for (const e of [-1, 1]) { g.beginPath(); g.moveTo(e * w * 0.27, -h * 0.76); g.lineTo(e * w * 0.33 - sw * e * w * 0.06, -h * 0.5); g.stroke(); }
-    // head
-    g.fillStyle = skin; g.beginPath(); g.arc(0, -h * 0.88, w * 0.17, 0, 7); g.fill();
-    g.fillStyle = L.hair; g.beginPath(); g.arc(0, -h * 0.9, w * 0.18, front ? Math.PI * 1.05 : 0, front ? Math.PI * 1.95 : Math.PI * 2); g.fill();
-    if (L.bun) { g.beginPath(); g.arc(0, -h * 0.98, w * 0.09, 0, 7); g.fill(); }
-    if (front) { g.fillStyle = '#231e16'; for (const e of [-1, 1]) { g.beginPath(); g.arc(e * w * 0.06, -h * 0.87, w * 0.022, 0, 7); g.fill(); } }
-    if (L.umbrella) { g.strokeStyle = '#231e16'; g.lineWidth = 2; g.beginPath(); g.moveTo(w * 0.3, -h * 0.56); g.lineTo(w * 0.3, -h * 1.12); g.stroke(); g.fillStyle = L.umbrella; g.beginPath(); g.arc(w * 0.3, -h * 1.1, w * 0.62, Math.PI, 0); g.fill(); }
+
+    // --- Idle animation for standing people ---
+    // Subtle breathing (vertical oscillation), weight shifts, occasional blink
+    const idleBreath = Math.sin(idleTime * 0.8) * 0.015 * h;           // chest rise/fall
+    const idleSway = Math.sin(idleTime * 0.4) * 0.008 * w;             // gentle side sway
+    const idleShift = Math.sin(idleTime * 0.15) * 0.01 * w;            // slow weight shift
+    const blink = (Math.sin(idleTime * 12) > 0.95) ? 0.5 : 1;          // occasional blink
+
+    // --- Walk cycle (continuous, smooth interpolation) ---
+    // frame is now a continuous float; we use 16-phase cycle for smoother motion
+    const walkPhase = frame * Math.PI * 2;
+    const legSwing = Math.sin(walkPhase);
+    const legSwing2 = Math.sin(walkPhase + Math.PI);                   // opposite leg
+    const armSwing = -Math.sin(walkPhase);                             // opposite to legs
+    const armSwing2 = -Math.sin(walkPhase + Math.PI);
+    const torsoBob = Math.abs(Math.sin(walkPhase * 0.5)) * 0.02 * h;   // up/down bounce
+    const torsoTwist = Math.sin(walkPhase) * 0.03;                     // slight torso rotation
+
+    // Blend between idle and walk based on speed (0 = idle, 1 = full walk)
+    const t = Math.min(1, speed * 3);                                  // transition sharpness
+
+    // --- Leg positions ---
+    // At rest: feet shoulder-width apart, slight bend
+    // Walking: legs swing forward/back with knee bend
+    const legBaseX = w * 0.12;
+    const legBaseY = -h * 0.46;
+    const footY = -h * 0.03;
+
+    // Interpolate between idle stance and walk
+    const legSwingAmt = w * 0.08 * t;
+    const kneeBend = h * 0.04 * t * Math.max(0, Math.sin(walkPhase));  // knee lifts on forward swing
+
+    // --- Arm positions ---
+    const armBaseX = w * 0.27;
+    const armBaseY = -h * 0.76;
+    const armTipY = -h * 0.5;
+    const armSwingAmt = w * 0.06 * t;
+
+    // --- Torso/head vertical offset ---
+    const verticalOffset = (idleBreath * (1 - t)) + (torsoBob * t);
+    const horizontalOffset = (idleSway + idleShift) * (1 - t * 0.5);
+
+    g.save();
+    g.translate(horizontalOffset, verticalOffset);
+
+    // ========== LEGS ==========
+    g.strokeStyle = L.lower;
+    g.lineWidth = w * 0.18;
+    g.lineCap = 'round';
+
+    for (const e of [-1, 1]) {
+      const isLeft = e === -1;
+      const phase = isLeft ? walkPhase : walkPhase + Math.PI;
+
+      // Thigh (upper leg)
+      const thighSwing = Math.sin(phase) * legSwingAmt;
+      const kneeLift = Math.max(0, Math.sin(phase)) * kneeBend;
+      const kneeX = e * legBaseX + thighSwing;
+      const kneeY = legBaseY + h * 0.22 - kneeLift;
+
+      // Lower leg & foot
+      const lowerLegAngle = isLeft ? -Math.sin(phase) * 0.3 * t : Math.sin(phase) * 0.3 * t;
+      const footX = kneeX + Math.sin(lowerLegAngle) * h * 0.24;
+      const footYPos = kneeY + Math.cos(lowerLegAngle) * h * 0.24;
+
+      // Draw thigh
+      g.beginPath();
+      g.moveTo(e * legBaseX, legBaseY);
+      g.lineTo(kneeX, kneeY);
+      g.stroke();
+
+      // Draw lower leg
+      g.beginPath();
+      g.moveTo(kneeX, kneeY);
+      g.lineTo(footX, footYPos);
+      g.stroke();
+
+      // Foot (shoe)
+      g.fillStyle = '#231e16';
+      g.beginPath();
+      g.ellipse(footX, footYPos + h * 0.01, w * 0.11, h * 0.02, lowerLegAngle, 0, 7);
+      g.fill();
+    }
+
+    // ========== TORSO (Puan / Shirt) ==========
+    // Puan with stripes (for women) or trousers
+    if (L.stripes) {
+      g.fillStyle = L.lower;
+      g.fillRect(-w * 0.27, -h * 0.5 + verticalOffset, w * 0.54, h * 0.36);
+      g.fillStyle = L.stripes;
+      for (const y of [0.42, 0.3, 0.22]) {
+        g.fillRect(-w * 0.27, -h * y + verticalOffset, w * 0.54, h * 0.025);
+      }
+    }
+
+    // Shirt (with slight torso twist)
+    g.fillStyle = L.shirt;
+    g.beginPath();
+    const shirtW = w * 0.56 * (1 + Math.abs(torsoTwist) * 0.1);
+    const shirtX = -shirtW / 2;
+    g.roundRect(shirtX, -h * 0.8 + verticalOffset, shirtW, h * 0.36, w * 0.14);
+    g.fill();
+
+    // Backpack/bag (on back when walking, less visible from front)
+    if (L.bag && !front) {
+      g.fillStyle = L.bag;
+      g.beginPath();
+      g.roundRect(-w * 0.22, -h * 0.76 + verticalOffset, w * 0.44, h * 0.24, 4);
+      g.fill();
+    }
+
+    // ========== ARMS ==========
+    g.strokeStyle = L.shirt;
+    g.lineWidth = w * 0.13;
+    g.lineCap = 'round';
+
+    for (const e of [-1, 1]) {
+      const isLeft = e === -1;
+      const phase = isLeft ? walkPhase : walkPhase + Math.PI;
+
+      // Arm swings opposite to legs
+      const armSwingVal = Math.sin(phase + Math.PI * 0.5) * armSwingAmt * t;
+      const armBend = Math.max(0, Math.sin(phase + Math.PI * 0.5)) * w * 0.04 * t;
+
+      const shoulderX = e * armBaseX;
+      const shoulderY = armBaseY + verticalOffset;
+      const elbowX = shoulderX + armSwingVal;
+      const elbowY = shoulderY + h * 0.15;
+      const handX = elbowX + armSwingVal * 0.5;
+      const handY = armTipY + verticalOffset;
+
+      g.beginPath();
+      g.moveTo(shoulderX, shoulderY);
+      g.lineTo(elbowX, elbowY);
+      g.lineTo(handX, handY);
+      g.stroke();
+    }
+
+    // ========== HEAD ==========
+    const headY = -h * 0.88 + verticalOffset;
+    const headX = horizontalOffset * 0.3; // slight head follow
+
+    g.fillStyle = skin;
+    g.beginPath();
+    g.arc(headX, headY, w * 0.17, 0, 7);
+    g.fill();
+
+    // Hair
+    g.fillStyle = L.hair;
+    g.beginPath();
+    const hairArc = front ? Math.PI * 1.05 : 0;
+    const hairArcEnd = front ? Math.PI * 1.95 : Math.PI * 2;
+    g.arc(headX, headY - h * 0.02, w * 0.18, hairArc, hairArcEnd);
+    g.fill();
+
+    if (L.bun) {
+      g.beginPath();
+      g.arc(headX, headY - h * 0.1, w * 0.09, 0, 7);
+      g.fill();
+    }
+
+    // Face (front view only)
+    if (front) {
+      g.fillStyle = '#231e16';
+      for (const e of [-1, 1]) {
+        g.beginPath();
+        // Eyes with blink
+        const eyeY = headY + h * 0.01;
+        g.arc(headX + e * w * 0.06, eyeY, w * 0.022 * blink, 0, 7);
+        g.fill();
+      }
+    }
+
+    // ========== UMBRELLA ==========
+    if (L.umbrella) {
+      g.strokeStyle = '#231e16';
+      g.lineWidth = 2;
+      g.lineCap = 'round';
+      const umbX = w * 0.3 + horizontalOffset;
+      const umbY = -h * 0.56 + verticalOffset;
+      g.beginPath();
+      g.moveTo(umbX, umbY);
+      g.lineTo(umbX, umbY - h * 0.56);
+      g.stroke();
+      g.fillStyle = L.umbrella;
+      g.beginPath();
+      g.arc(umbX, umbY - h * 0.56 - h * 0.02, w * 0.62, Math.PI, 0);
+      g.fill();
+    }
+
+    g.restore();
   }
-  function person(p, P, i) {
+  function person(p, P, i, now) {
     const a = P[i], b = P[i + 1], u = (p.at - a.wz) / SEG;
     const k = a.k + (b.k - a.k) * u, x = a.x + (b.x - a.x) * u + p.x * k, y = a.y + (b.y - a.y) * u;
     if (k * 1.65 < 4 || x < -k || x > W + k) return;
-    const front = p.vx ? true : p.va < 0, frame = Math.floor(p.phase) % 4, L = lookOf(p), li = LOOKS.indexOf(p.look);
-    const sp = sprite(`p${li}${L.umbrella || ''}${front ? 'f' : 'b'}${frame}`, 0.62, 1.7, (g, w, h) => paintPerson(g, w, h, L, front, frame));
-    const sc = k / PXM * (p.look.child ? 0.68 : 1), ga = ctx.globalAlpha;     // (a child, smaller)
-    if (p.dog) { ctx.fillStyle = p.dog; ctx.beginPath(); ctx.ellipse(x - 0.45 * k, y - 0.3 * k, 0.28 * k, 0.12 * k, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(x - 0.45 * k + (front ? 0 : 0.22 * k), y - 0.42 * k, 0.1 * k, 0, 7); ctx.fill(); }   // a dog beside
-    ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(x, y, 0.3 * k, 0.07 * k, 0, 0, 7); ctx.fill();
-    if (a.f > 0.3) ctx.globalAlpha = ga * (1 - (a.f - 0.3) * 0.7);
-    ctx.drawImage(sp.c, x - sp.c.width * sc / 2, y - (sp.c.height - 1) * sc, sp.c.width * sc, sp.c.height * sc);
-    ctx.globalAlpha = ga;
+
+    const L = lookOf(p), li = LOOKS.indexOf(p.look);
+    const front = p.vx ? true : (p.va < 0 || (speed < 0.15 && p.aim !== undefined && Math.sin(p.aim) < 0));
+    const speed = Math.hypot(p.va || 0, p.vx || 0);
+
+    // Use continuous phase for smooth animation
+    const phase = p.phase;
+    const isWalking = speed > 0.15;
+
+    const sc = k / PXM * (p.look.child ? 0.68 : 1), ga = ctx.globalAlpha;
+
+    if (isWalking) {
+      // Walking: use 16-frame cached sprites for smooth motion
+      const frame = Math.floor(phase * 16 / (Math.PI * 2)) % 16;
+      const sp = sprite(`p${li}${L.umbrella || ''}${front ? 'f' : 'b'}w${frame}`, 0.62, 1.7,
+        (g, w, h) => paintPerson(g, w, h, L, front, phase / (Math.PI * 2), speed, 0));
+
+      // Dog beside walker
+      if (p.dog) {
+        ctx.fillStyle = p.dog;
+        ctx.beginPath(); ctx.ellipse(x - 0.45 * k, y - 0.3 * k, 0.28 * k, 0.12 * k, 0, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(x - 0.45 * k + (front ? 0 : 0.22 * k), y - 0.42 * k, 0.1 * k, 0, 7); ctx.fill();
+      }
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(x, y, 0.3 * k, 0.07 * k, 0, 0, 7); ctx.fill();
+      if (a.f > 0.3) ctx.globalAlpha = ga * (1 - (a.f - 0.3) * 0.7);
+      ctx.drawImage(sp.c, x - sp.c.width * sc / 2, y - (sp.c.height - 1) * sc, sp.c.width * sc, sp.c.height * sc);
+      ctx.globalAlpha = ga;
+    } else {
+      // Idle: draw directly each frame with time-based animation (breathing, sway)
+      const idleTime = (now + p.idleSeed) / 1000; // seconds
+      const g = ctx;
+
+      // Dog beside idle person
+      if (p.dog) {
+        ctx.fillStyle = p.dog;
+        ctx.beginPath(); ctx.ellipse(x - 0.45 * k, y - 0.3 * k, 0.28 * k, 0.12 * k, 0, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(x - 0.45 * k, y - 0.42 * k, 0.1 * k, 0, 7); ctx.fill();
+      }
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(x, y, 0.3 * k, 0.07 * k, 0, 0, 7); ctx.fill();
+      if (a.f > 0.3) ctx.globalAlpha = ga * (1 - (a.f - 0.3) * 0.7);
+
+      // Draw person at screen position
+      g.save();
+      g.translate(x, y);
+      g.scale(sc, sc);
+      paintPerson(g, 0.62 * PXM, 1.7 * PXM, L, front, 0, 0, idleTime);
+      g.restore();
+
+      ctx.globalAlpha = ga;
+    }
   }
   // A blue "people crossing" sign before a zebra crossing
   function crossingSign(a) {
@@ -1548,7 +1767,7 @@
       if (a.idx === route.curv.length - 1 || (a.wz <= route.length && a.wz + SEG > route.length)) finish(a);
       if (signAt.has(a.idx)) noHonking(a);
       if (walkSignAt.has(a.idx)) crossingSign(a);
-      for (const t of (by.get(i) || []).sort((p, q) => q.at - p.at)) t.dir ? vehicle(t, P, i) : t.car ? vehicle(t.car, P, i) : t.look ? person(t, P, i) : thing(t, P, i);
+      for (const t of (by.get(i) || []).sort((p, q) => q.at - p.at)) t.dir ? vehicle(t, P, i) : t.car ? vehicle(t.car, P, i) : t.look ? person(t, P, i, time) : thing(t, P, i);
       ctx.globalAlpha = 1;
       ctx.restore();
     }
