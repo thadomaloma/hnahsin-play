@@ -695,7 +695,7 @@ class Play extends Phaser.Scene {
     this.physics.add.existing(this.rova);
     this.rova.body.setSize(bw, bh, false).setOffset((fw - bw) / 2, 156 * u - bh).setGravityY(2400).setCollideWorldBounds(true);
     this.physics.add.collider(this.rova, ground, () => { if (this.air) this.land(); });
-    this.jumps = 0; this.air = false;
+    this.jumps = 0; this.air = false; this.onGround = false;
 
     this.follow();
 
@@ -914,18 +914,18 @@ class Play extends Phaser.Scene {
 
   jump() {
     if (!this.started || this.over) return;
-    const body = this.rova.body;
-    if (body.blocked.down || body.touching.down) this.jumps = 0;
+    if (this.onGround) this.jumps = 0;
     if (this.jumps >= 2) return;
-    body.setVelocityY(this.jumps === 0 ? -1420 : -1180);
+    this.rova.body.setVelocityY(this.jumps === 0 ? -1420 : -1180);
     this.jumps++;
     this.air = true;
+    this.onGround = false;
     this.tweens.add({ targets: this.rova, scaleY: { from: .8 * this.rovaScale, to: this.rovaScale }, duration: 200 });
     if (this.jumps === 2) this.sparks.explode(6, this.rova.x, this.rova.y + 40);
   }
 
   land() {
-    this.air = false; this.jumps = 0;
+    this.air = false; this.jumps = 0; this.onGround = true;
     this.dust.explode(8, this.rova.x, this.groundY);
     this.tweens.add({ targets: this.rova, scaleY: { from: .82 * this.rovaScale, to: this.rovaScale }, scaleX: { from: 1.12 * this.rovaScale, to: this.rovaScale }, duration: 160 });
   }
