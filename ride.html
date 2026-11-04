@@ -560,6 +560,34 @@
   const cv = $('cv'), ctx = cv.getContext('2d');
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // ---------- constants needed early for SCENE_WORDS ----------
+  const LANE = 2.4, LANES = [-LANE, 0, LANE], LANE_T = 0.6;   // lane centres, metres from the road's middle; a lane change takes LANE_T s
+  const SEG = 4, VIEW = 50;                         // a segment per sample; how many are drawn ahead
+  const PLAYER_Z = 3;                               // the scooter rides this far ahead of the camera
+  const CURVE = 0.55, CURVE_MAX = 0.045, HILL = 0.8;  // real bends and hills, softened to fit the screen
+  // Far things fade into the haze of the hills; colours are mixed once and kept
+  // The haze turns warm as the afternoon gets late (5 steps, so few colours are mixed).
+  const HAZES = [[214, 232, 222], [226, 230, 210], [236, 226, 198], [242, 220, 186], [246, 212, 172]], fogMemo = new Map();
+  let hazeStep = 0;
+  const fog = (c, f) => {
+    const q = Math.round(Math.min(1, f) * 12), key = c + q + hazeStep;
+    let out = fogMemo.get(key);
+    if (!out) { const HZ = HAZES[hazeStep], n = parseInt(c.slice(1), 16), t = q / 12 * 0.8, ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v, i) => Math.round(v + (HZ[i] - v) * t)); out = `rgb(${ch})`; fogMemo.set(key, out); }
+    return out;
+  };
+  const mixHex = (a, b, t) => { const A = parseInt(a.slice(1), 16), B = parseInt(b.slice(1), 16); return `rgb(${[16, 8, 0].map(sh => Math.round(((A >> sh) & 255) * (1 - t) + ((B >> sh) & 255) * t))})`; };
+  const smooth01 = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  let route = DATA.routes[0];
+  const roadAt = (arr, s, k) => { const i = Math.max(0, Math.min(arr.length - 1, s / SEG)), a = Math.floor(i), b = Math.min(arr.length - 1, a + 1), t = i - a; return (arr[a] * (1 - t) + arr[b] * t) * k; };
+  const curvAt = s => { const c = roadAt(route.curv, s, 1e-4); return Math.max(-CURVE_MAX, Math.min(CURVE_MAX, c)) * CURVE; };
+  const heightAt = s => roadAt(route.height, s, 0.1) * HILL;
+  let look = { golden: 0, mist: 0 };
+  function lookAt(pos) {
+    const t = pos / route.length;
+    return { golden: smooth01(0.5, 1, t), mist: Math.max(0, 1 - Math.abs(t - 0.32) / 0.12) };
+  }
+  const housesNear = i => { let n = 0; for (let k = i - 3; k <= i + 3; k++) n += (route.housesL[k] || 0) + (route.housesR[k] || 0); return n; };
+  const sideAt = (i, side) => (side > 0 ? route.sideR : route.sideL)[Math.max(0, Math.min(route.sideL.length - 1, i))] || 0;
 
   // ---------- the parcel: something from the bazar, by its Mizo name ----------
   const PARCELS = [['alu', 'potatoes', '🥔'], ['artui', 'eggs', '🥚'], ['purun', 'onions', '🧅'], ['sangha', 'fish', '🐟'], ['balhla', 'bananas', '🍌'],
@@ -842,27 +870,6 @@
   const worn = slot => COSMETICS.find(x => x.id === S.cos[slot]) || COSMETICS.find(x => x.slot === slot);
   const fmtGoal = (x, n) => (x.kind === 'metres' ? `${(n / 1000).toFixed(1)} km` : n);
 
-  // ---------- the world ----------
-  const LANE = 2.4, LANES = [-LANE, 0, LANE], LANE_T = 0.6;   // lane centres, metres from the road's middle; a lane change takes LANE_T s
-  const SEG = 4, VIEW = 50;                         // a segment per sample; how many are drawn ahead
-  const PLAYER_Z = 3;                               // the scooter rides this far ahead of the camera
-  const CURVE = 0.55, CURVE_MAX = 0.045, HILL = 0.8;  // real bends and hills, softened to fit the screen
-  // Far things fade into the haze of the hills; colours are mixed once and kept
-  // The haze turns warm as the afternoon gets late (5 steps, so few colours are mixed).
-  const HAZES = [[214, 232, 222], [226, 230, 210], [236, 226, 198], [242, 220, 186], [246, 212, 172]], fogMemo = new Map();
-  let hazeStep = 0;
-  const fog = (c, f) => {
-    const q = Math.round(Math.min(1, f) * 12), key = c + q + hazeStep;
-    let out = fogMemo.get(key);
-    if (!out) { const HZ = HAZES[hazeStep], n = parseInt(c.slice(1), 16), t = q / 12 * 0.8, ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v, i) => Math.round(v + (HZ[i] - v) * t)); out = `rgb(${ch})`; fogMemo.set(key, out); }
-    return out;
-  };
-  const mixHex = (a, b, t) => { const A = parseInt(a.slice(1), 16), B = parseInt(b.slice(1), 16); return `rgb(${[16, 8, 0].map(sh => Math.round(((A >> sh) & 255) * (1 - t) + ((B >> sh) & 255) * t))})`; };
-  const smooth01 = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-  let route = DATA.routes[0];
-  const roadAt = (arr, s, k) => { const i = Math.max(0, Math.min(arr.length - 1, s / SEG)), a = Math.floor(i), b = Math.min(arr.length - 1, a + 1), t = i - a; return (arr[a] * (1 - t) + arr[b] * t) * k; };
-  const curvAt = s => { const c = roadAt(route.curv, s, 1e-4); return Math.max(-CURVE_MAX, Math.min(CURVE_MAX, c)) * CURVE; };
-  const heightAt = s => roadAt(route.height, s, 0.1) * HILL;
   // The road's sideways drift is worked out once per route as running sums of the (softened)
   // bends: its heading TH and the sum of the heading XI, every SEG metres. Where a point of road
   // lies, seen from the camera, then changes smoothly as you ride, with no jump at each segment.
@@ -1398,13 +1405,6 @@
   // How the day and the land change along the ride: the light grows golden towards the end, a
   // stretch of the road runs through morning haze (romei), and where the real map has few houses
   // the road runs through bamboo and trees. None of this changes how the game plays.
-  let look = { golden: 0, mist: 0 };
-  function lookAt(pos) {
-    const t = pos / route.length;
-    return { golden: smooth01(0.5, 1, t), mist: Math.max(0, 1 - Math.abs(t - 0.32) / 0.12) };
-  }
-  const housesNear = i => { let n = 0; for (let k = i - 3; k <= i + 3; k++) n += (route.housesL[k] || 0) + (route.housesR[k] || 0); return n; };
-  const sideAt = (i, side) => (side > 0 ? route.sideR : route.sideL)[Math.max(0, Math.min(route.sideL.length - 1, i))] || 0;
 
   // The hills behind slide as the road turns. Their outlines and the hillside town on the middle
   // ridge (rows of little houses down from the ridge top) are worked out once per screen size;
