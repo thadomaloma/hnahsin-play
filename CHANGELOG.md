@@ -4,6 +4,25 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.52.0 (4 November 2026)
+
+### Aizawl Ride: people at the roadblocks, and no landslides
+
+- The roadblocks have their people now:
+  - at road works, two workers in orange with yellow hard hats and shovels,
+    by the trench, and a third with a red flag facing the traffic, by the
+    KAWNG SIAM MEK sign;
+  - at a pothole, a worker mending it;
+  - at a truck unloading, two porters carrying the sacks to the footpath and
+    back;
+  - at the bus stop, people waiting by the door, someone getting on and
+    someone getting off and walking away;
+  - by a taxi, its passenger getting in or out.
+- Those getting on and off wait till you come near, so you see them do it.
+- A bus stops only where there is a footpath. Where there is none, a taxi's
+  passenger waits by its door and the porters keep to the road's edge.
+- Landslides have been taken out.
+
 ## 1.51.0 (3 November 2026)
 
 ### Aizawl Ride: roadblocks as Aizawl has them
