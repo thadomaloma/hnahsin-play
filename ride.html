@@ -1560,6 +1560,16 @@
       ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(x, y, 0.3 * k, 0.07 * k, 0, 0, 7); ctx.fill();
       if (a.f > 0.3) ctx.globalAlpha = ga * (1 - (a.f - 0.3) * 0.7);
       ctx.drawImage(sp.c, x - sp.c.width * sc / 2, y - (sp.c.height - 1) * sc, sp.c.width * sc, sp.c.height * sc);
+      // Tools for road workers (hat, shovel, flag) - walking mode
+      if (p.hat || p.tool) {
+        g.save();
+        g.translate(x, y);
+        g.scale(sc, sc);
+        if (p.hat) { g.fillStyle = p.hat; g.beginPath(); g.arc(0, -0.56 * 1.7 * PXM, 0.135 * 1.7 * PXM, 0, 7); g.fill(); g.beginPath(); g.arc(0.04 * 1.7 * PXM, -0.6 * 1.7 * PXM, 0.1 * 1.7 * PXM, 0, 7); g.fill(); }
+        if (p.tool === 'shovel') { const ph = p.phase * Math.PI / 2; const dig = Math.sin(ph) * 0.3; g.strokeStyle = '#7a5a3a'; g.lineWidth = 0.022 * 1.7 * PXM; g.beginPath(); g.moveTo(0.2 * 1.7 * PXM, 1.02 * 1.7 * PXM + dig); g.lineTo(0.28 * 1.7 * PXM, 0.6 * 1.7 * PXM + dig); g.stroke(); g.fillStyle = '#8d9092'; g.fillRect(0.2 * 1.7 * PXM, 0.0 + dig, 0.22 * 1.7 * PXM, 0.03 * 1.7 * PXM); }
+        if (p.tool === 'flag') { const flagColor = (now * 1.2) % 1 < 0.5 ? '#d32f2f' : '#c62828'; g.strokeStyle = '#5a4636'; g.lineWidth = 0.018 * 1.7 * PXM; g.beginPath(); g.moveTo(0.3 * 1.7 * PXM, 0.98 * 1.7 * PXM); g.lineTo(0.22 * 1.7 * PXM, -1.07 * 1.7 * PXM); g.stroke(); g.fillStyle = flagColor; g.fillRect(0.3 * 1.7 * PXM, 1.8 * 1.7 * PXM, 0.02 * 1.7 * PXM, 0.36 * 1.7 * PXM); }
+        g.restore();
+      }
       ctx.globalAlpha = ga;
     } else {
       // Idle: draw directly each frame with time-based animation (breathing, sway)
@@ -1583,7 +1593,7 @@
       paintPerson(g, 0.62 * PXM, 1.7 * PXM, L, front, 0, 0, idleTime);
       // Tools for road workers (hat, shovel, flag)
       if (p.hat) { g.fillStyle = p.hat; g.beginPath(); g.arc(0, -0.56 * 1.7 * PXM, 0.135 * 1.7 * PXM, 0, 7); g.fill(); g.beginPath(); g.arc(0.04 * 1.7 * PXM, -0.6 * 1.7 * PXM, 0.1 * 1.7 * PXM, 0, 7); g.fill(); }
-      if (p.tool === 'shovel') { g.strokeStyle = '#7a5a3a'; g.lineWidth = 0.022 * 1.7 * PXM; g.beginPath(); g.moveTo(0.2 * 1.7 * PXM, 1.02 * 1.7 * PXM); g.lineTo(0.28 * 1.7 * PXM, 0.6 * 1.7 * PXM); g.stroke(); g.fillStyle = '#8d9092'; g.fillRect(0.2 * 1.7 * PXM, 0.0, 0.22 * 1.7 * PXM, 0.03 * 1.7 * PXM); }
+      if (p.tool === 'shovel') { const ph = p.phase * Math.PI / 2; const dig = Math.sin(ph) * 0.3; g.strokeStyle = '#7a5a3a'; g.lineWidth = 0.022 * 1.7 * PXM; g.beginPath(); g.moveTo(0.2 * 1.7 * PXM, 1.02 * 1.7 * PXM + dig); g.lineTo(0.28 * 1.7 * PXM, 0.6 * 1.7 * PXM + dig); g.stroke(); g.fillStyle = '#8d9092'; g.fillRect(0.2 * 1.7 * PXM, 0.0 + dig, 0.22 * 1.7 * PXM, 0.03 * 1.7 * PXM); }
       if (p.tool === 'flag') { const flagColor = (now * 1.2) % 1 < 0.5 ? '#d32f2f' : '#c62828'; g.strokeStyle = '#5a4636'; g.lineWidth = 0.018 * 1.7 * PXM; g.beginPath(); g.moveTo(0.3 * 1.7 * PXM, 0.98 * 1.7 * PXM); g.lineTo(0.22 * 1.7 * PXM, -1.07 * 1.7 * PXM); g.stroke(); g.fillStyle = flagColor; g.fillRect(0.3 * 1.7 * PXM, 1.8 * 1.7 * PXM, 0.02 * 1.7 * PXM, 0.36 * 1.7 * PXM); }
       g.restore();
 

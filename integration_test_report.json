@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-04T21:26:45.844010",
+  "generated_at": "2026-11-04T21:37:25.218903",
   "games": {
     "journey": {
       "html_size_kb": 448.0,
@@ -20,7 +20,7 @@
       "words_with_photo": 0
     },
     "ride": {
-      "html_size_kb": 463.5,
+      "html_size_kb": 464.8,
       "svg_embedded": true,
       "parcels_with_svg": true,
       "scene_words_with_svg": true,
@@ -86,7 +86,7 @@
       },
       "Ride": {
         "exists": true,
-        "size_kb": 463.521484375,
+        "size_kb": 464.763671875,
         "has_svg": true
       },
       "Things": {
