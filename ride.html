@@ -590,18 +590,33 @@
   const sideAt = (i, side) => (side > 0 ? route.sideR : route.sideL)[Math.max(0, Math.min(route.sideL.length - 1, i))] || 0;
 
   // ---------- the parcel: something from the bazar, by its Mizo name ----------
-  const PARCELS = [['alu', 'potatoes', '🥔'], ['artui', 'eggs', '🥚'], ['purun', 'onions', '🧅'], ['sangha', 'fish', '🐟'], ['balhla', 'bananas', '🍌'],
-    ['serthlum', 'oranges', '🍊'], ['theihai', 'mangoes', '🥭'], ['bawkbawn', 'eggplants', '🍆'], ['fanghma', 'cucumbers', '🥒'], ['zikhlum', 'cabbages', '🥬'],
-    ['mâi', 'a pumpkin', '🎃'], ['hmarcha', 'chillies', '🌶️']];
+  const PARCELS = [
+    ['alu', 'potatoes', '🥔', 'public/assets/vocabulary/food/alu_twemoji.svg'],
+    ['artui', 'eggs', '🥚', 'public/assets/vocabulary/food/artui_twemoji.svg'],
+    ['purun', 'onions', '🧅', 'public/assets/vocabulary/vegetables/purun_twemoji.svg'],
+    ['sangha', 'fish', '🐟', 'public/assets/vocabulary/food/sangha_twemoji.svg'],
+    ['balhla', 'bananas', '🍌', 'public/assets/vocabulary/fruits/balhla_twemoji.svg'],
+    ['serthlum', 'oranges', '🍊', 'public/assets/vocabulary/fruits/serthlum_twemoji.svg'],
+    ['theihai', 'mangoes', '🥭', 'public/assets/vocabulary/fruits/theihai_twemoji.svg'],
+    ['bawkbawn', 'eggplants', '🍆', 'public/assets/vocabulary/vegetables/bawkbawn_twemoji.svg'],
+    ['fanghma', 'cucumbers', '🥒', 'public/assets/vocabulary/vegetables/fanghma_twemoji.svg'],
+    ['zikhlum', 'cabbages', '🥬', 'public/assets/vocabulary/vegetables/zikhlum_twemoji.svg'],
+    ['mâi', 'a pumpkin', '🎃', 'public/assets/vocabulary/vegetables/mai_twemoji.svg'],
+    ['hmarcha', 'chillies', '🌶️', 'public/assets/vocabulary/vegetables/hmarcha_twemoji.svg']
+  ];
   let parcel = PARCELS[Math.random() * PARCELS.length | 0];
-  const showParcel = () => { $('parcel').innerHTML = `<span class="pe" aria-hidden="true">${parcel[2]}</span><span><small>${L("Today's parcel", 'Vawiin thil phurh')}</small><b>${parcel[0]}</b> · ${parcel[1]}</span>`; };
+  const showParcel = () => {
+  const svg = parcel[3];
+  const img = svg ? `<img class="photo" src="${svg}" alt="${parcel[0]}">` : `<span class="pe" aria-hidden="true">${parcel[2]}</span>`;
+  $('parcel').innerHTML = `${img}<span><small>${L("Today's parcel", 'Vawiin thil phurh')}</small><b>${parcel[0]}</b> · ${parcel[1]}</span>`;
+};
   // Mizo words for what you ride through, each shown once a ride as you meet it
   const SCENE_WORDS = [
-    ['romei', 'haze', () => look.mist > 0.3],
-    ['tlai', 'evening', () => look.golden > 0.5],
-    ['mau', 'bamboo', i => housesNear(i) <= 2],
-    ['tlang', 'hill', i => sideAt(i, -1) > 8 || sideAt(i, 1) > 8],
-    ['ruam', 'valley', i => sideAt(i, -1) < -10 || sideAt(i, 1) < -10],
+    ['romei', 'haze', () => look.mist > 0.3, 'public/assets/vocabulary/nature/romei_custom.svg'],
+    ['tlai', 'evening', () => look.golden > 0.5, 'public/assets/vocabulary/nature/tlai_custom.svg'],
+    ['mau', 'bamboo', i => housesNear(i) <= 2, 'public/assets/vocabulary/nature/mau_custom.svg'],
+    ['tlang', 'hill', i => sideAt(i, -1) > 8 || sideAt(i, 1) > 8, 'public/assets/vocabulary/nature/tlang_custom.svg'],
+    ['ruam', 'valley', i => sideAt(i, -1) < -10 || sideAt(i, 1) < -10, 'public/assets/vocabulary/nature/ruam_custom.svg']
   ];
 
   // ---------- scooters, missions and badges ----------

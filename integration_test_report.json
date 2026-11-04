@@ -1,0 +1,102 @@
+{
+  "generated_at": "2026-11-04T17:11:06.708698",
+  "games": {
+    "journey": {
+      "html_size_kb": 448.0,
+      "svg_embedded": true,
+      "pic_function": true,
+      "fallback_chain": true,
+      "words_with_svg": 100,
+      "words_with_emoji": 444,
+      "words_with_placeholder": 710
+    },
+    "playground": {
+      "html_size_kb": 657.7,
+      "svg_embedded": true,
+      "face_function": true,
+      "fallback_chain": true,
+      "words_with_svg": 7,
+      "words_with_emoji": 307,
+      "words_with_photo": 0
+    },
+    "ride": {
+      "html_size_kb": 456.3,
+      "svg_embedded": true,
+      "parcels_with_svg": true,
+      "scene_words_with_svg": true,
+      "showparcel_uses_svg": true
+    },
+    "things": {
+      "html_size_kb": 271.1,
+      "svg_embedded": false,
+      "builds_from": "words.json + dict_words.json",
+      "word_count": 271.0751953125
+    }
+  },
+  "overall_status": "PARTIAL",
+  "test_results": {
+    "asset_library": {
+      "total": 100,
+      "valid": 100,
+      "missing": 0,
+      "issues": []
+    },
+    "vocabulary_coverage": {
+      "words": {
+        "svg": 100,
+        "emoji": 444,
+        "empty": 710,
+        "missing_paths": []
+      },
+      "dict": {
+        "svg": 0,
+        "emoji": 126,
+        "jpg": 12,
+        "empty": 1790
+      },
+      "playground": {
+        "svg": 7,
+        "emoji": 307,
+        "photo": 0
+      }
+    },
+    "placeholders": {
+      "missing": []
+    },
+    "fallback_chain": {
+      "all_passed": true
+    },
+    "alt_text": {
+      "missing_english": []
+    },
+    "file_sizes": {
+      "total_asset_kb": 118.3212890625,
+      "avg_asset_kb": 1.183212890625
+    },
+    "build_integrity": {
+      "Journey": {
+        "exists": true,
+        "size_kb": 447.95703125,
+        "has_svg": true
+      },
+      "Playground": {
+        "exists": true,
+        "size_kb": 657.6767578125,
+        "has_svg": true
+      },
+      "Ride": {
+        "exists": true,
+        "size_kb": 456.3271484375,
+        "has_svg": true
+      },
+      "Things": {
+        "exists": true,
+        "size_kb": 271.0751953125,
+        "has_svg": false
+      }
+    }
+  },
+  "issues": [
+    "things: SVG not embedded"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "generated_at": "2026-11-04T17:11:06.708698",
+  "summary": {
+    "total_pending": 0,
+    "completed": 0,
+    "sources": {}
+  },
+  "entries": [],
+  "notes": "The 8 words previously pending manual download (4 from LibreClipart, 4 from unDraw) have been resolved by generating custom SVGs instead. All 100 pilot words now have valid SVG assets with no pending manual downloads."
+}
