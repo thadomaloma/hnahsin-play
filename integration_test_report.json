@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-04T17:11:06.708698",
+  "generated_at": "2026-11-04T20:57:34.683968",
   "games": {
     "journey": {
       "html_size_kb": 448.0,
@@ -20,20 +20,20 @@
       "words_with_photo": 0
     },
     "ride": {
-      "html_size_kb": 456.3,
+      "html_size_kb": 462.2,
       "svg_embedded": true,
       "parcels_with_svg": true,
       "scene_words_with_svg": true,
       "showparcel_uses_svg": true
     },
     "things": {
-      "html_size_kb": 271.1,
-      "svg_embedded": false,
+      "html_size_kb": 280.1,
+      "svg_embedded": true,
       "builds_from": "words.json + dict_words.json",
-      "word_count": 271.0751953125
+      "word_count": 280.1435546875
     }
   },
-  "overall_status": "PARTIAL",
+  "overall_status": "PASS",
   "test_results": {
     "asset_library": {
       "total": 100,
@@ -86,17 +86,14 @@
       },
       "Ride": {
         "exists": true,
-        "size_kb": 456.3271484375,
+        "size_kb": 462.24609375,
         "has_svg": true
       },
       "Things": {
         "exists": true,
-        "size_kb": 271.0751953125,
-        "has_svg": false
+        "size_kb": 280.1435546875,
+        "has_svg": true
       }
     }
-  },
-  "issues": [
-    "things: SVG not embedded"
-  ]
+  }
 }
