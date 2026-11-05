@@ -1157,11 +1157,11 @@
     const i = Math.floor(t.at / SEG), walk = walkHere(i, -1), path = walk ? -5.3 : -3.75, side = t.lane === 0 ? 1 : -1;
     const add = (at, x, o) => { const p = newPed(at, x, 0, 0); Object.assign(p, o); peds.push(p); return p; };
     if (t.kind === 'works') {
-      add(t.at + 0.4, t.x - side * 0.15 + 0.45, { look: WORKER[0], aim: -Math.PI / 2, hat: '#f2c230', tool: 'shovel' });
-      add(t.at + 1.9, t.x + side * 0.4, { look: WORKER[1], aim: Math.PI / 2 * side, hat: '#f2c230', tool: 'shovel' });     // (beside the trench, facing it)
-      add(t.at - 4.5, t.x + side * 0.95, { look: WORKER[0], aim: Math.PI, hat: '#f2c230', tool: 'flag' });     // facing the traffic, by the sign
+      add(t.at + 0.4, t.x - side * 0.15 + 0.45, { look: WORKER[0], aim: -Math.PI / 2, hat: '#f2c230', tool: 'shovel', workPhase: Math.random() * Math.PI * 2 });
+      add(t.at + 1.9, t.x + side * 0.4, { look: WORKER[1], aim: Math.PI / 2 * side, hat: '#f2c230', tool: 'shovel', workPhase: Math.random() * Math.PI * 2 });     // (beside the trench, facing it)
+      add(t.at - 4.5, t.x + side * 0.95, { look: WORKER[0], aim: Math.PI, hat: '#f2c230', tool: 'flag', workPhase: Math.random() * Math.PI * 2 });     // facing the traffic, by the sign
     } else if (t.kind === 'pothole') {
-      add(t.at + 1.5, t.x + side * 0.35, { look: WORKER[1], aim: Math.PI, hat: '#f2c230', tool: 'shovel' });
+      add(t.at + 1.5, t.x + side * 0.35, { look: WORKER[1], aim: Math.PI, hat: '#f2c230', tool: 'shovel', workPhase: Math.random() * Math.PI * 2 });
     } else if (t.kind === 'unload') {
       const at = t.at - t.len / 2 - 0.9, to = walkHere(Math.floor(at / SEG), -1) ? -5.3 : -3.75;
       for (let k = 0; k < 2; k++) add(at - k * 0.7, t.x - 0.3 - k * 0.9, { look: PORTER, shuttle: [to, t.x - 0.3], vx: (k ? 1 : -1) * 0.9, carry: '#e4dccb' });
@@ -1229,6 +1229,13 @@
         p.x += p.vx * dt; if (p.x < p.shuttle[0]) { p.x = p.shuttle[0]; p.vx = Math.abs(p.vx); } if (p.x > p.shuttle[1]) { p.x = p.shuttle[1]; p.vx = -Math.abs(p.vx); }
         p.phase += Math.abs(p.vx) * dt * 2.6; continue;
       }
+      // Road workers: animate their working motions (digging, flag waving)
+      if (p.tool === 'shovel') {
+        p.workPhase = (p.workPhase || 0) + dt * 2.8;     // digging rhythm
+      } else if (p.tool === 'flag') {
+        p.workPhase = (p.workPhase || 0) + dt * 1.8;     // flag waving rhythm
+      }
+      if (p.workPhase > Math.PI * 4) p.workPhase -= Math.PI * 4;
       if (p.hold) { if (p.at - s < 38) p.hold = false; else continue; }            // getting on or off as you come near
       if (p.board !== undefined && p.x >= p.board) { p.gone = true; continue; }     // in through the door
       // a walker turns back where the footpath ends
@@ -1527,6 +1534,37 @@
 
     g.restore();
   }
+  // Draw worker tools (shovel, flag) in 2D
+  function drawWorkerTool2D(g, p, w, h) {
+    const wp = p.workPhase || 0;
+    g.lineCap = 'round';
+    if (p.tool === 'shovel') {
+      const dig = Math.sin(wp) * 0.3;
+      // Shovel handle
+      g.strokeStyle = '#7a5a3a';
+      g.lineWidth = w * 0.035;
+      g.beginPath();
+      g.moveTo(w * 0.22, h * 1.02 + dig);
+      g.lineTo(w * 0.28, h * 0.62 + dig);
+      g.stroke();
+      // Shovel blade
+      g.fillStyle = '#8d9092';
+      g.fillRect(w * 0.22, h * 0.02 + dig, w * 0.22, h * 0.03);
+    } else if (p.tool === 'flag') {
+      const wave = Math.sin(wp * 1.5) * 0.12;
+      const flagColor = (time * 1.2) % 1 < 0.5 ? '#d32f2f' : '#c62828';
+      // Flag pole
+      g.strokeStyle = '#5a4636';
+      g.lineWidth = w * 0.03;
+      g.beginPath();
+      g.moveTo(w * 0.3, h * 0.98);
+      g.lineTo(w * 0.22 + wave, h * -1.07 + wave * 0.5);
+      g.stroke();
+      // Flag
+      g.fillStyle = flagColor;
+      g.fillRect(w * 0.3, h * 1.8 + wave * 0.3, w * 0.02, h * 0.36);
+    }
+  }
   function person(p, P, i, now) {
     const a = P[i], b = P[i + 1], u = (p.at - a.wz) / SEG;
     const k = a.k + (b.k - a.k) * u, x = a.x + (b.x - a.x) * u + p.x * k, y = a.y + (b.y - a.y) * u;
@@ -1558,6 +1596,14 @@
       ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(x, y, 0.3 * k, 0.07 * k, 0, 0, 7); ctx.fill();
       if (a.f > 0.3) ctx.globalAlpha = ga * (1 - (a.f - 0.3) * 0.7);
       ctx.drawImage(sp.c, x - sp.c.width * sc / 2, y - (sp.c.height - 1) * sc, sp.c.width * sc, sp.c.height * sc);
+      // Worker tools in 2D (shovel, flag)
+      if (p.tool === 'shovel' || p.tool === 'flag') {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(sc, sc);
+        drawWorkerTool2D(ctx, p, 0.62 * PXM, 1.7 * PXM);
+        ctx.restore();
+      }
       ctx.globalAlpha = ga;
     } else {
       // Idle: draw directly each frame with time-based animation (breathing, sway)
@@ -1579,6 +1625,10 @@
       g.translate(x, y);
       g.scale(sc, sc);
       paintPerson(g, 0.62 * PXM, 1.7 * PXM, L, front, 0, 0, idleTime);
+      // Worker tools in 2D (shovel, flag)
+      if (p.tool === 'shovel' || p.tool === 'flag') {
+        drawWorkerTool2D(g, p, 0.62 * PXM, 1.7 * PXM);
+      }
       g.restore();
 
       ctx.globalAlpha = ga;
@@ -3455,8 +3505,18 @@ void main() {
     // what a roadblock's people have with them: a hard hat, a shovel or a red flag, a sack on the shoulder
     const gear = (p, real) => {
       if (p.hat) { put(pRound, 0, real ? 1.6 : 1.74, 0.0, 0.135, 0.085, 0.145, p.hat); put(pRound, 0, real ? 1.56 : 1.7, 0.04, 0.16, 0.02, 0.17, p.hat); }     // a hard hat, and its brim
-      if (p.tool === 'shovel') { limbTo(pLimb, 0.2, 1.02, 0.28, 0.08, 0.6, 0.022, '#7a5a3a'); put(pBox, 0.2, 0.0, 0.64, 0.22, 0.03, 0.26, '#8d9092'); }
-      if (p.tool === 'flag') { limbTo(pLimb, 0.3, 0.98, 0.22, 2.05, 0.3, 0.018, '#5a4636'); put(pBox, 0.3, 1.8, 0.3, 0.02, 0.26, 0.36, (time * 1.2) % 1 < 0.5 ? '#d32f2f' : '#c62828'); }     // (held up, beside the head)
+      const wp = p.workPhase || 0;
+      if (p.tool === 'shovel') {
+        const dig = Math.sin(wp) * 0.35;
+        limbTo(pLimb, 0.2, 1.02, 0.28 + dig, 0.08 + dig, 0.6 + dig, 0.022, '#7a5a3a');
+        put(pBox, 0.2, 0.0 + dig, 0.64 + dig, 0.22, 0.03, 0.26, '#8d9092');
+      }
+      if (p.tool === 'flag') {
+        const wave = Math.sin(wp * 1.5) * 0.15;
+        const flagColor = (time * 1.2) % 1 < 0.5 ? '#d32f2f' : '#c62828';
+        limbTo(pLimb, 0.3, 0.98, 0.22 + wave, 2.05 + wave * 0.5, 0.3, 0.018, '#5a4636');
+        put(pBox, 0.3, 1.8 + wave * 0.3, 0.3, 0.02, 0.26, 0.36, flagColor);
+      }
       if (p.carry && p.vx < 0) put(pBox, -0.14, 1.48, 0, 0.36, 0.26, 0.58, p.carry);
       if (p.dog) {     // a dog on a lead, trotting a little ahead on the left: body, head and ears, tail, four legs, and the lead to the hand
         const d = p.dog, dx = -0.42, dz = 0.95, ph = p.phase * Math.PI / 2, s0 = 1 / (p.sc || 1);
