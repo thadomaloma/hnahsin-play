@@ -4,6 +4,20 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.58.0 (6 November 2026)
+
+### Home page: hnahsin as it really grows
+
+- The cosmos leaves are drawn as cosmos leaves are: a gently arched midrib with
+  long thread-like segments in near-opposite pairs, curving toward the tip, the
+  lower ones split again into finer threads. They are longer too, near as long
+  as the flower is wide.
+- The petals blowing across the top of the page are cosmos petals, not ovals:
+  narrow at the base, widening to a broad tip with three small teeth, the colour
+  deeper at the base and fine lines running along them. They still tumble as
+  they drift.
+- The petals that scatter when you tap a flower have the same shape.
+
 ## 1.57.2 (6 November 2026)
 
 - The words said aloud are said in English only: their meaning ("cabbages",

@@ -303,6 +303,37 @@
     spin: Math.random() * 6, vs: 1 + Math.random() * 2.5, sway: Math.random() * 6,
     c: COLOURS[Math.floor(Math.random() * COLOURS.length)], a: .55 + Math.random() * .4,
   });
+  // A cosmos petal, as it is: narrow at its base, widening to a broad tip cut in three small teeth, the colour
+  // deeper at the base, fine lines running its length. Each colour is drawn once, and the drawing reused.
+  const shade = (hex, k) => {      // toward black (k < 0) or white (k > 0)
+    const n = parseInt(hex.slice(1), 16), m = k < 0 ? 0 : 255, f = Math.abs(k);
+    return `rgb(${[n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(v + (m - v) * f)).join(',')})`;
+  };
+  const PL = 60, PW = 32, SC = 2, sprites = {};       // (drawn at twice the size, sharp on a fine screen)
+  const petalPath = g => {
+    g.beginPath(); g.moveTo(-PL / 2, -PW * .09);                       // the narrow base,
+    g.bezierCurveTo(-PL * .3, -PW * .22, -PL * .08, -PW * .5, PL * .28, -PW * .5);   // widening fast, then nearly straight
+    g.quadraticCurveTo(PL * .45, -PW * .5, PL * .48, -PW * .33);       // to the tip's three small teeth
+    g.quadraticCurveTo(PL * .45, -PW * .22, PL * .455, -PW * .16);
+    g.quadraticCurveTo(PL * .5, -PW * .08, PL * .5, 0);
+    g.quadraticCurveTo(PL * .5, PW * .08, PL * .455, PW * .16);
+    g.quadraticCurveTo(PL * .45, PW * .22, PL * .48, PW * .33);
+    g.quadraticCurveTo(PL * .45, PW * .5, PL * .28, PW * .5);
+    g.bezierCurveTo(-PL * .08, PW * .5, -PL * .3, PW * .22, -PL / 2, PW * .09);
+    g.closePath();
+  };
+  const sprite = c => sprites[c] || (sprites[c] = (() => {
+    const s = document.createElement('canvas'); s.width = (PL + 4) * SC; s.height = (PW + 4) * SC;
+    const g = s.getContext('2d'); g.scale(SC, SC); g.translate(PL / 2 + 2, PW / 2 + 2);
+    const grad = g.createLinearGradient(-PL / 2, 0, PL / 2, 0);
+    grad.addColorStop(0, shade(c, c === '#ffffff' ? -.12 : -.3)); grad.addColorStop(.4, c); grad.addColorStop(1, shade(c, .1));
+    petalPath(g); g.fillStyle = grad; g.fill();
+    g.save(); petalPath(g); g.clip();                               // the lines, fanning from the base to the teeth
+    g.strokeStyle = shade(c, -.38); g.globalAlpha = .26; g.lineWidth = .8;
+    for (const e of [-.36, -.18, 0, .18, .36]) { g.beginPath(); g.moveTo(-PL * .46, 0); g.quadraticCurveTo(-PL * .05, PW * e * .85, PL * .47, PW * e * 1.1); g.stroke(); }
+    g.restore();
+    return s;
+  })());
   let wind = 0, last = 0;
   const draw = t => {
     requestAnimationFrame(draw);
@@ -315,8 +346,9 @@
       if (p.x > W + 20 || p.y > H + 20) Object.assign(p, petal(false));
       ctx.save();
       ctx.translate(p.x, p.y); ctx.rotate(p.spin); ctx.scale(1, Math.abs(Math.cos(p.spin * 1.3)) * .8 + .2);
-      ctx.globalAlpha = p.a; ctx.fillStyle = p.c;
-      ctx.beginPath(); ctx.ellipse(0, 0, p.r, p.r * .55, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = p.a;
+      const sp = sprite(p.c), k = p.r * 2 / PL / SC;                  // (a petal 2r long)
+      ctx.drawImage(sp, -sp.width * k / 2, -sp.height * k / 2, sp.width * k, sp.height * k);
       ctx.restore();
     }
   };

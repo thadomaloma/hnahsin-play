@@ -316,7 +316,8 @@
   .tag-text span { display: inline-block; white-space: pre; }
   .tag-text.wave span { animation: wave .7s var(--ease) both; animation-delay: calc(var(--i) * 45ms); }
   @keyframes wave { 40% { transform: translateY(-7px); color: var(--coral); } }
-  .petal-bit { position: absolute; width: 9px; height: 5px; border-radius: 50%; pointer-events: none; z-index: 5; }
+  /* a petal scattered by a tap: a cosmos petal, narrow at the base, its broad tip cut in three teeth */
+  .petal-bit { position: absolute; width: 12px; height: 7px; clip-path: polygon(0 40%, 18% 18%, 45% 1%, 82% 0, 96% 14%, 92% 32%, 100% 50%, 92% 68%, 96% 86%, 82% 100%, 45% 99%, 18% 82%, 0 60%); pointer-events: none; z-index: 5; }
 
 
   /* ------------------------------------------------ iPhone: add to Home Screen */
@@ -475,51 +476,23 @@
       <circle r="4" fill="#7a3d00" opacity=".35"/>
       <circle r="2.2" fill="#5a2a00" opacity=".5"/>
     </symbol>
-    <!-- its leaf: bipinnate, feathery — a midrib with fine thread-like segments in opposite pairs,
-         the lower ones divided again (twice-cut), like a green filigree -->
-    <symbol id="cosmos-leaf" viewBox="0 -12 28 24" overflow="visible">
-      <!-- midrib -->
-      <path d="M0 0 Q10 -2 22 -3" fill="none" stroke="var(--leaf-deep, #4a9a3e)" stroke-width="1.1" stroke-linecap="round"/>
-      <!-- upper side segments (getting shorter toward tip) -->
-      <g fill="var(--leaf, #3f8a32)" stroke="none">
-        <!-- pair 1 (base, longest, bipinnate) -->
-        <path d="M1.5 -0.3 Q4 -3.5 7 -3.8 Q8 -2.5 6.5 -0.8 Q4 0.8 1.5 -0.3Z"/>
-        <path d="M1.5 0.3 Q4 3.5 7 3.8 Q8 2.5 6.5 0.8 Q4 -0.8 1.5 0.3Z"/>
-        <!-- sub-lobes on pair 1 -->
-        <path d="M3 -1.2 Q4.5 -2.8 5.8 -2.5 Q5.5 -1.2 4 -0.3Z"/>
-        <path d="M3 1.2 Q4.5 2.8 5.8 2.5 Q5.5 1.2 4 0.3Z"/>
-        <path d="M5.5 -1 Q6.5 -2.2 7 -1.8 Q6.5 -0.8 5.5 -1Z"/>
-        <path d="M5.5 1 Q6.5 2.2 7 1.8 Q6.5 0.8 5.5 1Z"/>
-        <!-- pair 2 -->
-        <path d="M5.5 -0.8 Q7.5 -3 10 -3.2 Q11 -2 9.5 -0.3Z"/>
-        <path d="M5.5 0.8 Q7.5 3 10 3.2 Q11 2 9.5 0.3Z"/>
-        <!-- pair 3 -->
-        <path d="M9 -0.5 Q10.5 -2.5 12.5 -2.6 Q13 -1.5 11.5 -0.2Z"/>
-        <path d="M9 0.5 Q10.5 2.5 12.5 2.6 Q13 1.5 11.5 0.2Z"/>
-        <!-- pair 4 -->
-        <path d="M12 -0.3 Q13 -1.8 14.5 -1.8 Q14.8 -1 13.5 0.1Z"/>
-        <path d="M12 0.3 Q13 1.8 14.5 1.8 Q14.8 1 13.5 -0.1Z"/>
-        <!-- pair 5 (near tip) -->
-        <path d="M15 -0.2 Q15.7 -1.2 16.5 -1.1 Q16.5 -0.4 15.5 0.1Z"/>
-        <path d="M15 0.2 Q15.7 1.2 16.5 1.1 Q16.5 0.4 15.5 -0.1Z"/>
-        <!-- pair 6 (tip) -->
-        <path d="M18 0 Q18.5 -0.6 19 -0.4 Q18.8 0.2 18 0Z"/>
-        <path d="M18 0 Q18.5 0.6 19 0.4 Q18.8 -0.2 18 0Z"/>
-      </g>
-      <!-- subtle vein lines on segments -->
-      <g fill="none" stroke="var(--leaf-deep, #4a9a3e)" stroke-width="0.35" stroke-linecap="round" opacity="0.35">
-        <path d="M4 -2.5 Q5.5 -2.8 7 -2.5"/> <path d="M4 2.5 Q5.5 2.8 7 2.5"/>
-        <path d="M7.5 -2 Q8.5 -2.5 9.5 -2.2"/> <path d="M7.5 2 Q8.5 2.5 9.5 2.2"/>
-        <path d="M10.5 -1.8 Q11.5 -2 12.5 -1.8"/> <path d="M10.5 1.8 Q11.5 2 12.5 1.8"/>
-        <path d="M13.5 -1 Q14 -1.4 14.5 -1"/> <path d="M13.5 1 Q14 1.4 14.5 1"/>
+    <!-- its leaf, as cosmos has it: twice cut into long thread-like segments. A gently arched midrib; six
+         near-opposite pairs of threads leaning toward the tip and curving forward, shorter toward it, the lower
+         ones split again into finer threads; a long thread at the tip -->
+    <symbol id="cosmos-leaf" viewBox="0 -12 34 24" overflow="visible">
+      <g fill="none" stroke="var(--leaf, #3f8a32)" stroke-linecap="round">
+        <path d="M3.83 -3.07Q3.84 -5.28 4.36 -7.45M5.42 -5.29Q7 -6.11 8.37 -7.29M4.72 1.39Q5.53 3.44 6.82 5.27M7.01 2.87Q8.78 3.05 10.49 3.64M8.11 -3.71Q8.39 -5.83 9.16 -7.86M9.91 -5.65Q11.54 -6.24 13.01 -7.21M8.74 0.79Q9.63 2.74 10.96 4.45M11.03 2.12Q12.76 2.21 14.45 2.7M12.54 -3.59Q13 -5.46 13.89 -7.21M14.34 -5.15Q15.86 -5.52 17.28 -6.24M12.92 -0.26Q13.77 1.47 15.01 2.98M15.02 0.87Q16.58 0.91 18.11 1.31M16.84 -3.7Q17.39 -5.2 18.28 -6.55M17.02 -0.73Q17.77 0.68 18.84 1.9" stroke-width=".66"/>
+        <path d="M2.25 -0.36Q4.65 -5.02 8.57 -8.74M2.25 -0.56Q6.2 2.9 11.21 4.93M6.26 -1.29Q9.14 -5.49 13.37 -8.6M6.26 -0.99Q10.25 2.19 15.2 3.92M10.63 -1.6Q13.64 -5.08 17.74 -7.44M10.63 -1.8Q14.32 0.96 18.83 2.39M15.1 -2.24Q17.88 -4.83 21.46 -6.4M15.1 -1.94Q18.21 0.24 21.97 1.31M19.66 -2.21Q22.02 -3.98 24.92 -4.89M19.66 -2.41Q22.12 -0.79 25.07 -0.06M23.99 -2.52Q25.84 -3.61 28.01 -4.06M23.99 -2.22Q25.83 -1.1 27.99 -0.64M27.45 -2.3Q29.85 -2.23 32.25 -2.15" stroke-width=".85"/>
+        <path d="M0 0Q14 -3 30 -2.2" stroke="var(--leaf-deep, #4a9a3e)" stroke-width="1.15"/>
       </g>
     </symbol>
-    <!-- its stem, bending a little, with a leaf on either side and a small one lower down -->
+    <!-- its stem, bending a little, with a leaf on either side and a smaller one lower down (the leaves long,
+         as cosmos leaves are, near as long as the flower is wide) -->
     <symbol id="cosmos-stem" viewBox="0 0 40 90" overflow="visible">
       <path d="M20 0C19 22 22 46 20.5 90" fill="none" style="stroke: var(--leaf-deep, #4a9a3e)" stroke-width="2.4" stroke-linecap="round"/>
-      <use href="#cosmos-leaf" x="0" y="-10" width="24" height="20" transform="translate(20.2 26) rotate(-28) scale(.95)"/>
-      <use href="#cosmos-leaf" x="0" y="-10" width="24" height="20" transform="translate(20.4 46) rotate(208) scale(1)"/>
-      <use href="#cosmos-leaf" x="0" y="-10" width="24" height="20" transform="translate(20.6 66) rotate(-35) scale(.75)"/>
+      <use href="#cosmos-leaf" x="0" y="-12" width="34" height="24" transform="translate(20.2 25) rotate(-30) scale(.95)"/>
+      <use href="#cosmos-leaf" x="0" y="-12" width="34" height="24" transform="translate(20.4 45) rotate(210) scale(1)"/>
+      <use href="#cosmos-leaf" x="0" y="-12" width="34" height="24" transform="translate(20.6 65) rotate(-36) scale(.72)"/>
     </symbol>
   </defs>
 </svg>
@@ -670,7 +643,7 @@
   </div>
   <div class="wrap foot-bar">
     <p>Developed by <b>Maloma Thado</b></p>
-    <p>Version 1.57.2 · <a href="https://github.com/thadomaloma/hnahsin-play/releases">What's new</a></p>
+    <p>Version 1.58.0 · <a href="https://github.com/thadomaloma/hnahsin-play/releases">What's new</a></p>
   </div>
 </footer>
 
@@ -700,7 +673,7 @@
 
 <script src="stats.js?v=ff1d2eba" async></script>
 <script src="rova.js?v=f35ca6fa" defer></script>
-<script src="home.js?v=33e9af6c" defer></script>
+<script src="home.js?v=3dc16de9" defer></script>
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js'));</script>
 
 </body>
