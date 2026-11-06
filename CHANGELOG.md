@@ -4,6 +4,57 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.56.0 (6 November 2026)
+
+### Aizawl Ride: road works at work
+
+- The road works are being built as you pass. Two workers dig the trench,
+  pushing the shovel in, prising the earth up and throwing it on the heap; the
+  lumps fly and land in a little dust. One rakes out new tar, and a small road
+  roller with its driver rolls it to and fro, its lamp turning and its exhaust
+  puffing. A drum of tar heats over a wood fire, its smoke drifting off the
+  road. The man with the red flag waves it for the traffic to come past.
+- At a pothole, a worker pounds the gravel down with a rammer, a puff of dust
+  each time it lands.
+- The workers and the roller's driver have real bodies, like the people on the
+  footpaths, posed for their work: they bend over the shovel, lean into the
+  rake and sit at the roller's wheel, with both hands on their tools. They wear
+  hard hats, gloves and vests with shining bands. On the lowest picture quality,
+  and until the bodies have loaded, they are drawn simply.
+
+### Aizawl Ride: words and pictures
+
+- Each Mizo word you meet on the road is said aloud, and the words you meet and
+  answer are kept for your progress.
+- Today's parcel shows a picture of what you carry (cucumbers, cabbages, a
+  pumpkin, chillies and more), at its proper size again.
+
+### Fixes
+
+- The sound for the words (audio.js) did not load at all, because of a missing
+  quote mark; it loads now.
+- Phones that had kept an old copy of the games' files fetch them fresh.
+- The smoother walk for people in the flat (2D) view, from 1.55.0, was lost when
+  Aizawl Ride was rebuilt; they walk as before 1.55.0 for now.
+
+## 1.55.0 (4 November 2026)
+
+- Rova's Journey and Touch and learn show pictures for their words, from the new
+  picture library, where there was no emoji.
+- Aizawl Ride: people standing still breathe and shift their weight, and people
+  walking swing their arms and legs more smoothly (in the flat, 2D view).
+
+## 1.54.2 (4 November 2026)
+
+- The home page's hnahsin (cosmos) flower is drawn more realistically, with its
+  feathery leaves.
+- Rova's Journey: a tap no longer makes Rova jump twice on a touch screen.
+
+## 1.54.1 (4 November 2026)
+
+- Aizawl Ride did not start, as a list of words used things set up later in the
+  page; it starts again.
+
 ## 1.54.0 (4 November 2026)
 
 ### Aizawl Ride: busy footpaths, families, dogs and umbrellas
