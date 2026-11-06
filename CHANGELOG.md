@@ -4,6 +4,17 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.59.1 (6 November 2026)
+
+- Offline, the games keep the words said aloud and your progress: the files
+  for both are now kept on the phone with the rest. Before, Playground and
+  Aizawl Ride played offline without either, unless opened online first.
+- On the game pages, a pinch zooms again, for anyone who needs the words
+  bigger. Where the game is played (Rova's Journey, the scene in Touch and
+  learn, Aizawl Ride's road and buttons) a pinch still does nothing, so playing
+  with two thumbs never zooms by accident.
+- The home page counts Playground's games right: 33.
+
 ## 1.59.0 (6 November 2026)
 
 ### Hnahsin Playground: Review, words said aloud, your progress kept

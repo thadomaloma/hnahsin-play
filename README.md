@@ -11,7 +11,7 @@ Learn Mizo words by playing. Free, on any phone, no sign-up.
 - **Rova's Journey.** Rova runs across Mizoram, from the hills to Phawngpui.
   Jump into the door with the right Mizo word. Five levels, with Mizo
   sayings (tawng upa) and sentences at the end of each level.
-- **Hnahsin Playground.** 32 games:
+- **Hnahsin Playground.** 33 games:
   - word quests: Word dungeon (beat monsters with Mizo words), Falling letters,
     Crossword cave (a crossword that lights up word by word)
   - word puzzles: Spelling bee, Waffle, Strands, Word tubes, Sort it
@@ -19,6 +19,7 @@ Learn Mizo words by playing. Free, on any phone, no sign-up.
   - everyday Mizo: Bazar, I Spy, Count, Dress Rova, Big and small, Days and
     times, Rova says, Colour it, Rova's family, Weather report, Food stall
   - sentences and sayings: Sentence builder, Saying match
+  - Review: the words you have met in the games come back when they are due
   - from the Hnahsin app, just as they are in the app: Picture Match, Spelling,
     Word Search, Word Chain, Tawng Upa, Crossword, Odd One Out, Sentence Builder
 - **Touch and learn.** Things you can tap, turn and play with, to learn their

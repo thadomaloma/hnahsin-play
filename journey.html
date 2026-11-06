@@ -1,7 +1,10 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#3c9fea"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Hnahsin"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="icon" href="favicon.png" type="image/png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js'));</script><style>
-  /* App mode for the game pages: no zooming (pinch or double tap), no pull-to-refresh or bounce,
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#3c9fea"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Hnahsin"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="icon" href="favicon.png" type="image/png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js'));</script><style>
+  /* App mode for the game pages: no zoom by double tap, and no pinch-zoom where the game is played (Rova's
+     Journey's game, Touch and learn's scene, Aizawl Ride's road and its buttons, pressed with two thumbs at
+     once); everywhere else a pinch zooms, for those who need the words bigger. No pull-to-refresh or bounce,
      no long-press menu or text selection on the games (but in a text box), no grey flash on a tap */
   html { touch-action: manipulation; overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
+  #game, #stage, .controls { touch-action: pan-x pan-y; }
   body { overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
   input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
   img, canvas, svg { -webkit-user-drag: none; }
@@ -13,13 +16,13 @@
   @media (prefers-color-scheme: dark) { .hn-fs, .hn-install { background: #2a2622; color: #f3efe6; border-color: #f3efe6; } .hn-install .x { color: #f3efe6; } }
 </style>
 <script>
-  // App mode, the part CSS cannot do: iPhones zoom on a pinch whatever the page says, so the pinch is
-  // stopped here; a full-screen button where the browser allows one (Android), when not already opened
+  // App mode, the part CSS cannot do: iPhones zoom on a pinch whatever the page says, so a pinch begun
+  // where the game is played is stopped here (elsewhere it zooms); a full-screen button where the browser allows one (Android), when not already opened
   // from the home screen; and, from the third visit, a word on installing Hnahsin (once a week at most).
   (() => {
-    const stop = e => e.preventDefault();
-    for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, stop, { passive: false });
-    document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+    const play = t => t && t.closest && t.closest('#game, #stage, .controls');
+    for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, e => { if (play(e.target)) e.preventDefault(); }, { passive: false });
+    document.addEventListener('touchmove', e => { if (e.touches.length > 1 && [...e.touches].some(t => play(t.target))) e.preventDefault(); }, { passive: false });
     const app = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone === true;
     const touch = matchMedia('(pointer: coarse)').matches;
     const get = k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
