@@ -112,32 +112,36 @@
       }
 
       const {
-        lang = 'lus',  // Mizo (Lushai) - ISO 639-3
         rate = this._rate,
         pitch = this._pitch,
-        voice = null,
+        voice = this._englishVoice(),
       } = options;
 
       // Cancel any pending speech
       global.speechSynthesis.cancel();
 
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = lang;
+      // No phone has a Mizo voice, so the words are read in English, as they are written. An English
+      // voice does not know Mizo's marked letters (â, ê, î, ô, û, ṭ): it is given the plain letters.
+      const utterance = new SpeechSynthesisUtterance(text.normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+      utterance.lang = voice ? voice.lang : 'en-IN';
+      if (voice) utterance.voice = voice;
       utterance.rate = rate;
       utterance.pitch = pitch;
       utterance.volume = this._volume;
 
-      // Try to find a Mizo voice
-      if (!voice) {
-        const voices = global.speechSynthesis.getVoices();
-        const mizoVoice = voices.find(v => v.lang.startsWith('lus') || v.lang.startsWith('miz') || v.name.toLowerCase().includes('mizo'));
-        if (mizoVoice) {
-          utterance.voice = mizoVoice;
-        }
-        // Fallback: if no Mizo voice, use any voice (will likely be English)
-      }
-
       global.speechSynthesis.speak(utterance);
+    },
+
+    // The English voice to read with: Indian English first (the nearest to how Mizoram speaks English),
+    // then British, American, any English. (The list of voices can arrive after the page has loaded.)
+    _englishVoice() {
+      const voices = global.speechSynthesis.getVoices();
+      if (!voices.length) return null;
+      for (const tag of ['en-IN', 'en-GB', 'en-US', 'en']) {
+        const v = voices.find(v => v.lang.replace('_', '-').startsWith(tag));
+        if (v) return v;
+      }
+      return null;
     },
 
     // High-level: play a word (tries recorded asset → TTS)

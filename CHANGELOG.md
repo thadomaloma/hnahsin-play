@@ -4,6 +4,14 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.57.1 (6 November 2026)
+
+- The Mizo words said aloud, in all the games, are read with an English voice
+  (Indian English if the phone has it, else British or American). Phones have
+  no Mizo voice, so before this each phone read them in whatever voice it
+  chose. The letters with marks (â, ê, î, ô, û, ṭ) are read as their plain
+  letters.
+
 ## 1.57.0 (6 November 2026)
 
 ### Aizawl Ride: busier roads, fewer road works, a real bus stop
