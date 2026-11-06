@@ -4,6 +4,27 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.57.0 (6 November 2026)
+
+### Aizawl Ride: busier roads, fewer road works, a real bus stop
+
+- Twice as much traffic both ways, all of it more cars, taxis, SUVs,
+  scooters and motorbikes; buses and trucks come as often as before. The
+  queues are twice as long, 12 to 23 vehicles.
+- Road works are half as common as they were; potholes, parked cars, trucks
+  unloading and buses make up the rest.
+- A bus stops at a proper bus stop: a bay marked in yellow on the road, and on
+  the footpath a shelter with a blue roof, posters on its back, a wooden bench
+  and a blue BUS STOP sign. People wait at its front, and one or two sit on the
+  bench. No one under its roof needs an umbrella.
+
+### Aizawl Ride: people walking in the flat (2D) view
+
+- The smoother walk is back: each foot lifts and comes forward in turn, the
+  arms swing against the legs, and the body rises a little at each step.
+- People standing still breathe, sway, shift their weight from foot to foot and
+  blink now and then, each in their own time.
+
 ## 1.56.0 (6 November 2026)
 
 ### Aizawl Ride: road works at work
