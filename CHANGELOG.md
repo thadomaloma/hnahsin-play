@@ -4,6 +4,14 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.57.2 (6 November 2026)
+
+- The words said aloud are said in English only: their meaning ("cabbages",
+  "road works"), not the Mizo word, which is on the screen. A hint after the
+  meaning ("go round") is not said.
+- Aizawl Ride's question at the end of a ride says nothing as it is asked, as
+  that would give the answer away; the meaning is said once you answer.
+
 ## 1.57.1 (6 November 2026)
 
 - The Mizo words said aloud, in all the games, are read with an English voice

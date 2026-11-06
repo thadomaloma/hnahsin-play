@@ -4878,7 +4878,6 @@ void main() {
     const others = QUIZ_WORDS.filter(([m, e]) => m !== quizWord[0] && e !== quizWord[1]).sort(() => Math.random() - 0.5).slice(0, 2);
     const opts = [quizWord, ...others].sort(() => Math.random() - 0.5);
     $('quizQ').innerHTML = L(`🗣️ What is <b>${quizWord[0]}</b>?`, `🗣️ <b>${quizWord[0]}</b> chu eng nge?`);
-    if (typeof Audio !== 'undefined' && Audio.playWord) Audio.playWord({ mizo: quizWord[0], english: quizWord[1] });
     $('quizOpts').innerHTML = opts.map(([m, e]) => `<button type="button" data-m="${m}">${e}</button>`).join('');
     $('quizA').textContent = ''; $('quiz').hidden = false; delete $('quizOpts').dataset.done;
   }
@@ -4891,6 +4890,7 @@ void main() {
     // Record quiz answer for progress tracking
     const vid = VOCAB_MAP && VOCAB_MAP[quizWord[0].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')];
     if (vid && typeof Progress !== 'undefined' && Progress.recordEncounter) Progress.recordEncounter(vid, 'ride', right);
+    if (typeof Audio !== 'undefined' && Audio.playWord) Audio.playWord({ mizo: quizWord[0], english: quizWord[1] });     // (said once answered: said with the question, it would be the answer)
     if (right) { S.quizRight++; S.wallet += 10; S.lifetime += 10; dailyAdd('quiz', 1); if (!S.quizKnown.includes(quizWord[0])) S.quizKnown.push(quizWord[0]); $('endNews').insertAdjacentHTML('beforeend', award().map(badgeNews).join('')); syncWallet(true); beep(990, 0.15); $('quizA').innerHTML = L(`Right! <b>${quizWord[0]}</b> is ${quizWord[1]}`, `A dik! <b>${quizWord[0]}</b> chu ${quizWord[1]} a ni`) + ' · <i class="coin"></i> +10'; }
     else { b.classList.add('no'); beep(300, 0.15); $('quizA').innerHTML = L(`<b>${quizWord[0]}</b> is ${quizWord[1]}. Next time!`, `<b>${quizWord[0]}</b> chu ${quizWord[1]} a ni. A dawt lehah!`); }
     writeSave();

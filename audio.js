@@ -120,9 +120,8 @@
       // Cancel any pending speech
       global.speechSynthesis.cancel();
 
-      // No phone has a Mizo voice, so the words are read in English, as they are written. An English
-      // voice does not know Mizo's marked letters (â, ê, î, ô, û, ṭ): it is given the plain letters.
-      const utterance = new SpeechSynthesisUtterance(text.normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+      // Everything said is English, in an English voice
+      const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = voice ? voice.lang : 'en-IN';
       if (voice) utterance.voice = voice;
       utterance.rate = rate;
@@ -144,20 +143,13 @@
       return null;
     },
 
-    // High-level: play a word (tries recorded asset → TTS)
+    // High-level: a word said aloud, in English only: its meaning, not the Mizo word (the Mizo is on the
+    // screen). Only the meaning itself is said, not a hint after it ("road works · go round" says
+    // "road works"). A word with no English meaning given is not said.
     async playWord(entry) {
       if (!this._shouldPlay()) return;
-      // Try recorded audio first
-      if (entry?.audio?.recorded) {
-        await this.playAsset(entry.audio.recorded);
-        return;
-      }
-      // Fallback to TTS
-      if (entry?.mizo) {
-        this.speak(entry.mizo);
-      } else if (entry?.english) {
-        this.speak(entry.english);
-      }
+      const english = (entry?.english || '').split(' · ')[0].trim();
+      if (english) this.speak(english);
     },
 
     // High-level: play a sentence (TTS)
