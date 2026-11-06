@@ -4,6 +4,18 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.59.0 (6 November 2026)
+
+### Hnahsin Playground: Review, words said aloud, your progress kept
+
+- A new game, Review: the words you have met in the games come back for you to
+  practise, a day or more later (longer each time you know them). You see the
+  Mizo word and pick its meaning; the meaning shows, and is said, once you
+  have answered.
+- In the games, the meaning of a word is said aloud in English as you find it,
+  pick it or get it right; never before you answer.
+- The words you meet and answer are kept, so Review knows which ones are due.
+
 ## 1.58.0 (6 November 2026)
 
 ### Home page: hnahsin as it really grows
