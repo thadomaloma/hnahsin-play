@@ -3064,10 +3064,13 @@ void main() {
         return [...R, ...R.slice(1, 9).reverse().map(([x, v]) => [-x, v])];
       };
       const rings = U.map(u => ring(u)), N = 18;
-      const strip = (from, to, idx, out, lift) => {     // a mesh over stations from..to, through ring points idx
+      const strip = (from, to, idx, out, lift, hole) => {     // a mesh over stations from..to, through ring points idx (leaving out the holes)
         const pos = [], col = [], ind = [], sel = U.map((u, i) => i).filter(i => U[i] >= from - 1e-6 && U[i] <= to + 1e-6);
         sel.forEach(i => idx.forEach(k => { const [x, v] = rings[i][k]; pos.push(x * out, v + lift, U[i]); col.push(1, 1, 1); }));
-        for (let a = 0; a < sel.length - 1; a++) for (let j = 0; j < idx.length - 1; j++) { const p = a * idx.length + j, q = p + idx.length; ind.push(p, q, p + 1, p + 1, q, q + 1); }
+        for (let a = 0; a < sel.length - 1; a++) for (let j = 0; j < idx.length - 1; j++) {
+          if (hole && hole((U[sel[a]] + U[sel[a + 1]]) / 2, j)) continue;
+          const p = a * idx.length + j, q = p + idx.length; ind.push(p, q, p + 1, p + 1, q, q + 1);
+        }
         return { pos, col, ind };
       };
       const geo = (parts0, capped) => {
@@ -3086,22 +3089,62 @@ void main() {
         if (sgn < 0) { const ix = g.index.array; for (let i = 0; i < ix.length; i += 3) { const t = ix[i + 1]; ix[i + 1] = ix[i + 2]; ix[i + 2] = t; } g.computeVertexNormals(); }
         return g;
       };
-      // the paint: dark underneath and along the bottom edge
-      const body = strip(U[0], U[U.length - 1], [...Array(N + 1).keys()].map(k => k % N), 1, 0);
+      // the paint: dark underneath and along the bottom edge. Where there is glass the body is open, so
+      // you see in through the windows (ring points 5-7 are the right side's window, 11-13 the left's,
+      // 8-10 across the top the windscreen and the back window)
+      const [s0, s1] = GL.side, cuts = [s0, ...(GL.pillars || []).flat(), s1];
+      const panes = []; for (let i = 0; i < cuts.length; i += 2) panes.push([cuts[i], cuts[i + 1]]);
+      const within = (u, r) => r && u > r[0] && u < r[1];
+      const open = (u, j) => ((j === 5 || j === 6 || j === 11 || j === 12) && panes.some(r => within(u, r))) || ((j === 8 || j === 9) && (within(u, GL.ws) || within(u, GL.rw)));
+      const body = strip(U[0], U[U.length - 1], [...Array(N + 1).keys()].map(k => k % N), 1, 0, open);
       const dk = C(DK); body.pos.forEach((_, i) => { if (i % 3) return; const k = (i / 3) % (N + 1) % N; if (k <= 1 || k >= 17) body.col.splice(i, 3, dk.r, dk.g, dk.b); });
       const glass = [];
-      const [s0, s1] = GL.side, cuts = [s0, ...(GL.pillars || []).flat(), s1];
       for (let i = 0; i < cuts.length; i += 2) { glass.push(strip(cuts[i], cuts[i + 1], [5, 6, 7], 1.012, 0.002)); glass.push(strip(cuts[i], cuts[i + 1], [11, 12, 13], 1.012, 0.002)); }
       for (const k of ['ws', 'rw']) if (GL[k]) glass.push(strip(GL[k][0], GL[k][1], [8, 9, 10], 1.012, 0.012));
-      return { paint: geo([body], true), glass: geo(glass, false), half, top, waist };
+      return { paint: geo([body], true), glass: geo(glass, false), half, top, waist, bottom };
+    }
+    // What is seen through a car's windows, and its black trim outside: the cabin's floor at the window line
+    // (so the open body is closed below it), the roof lining, the dashboard, the steering wheel on the right
+    // (as in India), the front seats and the bench behind, with their headrests; outside, the door lines, the
+    // rubber along the bottom of the windows, the wipers and an aerial.
+    const panesOf = g => { const c = [g.side[0], ...(g.pillars || []).flat(), g.side[1]], r = []; for (let i = 0; i < c.length; i += 2) r.push([c[i], c[i + 1]]); return r; };
+    function interior(I, B, o) {
+      const { cab: [c0, c1], roof: [r0, r1], hip, rear, wheel, dash: [d0, d1], doors, seat = '#3b3c3f', wiper, aerial, panes } = o;
+      const span = (a, b, f, pick) => { let v = pick === 'min' ? 9 : -9; for (let u = a; u <= b + 1e-6; u += 0.05) v = Math[pick](v, f(u)); return v; };
+      const wmin = span(c0, c1, B.half, 'min'), vw = span(c0, c1, B.waist, 'min'), vt = span(r0, r1, B.top, 'min');
+      I.box((c0 + c1) / 2, vw - 0.07, 0, c1 - c0, 0.04, 2 * wmin * 0.94, '#2a2b2e');                         // the floor of the cabin, at the window line
+      I.box((r0 + r1) / 2, vt - 0.045, 0, r1 - r0, 0.025, 2 * wmin * 0.8, '#8f8a82');                        // the roof lining
+      const dv = B.waist((d0 + d1) / 2);
+      I.box((d0 + d1) / 2, dv - 0.04, 0, d1 - d0, 0.16, 2 * wmin * 0.92, '#222326');                         // the dashboard
+      I.box(d0 + 0.07, dv + 0.06, 0.22, 0.12, 0.06, 0.3, '#18191b');                                         // the hood over the dials
+      I.lamp(wheel[0], wheel[1], 0.22, 0.17, 0.03, '#141517', -0.55);                                         // the steering wheel
+      I.rod(wheel[0] + 0.02, wheel[1] - 0.02, 0.22, d0 + 0.05, dv - 0.05, 0.22, 0.025, '#141517');           // and its column
+      for (const e of [-1, 1]) {                                                                               // the front seats
+        I.box(hip[0] + 0.1, hip[1] - 0.05, e * 0.22, 0.46, 0.1, 0.3, seat);
+        I.bar(hip[0] - 0.13, hip[1] - 0.06, hip[0] - 0.25, hip[1] + 0.52, e * 0.22, 0.29, 0.1, seat);
+        I.box(hip[0] - 0.28, hip[1] + 0.64, e * 0.22, 0.08, 0.15, 0.17, seat);
+      }
+      if (rear) {                                                                                              // the bench behind
+        I.box(rear[0] + 0.1, rear[1] - 0.05, 0, 0.44, 0.1, 2 * wmin * 0.82, seat);
+        I.bar(rear[0] - 0.13, rear[1] - 0.06, rear[0] - 0.24, rear[1] + 0.5, 0, 2 * wmin * 0.84, 0.1, seat);
+        for (const e of [-1, 1]) I.box(rear[0] - 0.27, rear[1] + 0.6, e * 0.24, 0.08, 0.13, 0.16, seat);
+      }
+      for (const e of [-1, 1]) {
+        for (const u of doors) I.bar(u, B.bottom(u) + 0.07, u, B.waist(u) - 0.02, e * (B.half(u) + 0.004), 0.006, 0.012, SEAM);   // the door lines
+        for (const [a, b] of panes) I.bar(a, B.waist(a) + 0.005, b, B.waist(b) + 0.005, e * (B.half((a + b) / 2) * 0.96 + 0.014), 0.012, 0.022, '#141517');   // the rubber under the windows
+      }
+      for (const [x0, x1] of [[-0.42, -0.03], [0.03, 0.42]]) I.rod(wiper, B.top(wiper) + 0.025, x0, wiper - 0.03, B.top(wiper - 0.03) + 0.025, x1, 0.009, '#141517');   // the wipers
+      if (aerial) I.rod(aerial, B.top(aerial), -0.2, aerial - 0.22, B.top(aerial) + 0.3, -0.2, 0.005, '#141517');
     }
     function hatchback() {  // a Maruti hatchback (the taxis too): short bonnet, tall cabin, a near-upright hatch
-      const P = parts(), G = parts(), H = parts();
+      const P = parts(), G = parts(), H = parts(), I = parts();
+      const glass = { side: [-1.6, 0.92], pillars: [[-0.52, -0.42]], ws: [0.24, 0.93], rw: [-1.88, -1.66] };
       const B = loft({ L: 3.8, sill: 0.3, wheels: [[1.22, 0.3, 0.42], [-1.22, 0.3, 0.42]], tumble: 0.8,
         waist: [[-1.9, 0.92], [-1.0, 0.95], [0.9, 0.95], [1.5, 0.86], [1.9, 0.74]],
-        top: [[-1.9, 0.9], [-1.88, 1.18], [-1.8, 1.4], [-1.62, 1.47], [0.2, 1.49], [0.95, 0.99], [1.5, 0.88], [1.9, 0.75]],
-        glass: { side: [-1.6, 0.92], pillars: [[-0.52, -0.42]], ws: [0.24, 0.93], rw: [-1.88, -1.66] } });
+        top: [[-1.9, 0.9], [-1.88, 1.18], [-1.8, 1.4], [-1.62, 1.47], [0.2, 1.49], [0.95, 0.99], [1.5, 0.88], [1.9, 0.75]], glass });
       P.mesh(B.paint); G.mesh(B.glass);
+      interior(I, B, { cab: [-1.55, 0.9], roof: [-1.6, 0.22], hip: [-0.08, 0.62], rear: [-0.92, 0.64], wheel: [0.38, 1.02], dash: [0.45, 0.9],
+        doors: [0.92, -0.47, -0.98], panes: panesOf(glass), wiper: 0.86, aerial: -1.5 });
       for (const e of [-1, 1]) {
         P.box(0.82, 1.02, e * 0.55, 0.15, 0.1, 0.08); P.box(0.82, 0.97, e * 0.49, 0.08, 0.04, 0.06, DK);   // mirrors
         for (const u of [0.45, -0.72]) H.box(u, 0.84, e * 0.497, 0.12, 0.03, 0.01);                        // door handles
@@ -3110,16 +3153,19 @@ void main() {
       for (const u of [1.9, -1.9]) P.box(u, 0.4, 0, 0.12, 0.18, 0.74, DK);                                  // bumpers
       P.box(1.91, 0.6, 0, 0.03, 0.1, 0.42, '#0e0f10'); H.box(1.925, 0.64, 0, 0.02, 0.02, 0.4);             // grille
       P.box(-1.62, 1.49, 0, 0.12, 0.03, 0.62);                                                              // a little spoiler over the hatch
-      return { paint: P.done(), glass: G.done(), chrome: H.done(), len: 3.8, hgt: 1.45, wheels: [[1.22, 0.3], [-1.22, 0.3]], track: 0.43, tw: 0.2,
-        head: [1.91, 0.72, 0.28, 0.2, 0.09], tail: [-1.91, 0.86, 0.29, 0.1, 0.18], plate: [-1.93, 0.52], front: [1.93, 0.42] };
+      return { paint: P.done(), glass: G.done(), chrome: H.done(), cabin: I.done(), len: 3.8, hgt: 1.45, wheels: [[1.22, 0.3], [-1.22, 0.3]], track: 0.43, tw: 0.2, rim: 'cap',
+        head: [1.91, 0.72, 0.28, 0.2, 0.09], tail: [-1.91, 0.86, 0.29, 0.1, 0.18], plate: [-1.93, 0.52], front: [1.93, 0.42], hmsl: [-1.67, 1.44],
+        seats: { hip: [-0.08, 0.62], rear: [-0.92, 0.64], wheel: [0.38, 1.02] } };
     }
     function sedan() {      // a Dzire: a hatchback's front with a short boot
-      const P = parts(), G = parts(), H = parts();
+      const P = parts(), G = parts(), H = parts(), I = parts();
+      const glass = { side: [-0.95, 0.98], pillars: [[-0.16, -0.06]], ws: [0.34, 0.98], rw: [-1.48, -0.74] };
       const B = loft({ L: 4.0, sill: 0.3, wheels: [[1.3, 0.3, 0.42], [-1.25, 0.3, 0.42]], tumble: 0.78,
         waist: [[-2.0, 0.9], [-1.6, 0.95], [0.95, 0.95], [1.55, 0.86], [2.0, 0.72]],
-        top: [[-2.0, 0.88], [-1.95, 0.97], [-1.55, 1.0], [-1.0, 1.36], [-0.7, 1.45], [0.3, 1.46], [1.0, 0.98], [1.55, 0.88], [2.0, 0.73]],
-        glass: { side: [-0.95, 0.98], pillars: [[-0.16, -0.06]], ws: [0.34, 0.98], rw: [-1.48, -0.74] } });
+        top: [[-2.0, 0.88], [-1.95, 0.97], [-1.55, 1.0], [-1.0, 1.36], [-0.7, 1.45], [0.3, 1.46], [1.0, 0.98], [1.55, 0.88], [2.0, 0.73]], glass });
       P.mesh(B.paint); G.mesh(B.glass);
+      interior(I, B, { cab: [-1.45, 0.95], roof: [-0.95, 0.32], hip: [0.02, 0.62], rear: [-0.74, 0.64], wheel: [0.46, 1.02], dash: [0.52, 0.94],
+        doors: [0.97, -0.11, -0.97], panes: panesOf(glass), wiper: 0.9, aerial: -0.85, seat: '#8a7d6a' });
       for (const e of [-1, 1]) {
         P.box(0.86, 1.02, e * 0.55, 0.15, 0.1, 0.08); P.box(0.86, 0.97, e * 0.49, 0.08, 0.04, 0.06, DK);
         for (const u of [0.5, -0.6]) H.box(u, 0.84, e * 0.497, 0.12, 0.03, 0.01);
@@ -3127,17 +3173,20 @@ void main() {
       for (const u of [1.3, -1.25]) P.disc(u, 0.3, 0, 0.4, 0.9, '#0d0d0e');
       for (const u of [2.0, -2.0]) P.box(u, 0.4, 0, 0.12, 0.18, 0.74, DK);
       P.box(2.01, 0.6, 0, 0.03, 0.1, 0.44, '#0e0f10'); H.box(2.025, 0.64, 0, 0.02, 0.02, 0.42); H.box(-2.02, 0.8, 0, 0.02, 0.03, 0.4);   // grille, the chrome strip on the boot
-      return { paint: P.done(), glass: G.done(), chrome: H.done(), len: 4.0, hgt: 1.5, wheels: [[1.3, 0.3], [-1.25, 0.3]], track: 0.43, tw: 0.2,
-        head: [2.01, 0.71, 0.28, 0.22, 0.09], tail: [-2.01, 0.82, 0.3, 0.14, 0.09], plate: [-2.03, 0.58], front: [2.03, 0.42] };
+      return { paint: P.done(), glass: G.done(), chrome: H.done(), cabin: I.done(), len: 4.0, hgt: 1.5, wheels: [[1.3, 0.3], [-1.25, 0.3]], track: 0.43, tw: 0.2,
+        head: [2.01, 0.71, 0.28, 0.22, 0.09], tail: [-2.01, 0.82, 0.3, 0.14, 0.09], plate: [-2.03, 0.58], front: [2.03, 0.42], hmsl: [-1.47, 1.03], fog: [2.03, 0.44, 0.34],
+        seats: { hip: [0.02, 0.62], rear: [-0.74, 0.64], wheel: [0.46, 1.02] } };
     }
     function jeep() {       // a Bolero: boxy, upright, a spare wheel on the back door
-      const P = parts(), G = parts(), H = parts();
+      const P = parts(), G = parts(), H = parts(), I = parts();
+      const glass = { side: [-2.04, 1.04], pillars: [[-0.32, -0.22], [-1.3, -1.2]], ws: [0.9, 1.08] };
       const B = loft({ L: 4.4, sill: 0.42, wheels: [[1.42, 0.42, 0.52], [-1.35, 0.42, 0.52]], tumble: 0.93, endF: 0.15, endR: 0.22,
         waist: [[-2.2, 1.12], [1.05, 1.16], [1.6, 1.12], [2.2, 1.0]],
-        top: [[-2.2, 1.05], [-2.18, 1.86], [-2.1, 1.9], [0.88, 1.92], [1.1, 1.17], [1.6, 1.13], [2.2, 1.02]],
-        glass: { side: [-2.04, 1.04], pillars: [[-0.32, -0.22], [-1.3, -1.2]], ws: [0.9, 1.08] } });
+        top: [[-2.2, 1.05], [-2.18, 1.86], [-2.1, 1.9], [0.88, 1.92], [1.1, 1.17], [1.6, 1.13], [2.2, 1.02]], glass });
       P.mesh(B.paint); G.mesh(B.glass);
-      G.box(-2.205, 1.5, 0, 0.02, 0.5, 0.7);                                                                 // the back door's window
+      I.box(-2.205, 1.5, 0, 0.02, 0.5, 0.7, '#1b242c');                                                     // the back door's window (dark: the body behind it is closed)
+      interior(I, B, { cab: [-2.0, 1.04], roof: [-2.05, 0.86], hip: [0.3, 0.86], rear: [-0.58, 0.88], wheel: [0.7, 1.28], dash: [0.74, 1.06],
+        doors: [1.06, -0.27, -1.25], panes: panesOf(glass), wiper: 1.03, seat: '#4a4337' });
       for (const e of [-1, 1]) {
         P.box(1.0, 1.22, e * 0.56, 0.17, 0.14, 0.08); P.box(1.0, 1.16, e * 0.49, 0.08, 0.05, 0.06, DK);
         P.bar(-2.0, 1.95, 0.7, 1.95, e * 0.4, 0.03, 0.04, DK);                                                // roof rails
@@ -3148,8 +3197,9 @@ void main() {
       P.box(0, 0.45, 0, 1.5, 0.05, 1.08, '#202124');                                                        // the side step
       P.box(2.215, 0.84, 0, 0.02, 0.26, 0.56, '#141516'); for (let i = 0; i < 4; i++) H.box(2.225, 0.75 + i * 0.06, 0, 0.02, 0.02, 0.54);
       P.disc(-2.3, 1.02, 0, 0.36, 0.22, DK); P.box(-2.42, 1.02, 0, 0.02, 0.5, 0.5);                          // the spare wheel and its cover
-      return { paint: P.done(), glass: G.done(), chrome: H.done(), len: 4.4, hgt: 1.9, wheels: [[1.42, 0.38], [-1.35, 0.38]], track: 0.43, tw: 0.25,
-        head: [2.21, 0.92, 0.33, 0.24, 0.15], tail: [-2.21, 1.0, 0.38, 0.09, 0.3], plate: [-2.22, 0.66], front: [2.22, 0.5] };
+      return { paint: P.done(), glass: G.done(), chrome: H.done(), cabin: I.done(), len: 4.4, hgt: 1.9, wheels: [[1.42, 0.38], [-1.35, 0.38]], track: 0.43, tw: 0.25, rim: 'steel',
+        head: [2.21, 0.92, 0.33, 0.24, 0.15], tail: [-2.21, 1.0, 0.38, 0.09, 0.3], plate: [-2.22, 0.66], front: [2.22, 0.5], hmsl: [-2.215, 1.84], fog: [2.29, 0.5, 0.36],
+        seats: { hip: [0.3, 0.86], rear: [-0.58, 0.88], wheel: [0.7, 1.28] } };
     }
     // An MST midi bus, as on Aizawl's city routes: a raked windscreen with the route board over it, one
     // door at the front on the left, tinted windows in a band, a white roof with the air conditioner on
@@ -3176,7 +3226,7 @@ void main() {
       P.box(-4.03, 0.5, 0, 0.14, 0.32, 1.04, '#2a2b2d'); for (let i = 0; i < 6; i++) P.box(-4.03, 1.05 + i * 0.07, 0, 0.03, 0.03, 0.7, '#151617');   // back bumper, engine louvres
       for (const u of wh) P.disc(u, 0.42, 0, 0.57, 0.62, '#0d0d0e');                                                        // the dark wheel wells, inside the wheels
       for (const e of [-1, 1]) { P.bar(3.95, 2.45, 4.35, 2.4, e * 0.55, 0.03, 0.03, DK); P.bar(4.35, 2.4, 4.4, 1.95, e * 0.58, 0.03, 0.03, DK); P.box(4.4, 1.85, e * 0.6, 0.05, 0.36, 0.12, DK); }   // mirrors on their arms
-      return { paint: P.done(), glass: G.done(), chrome: H.done(), trim: W.done(), len: 8, hgt: 3.05, wheels: [[2.55, 0.47], [-2.35, 0.47]], track: 0.41, tw: 0.3,
+      return { paint: P.done(), glass: G.done(), chrome: H.done(), trim: W.done(), tint: true, rim: 'steel', len: 8, hgt: 3.05, wheels: [[2.55, 0.47], [-2.35, 0.47]], track: 0.41, tw: 0.3,
         head: [4.09, 0.78, 0.38, 0.16, 0.12], tail: [-4.04, 0.82, 0.42, 0.1, 0.3], plate: [-4.04, 0.62], front: [4.12, 0.42], board: [4.08, 2.68, 0.72, 0.18] };
     }
     // A goods truck as on Aizawl's roads: a cab in its colour, a wooden body behind on the chassis, big wheels
@@ -3192,15 +3242,24 @@ void main() {
       P.box(3.44, 0.62, 0, 0.14, 0.22, 1.02, '#2a2b2d');                                                                  // the bumper
       P.box(-0.4, 0.74, 0, 6.0, 0.18, 0.78, DK);                                                                          // the chassis
       P.box(-0.9, 1.0, 0, 5.0, 0.12, 1.0, DK);                                                                            // the body's floor
-      W.box(-0.9, 1.68, 0, 4.98, 1.25, 0.99, WOOD);                                                                       // the wooden body
-      for (const v of [1.33, 1.66, 1.99]) W.box(-0.9, v, 0, 5.0, 0.035, 1.006, PLANK);                                     // its planks
-      for (const u of [-3.37, -2.15, -0.9, 0.35, 1.56]) W.box(u, 1.68, 0, 0.08, 1.28, 1.012, POST);                        // its posts
-      W.box(-0.9, 2.33, 0, 5.04, 0.06, 1.014, POST);                                                                      // the top rail
+      // the wooden body, open at the top (what it carries is drawn with it): its floor, the two sides with
+      // their planks, posts and top rail, the board at the front and the tailgate
+      W.box(-0.9, 1.08, 0, 4.9, 0.04, 0.96, PLANK);
+      for (const e of [-1, 1]) {
+        W.box(-0.9, 1.68, e * 0.485, 4.98, 1.25, 0.03, WOOD);
+        for (const v of [1.33, 1.66, 1.99]) W.box(-0.9, v, e * 0.502, 5.0, 0.035, 0.006, PLANK);
+        for (const u of [-3.37, -2.15, -0.9, 0.35, 1.56]) W.box(u, 1.68, e * 0.497, 0.08, 1.28, 0.03, POST);
+        W.box(-0.9, 2.33, e * 0.49, 5.04, 0.06, 0.05, POST);
+      }
+      for (const u of [1.55, -3.35]) {
+        W.box(u, 1.68, 0, 0.04, 1.25, 0.99, WOOD); W.box(u, 2.33, 0, 0.08, 0.06, 1.014, POST);
+        for (const v of [1.33, 1.66, 1.99]) W.box(u + Math.sign(u) * 0.023, v, 0, 0.006, 0.035, 1.0, PLANK);
+      }
       W.box(-3.41, 1.16, 0, 0.02, 0.12, 0.92, '#c0392b');                                                                 // a red strip across the back
       P.box(0.75, 0.72, 0.43, 0.7, 0.34, 0.12, '#b9bdc0');                                                                // the fuel tank
       for (const u of wh) P.disc(u, 0.5, 0, 0.6, 0.6, '#0d0d0e');                                                         // the dark wheel wells, inside the wheels
       for (const e of [-1, 1]) { P.bar(3.0, 2.4, 3.3, 2.36, e * 0.55, 0.03, 0.03, DK); P.box(3.32, 2.1, e * 0.6, 0.05, 0.34, 0.1, DK); }   // mirrors on their arms
-      return { paint: P.done(), glass: G.done(), chrome: H.done(), trim: W.done(), len: 6.8, hgt: 2.85, wheels: [[2.45, 0.5], [-1.75, 0.5]], track: 0.4, tw: 0.32,
+      return { paint: P.done(), glass: G.done(), chrome: H.done(), trim: W.done(), tint: true, rim: 'steel', len: 6.8, hgt: 2.85, wheels: [[2.45, 0.5], [-1.75, 0.5]], track: 0.4, tw: 0.32,
         head: [3.42, 1.02, 0.38, 0.16, 0.13], tail: [-3.42, 1.0, 0.42, 0.12, 0.14], plate: [-3.43, 0.74], front: [3.47, 0.56] };
     }
     // The two-wheelers. Each says where its rider sits: hip, knee and foot (forward u, up v), the grips
@@ -3302,6 +3361,24 @@ void main() {
       for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2, x = i % 2 ? 0.2 : -0.2; b.add(ROD, mtx(x / 2, Math.cos(a) * 0.38, Math.sin(a) * 0.38, a, 0, 0, 0.012, 0.56, 0.012), '#ffffff'); }
       return b.done();
     })();
+    // a wheel cover, as on the small Marutis and the taxis: a shallow dish with eight slots and a badge in the middle
+    const capGeo = (() => {     // (made of discs: a lathe's flat faces come out with their normals inwards, and dark)
+      const b = build(), disc = (x, r, w) => b.add(ROD, mtx(x, 0, 0, 0, 0, Math.PI / 2, r, w, r), '#ffffff');
+      for (const e of [-1, 1]) {
+        disc(e * 0.44, 0.64, 0.06); disc(e * 0.48, 0.34, 0.04); disc(e * 0.51, 0.1, 0.03);
+        for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; b.add(SQ, mtx(e * 0.48, Math.cos(a) * 0.49, Math.sin(a) * 0.49, a, 0, 0, 0.03, 0.14, 0.05), '#ffffff'); }
+      }
+      return b.done();
+    })();
+    // a steel wheel, as on the jeeps, the buses and the trucks: a pressed dish, the hub, and its ring of nuts (one colour: the wheels' material takes none from the shape)
+    const steelGeo = (() => {
+      const b = build(), disc = (x, r, w) => b.add(ROD, mtx(x, 0, 0, 0, 0, Math.PI / 2, r, w, r), '#ffffff');
+      for (const e of [-1, 1]) {
+        disc(e * 0.36, 0.67, 0.1); disc(e * 0.4, 0.5, 0.04); disc(e * 0.44, 0.19, 0.06);
+        for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; b.add(ROD, mtx(e * 0.45, Math.cos(a) * 0.27, Math.sin(a) * 0.27, 0, 0, Math.PI / 2, 0.035, 0.06, 0.035), '#ffffff'); }
+      }
+      return b.done();
+    })();
     const plateGeo = new T.PlaneGeometry(1, 1).rotateY(Math.PI);
     // the tyres' tread: 40 blocks round the tyre (u goes round it), a groove round the middle of the tread
     // (v runs across, from one sidewall to the other); the sidewalls smooth
@@ -3313,7 +3390,14 @@ void main() {
     TREAD.colorSpace = T.NoColorSpace; TREAD.wrapS = T.RepeatWrapping;
     const VMAT = {
       paint: [new T.MeshPhongMaterial({ vertexColors: true, shininess: 60, specular: C('#555555') }), new T.MeshPhysicalMaterial({ vertexColors: true, metalness: 0.3, roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.06 })],
-      glass: [new T.MeshPhongMaterial({ color: '#25313a', shininess: 90, specular: C('#8a9aa4') }), new T.MeshPhysicalMaterial({ color: '#141c24', metalness: 0, roughness: 0.03, clearcoat: 1, envMapIntensity: 1.6 })],
+      // a car's windows: tinted, but you see in, to the seats and the people in them
+      glass: [new T.MeshPhongMaterial({ color: '#2a3842', shininess: 90, specular: C('#9aa8b2'), transparent: true, opacity: 0.5 }), new T.MeshPhysicalMaterial({ color: '#1c2630', metalness: 0, roughness: 0.03, clearcoat: 1, envMapIntensity: 1.6, transparent: true, opacity: 0.55 })],
+      // the bus's and the truck's: dark (their bodies are not hollow)
+      tint: [new T.MeshPhongMaterial({ color: '#25313a', shininess: 90, specular: C('#8a9aa4') }), new T.MeshPhysicalMaterial({ color: '#141c24', metalness: 0, roughness: 0.03, clearcoat: 1, envMapIntensity: 1.6 })],
+      // wheel covers and steel wheels: painted, not mirror-bright like chrome (which mirrors the dark road)
+      wheel: [new T.MeshPhongMaterial({ color: '#ffffff', shininess: 50, specular: C('#666666') }), new T.MeshStandardMaterial({ color: '#ffffff', metalness: 0.25, roughness: 0.42 })],
+      // inside, and the black plastic and rubber outside: matte, in its own colours
+      cabin: [new T.MeshLambertMaterial({ vertexColors: true }), new T.MeshStandardMaterial({ vertexColors: true, metalness: 0, roughness: 0.8 })],
       chrome: [new T.MeshPhongMaterial({ color: '#d8dbde', shininess: 80, specular: C('#ffffff') }), new T.MeshStandardMaterial({ color: '#e8ebee', metalness: 1, roughness: 0.22 })],
       tyre: [new T.MeshLambertMaterial({ color: '#1b1d1c', bumpMap: TREAD, bumpScale: 2.5 }), new T.MeshStandardMaterial({ color: '#1a1b1b', metalness: 0, roughness: 0.9, bumpMap: TREAD, bumpScale: 2.5 })],
     };
@@ -3330,8 +3414,9 @@ void main() {
     for (const M of new Set(Object.values(MODELS))) {
       const max = M === MODELS.bus || M === MODELS.truck ? 12 : 60;
       M.pPaint = vpool(M.paint, 'paint', max);
-      if (M.glass) M.pGlass = vpool(M.glass, 'glass', max);
+      if (M.glass) M.pGlass = vpool(M.glass, M.tint ? 'tint' : 'glass', max);
       if (M.trim) M.pTrim = vpool(M.trim, 'paint', max);
+      if (M.cabin) M.pCabin = vpool(M.cabin, 'cabin', max);
       M.pChrome = vpool(M.chrome, 'chrome', max);
     }
     const shadows = pool(blob, shadowMat, 200);
@@ -3379,6 +3464,22 @@ void main() {
       put(pRound, 0, sv + 0.2, su + 0.09, 0.15, 0.16, 0.17, hm);                             // helmet
       put(pRound, 0, sv + 0.19, su + 0.17, 0.125, 0.065, 0.06, '#1b2026');                  // its visor, in front
     };
+    // someone sitting in a car, as seen through its windows: the body, the neck, the head and its hair, and
+    // the arms, to the steering wheel (the driver) or in the lap; hip and wheel in the model's own u and v
+    const sitIn = (x, hip, wheel, [shirt, skin, hair], sl, sy) => {
+      const u = hip[0] * sl, v = hip[1] * sy, L = -0.18, su = u + 0.46 * Math.sin(L), sv = v + 0.46 * Math.cos(L);
+      put(pTorso, x, v - 0.02, u, 1.05, 0.92, 0.72, shirt, L);
+      put(pLimb, x, sv + 0.1, su + 0.02, 0.065, 0.05, 0.065, skin, L);                                    // the neck
+      put(pRound, x, sv + 0.2, su + 0.03, 0.092, 0.115, 0.105, skin);                                     // the head
+      put(pRound, x, sv + 0.235, su - 0.005, 0.098, 0.095, 0.105, hair);                                  // the hair
+      for (const e of [-1, 1]) {
+        const gu = wheel ? wheel[0] * sl - 0.05 : u + 0.3, gv = wheel ? wheel[1] * sy + 0.04 : v + 0.1, gx = wheel ? x + e * 0.15 : x + e * 0.1;
+        const eu = (su + gu) / 2 - (wheel ? 0 : 0.06), ev = Math.min(sv, gv) - 0.13;
+        limbTo(pLimb, x + e * 0.19, sv - 0.05, su, ev, eu, 0.09, shirt); limbTo(pLimb, (x + e * 0.19 + gx) / 2, ev, eu, gv, gu, 0.075, shirt);
+        put(pRound, gx, gv, gu, 0.042, 0.042, 0.05, skin);                                               // the hands
+      }
+    };
+    const HAIR = ['#141316', '#1d1b22', '#2a211c', '#3a2c22', '#141316'];
     const capUp = new T.CapsuleGeometry(0.5, 1, 3, 8).translate(0, 1, 0), capHang = new T.CapsuleGeometry(0.5, 1, 3, 8).translate(0, -1, 0);
     const skirt = new T.CylinderGeometry(0.85, 1, 1, 12).translate(0, 0.5, 0);
     const torsoGeo = new T.LatheGeometry([[0.001, -0.14], [0.15, -0.14], [0.165, -0.04], [0.145, 0.1], [0.155, 0.28], [0.19, 0.42], [0.185, 0.5], [0.1, 0.56], [0.001, 0.57]].map(([r, y]) => new T.Vector2(r, y)), 12);
@@ -3389,7 +3490,7 @@ void main() {
       for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), k = 0.8 + rnd(Math.round(x * 50) + Math.round(z * 31), Math.round(y * 70)) * 0.4; p.setXYZ(i, x * k, y * k, z * k); }
       g.computeVertexNormals(); return g;
     })();
-    const vBox = pool(box, plainMat, 400), vGlow = pool(box, glowMat, 300), tyreM = vpool(tyreGeo, 'tyre', 260), rimM = vpool(rimGeo, 'chrome', 260), spokeM = vpool(spokeGeo, 'chrome', 60), plateM = pool(plateGeo, plateMat, 120), haloM = pool(haloGeo, haloMat, 240), beamM = pool(beamGeo, beamMat, 60);
+    const vBox = pool(box, plainMat, 800), vGlow = pool(box, glowMat, 800), tyreM = vpool(tyreGeo, 'tyre', 260), rimM = vpool(rimGeo, 'chrome', 260), spokeM = vpool(spokeGeo, 'chrome', 60), capM = vpool(capGeo, 'wheel', 160), steelM = vpool(steelGeo, 'wheel', 160), plateM = pool(plateGeo, plateMat, 120), haloM = pool(haloGeo, haloMat, 240), beamM = pool(beamGeo, beamMat, 60);
     const coinM = pool(disc, coinMat, 60), rockM = pool(rockGeo, plainMat, 60), boardM = pool(box, stripeMat, 24);
     // for what blocks the road: traffic cones (and their white bands), the pothole, the road works' sign
     const coneM = pool(new T.ConeGeometry(0.5, 1, 12).translate(0, 0.5, 0), plainMat, 80), bandM = pool(new T.CylinderGeometry(0.48, 0.58, 1, 12).translate(0, 0.5, 0), plainMat, 80);
@@ -3406,7 +3507,7 @@ void main() {
       g.fillStyle = '#fff'; g.font = '800 40px "Plus Jakarta Sans", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('BUS STOP', 128, 120);
     }), side: T.DoubleSide }), 12);
     // (room for a busy street: the people on the footpaths and at the junctions, the riders of the two-wheelers)
-    const pUp = pool(capUp, plainMat, 160), pLimb = pool(capHang, plainMat, 1100), pRound = pool(ball, plainMat, 560), pPuan = pool(skirt, puanMat, 60), pTorso = pool(torsoGeo, plainMat, 180), pBox = pool(box, plainMat, 420), pCone = pool(cone, plainMat, 40);
+    const pUp = pool(capUp, plainMat, 160), pLimb = pool(capHang, plainMat, 1500), pRound = pool(ball, plainMat, 900), pPuan = pool(skirt, puanMat, 60), pTorso = pool(torsoGeo, plainMat, 280), pBox = pool(box, plainMat, 420), pCone = pool(cone, plainMat, 40);
     const JACKETS = ['#2c3e50', '#7a3b2e', '#3b5f3a', '#1f3a68', '#5b4a3a', '#8e1b3a', '#d8d4cc', '#4a4f57'], HELMETS = ['#f2f2ee', '#231e16', '#c0392b', '#1565c0', '#f2c230', '#6b6e70'];
     const LEGS = ['#2c3e50', '#3b5b8a', '#34495e', '#1f1f1f', '#5b4a3a', '#46628f'], BAGS = ['#1f1f1f', '#2c3e50', '#7a3b2e', '#3b5f3a'];   // trousers and jeans; backpacks
 
@@ -3692,11 +3793,11 @@ void main() {
     function drawCar(c, dt) {
       put(shadows, 0, 0.03, 0, c.wid * 1.2, 1, c.len * 1.08, '#000');
       const M = MODELS[c.kind], sl = c.len / M.len, sy = c.hgt / M.hgt, sw = M.single ? 1 : c.wid, stop = c.slowing ? '#ff3b2f' : '#8e2620';
-      put(M.pPaint, 0, 0, 0, sw, sy, sl, c.col); if (M.pGlass) put(M.pGlass, 0, 0, 0, sw, sy, sl, '#ffffff'); if (M.pTrim) put(M.pTrim, 0, 0, 0, sw, sy, sl, '#ffffff'); put(M.pChrome, 0, 0, 0, sw, sy, sl, '#ffffff');
+      put(M.pPaint, 0, 0, 0, sw, sy, sl, c.col); if (M.pCabin) put(M.pCabin, 0, 0, 0, sw, sy, sl, '#ffffff'); if (M.pGlass) put(M.pGlass, 0, 0, 0, sw, sy, sl, '#ffffff'); if (M.pTrim) put(M.pTrim, 0, 0, 0, sw, sy, sl, '#ffffff'); put(M.pChrome, 0, 0, 0, sw, sy, sl, '#ffffff');
       // the wheels turn as it goes, to the eye no faster than about two turns a second: any faster and the
       // spokes would seem to stand still or turn back, as wheels do in a film
       c.spin = ((c.spin || 0) + Math.min(Math.abs(c.v) / (M.wheels[0][1] * sy), 13) * (mode === 'playing' ? dt : 0)) % (Math.PI * 2);
-      for (const [u, r] of M.wheels) for (const e of (M.single ? [0] : [-1, 1])) { const rr = r * sy; put(tyreM, e * sw * M.track, rr, u * sl, M.tw, rr, rr, '#ffffff'); put(M.spokes ? spokeM : rimM, e * sw * M.track, rr, u * sl, M.spokes ? 0.2 : M.tw, rr, rr, '#ffffff', c.spin); }
+      for (const [u, r] of M.wheels) for (const e of (M.single ? [0] : [-1, 1])) { const rr = r * sy; put(tyreM, e * sw * M.track, rr, u * sl, M.tw, rr, rr, '#ffffff'); put(M.spokes ? spokeM : M.rim === 'cap' ? capM : M.rim === 'steel' ? steelM : rimM, e * sw * M.track, rr, u * sl, M.spokes ? 0.2 : M.tw, rr, rr, M.rim === 'cap' ? '#c9ced3' : M.rim === 'steel' ? (c.kind === 'suv' ? '#b9bec3' : '#6f747a') : '#ffffff', c.spin); }
       // lights: headlights in front, tail lights that glow brighter when it slows
       const [hu, hv, hx, hw, hh] = M.head, [tu, tv, tx, tw, th] = M.tail;
       for (const e of (M.single ? [0] : [-1, 1])) {
@@ -3709,6 +3810,42 @@ void main() {
         }
       }
       if (cond.night && !c.hazard) put(beamM, 0, 0.05, hu * sl + 0.1, M.single ? 2.4 : sw * 2.2, 1, 15, '#ffffff');
+      if (!M.single) {     // round the lamps: their dark housings, the amber indicators, the white reverse lamps, the fog lamps, a third brake lamp up high
+        const amber = c.hazard && (time * 1.6) % 1 < 0.5 ? '#ffae1a' : '#a8641c';
+        for (const e of [-1, 1]) {
+          put(vBox, e * sw * hx, (hv - hh / 2) * sy, hu * sl - 0.022, sw * hw + 0.025, hh * sy + 0.025, 0.035, '#17181a');
+          put(vBox, e * sw * tx, (tv - th / 2) * sy, tu * sl + 0.022, sw * tw + 0.025, th * sy + 0.025, 0.035, '#17181a');
+          put(vGlow, e * sw * (hx + hw * 0.25), (hv - hh - 0.05) * sy, hu * sl, sw * hw * 0.5, 0.045 * sy, 0.035, amber);
+          put(vGlow, e * sw * (tx + tw * 0.25), (tv - th - 0.05) * sy, tu * sl, sw * tw * 0.5, 0.045 * sy, 0.035, amber);
+          put(vGlow, e * sw * (tx - tw * 0.25), (tv - th - 0.05) * sy, tu * sl, sw * tw * 0.5, 0.045 * sy, 0.035, '#d9d6cc');
+          if (M.fog) { put(vBox, e * sw * M.fog[2], M.fog[1] * sy, M.fog[0] * sl - 0.02, 0.17, 0.1, 0.05, '#17181a'); put(vGlow, e * sw * M.fog[2], M.fog[1] * sy, M.fog[0] * sl, 0.12, 0.06, 0.03, '#e9e3cf'); }
+        }
+        if (M.hmsl) put(vGlow, 0, M.hmsl[1] * sy, M.hmsl[0] * sl - 0.01, 0.3, 0.035, 0.03, stop);
+      } else for (const e of [-1, 1]) {     // a two-wheeler's indicators: either side of the headlamp, and of the tail lamp
+        put(vGlow, e * 0.15, (hv - hh / 2) * sy - 0.03, hu * sl - 0.06, 0.06, 0.04, 0.05, '#c9761e');
+        put(vGlow, e * 0.13, (tv - th / 2) * sy + 0.01, tu * sl + 0.04, 0.06, 0.04, 0.05, '#c9761e');
+      }
+      if (M.seats) {     // the driver at the wheel, on the right; now and then someone beside, or behind (in a taxi, more often)
+        if (!c.dr) {
+          const pick = a => a[Math.random() * a.length | 0], who = () => [pick(JACKETS), pick(SKIN), pick(HAIR)], taxi = c.kind === 'taxi';
+          c.dr = c.hazard && Math.random() < 0.4 ? [] : who(); c.co = Math.random() < (taxi ? 0.5 : 0.3) ? who() : null; c.bk = Math.random() < (taxi ? 0.45 : 0.2) ? who() : null;
+        }
+        const Q = M.seats, x = sw * 0.22;
+        if (c.dr.length) sitIn(x, Q.hip, Q.wheel, c.dr, sl, sy);
+        if (c.co) sitIn(-x, Q.hip, null, c.co, sl, sy);
+        if (c.bk && Q.rear) sitIn(-x * 0.9, Q.rear, null, c.bk, sl, sy);
+      }
+      if (c.kind === 'truck') {     // what a truck carries: sacks, or a load under a tarpaulin roped down, or nothing
+        if (c.cargo == null) { const r = Math.random(); c.cargo = r < 0.45 ? 'sacks' : r < 0.85 ? ['#1f5fa8', '#2e6b3f', '#b8322a', '#d9822b'][Math.random() * 4 | 0] : ''; }
+        const fl = 1.1 * sy, bw = sw * 0.9;
+        if (c.cargo === 'sacks') {
+          for (let i = 0; i < 5; i++) for (const e of [-1, 1]) for (let k = 0; k < (i < 4 ? 2 : 1); k++)
+            put(pRound, e * bw * 0.25 + (k ? e * -0.08 : 0), fl + 0.17 + k * 0.28, (-3.0 + i * 0.95 + k * 0.4) * sl, bw * 0.24, 0.17, 0.42, (i + k) % 2 ? '#d8c8a0' : '#c9b98f');
+        } else if (c.cargo) {
+          put(vBox, 0, fl + 0.55, -0.9 * sl, bw, 1.1, 4.7 * sl, c.cargo); put(pRound, 0, fl + 1.1, -0.9 * sl, bw * 0.5, 0.26, 2.38 * sl, c.cargo);
+          for (const u of [-2.8, -1.5, -0.3, 0.9]) put(vBox, 0, fl + 1.12, u * sl, bw + 0.04, 0.26, 0.03, '#d8cfb8');   // the ropes over it
+        }
+      }
       const yellow = c.kind === 'taxi' || c.kind === 'bus' ? '#ffd34d' : '#ffffff';
       put(plateM, 0, M.plate[1] * sy, M.plate[0] * sl - 0.02, M.single ? 0.24 : 0.5, M.single ? 0.1 : 0.13, 1, yellow);
       if (M.front) put(plateM, 0, M.front[1] * sy, M.front[0] * sl + 0.02, 0.5, 0.13, 1, yellow, 0, Math.PI);
@@ -4738,7 +4875,7 @@ void main() {
       probe: (k, lat = 0.1, along = SEG / 2) => { setRoute(); const f = frame3(k * SEG + along, lat, {}), ray = new T.Raycaster(new T.Vector3(f.x, f.y + 40, f.z), new T.Vector3(0, -1, 0), 0, 120);
         const all = pieces.flatMap(g => g.children).concat(fill ? [fill] : []);
         return { y: +f.y.toFixed(2), hits: ray.intersectObjects(all, false).slice(0, 6).map(h => [+(h.point.y - f.y).toFixed(2), h.object.userData.fill ? 'fill' : h.object.isInstancedMesh ? 'inst' : (h.object.geometry.userData.what || [])[h.face.a], (h.object.geometry.userData.by || [])[h.face.a]]) }; },
-      mem: () => ({ ...renderer.info.memory, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, programs: renderer.info.programs.length, objects: scene.children.length, people: PEOPLE ? PEOPLE.live.size : -1 }),     // for the tests: what the GPU holds
+      mem: () => ({ ...renderer.info.memory, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, programs: renderer.info.programs.length, objects: scene.children.length, people: PEOPLE ? PEOPLE.live.size : -1, fullest: pools.reduce((b, m) => Math.max(b, m.count / m.max), 0), full: pools.filter(m => m.count >= m.max).length }),     // for the tests: what the GPU holds, and how near a pool is to full
       // for the tests: each vehicle's size as drawn (length, width with the mirrors, height in metres), and our scooter's
       sizes: () => Object.fromEntries([...Object.keys(KINDS).map(k => { const M = MODELS[k], K = KINDS[k], b = new T.Box3().setFromBufferAttribute(M.paint.attributes.position); return [k, { len: +((b.max.z - b.min.z) * K.len / M.len).toFixed(2), wid: +((M.single ? b.max.x - b.min.x : (b.max.x - b.min.x) * K.wid)).toFixed(2), hgt: +(b.max.y * K.hgt / M.hgt).toFixed(2), wheel: +(M.wheels[0][1] * K.hgt / M.hgt * 2).toFixed(2) }]; }), ['me', (() => { const p0 = scoot.position.clone(), r0 = scoot.rotation.clone(); scoot.position.set(0, 0, 0); scoot.rotation.set(0, 0, 0); scoot.updateMatrixWorld(true); const b = new T.Box3().setFromObject(scoot); scoot.position.copy(p0); scoot.rotation.copy(r0); scoot.updateMatrixWorld(true); return { len: +(b.max.z - b.min.z).toFixed(2), wid: +(b.max.x - b.min.x).toFixed(2), hgt: +(b.max.y - b.min.y).toFixed(2) }; })()]]) };
   }

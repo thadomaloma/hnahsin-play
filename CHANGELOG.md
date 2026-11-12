@@ -4,6 +4,23 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.62.0 (12 November 2026)
+
+### Aizawl Ride: the traffic looks real
+
+- You can see into the cars, taxis and jeeps: through tinted glass, the seats
+  and their headrests, the dashboard, the steering wheel on the right, and the
+  people in them. A driver sits at the wheel, now and then with someone beside
+  or behind; taxis carry passengers more often.
+- Their lamps look like lamps: dark surrounds, amber indicators front and back
+  (flashing on a parked car), white reverse lamps, a brake lamp high at the
+  back and fog lamps on the bigger cars.
+- Door lines, rubber under the windows, wipers and an aerial; wheel covers on
+  the small cars and taxis, steel wheels on the jeeps, buses and trucks.
+- The trucks' wooden bodies are open at the top, and carry sacks or a load
+  roped down under a tarpaulin.
+- The two-wheelers have indicators too.
+
 ## 1.61.1 (12 November 2026)
 
 - Aizawl Ride's sounds are back: the engine, the wind and tyres, the brake,
