@@ -4,6 +4,20 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.63.0 (12 November 2026)
+
+### Aizawl Ride: Aizawl's taxis
+
+- The taxis are Maruti Alto 800s, as most of Aizawl's are: small, low and all
+  yellow, with yellow number plates and TAXI on the sign on the roof. Most
+  have words of faith across the top of the back window.
+- A taxi stops for someone waving it down at the kerb: it pulls in with its
+  indicator going, they get in at the back, and it pulls out again. Go round
+  it while it waits.
+- Where the street is busy there are taxi stands: three or four taxis in a
+  row by the kerb, engines off, their drivers chatting by the TAXI STAND sign.
+- There are more taxis: most of the cars on the road are taxis now.
+
 ## 1.62.0 (12 November 2026)
 
 ### Aizawl Ride: the traffic looks real

@@ -982,6 +982,16 @@
       if (!jams.some(j => nextRow > j.at - 70 && nextRow < j.at + 70) && !crossings.some(c => Math.abs(nextRow - c.at) < 30)) {     // none in a queue or on a zebra crossing
         const t = roadblock(Math.random() * 2 | 0, nextRow), open = 1 - t.lane;
         things.push(t);
+        // a taxi stand, where there is a footpath and the street is busy: three or four taxis in a row, engines off,
+        // their drivers chatting on the footpath by the sign
+        if (t.kind === 'parked' && t.car.kind === 'taxi' && housesNear(Math.floor(t.at / SEG)) >= 12 && walkHere(Math.floor(t.at / SEG), -1) && Math.random() < 0.6) {
+          Object.assign(t.car, { hazard: false, off: true, stand: true }); t.stand = t.standHead = true;
+          for (let k = 1, n = 2 + (Math.random() < 0.5); k <= n; k++) {
+            const at = t.at - k * 4.1, i = Math.floor(at / SEG);
+            if (!walkHere(i, -1) || crossings.some(z => Math.abs(z.at - at) < 8) || (route.junctions || []).some(q => q[1] < 0 && Math.abs(q[0] * SEG - at) < 12)) break;
+            things.push(standTaxi(at));
+          }
+        }
         if (Math.random() < 0.7) for (let i = 1; i <= 4; i++) { things.push({ kind: 'coin', lane: open, at: nextRow + 4 + i * 3.2, got: false }); coinsPut++; }
         nextRow += t.len / 2;
       }
@@ -1006,7 +1016,7 @@
     const vehicle = kind === 'parked' || kind === 'unload' || kind === 'busstop';
     const t = { kind: vehicle && mouth ? 'works' : kind === 'busstop' && !walkHere(Math.floor((at + 3.3) / SEG), -1) ? 'parked' : kind, lane, at, hit: false, seed: Math.random(), back: 0 };
     if (t.kind === 'parked' || t.kind === 'unload' || t.kind === 'busstop') {
-      const ck = t.kind === 'busstop' ? 'bus' : t.kind === 'unload' ? 'truck' : ['car', 'sedan', 'suv', 'taxi', 'car'][Math.random() * 5 | 0], K = KINDS[ck];
+      const ck = t.kind === 'busstop' ? 'bus' : t.kind === 'unload' ? 'truck' : ['car', 'sedan', 'suv', 'taxi', 'taxi', 'car'][Math.random() * 6 | 0], K = KINDS[ck];
       t.car = { kind: ck, col: K.cols[Math.random() * K.cols.length | 0], len: K.len, wid: K.wid, hgt: K.hgt, x: -(ROAD_EDGE - 0.25 - K.wid / 2), dir: 1, v: 0, vx: 0, slowing: false, at, hazard: true };
       t.lane = 0; t.x = t.car.x; t.half = K.wid / 2; t.len = K.len; if (t.kind === 'unload') t.back = 1.7;     // (the sacks, behind the truck)
     } else { t.x = LANES[lane]; t.half = 1.15; t.len = t.kind === 'works' ? 7 : 2.6; }
@@ -1020,7 +1030,7 @@
   const KINDS = {
     // sizes as drawn match the real ones: a WagonR 3.66 m long and 1.62 m wide, an Alto 3.45 m, a Dzire 4.0 m, a Bolero 4.0 m
     car: { len: 3.55, wid: 1.62, hgt: 1.5, cols: ['#d9dde2', '#c0392b', '#2c3e50', '#f4f4f0', '#7f8c8d', '#2e6da4'] },
-    taxi: { len: 3.35, wid: 1.5, hgt: 1.42, cols: ['#f2c230'] },
+    taxi: { len: 3.4, wid: 1.49, hgt: 1.47, cols: ['#f2c230', '#f5c518', '#eebc2a'] },     // an Alto 800, in a taxi's yellow (a little faded on some)
     sedan: { len: 3.88, wid: 1.73, hgt: 1.5, cols: ['#f4f4f0', '#b8bec4', '#7a1f2b', '#2c3e50', '#3d4b5c'] },
     suv: { len: 3.6, wid: 1.75, hgt: 1.88, cols: ['#f4f4f0', '#b8bec4', '#3a4a3a'] },
     bus: { len: 8, wid: 2.35, hgt: 3.05, cols: ['#1f5fa8', '#b8322a', '#1d7a46'] },                     // an Aizawl City Bus, a midi bus
@@ -1031,10 +1041,10 @@
     classic: { len: 2.05, wid: 0.85, hgt: 1.12, two: true, cols: ['#1b1b1b', '#5a1f1f', '#2f4a3a', '#6b6e70', '#c9b48a'] },
     sport: { len: 2.0, wid: 0.8, hgt: 1.12, two: true, cols: ['#1b1b1b', '#c0392b', '#1565c0', '#f4f4f0', '#2e7d32'] },
   };
-  // Aizawl's traffic: two-wheelers more than anything; the queues have no buses or trucks
+  // Aizawl's traffic: two-wheelers more than anything, and of the cars, the yellow taxis most; the queues have no buses or trucks
   // (more than half of it two-wheelers, as on Aizawl's roads). Traffic comes twice as often as it did, all
   // of it more cars and two-wheelers: buses and trucks, each in one of these 36, are as many as before.
-  const LIGHT = ['car', 'sedan', 'taxi', 'taxi', 'suv', 'scooter', 'scooter', 'scooter', 'scooter', 'scooter', 'bike', 'bike', 'bike', 'bike', 'classic', 'sport', 'sport'];
+  const LIGHT = ['car', 'sedan', 'taxi', 'taxi', 'taxi', 'taxi', 'suv', 'scooter', 'scooter', 'scooter', 'scooter', 'scooter', 'bike', 'bike', 'bike', 'bike', 'classic', 'sport', 'sport'];
   const KIND_MIX = [...LIGHT, ...LIGHT, 'bus', 'truck'], JAM_MIX = KIND_MIX.filter(k => k !== 'bus' && k !== 'truck');
   // (on a two-wheeler, now and then someone rides behind)
   const newCar = (kind, lane, at, v, dir) => { const K = KINDS[kind]; return { kind, lane, at, v, cruise: Math.abs(v), dir, x: LANES[lane], len: K.len, wid: K.wid, hgt: K.hgt, col: K.cols[Math.random() * K.cols.length | 0], hit: false, slowing: false, two: !!K.two, pillion: !!K.two && Math.random() < 0.3 }; };
@@ -1051,13 +1061,55 @@
     return out.slice(0, route.length > 2500 ? 3 : 2);
   }
   const carNear = (lane, from, to) => cars.some(c => c.lane === lane && c.at > from && c.at < to);
+  // A taxi on our side stops, now and then, for someone waving it down at the kerb. It finds them when you
+  // are 35 to 80 m behind it (so you see it happen): it pulls in with its left indicator going and stops by
+  // them, they get in at the back, and it pulls out again with its right indicator. It gives back how fast it
+  // would go.
+  function fare(c, dt) {
+    const F = c.fare;
+    if (F === 'want') {
+      const at = c.at + 26;
+      if (c.lane === 0 && Math.abs(c.x - LANES[0]) < 0.3 && c.at - s > 35 && c.at - s < 80 && at < route.length - 60 && !thingNear(0, at - 14, at + 10) && !carNear(0, c.at + 1, at + 12)
+        && !crossings.some(z => Math.abs(z.at - at) < 22) && !jams.some(j => Math.abs(j.at - at) < 100) && !(route.junctions || []).some(q => q[1] < 0 && Math.abs(q[0] * SEG - at) < 14)) {
+        const walk = walkHere(Math.floor(at / SEG), -1), p = newPed(at, walk ? -4.45 : -3.8, 0, 0);
+        p.aim = -Math.PI / 2; p.hail = true; peds.push(p);
+        c.fare = { at, p, state: 'in', t: 0 };
+      }
+      return c.cruise;
+    }
+    const kerb = -(ROAD_EDGE - 0.3 - c.wid / 2);
+    F.t += dt;
+    if (F.state === 'in') {     // pulling in, to stop with its back door by them
+      c.pullX = kerb; c.blink = -1;
+      const g = F.at + 0.4 - c.at;
+      if (g < 0.3 && Math.abs(c.v) < 0.3) { F.state = 'board'; F.t = 0; Object.assign(F.p, { hail: false, vx: 0.8, board: kerb - c.wid / 2 - 0.1 }); }
+      return Math.min(c.cruise, Math.sqrt(5 * Math.max(0, g)));
+    }
+    if (F.state === 'board') {     // they get in (or, if something keeps them, it waits a little and goes)
+      if (F.p.gone || F.t > 6) { F.p.gone = true; c.fareBk = F.p; F.state = 'seat'; F.t = 0; }
+      return 0;
+    }
+    if (F.state === 'seat') { if (F.t > 1.2) { F.state = 'out'; F.t = 0; c.pullX = null; c.blink = 1; } return 0; }
+    if (F.t > 2.5) { c.blink = 0; c.fare = null; }     // out into the lane again
+    return c.cruise;
+  }
+  // A taxi parked by the kerb, its engine off: one of a row at a taxi stand
+  const standTaxi = at => {
+    const K = KINDS.taxi;
+    const car = { kind: 'taxi', col: K.cols[Math.random() * K.cols.length | 0], len: K.len, wid: K.wid, hgt: K.hgt, x: -(ROAD_EDGE - 0.25 - K.wid / 2), dir: 1, v: 0, vx: 0, slowing: false, at, off: true, stand: true };
+    return { kind: 'parked', lane: 0, at, hit: false, seed: Math.random(), back: 0, car, x: car.x, half: K.wid / 2, len: K.len, stand: true };
+  };
   const thingNear = (lane, from, to) => things.some(t => t.kind !== 'coin' && t.lane === lane && t.at + t.len / 2 > from && t.at - t.len / 2 - t.back < to);
   function traffic(dt) {
     const far = s + VIEW * SEG - 6;
     // New traffic far ahead: slower cars on our side, and cars coming the other way
     if (time > 3 && (carT -= dt) <= 0 && far < route.length - 30) {
       const lane = Math.random() * 2 | 0;
-      if (!carNear(lane, far - 13, far + 13) && !thingNear(lane, far - 12, far + 12) && !jams.some(j => Math.abs(far - j.at) < 90)) cars.push(newCar(KIND_MIX[Math.random() * KIND_MIX.length | 0], lane, far, 7 + Math.random() * 4, 1));
+      if (!carNear(lane, far - 13, far + 13) && !thingNear(lane, far - 12, far + 12) && !jams.some(j => Math.abs(far - j.at) < 90)) {
+        const c = newCar(KIND_MIX[Math.random() * KIND_MIX.length | 0], lane, far, 7 + Math.random() * 4, 1);
+        if (c.kind === 'taxi' && lane === 0 && Math.random() < 0.5) c.fare = 'want';     // (it will stop for someone waving it down)
+        cars.push(c);
+      }
       carT = 0.9 + Math.random() * 1.1;
     }
     if (time > 5 && (oncomingT -= dt) <= 0 && far < route.length - 30) {
@@ -1095,7 +1147,7 @@
     // people on a zebra crossing), goes round an obstacle if it can
     for (const c of cars) {
       const d = c.dir;
-      let want = c.cruise;
+      let want = c.fare ? fare(c, dt) : c.cruise;
       if (c.jam) {
         const j = c.jam;
         want = j.state === 'going' && j.t > c.goAt ? 8 : 0;
@@ -1123,7 +1175,7 @@
       c.slowing = want < sp - 0.3 || sp < 0.5;
       c.v = d * Math.max(0, sp + Math.max(-10 * dt, Math.min(3 * dt, want - sp)));
       c.at += c.v * dt;
-      c.vx = (c.vx || 0) + ((LANES[c.lane] - c.x) * 6.8 - 5.2 * (c.vx || 0)) * dt; c.x += c.vx * dt;   // to a new lane on a spring
+      c.vx = (c.vx || 0) + (((c.pullX ?? LANES[c.lane]) - c.x) * 6.8 - 5.2 * (c.vx || 0)) * dt; c.x += c.vx * dt;   // to a new lane (or in to the kerb) on a spring
     }
     cars = cars.filter(c => c.at > s - 12 && c.at < s + VIEW * SEG + 40);
     // Hints and words: a car for the first time, and the brake when a queue is ahead
@@ -1218,6 +1270,12 @@
       for (let k = 0, n = 1 + (Math.random() < 0.6); k < n; k++) add(door - 2.2 + k * 1.1, -5.86, { aim: -Math.PI / 2, shelter: true, sit: true });   // and sitting on its bench
       add(door, -5.2, { vx: 0.9, board: -3.8, hold: true });                                                              // getting on
       add(door + 0.3, -3.8, { vx: -0.9, hold: true });                                                                    // getting off, and away along the path
+    } else if (t.standHead) {     // the drivers of a taxi stand, chatting by its sign; someone getting into the first taxi
+      add(t.at + 1.6, -4.85, { aim: Math.PI * 0.75, look: LOOKS[Math.random() * LOOKS.length | 0] });
+      add(t.at + 2.5, -5.2, { aim: -Math.PI * 0.6 });
+      if (Math.random() < 0.6) add(t.at + 2.2, -4.6, { aim: -Math.PI * 0.2 });
+      if (Math.random() < 0.6) add(t.at - 0.35, -5.3, { vx: 0.8, board: -3.75, hold: true });
+    } else if (t.stand) {
     } else if (t.kind === 'parked' && t.car.kind === 'taxi') {
       const door = t.at - 0.35;
       if (Math.random() < 0.5) add(door, path, { vx: 0.8, board: -3.75, hold: true, look: { ...LOOKS[Math.random() * LOOKS.length | 0], bag: '#7a3b2e' } });   // getting in
@@ -3157,6 +3215,28 @@ void main() {
         head: [1.91, 0.72, 0.28, 0.2, 0.09], tail: [-1.91, 0.86, 0.29, 0.1, 0.18], plate: [-1.93, 0.52], front: [1.93, 0.42], hmsl: [-1.67, 1.44],
         seats: { hip: [-0.08, 0.62], rear: [-0.92, 0.64], wheel: [0.38, 1.02] } };
     }
+    // Aizawl's taxi: a Maruti Alto 800, all yellow. Small and low: a short sloping bonnet, a steep windscreen,
+    // the roof falling a little to a near-upright hatch, small wheels; the TAXI sign on its roof
+    function alto() {
+      const P = parts(), G = parts(), H = parts(), I = parts();
+      const glass = { side: [-1.42, 0.74], pillars: [[-0.5, -0.41]], ws: [0.08, 0.76], rw: [-1.66, -1.47] };
+      const B = loft({ L: 3.4, sill: 0.26, wheels: [[1.15, 0.27, 0.38], [-1.2, 0.27, 0.38]], tumble: 0.82,
+        waist: [[-1.7, 0.86], [-1.0, 0.89], [0.75, 0.88], [1.3, 0.78], [1.7, 0.66]],
+        top: [[-1.7, 0.8], [-1.68, 1.05], [-1.6, 1.3], [-1.45, 1.4], [0.05, 1.44], [0.76, 0.92], [1.3, 0.8], [1.7, 0.67]], glass });
+      P.mesh(B.paint); G.mesh(B.glass);
+      interior(I, B, { cab: [-1.38, 0.72], roof: [-1.42, 0.08], hip: [-0.15, 0.55], rear: [-0.95, 0.57], wheel: [0.25, 0.95], dash: [0.32, 0.74],
+        doors: [0.76, -0.455, -0.93], panes: panesOf(glass), wiper: 0.7, seat: '#5a4e40' });
+      for (const e of [-1, 1]) {
+        P.box(0.66, 0.95, e * 0.55, 0.14, 0.09, 0.08); P.box(0.66, 0.9, e * 0.49, 0.08, 0.04, 0.06, DK);   // mirrors
+        for (const u of [0.3, -0.78]) H.box(u, 0.78, e * 0.497, 0.11, 0.03, 0.01);                         // door handles
+      }
+      for (const u of [1.15, -1.2]) P.disc(u, 0.27, 0, 0.36, 0.9, '#0d0d0e');                                // wheel wells
+      for (const u of [1.7, -1.7]) P.box(u, 0.36, 0, 0.12, 0.17, 0.72, DK);                                  // bumpers
+      P.box(1.71, 0.55, 0, 0.03, 0.06, 0.36, '#0e0f10'); H.box(1.722, 0.6, 0, 0.02, 0.02, 0.3);              // the narrow grille
+      return { paint: P.done(), glass: G.done(), chrome: H.done(), cabin: I.done(), len: 3.4, hgt: 1.44, wheels: [[1.15, 0.27], [-1.2, 0.27]], track: 0.42, tw: 0.17, rim: 'cap',
+        head: [1.7, 0.71, 0.3, 0.2, 0.09], tail: [-1.71, 0.92, 0.31, 0.09, 0.2], plate: [-1.73, 0.5], front: [1.73, 0.38],
+        seats: { hip: [-0.15, 0.55], rear: [-0.95, 0.57], wheel: [0.25, 0.95] }, sign: [-0.45, 1.44], words: [-1.535, 1.335, 0.6] };
+    }
     function sedan() {      // a Dzire: a hatchback's front with a short boot
       const P = parts(), G = parts(), H = parts(), I = parts();
       const glass = { side: [-0.95, 0.98], pillars: [[-0.16, -0.06]], ws: [0.34, 0.98], rw: [-1.48, -0.74] };
@@ -3409,8 +3489,22 @@ void main() {
     const busSideMat = new T.MeshLambertMaterial({ map: letters(512, 64, '', '#ffffff', 44), transparent: true, alphaTest: 0.3 });
     const busBoardMat = new T.MeshBasicMaterial({ map: letters(512, 56, '#141414', '#ffb21a', 40), toneMapped: false });
     const textGeo = new T.PlaneGeometry(1, 1), busSideM = pool(textGeo, busSideMat, 36), busBoardM = pool(textGeo, busBoardMat, 12);
+    const signText = (w, h, bg, fg, px, words, stroke) => tex(w, h, g => {
+      if (bg) { g.fillStyle = bg; g.fillRect(0, 0, w, h); }
+      g.font = `800 ${px}px "Plus Jakarta Sans", system-ui, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      if (stroke) { g.lineWidth = px * 0.18; g.strokeStyle = stroke; g.strokeText(words, w / 2, h / 2 + 1); }
+      g.fillStyle = fg; g.fillText(words, w / 2, h / 2 + 1);
+    });
+    const standSignM = pool(new T.PlaneGeometry(1, 1), new T.MeshLambertMaterial({ map: tex(256, 112, g => {
+      g.fillStyle = '#f2c230'; g.beginPath(); g.roundRect(0, 0, 256, 112, 12); g.fill(); g.strokeStyle = '#1b1b1b'; g.lineWidth = 6; g.beginPath(); g.roundRect(7, 7, 242, 98, 8); g.stroke();
+      g.fillStyle = '#1b1b1b'; g.font = '800 44px "Plus Jakarta Sans", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('TAXI STAND', 128, 58);
+    }) }), 24);     // (one face each way, so it reads the right way round from both)
+    const taxiTextM = pool(textGeo, new T.MeshBasicMaterial({ map: signText(128, 40, '#ffd34d', '#1b1b1b', 30, 'TAXI'), toneMapped: false }), 80);
+    // across the top of a taxi's back window, as on so many in Aizawl: words of faith, in white
+    const GLASS_WORDS = ['PATHIAN HMANGAIHNA', 'ISUA KRISTA', 'HALLELUJAH', 'IMMANUEL', 'JOHANA 3:16'];
+    const wordsM = GLASS_WORDS.map(w => pool(textGeo, new T.MeshBasicMaterial({ map: signText(512, 64, '', '#f4f1ea', 40, w, 'rgba(0,0,0,.45)'), alphaTest: 0.3, toneMapped: false }), 30));
     const MODELS = { car: hatchback(), sedan: sedan(), suv: jeep(), bus: cityBus(), truck: truck(), scooter: scooter(), bike: motorbike(), classic: classic(), sport: sport() };
-    MODELS.taxi = MODELS.car;
+    MODELS.taxi = alto();
     for (const M of new Set(Object.values(MODELS))) {
       const max = M === MODELS.bus || M === MODELS.truck ? 12 : 60;
       M.pPaint = vpool(M.paint, 'paint', max);
@@ -3752,6 +3846,8 @@ void main() {
     const boneMap = root => { const all = []; root.traverse(o => o.isBone && all.push(o)); return Object.fromEntries(BONES.map(n => [n, all.find(o => o.name === n || new RegExp('^' + n + '_\\d+$').test(o.name))])); };
     // sitting on a bench 0.45 m high: the hips down on it, the feet on the ground in front, the hands on the knees
     const SIT = { H: 0.5, hz: -0.08, a: -0.05, fl: 0.36, fr: 0.31, fy: 0.08, hl: [-0.15, 0.58, 0.3], hr: [0.15, 0.58, 0.32] };
+    // standing at the kerb, waving down a taxi: the right arm up and out towards the road, the left at the side
+    const HAIL = { H: 0.88, hz: 0, a: 0, fl: 0.02, fr: -0.04, hl: [-0.2, 0.84, 0.05], hr: [0.3, 1.6, 0.34] };
     function realPose(p, dt, P) {
       const was = PEOPLE.live.get(p); if (was) unpose(was);
       const it = person(p, dt), B = it.bones || (it.bones = boneMap(it.root));
@@ -3805,14 +3901,15 @@ void main() {
         put(vGlow, e * sw * tx, (tv - th / 2) * sy, tu * sl, sw * tw, th * sy, 0.04, stop);
         // at night each lamp glows, and the headlamps throw their beam down the road ahead
         if (cond.night) {
-          if (!c.hazard) put(haloM, e * sw * hx, (hv - hh / 2) * sy, hu * sl + 0.08, 1.5, 1.5, 1.5, '#fff0d0');     // (a parked one's headlamps are off)
+          if (!c.hazard && !c.off) put(haloM, e * sw * hx, (hv - hh / 2) * sy, hu * sl + 0.08, 1.5, 1.5, 1.5, '#fff0d0');     // (a parked one's headlamps are off)
           put(haloM, e * sw * tx, (tv - th / 2) * sy, tu * sl - 0.08, 0.75, 0.75, 0.75, c.slowing ? '#ff4030' : '#a8221a');
         }
       }
-      if (cond.night && !c.hazard) put(beamM, 0, 0.05, hu * sl + 0.1, M.single ? 2.4 : sw * 2.2, 1, 15, '#ffffff');
+      if (cond.night && !c.hazard && !c.off) put(beamM, 0, 0.05, hu * sl + 0.1, M.single ? 2.4 : sw * 2.2, 1, 15, '#ffffff');
       if (!M.single) {     // round the lamps: their dark housings, the amber indicators, the white reverse lamps, the fog lamps, a third brake lamp up high
-        const amber = c.hazard && (time * 1.6) % 1 < 0.5 ? '#ffae1a' : '#a8641c';
+        const flash = (time * 1.6) % 1 < 0.5;
         for (const e of [-1, 1]) {
+          const amber = (c.hazard || c.blink === e) && flash ? '#ffae1a' : '#a8641c';
           put(vBox, e * sw * hx, (hv - hh / 2) * sy, hu * sl - 0.022, sw * hw + 0.025, hh * sy + 0.025, 0.035, '#17181a');
           put(vBox, e * sw * tx, (tv - th / 2) * sy, tu * sl + 0.022, sw * tw + 0.025, th * sy + 0.025, 0.035, '#17181a');
           put(vGlow, e * sw * (hx + hw * 0.25), (hv - hh - 0.05) * sy, hu * sl, sw * hw * 0.5, 0.045 * sy, 0.035, amber);
@@ -3828,11 +3925,13 @@ void main() {
       if (M.seats) {     // the driver at the wheel, on the right; now and then someone beside, or behind (in a taxi, more often)
         if (!c.dr) {
           const pick = a => a[Math.random() * a.length | 0], who = () => [pick(JACKETS), pick(SKIN), pick(HAIR)], taxi = c.kind === 'taxi';
-          c.dr = c.hazard && Math.random() < 0.4 ? [] : who(); c.co = Math.random() < (taxi ? 0.5 : 0.3) ? who() : null; c.bk = Math.random() < (taxi ? 0.45 : 0.2) ? who() : null;
+          c.dr = (c.hazard && Math.random() < 0.4) || (c.stand && Math.random() < 0.55) ? [] : who();
+          c.co = !c.stand && Math.random() < (taxi ? 0.5 : 0.3) ? who() : null; c.bk = !c.stand && !c.fare && Math.random() < (taxi ? 0.45 : 0.2) ? who() : null;
         }
         const Q = M.seats, x = sw * 0.22;
         if (c.dr.length) sitIn(x, Q.hip, Q.wheel, c.dr, sl, sy);
         if (c.co) sitIn(-x, Q.hip, null, c.co, sl, sy);
+        if (c.fareBk && !c.bk) c.bk = [c.fareBk.look.shirt, skinOf(c.fareBk), c.fareBk.look.hair];
         if (c.bk && Q.rear) sitIn(-x * 0.9, Q.rear, null, c.bk, sl, sy);
       }
       if (c.kind === 'truck') {     // what a truck carries: sacks, or a load under a tarpaulin roped down, or nothing
@@ -3849,7 +3948,15 @@ void main() {
       const yellow = c.kind === 'taxi' || c.kind === 'bus' ? '#ffd34d' : '#ffffff';
       put(plateM, 0, M.plate[1] * sy, M.plate[0] * sl - 0.02, M.single ? 0.24 : 0.5, M.single ? 0.1 : 0.13, 1, yellow);
       if (M.front) put(plateM, 0, M.front[1] * sy, M.front[0] * sl + 0.02, 0.5, 0.13, 1, yellow, 0, Math.PI);
-      if (c.kind === 'taxi') put(vGlow, 0, 1.47 * sy, -0.4 * sl, 0.5, 0.14, 0.24, '#ffd34d');                    // the roof sign
+      if (M.sign) {     // the roof sign: TAXI in black on yellow, front and back, on a dark foot
+        const [gu, gv] = M.sign;
+        put(vBox, 0, gv * sy, gu * sl, 0.5, 0.04, 0.26, '#1b1c1e'); put(vGlow, 0, gv * sy + 0.04, gu * sl, 0.48, 0.14, 0.2, '#ffd34d');
+        for (const e of [-1, 1]) put(taxiTextM, 0, gv * sy + 0.11, gu * sl + e * 0.102, 0.42, 0.12, 1, '#ffffff', 0, e > 0 ? 0 : Math.PI);
+      }
+      if (M.words) {     // words across the top of the back window (most taxis have them)
+        if (c.words === undefined) c.words = Math.random() < 0.75 ? Math.random() * GLASS_WORDS.length | 0 : -1;
+        if (c.words >= 0) put(wordsM[c.words], 0, M.words[1] * sy, M.words[0] * sl, sw * 0.58, 0.075, 1, '#ffffff', -M.words[2], Math.PI);
+      }
       if (M.board) {     // the board over the windscreen, and the name along both sides and on the back
         put(busBoardM, 0, M.board[1] * sy, M.board[0] * sl + 0.03, sw * M.board[2], M.board[3] * sy, 1, '#ffffff');
         for (const e of [-1, 1]) put(busSideM, e * (sw / 2 + 0.015), 1.36 * sy, -0.6 * sl, 3.4, 0.42, 1, '#ffffff', 0, -e * Math.PI / 2);
@@ -3863,9 +3970,10 @@ void main() {
           if (c.pillion) rideOn(M.rider, c.jk2, c.hm2, c.lg2, true, c.bag);
         }
       }
-      if (c.hazard && (time * 1.6) % 1 < 0.5) {     // the four indicators flashing together
+      if ((c.hazard || c.blink) && (time * 1.6) % 1 < 0.5) {     // the four indicators flashing together (or one side's, turning)
         const [hu, hv, hx, , hh] = M.head, [tu, tv, tx, , th] = M.tail;
         for (const e of [-1, 1]) {
+          if (!c.hazard && c.blink !== e) continue;
           put(vGlow, e * (sw / 2 - 0.02), (hv - hh / 2) * sy, hu * sl - 0.05, 0.06, 0.08, 0.12, '#ffae1a'); put(vGlow, e * (sw / 2 - 0.02), (tv - th / 2) * sy, tu * sl + 0.05, 0.06, 0.08, 0.12, '#ffae1a');
           if (cond.night) { put(haloM, e * (sw / 2), hv * sy, hu * sl, 0.9, 0.9, 0.9, '#ffb84a'); put(haloM, e * (sw / 2), tv * sy, tu * sl, 0.9, 0.9, 0.9, '#ffb84a'); }
         }
@@ -3903,6 +4011,11 @@ void main() {
             for (const z of [-1.15, 0, 1.15]) put(vBox, -0.28, 0, z, 0.36, 0.42, 0.05, '#4b4f54');
             put(vBox, 0.66, 0, -1.95, 0.06, 2.75, 0.06, '#8d9092');                                                     // the sign, facing the traffic
             put(busSignM, 0.66, 2.5, -1.97, 0.72, 0.45, 1, '#ffffff', 0, Math.PI);
+          }
+          if (t.standHead) {     // a taxi stand's sign, on a pole at the edge of the footpath, by the first taxi
+            frame3(t.at + 2.9, -4.6, f); f.y += 0.15; base(f);
+            put(vBox, 0, 0, 0, 0.06, 2.55, 0.06, '#8d9092');
+            for (const e of [-1, 1]) put(standSignM, 0, 2.3, e * 0.035, 0.82, 0.36, 1, '#ffffff', 0, e > 0 ? 0 : Math.PI);
           }
           if (t.kind === 'unload') for (let i = 0; i < 5; i++)      // its sacks, set down on the road behind it
             put(vBox, ((i % 3) - 1) * 0.62, i > 2 ? 0.42 : 0, -t.len / 2 - 0.55 - (i % 2) * 0.62, 0.58, 0.42, 0.85, i % 2 ? '#e4dccb' : '#cfc3a2', 0, (i * 0.7 + t.seed) % 0.5 - 0.25);
@@ -3993,6 +4106,7 @@ void main() {
         put(shadows, 0, 0.02, 0, 0.6, 1, 0.6, '#000');
         if (p.tool) { worker(p, dt, PEOPLE && level > 0 && real.has(p) ? P => realPose(p, dt, P) : P => workerBody(p, P)); continue; }      // a road worker, at work
         if (p.sit && PEOPLE && level > 0 && real.has(p)) { realPose(p, dt, SIT); continue; }                                                  // sitting on the bus stop's bench
+        if (p.hail && PEOPLE && level > 0 && real.has(p)) { realPose(p, dt, HAIL); gear(p); continue; }                                       // waving down a taxi
         if (PEOPLE && level > 0 && real.has(p)) {        // a real body (for the nearest people); what they carry is drawn with it
           person(p, dt);
           const L = lookOf(p);
@@ -4012,7 +4126,8 @@ void main() {
           limbTo(pLimb, e * 0.09, H, 0, ky, kz, 0.15, legs); limbTo(pLimb, e * 0.09, ky, kz, ay, az, 0.115, legs);
           put(pBox, e * 0.09, ay - 0.05, az + 0.05, 0.1, 0.07, 0.24, L.stripes ? '#6b4a33' : '#2a2522');      // shoes; sandals under a puan
           const ua = -Math.sin(lp) * (old ? 0.16 : 0.32), sleeve = L.jacket || old ? L.shirt : skin;
-          const [ey, ez, hy, hz] = e > 0 && L.umbrella ? armTo(e * 0.2, sh, fw, 0.35, 2.2, L.shirt, sleeve)
+          const [ey, ez, hy, hz] = e > 0 && p.hail ? armTo(e * 0.2, sh, fw, 2.4, 2.8, L.shirt, sleeve)
+            : e > 0 && L.umbrella ? armTo(e * 0.2, sh, fw, 0.35, 2.2, L.shirt, sleeve)
             : e > 0 && L.stick ? armTo(e * 0.2, sh, fw, 0.3, 0.9, L.shirt, sleeve)
             : armTo(e * 0.2, sh, fw, ua, ua + 0.25 + Math.max(0, -Math.sin(lp)) * 0.25, L.shirt, sleeve);
           put(pRound, e * 0.215, hy, hz, 0.045, 0.05, 0.045, skin);                                             // hands
@@ -5703,7 +5818,7 @@ void main() {
   // (the tests may ask for only some roads: window.__only, a list of route ids)
   const testRoutes = () => [...DATA.routes, ...CITY.jobs.map(routeOf)].filter(r => !window.__only || window.__only.includes(r.id));
   if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ kind: c.kind, lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, wid: c.wid, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
-    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)), dog: !!p.dog, child: !!p.look.child })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, park: (kind, ahead, lane = 1, dir = 1, speed = 0) => { const c = newCar(kind, lane, s + ahead, dir * speed, dir); c.cruise = speed; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), holes: () => R3 && R3.holesSeen(), sizes: () => R3 && R3.sizes(), under: (k, lat) => R3 && R3.under(k, lat), probe: (k, lat, al) => R3 && R3.probe(k, lat, al), mem: () => R3 && R3.mem(), walker: (ahead, x, va = 1, vx = 0, look, dog) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; if (dog) p.dog = dog; peds.push(p); return peds.length; },
+    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)), dog: !!p.dog, child: !!p.look.child })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, fareTaxi: (ahead, speed = 8) => { const c = newCar('taxi', 0, s + ahead, speed, 1); c.fare = 'want'; cars.push(c); return c; }, park: (kind, ahead, lane = 1, dir = 1, speed = 0) => { const c = newCar(kind, lane, s + ahead, dir * speed, dir); c.cruise = speed; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), holes: () => R3 && R3.holesSeen(), sizes: () => R3 && R3.sizes(), under: (k, lat) => R3 && R3.under(k, lat), probe: (k, lat, al) => R3 && R3.probe(k, lat, al), mem: () => R3 && R3.mem(), walker: (ahead, x, va = 1, vx = 0, look, dog) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; if (dog) p.dog = dog; peds.push(p); return peds.length; },
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
     // for the tests: ride a given road; and every road with how many crossings and jams it has
     useRoute: id => { route = [...DATA.routes, ...CITY.jobs.map(routeOf)].find(r => r.id === id); reset(); return route.length; }, go: () => start(),
