@@ -3326,18 +3326,36 @@ void main() {
     // An MST midi bus, as on Aizawl's city routes: a raked windscreen with the route board over it, one
     // door at the front on the left, tinted windows in a band, a white roof with the air conditioner on
     // it, and the company's stripes. The white and the stripes are its trim, the same on every bus.
+    const BUS_ROWS = [-3.3, -2.5, -1.7, -0.9, -0.1, 0.7, 1.5];     // (where its rows of seats are, along it)
     function cityBus() {
-      const P = parts(), G = parts(), H = parts(), W = parts();
+      const P = parts(), G = parts(), H = parts(), W = parts(), I = parts();
       const wh = [2.55, -2.35];
-      P.side(arches([[-4.0, 0.36], [-4.02, 2.6], [3.98, 2.6], [4.05, 2.45], [4.07, 1.15], [4.02, 0.36]], 0.42, wh, 0.58), 1, 0.12);
+      // the body, open where the windows are, so you see in: below the windows, the roof over them, the back
+      P.side(arches([[-4.0, 0.36], [-4.01, 1.52], [3.88, 1.52], [3.88, 1.15], [4.07, 1.15], [4.02, 0.36]], 0.42, wh, 0.58), 1, 0.12);
+      P.side([[-4.02, 2.5], [-4.02, 2.6], [3.98, 2.6], [4.05, 2.45], [3.96, 2.45], [3.96, 2.5]], 1, 0.06);
+      P.side([[-4.02, 1.5], [-4.02, 2.52], [-3.93, 2.52], [-3.93, 1.5]], 1, 0.03);
+      for (const e of [-1, 1]) P.bar(3.97, 1.15, 3.99, 2.47, e * 0.485, 0.05, 0.08);                                         // the corner pillars at the front
+      // inside: the floor and the roof lining, the seats in twos either side of the aisle (their backs and headrests
+      // over the window line), the poles and the rails to hold, and the driver's place on the right: his seat, the
+      // dashboard and the big flat steering wheel
+      I.box(0, 1.53, 0, 7.9, 0.015, 0.97, '#3a3b3e'); I.box(0, 2.48, 0, 7.9, 0.03, 0.97, '#cfcbc2');
+      for (const u of BUS_ROWS) for (const x of [-0.36, -0.19, 0.19, 0.36]) { I.box(u - 0.2, 1.72, x, 0.07, 0.42, 0.16, '#2f4f73'); I.box(u - 0.21, 1.98, x, 0.08, 0.12, 0.13, '#22384f'); }
+      for (const u of [-2.6, -0.2, 2.2]) for (const e of [-1, 1]) I.rod(u, 1.53, e * 0.11, u, 2.47, e * 0.11, 0.014, '#b9bdc1');
+      for (const e of [-1, 1]) I.rod(-3.6, 2.36, e * 0.11, 3.0, 2.36, e * 0.11, 0.012, '#b9bdc1');
+      I.box(3.2, 1.72, 0.3, 0.08, 0.5, 0.2, '#2b2c2f');                                                                    // the driver's seat back
+      I.box(3.94, 1.3, 0, 0.22, 0.4, 0.96, '#222326'); I.box(3.8, 1.53, 0.3, 0.3, 0.1, 0.34, '#1a1b1d');                    // the dashboard, and the hood over the dials
+      I.lamp(3.62, 1.72, 0.3, 0.22, 0.03, '#141517', -1.05);                                                                 // the steering wheel, nearly flat
+      I.box(-4.03, 2.1, 0, 0.04, 0.72, 0.8, '#1b242c');                                                                       // the back window (the engine is behind it)
       W.side([[-4.02, 2.55], [-4.0, 2.86], [-3.84, 3.0], [3.62, 3.0], [3.9, 2.88], [3.98, 2.55]], 1.0, 0.1, '#f4f4f0');   // the white roof
       W.box(0.0, 1.13, 0, 7.96, 0.16, 1.012, '#f4f4f0'); W.box(0.0, 1.0, 0, 7.96, 0.05, 1.012, '#f2c230');               // stripes along the side
       W.curve([[-1.7, 2.98], [-1.6, 3.2], [1.0, 3.22], [1.2, 3.0]], 0.62, '#e8e8e4');                                      // the air conditioner
       W.box(2.2, 3.03, 0, 0.6, 0.06, 0.42, '#d6d6d2');                                                                       // a roof hatch
-      G.box(-0.55, 2.02, 0, 6.6, 0.98, 1.014);                                                                               // the tinted band of windows
-      P.bar(4.085, 1.15, 4.065, 2.48, 0, 0.97, 0.04, DK);                                                                  // the windscreen's black frame
+      for (const e of [-1, 1]) G.box(-0.55, 2.02, e * 0.507, 6.62, 0.98, 0.012);                                             // the band of windows, either side
+      G.box(3.33, 2.0, 0.507, 1.1, 0.95, 0.012);                                                                              // the driver's window
+      // the windscreen's black frame: along its foot and its top, and up either side
+      P.bar(4.086, 1.15, 4.086, 1.24, 0, 0.97, 0.05, DK); P.bar(4.066, 2.4, 4.066, 2.48, 0, 0.97, 0.05, DK);
+      for (const e of [-1, 1]) P.bar(4.086, 1.15, 4.066, 2.48, e * 0.465, 0.05, 0.05, DK);
       G.bar(4.1, 1.22, 4.08, 2.42, 0, 0.9, 0.04);                                                                            // the windscreen
-      G.box(-4.045, 2.1, 0, 0.04, 0.72, 0.8);                                                                               // the back window
       G.box(3.3, 1.5, -0.507, 0.92, 1.95, 0.02);                                                                             // the door glass, on the left
       for (const e of [-1, 1]) for (let u = -3.6; u < 2.6; u += 1.2) P.bar(u, 1.52, u, 2.52, e * 0.508, 0.025, 0.06, DK);  // slim black pillars
       for (const e of [-1, 1]) P.bar(-3.95, 1.52, 2.75, 1.52, e * 0.508, 0.03, 0.04, DK);
@@ -3348,18 +3366,33 @@ void main() {
       P.box(-4.03, 0.5, 0, 0.14, 0.32, 1.04, '#2a2b2d'); for (let i = 0; i < 6; i++) P.box(-4.03, 1.05 + i * 0.07, 0, 0.03, 0.03, 0.7, '#151617');   // back bumper, engine louvres
       for (const u of wh) P.disc(u, 0.42, 0, 0.57, 0.62, '#0d0d0e');                                                        // the dark wheel wells, inside the wheels
       for (const e of [-1, 1]) { P.bar(3.95, 2.45, 4.35, 2.4, e * 0.55, 0.03, 0.03, DK); P.bar(4.35, 2.4, 4.4, 1.95, e * 0.58, 0.03, 0.03, DK); P.box(4.4, 1.85, e * 0.6, 0.05, 0.36, 0.12, DK); }   // mirrors on their arms
-      return { paint: P.done(), glass: G.done(), chrome: H.done(), trim: W.done(), tint: true, rim: 'steel', len: 8, hgt: 3.05, wheels: [[2.55, 0.47], [-2.35, 0.47]], track: 0.41, tw: 0.3,
+      return { paint: P.done(), glass: G.done(), chrome: H.done(), trim: W.done(), cabin: I.done(), rim: 'steel', len: 8, hgt: 3.05,
+        seats: { hip: [3.3, 1.36], wheel: [3.6, 1.76], x: 0.3 }, pax: BUS_ROWS.flatMap(u => [-0.36, -0.19, 0.19, 0.36].map(x => [u, x])), wheels: [[2.55, 0.47], [-2.35, 0.47]], track: 0.41, tw: 0.3,
         head: [4.09, 0.78, 0.38, 0.16, 0.12], tail: [-4.04, 0.82, 0.42, 0.1, 0.3], plate: [-4.04, 0.62], front: [4.12, 0.42], board: [4.08, 2.68, 0.72, 0.18] };
     }
     // A goods truck as on Aizawl's roads: a cab in its colour, a wooden body behind on the chassis, big wheels
     function truck() {
-      const P = parts(), G = parts(), H = parts(), W = parts();
+      const P = parts(), G = parts(), H = parts(), W = parts(), I = parts();
       const wh = [2.45, -1.75], WOOD = '#9c6b3d', PLANK = '#6f4a28', POST = '#5a3b20';
-      P.side(arches([[1.62, 0.66], [1.62, 2.7], [2.85, 2.78], [3.22, 2.5], [3.36, 1.62], [3.4, 0.66]], 0.52, [2.45], 0.6), 1, 0.1);   // the cab
+      // the cab, open where its windows are, so you see in: below the windows, the roof, the back, and the
+      // pillars and door panels either side of the windows
+      P.side(arches([[1.62, 0.66], [1.62, 1.78], [3.335, 1.78], [3.36, 1.62], [3.4, 0.66]], 0.52, [2.45], 0.6), 1, 0.08);
+      P.side([[1.62, 2.44], [1.62, 2.7], [2.85, 2.78], [3.22, 2.5], [3.23, 2.44]], 1, 0.08);
+      P.side([[1.62, 1.76], [1.62, 2.46], [1.76, 2.46], [1.76, 1.76]], 1, 0.02);
+      for (const e of [-1, 1]) {
+        P.box(1.85, 2.11, e * 0.49, 0.2, 0.68, 0.03); P.box(3.0, 2.11, e * 0.49, 0.48, 0.68, 0.03);                        // the panels before and after the side window
+        P.bar(3.335, 1.78, 3.225, 2.45, e * 0.47, 0.07, 0.07);                                                              // the pillars either side of the windscreen
+      }
+      // inside: the floor at the window line, the roof lining, the bench across the back, the dashboard and the
+      // steering wheel on the right
+      I.box(2.5, 1.785, 0, 1.6, 0.015, 0.94, '#2a2b2e'); I.box(2.45, 2.42, 0, 1.4, 0.025, 0.9, '#8f8a82');
+      I.box(2.1, 1.78, 0, 0.14, 0.58, 0.9, '#4a3f33');
+      I.box(3.2, 1.84, 0, 0.22, 0.14, 0.9, '#222326');
+      I.lamp(2.86, 1.9, 0.24, 0.19, 0.03, '#141517', -1.15);
       W.box(2.32, 2.79, 0, 1.15, 0.08, 0.98, '#f4f4f0');                                                                  // its white roof
       W.box(2.5, 1.32, 0, 1.78, 0.1, 1.012, '#f4f4f0');                                                                   // a white stripe round it
       G.bar(3.37, 1.72, 3.24, 2.46, 0, 0.86, 0.04);                                                                       // the windscreen
-      G.box(2.35, 2.12, 0, 0.82, 0.58, 1.012);                                                                            // the side windows
+      for (const e of [-1, 1]) G.box(2.35, 2.12, e * 0.505, 0.82, 0.58, 0.012);                                           // the side windows
       P.box(3.42, 1.06, 0, 0.04, 0.46, 0.62, '#1a1b1c'); for (let i = 0; i < 4; i++) H.box(3.44, 0.9 + i * 0.1, 0, 0.02, 0.025, 0.56);   // the grille
       P.box(3.44, 0.62, 0, 0.14, 0.22, 1.02, '#2a2b2d');                                                                  // the bumper
       P.box(-0.4, 0.74, 0, 6.0, 0.18, 0.78, DK);                                                                          // the chassis
@@ -3379,7 +3412,7 @@ void main() {
       P.box(0.75, 0.72, 0.43, 0.7, 0.34, 0.12, '#b9bdc0');                                                                // the fuel tank
       for (const u of wh) P.disc(u, 0.5, 0, 0.6, 0.6, '#0d0d0e');                                                         // the dark wheel wells, inside the wheels
       for (const e of [-1, 1]) { P.bar(3.0, 2.4, 3.3, 2.36, e * 0.55, 0.03, 0.03, DK); P.box(3.32, 2.1, e * 0.6, 0.05, 0.34, 0.1, DK); }   // mirrors on their arms
-      return { paint: P.done(), glass: G.done(), chrome: H.done(), trim: W.done(), tint: true, rim: 'steel', len: 6.8, hgt: 2.85, wheels: [[2.45, 0.5], [-1.75, 0.5]], track: 0.4, tw: 0.32,
+      return { paint: P.done(), glass: G.done(), chrome: H.done(), trim: W.done(), cabin: I.done(), rim: 'steel', len: 6.8, hgt: 2.85, seats: { hip: [2.42, 1.58], wheel: [2.86, 1.9], x: 0.24 }, wheels: [[2.45, 0.5], [-1.75, 0.5]], track: 0.4, tw: 0.32,
         head: [3.42, 1.02, 0.38, 0.16, 0.13], tail: [-3.42, 1.0, 0.42, 0.12, 0.14], plate: [-3.43, 0.74], front: [3.47, 0.56] };
     }
     // The two-wheelers. Each says where its rider sits: hip, knee and foot (forward u, up v), the grips
@@ -4071,15 +4104,17 @@ void main() {
       }
       if (M.seats) {     // the driver at the wheel, on the right; now and then someone beside, or behind (in a taxi, more often)
         if (!c.dr) {
-          const pick = a => a[Math.random() * a.length | 0], who = () => [pick(JACKETS), pick(SKIN), pick(HAIR)], taxi = c.kind === 'taxi';
+          const pick = a => a[Math.random() * a.length | 0], who = () => [pick(JACKETS), pick(SKIN), pick(HAIR)], taxi = c.kind === 'taxi'; c.seed0 = Math.random();
           c.dr = (c.hazard && Math.random() < 0.4) || (c.stand && Math.random() < 0.55) ? [] : who();
-          c.co = !c.stand && Math.random() < (taxi ? 0.5 : 0.3) ? who() : null; c.bk = !c.stand && !c.fare && Math.random() < (taxi ? 0.45 : 0.2) ? who() : null;
+          c.co = !c.stand && Math.random() < (taxi ? 0.5 : c.kind === 'truck' ? 0.45 : c.kind === 'bus' ? 0 : 0.3) ? who() : null; c.bk = !c.stand && !c.fare && Math.random() < (taxi ? 0.45 : 0.2) ? who() : null;
+          if (M.pax) c.pax = M.pax.filter(() => Math.random() < 0.18 + c.seed0 * 0.45).map(([u, xu]) => [u, xu, who()]);     // (some buses nearly empty, some nearly full)
         }
-        const Q = M.seats, x = sw * 0.22;
+        const Q = M.seats, x = sw * (Q.x || 0.22);
         if (c.dr.length) sitIn(x, Q.hip, Q.wheel, c.dr, sl, sy);
         if (c.co) sitIn(-x, Q.hip, null, c.co, sl, sy);
         if (c.fareBk && !c.bk) c.bk = [c.fareBk.look.shirt, skinOf(c.fareBk), c.fareBk.look.hair];
         if (c.bk && Q.rear) sitIn(-x * 0.9, Q.rear, null, c.bk, sl, sy);
+        if (c.pax) for (const [u, xu, w] of c.pax) sitIn(sw * xu, [u, 1.36], null, w, sl, sy);     // the passengers in their seats
       }
       if (c.kind === 'truck') {     // the tailgate, on its hinges at the floor: shut, or let down to unload (leaning back, its top on the road)
         const th = c.unload ? 2.5 : 0, hv = 1.06 * sy, hu = -3.37 * sl, at = h => [hv + h * Math.cos(th), hu - h * Math.sin(th)];

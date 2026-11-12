@@ -4,6 +4,13 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.65.1 (12 November 2026)
+
+- Aizawl Ride: you can see into the city buses and the trucks. In a bus, its
+  rows of seats, the poles and the rail, the passengers (some buses nearly
+  empty, some nearly full) and the driver at his big flat wheel; in a truck's
+  cab, the driver at the wheel and often a helper beside him.
+
 ## 1.65.0 (12 November 2026)
 
 ### Aizawl Ride: people as they are
