@@ -1318,11 +1318,11 @@
   function people(dt) {
     const far = s + VIEW * SEG - 8;
     // (at the start, the footpaths ahead are filled at once, as they would be already)
-    if (!pedSeeded) { pedSeeded = true; for (let at = s + 14; at < Math.min(far, route.length); at += 7 + Math.random() * 6) if (footpath(Math.floor(at / SEG))) walker(at, Math.floor(at / SEG)); }
-    if ((pedT -= dt) <= 0 && peds.length < 50) {
+    if (!pedSeeded) { pedSeeded = true; for (let at = s + 14; at < Math.min(far, route.length); at += 5 + Math.random() * 4.5) if (footpath(Math.floor(at / SEG))) walker(at, Math.floor(at / SEG)); }
+    if ((pedT -= dt) <= 0 && peds.length < 70) {     // (a busy town: about a third more walkers than there were)
       const i = Math.floor(far / SEG);
       if (far < route.length && footpath(i)) walker(far, i);
-      pedT = 0.16 + Math.random() * 0.4;
+      pedT = 0.11 + Math.random() * 0.29;
     }
     // At each junction, as it comes near, people at its corners: waiting to cross, standing talking, walking on
     for (const q of route.junctions || []) {
@@ -4315,8 +4315,8 @@ void main() {
           cones([[-0.95, -1.1], [0.95, -1.1], [-0.95, 1.1], [0.95, 1.1]]);
         }
       }
-      // real bodies for the nearest 16 people (the others, further off, in the simple ones), so a busy street stays smooth
-      const real = new Set(peds.filter(p => p.at > s - 6 && p.at < s + far).sort((a, b) => Math.abs(a.at - s) - Math.abs(b.at - s)).slice(0, 16));
+      // real bodies for the nearest 20 people (the others, further off, in the simple ones), so a busy street stays smooth
+      const real = new Set(peds.filter(p => p.at > s - 6 && p.at < s + far).sort((a, b) => Math.abs(a.at - s) - Math.abs(b.at - s)).slice(0, 20));
       for (const p of peds) {
         if (p.at < s - 6 || p.at > s + far) continue;
         frame3(p.at, p.x, f); f.pitch = 0; f.y += (Math.abs(p.x) > HALF ? 0.15 : 0) + (p.lift || 0);     // on the footpath, or on the road (or up on a truck)
