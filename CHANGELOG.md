@@ -4,6 +4,17 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.67.2 (12 November 2026)
+
+- Aizawl Ride's rider holds the handlebar as a rider does: the hands closed
+  round the grips, the fingers curled over and the thumb underneath.
+- The rider's helmet is a real full-face helmet: a shaped shell, a chin bar,
+  a dark visor across the eyes and a soft rim at the neck.
+- When you steer into a bend, the rider's head turns a little to look where
+  you are going.
+- Everyone's shirts are cut cleanly: a round neck and straight sleeve hems,
+  short sleeves to the middle of the upper arm, or a jacket's to the wrist.
+
 ## 1.67.1 (12 November 2026)
 
 - Aizawl Ride's Moped looks more like the real thing: its curves are smooth,

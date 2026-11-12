@@ -4080,11 +4080,16 @@ void main() {
       const u = m.userData.u = { uSkin: { value: new T.Color() }, uShirt: { value: new T.Color() }, uPants: { value: new T.Color() }, uStripe: { value: new T.Color() }, uShoe: { value: new T.Color() }, uHair: { value: new T.Color() }, uLong: { value: 0 } };
       m.onBeforeCompile = sh => {
         Object.assign(sh.uniforms, u);
-        sh.vertexShader = 'attribute vec4 mask;\nvarying vec4 vMask;\nvarying float vY;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvMask = mask; vY = position.y;');
-        sh.fragmentShader = 'uniform vec3 uSkin, uShirt, uPants, uStripe, uShoe, uHair;\nuniform float uLong;\nvarying vec4 vMask;\nvarying float vY;\n' + sh.fragmentShader.replace('#include <map_fragment>', `
+        sh.vertexShader = 'attribute vec4 mask;\nvarying vec4 vMask;\nvarying float vY;\nvarying vec3 vRest;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvMask = mask; vY = position.y; vRest = position;');
+        sh.fragmentShader = 'uniform vec3 uSkin, uShirt, uPants, uStripe, uShoe, uHair;\nuniform float uLong;\nvarying vec4 vMask;\nvarying float vY;\nvarying vec3 vRest;\n' + sh.fragmentShader.replace('#include <map_fragment>', `
           vec3 det = texture2D(map, vMapUv).rgb * 2.0;                       // the skin's own detail, 1 on average
           vec3 col = uSkin * det;
-          float shirt = smoothstep(0.62, 0.88, vMask.r) + uLong * smoothstep(0.12, 0.38, vMask.r);   // soft hems, not cut along the triangles
+          // The shirt, cut where a shirt is cut: by where each point is on the body as it stands (arms out to
+          // the sides), so its hems run clean and straight: a round neck, the sleeves to the middle of the
+          // upper arm (or a jacket's to the wrist), and down into the trousers
+          float neck = 1.0 - smoothstep(-0.006, 0.006, vRest.y - (${female ? '1.45' : '1.49'} + 1.6 * vRest.x * vRest.x));
+          float cuff = 1.0 - smoothstep(-0.006, 0.006, abs(vRest.x) - mix(0.37, 0.7, uLong));
+          float shirt = step(0.9, vRest.y) * neck * cuff;
           col = mix(col, uShirt, clamp(shirt, 0.0, 1.0));
           float band = fract(vY * 7.0), puan = step(0.25, vMask.a) * step(vMask.a, 0.75);
           col = mix(col, mix(uPants, uStripe, puan * step(0.66, band) * step(band, 0.84)), step(0.5, vMask.g));   // trousers, or a puan and its stripes
@@ -4162,14 +4167,15 @@ void main() {
     // (the mixer writes a bone only when its value changes, so a bone the idle barely moves would keep the
     // pose and add to it each frame: the bones are put back as the clip left them before it runs again, and
     // before the body goes to someone else)
-    const POSED = ['spine_01', 'spine_02', 'spine_03', 'neck_01', 'Head', 'thigh_l', 'calf_l', 'thigh_r', 'calf_r', 'upperarm_l', 'lowerarm_l', 'upperarm_r', 'lowerarm_r'];
+    const FINGERS = ['l', 'r'].flatMap(s => ['index', 'middle', 'ring', 'pinky', 'thumb'].flatMap(f => [1, 2, 3].map(k => `${f}_0${k}_${s}`)));
+    const POSED = ['spine_01', 'spine_02', 'spine_03', 'neck_01', 'Head', 'thigh_l', 'calf_l', 'thigh_r', 'calf_r', 'upperarm_l', 'lowerarm_l', 'upperarm_r', 'lowerarm_r', 'hand_l', 'hand_r', ...FINGERS];
     function unpose(it) {
       if (!it.saved) return;
       const B = it.bones, S = it.saved;
       B.pelvis.position.fromArray(S.pelvis); POSED.forEach((n, i) => B[n].quaternion.fromArray(S.q, i * 4));
       it.saved = null;
     }
-    const BONES = ['pelvis', 'spine_01', 'spine_02', 'spine_03', 'neck_01', 'Head', 'upperarm_l', 'lowerarm_l', 'hand_l', 'upperarm_r', 'lowerarm_r', 'hand_r', 'thigh_l', 'calf_l', 'foot_l', 'thigh_r', 'calf_r', 'foot_r'];
+    const BONES = ['pelvis', 'spine_01', 'spine_02', 'spine_03', 'neck_01', 'Head', 'upperarm_l', 'lowerarm_l', 'hand_l', 'upperarm_r', 'lowerarm_r', 'hand_r', 'thigh_l', 'calf_l', 'foot_l', 'thigh_r', 'calf_r', 'foot_r', ...FINGERS];
     const iA = new T.Vector3(), iB = new T.Vector3(), iC = new T.Vector3(), iD = new T.Vector3(), iE = new T.Vector3(), iP = new T.Vector3(), iT = new T.Vector3();
     const qD = new T.Quaternion(), qW = new T.Quaternion(), qP = new T.Quaternion(), mInv = new T.Matrix4(), mK = new T.Matrix4(), mT = new T.Matrix4();
     const toW = (l, out = new T.Vector3()) => out.set(-l[0], l[1], l[2]).applyMatrix4(mB);
@@ -4202,6 +4208,23 @@ void main() {
     const LOADER = { H: 0.8, hz: -0.06, a: 0.55, fl: 0.1, fr: -0.12, hl: [-0.17, 0.74, 0.46], hr: [0.17, 0.74, 0.46] };
     // standing at the kerb, waving down a taxi: the right arm up and out towards the road, the left at the side
     const HAIL = { H: 0.88, hz: 0, a: 0, fl: 0.02, fr: -0.04, hl: [-0.2, 0.84, 0.05], hr: [0.3, 1.6, 0.34] };
+    // A hand holding a handlebar's grip: the fingers along the forearm's way, tipped down over the grip; the
+    // knuckles across, along the bar (the index finger on the inside); the fingers curled round it, the thumb under
+    const gA = new T.Vector3(), gB = new T.Vector3(), gC = new T.Vector3(), gD = new T.Vector3();
+    function grab(B, s, e) {
+      const hand = B['hand_' + s];
+      hand.getWorldPosition(gA); B['middle_01_' + s].getWorldPosition(gB);
+      const d = dirW([e * 0.12, -0.6, 1], gD).normalize(), from = gB.sub(gA).normalize();
+      bend(hand, gC.crossVectors(from, d).normalize(), Math.acos(Math.min(1, Math.max(-1, from.dot(d)))));
+      B['index_01_' + s].getWorldPosition(gA); B['pinky_01_' + s].getWorldPosition(gB);
+      const k = gA.sub(gB); k.addScaledVector(d, -k.dot(d)).normalize();
+      const kd = dirW([-e, 0, 0], gB); kd.addScaledVector(d, -kd.dot(d)).normalize();
+      bend(hand, d, Math.acos(Math.min(1, Math.max(-1, k.dot(kd)))) * Math.sign(gC.crossVectors(k, kd).dot(d) || 1));
+      const palm = gC.crossVectors(kd, d); if (palm.dot(dirW([0, -1, 0], gA)) < 0) palm.negate();      // (the palm, down onto the bar)
+      const a = gA.crossVectors(d, palm).normalize();                                                  // (turning about it curls a finger towards the palm)
+      for (const f of ['index', 'middle', 'ring', 'pinky']) { bend(B[f + '_01_' + s], a, 1.0); bend(B[f + '_02_' + s], a, 1.2); bend(B[f + '_03_' + s], a, 0.8); }
+      bend(B['thumb_01_' + s], a, 0.15); bend(B['thumb_02_' + s], a, 0.35); bend(B['thumb_03_' + s], a, 0.3);
+    }
     function realPose(p, dt, P) {
       const was = PEOPLE.live.get(p); if (was) unpose(was);
       const it = person(p, dt), B = it.bones || (it.bones = boneMap(it.root));
@@ -4226,8 +4249,15 @@ void main() {
         const f = feet[i], fz = i ? P.fr : P.fl;
         reachTo(B['thigh_' + s], B['calf_' + s], B['foot_' + s], toW([f[0], P.fy ?? f[1], fz + (P.fz0 || 0)], vTarget), dirW([0, 0.25, 1], vPole));
       });
+      if (P.look) { dirW([0, 1, 0], vUp); bend(B.neck_01, vUp, P.look * 0.4); bend(B.Head, vUp, P.look * 0.6); }
       const grips = ['l', 'r'].map((s, i) => {
         const e = i ? 1 : -1, H = i ? P.hr : P.hl;
+        if (P.grab) {     // a rider's hand on a grip: the wrist behind it and above, the hand round it; where it holds, back
+          reachTo(B['upperarm_' + s], B['lowerarm_' + s], B['hand_' + s], toW([H[0] - e * 0.01, H[1] + 0.045, H[2] - 0.065], vTarget), dirW([e * 0.6, -1, -0.5], vPole));
+          grab(B, s, e);
+          B['middle_01_' + s].getWorldPosition(vH); B['middle_03_' + s].getWorldPosition(vN);
+          return toL(vH.add(vN).multiplyScalar(0.5));
+        }
         // the hand's grip is a little past the wrist: aim the wrist that much short of it
         reachTo(B['upperarm_' + s], B['lowerarm_' + s], B['hand_' + s], toW(H, vTarget), dirW([e * 0.6, -1, -0.5], vPole));
         B['hand_' + s].getWorldPosition(vH); B['lowerarm_' + s].getWorldPosition(vN);
@@ -4950,12 +4980,12 @@ void main() {
     const riderG = new T.Group(), helmetG = new T.Group(); scoot.add(riderG, helmetG); helmetG.position.set(0, 1.54, -0.2);
     const GRIP_Z = 0.6, ourBars = [];
     // where each design's grips are: ours (below), or the moped's own handlebar; and how much lower its rider sits
-    const GRIPS = { moped: [0.27, 1.05, 0.28] }, gripOf = id => GRIPS[id] || [0.33, 1.08, GRIP_Z], RIDER_DROP = { moped: 0.06 };
+    const GRIPS = { moped: [0.27, 1.05, 0.28] }, gripOf = id => GRIPS[id] || [0.33, 1.1, GRIP_Z], RIDER_DROP = { moped: 0.06 };
     for (const e of [-1, 1]) {
       into = scoot;
       ourBars.push(part(ball, dark, e * 0.3, 1.27, 0.68, 0.06, 0.045, 0.02));
       ourBars.push(part(ball, VMAT.chrome, e * 0.3, 1.27, 0.664, 0.05, 0.036, 0.006));            // their glass                                 // mirrors
-      ourBars.push(part(box, dark, e * 0.33, 1.08, GRIP_Z, 0.12, 0.045, 0.045));                // grips (at the back of the handlebar, where a rider's hands reach)
+      ourBars.push(part(box, dark, e * 0.33, 1.08, GRIP_Z, 0.12, 0.045, 0.045));                // grips (at the back of the handlebar, where a rider's hands reach; standing on 1.08, their middle at 1.1)
       into = riderG;
       limb([e * 0.13, 0.85, -0.3], [e * 0.16, 0.87, 0.12], 0.08, trousers);                    // thighs
       limb([e * 0.16, 0.87, 0.12], [e * 0.17, 0.46, 0.24], 0.065, trousers);                   // shins, feet on the floorboard
@@ -4974,9 +5004,17 @@ void main() {
     part(torsoGeo, jacket, 0, 0.9, -0.36, 1.12, 1, 0.74, 0.12);                                   // the rider, sitting up
     into = helmetG;      // (the helmet's parts round its own middle)
     const helmetMat = new T.MeshPhongMaterial({ color: '#f2f2ee', shininess: 60, specular: C('#555555') }), helmetBand = lm('#c03a2e');
-    part(ball, helmetMat, 0, 0, 0, 0.16, 0.17, 0.18);                                         // helmet
-    for (const e of [-1, 1]) part(ball, helmetBand, e * 0.158, -0.005, -0.01, 0.014, 0.042, 0.042);     // a round badge each side, in its second colour
-    part(ball, new T.MeshPhongMaterial({ color: '#1b2026', shininess: 90, specular: C('#8a9aa4') }), 0, -0.02, 0.1, 0.12, 0.07, 0.1);   // its visor
+    // a full-face helmet: the shell a little longer than it is wide, the chin bar round the front, a dark visor
+    // across the eyes, a soft black rim round the neck, and a round badge each side in its second colour
+    const shellGeo = new T.SphereGeometry(1, 32, 20, 0, Math.PI * 2, 0, Math.PI * 0.8);
+    const visorGeo = new T.SphereGeometry(1, 28, 10, Math.PI / 2 - 1.05, 2.1, 1.22, 0.52);
+    const chinGeo = new T.TorusGeometry(1, 0.17, 10, 28, 2.3).rotateX(Math.PI / 2).rotateY(2.3 / 2 - Math.PI / 2);
+    const rimGeo2 = new T.TorusGeometry(1, 0.16, 8, 32).rotateX(Math.PI / 2);
+    part(shellGeo, helmetMat, 0, 0.005, -0.005, 0.145, 0.158, 0.17);                         // the shell (open underneath, round the neck)
+    part(chinGeo, helmetMat, 0, -0.088, 0.006, 0.112, 0.112, 0.138);                          // the chin bar
+    part(visorGeo, new T.MeshPhongMaterial({ color: '#12161b', shininess: 120, specular: C('#9fb0bc') }), 0, 0.005, -0.005, 0.148, 0.161, 0.174);   // the visor
+    part(rimGeo2, black, 0, -0.124, -0.005, 0.088, 0.088, 0.103);                              // the rim at the neck
+    for (const e of [-1, 1]) part(ball, helmetBand, e * 0.145, 0.0, -0.02, 0.008, 0.036, 0.036);       // the badges
     into = scoot;
     // the delivery box: insulated, rounded, Hnahsin on its back and sides (raised to sit on each design's rack)
     const boxG = new T.Group(); scoot.add(boxG); into = boxG;
@@ -5091,7 +5129,7 @@ void main() {
     // each design, how high its seat is (the hips) and its floorboard (the feet).
     const RIDER = { look: { shirt: '#ee6b3d', lower: '#2f7fc4', hair: '#1d1b22' }, sc: 1 };
     const SEAT_AT = { everyday: [0.88, 0.42, 0.18, 0.45], classic: [0.9, 0.5, 0.18, 0.45], sport: [0.96, 0.52, 0.18, 0.62], electric: [0.86, 0.52, 0.18, 0.4], moped: [0.8, 0.32, -0.14, 0.35] };     // [hips, feet, how far forward, the back's lean]: near enough the bars for bent elbows
-    const rv = new T.Vector3(); let riderGrip = null;
+    const rv = new T.Vector3(); let riderGrip = null, riderLook = 0;
     function riderBody(dt, shirt) {
       const real = !!PEOPLE && level > 0;
       riderG.visible = !real;
@@ -5100,7 +5138,8 @@ void main() {
       scoot.updateMatrixWorld(true);
       mB.copy(scoot.matrixWorld).multiply(mT.makeTranslation(0, 0, Z));
       // (sitting a little forward, the hands on the grips, the elbows bent)
-      const f = fw ?? 0.43 - (Z + 0.18) * 0.6, grips = realPose(RIDER, dt, { H: hip + 0.02, hz: -0.06, a: lean, fl: f, fr: f, fy: foot, hl: [-gx, gy, gz - Z], hr: [gx, gy, gz - Z] });
+      riderLook += (-0.55 * Math.tanh(Math.atan2(pvx, Math.max(6, v)) * 2.5) - riderLook) * Math.min(1, dt * 3);     // (looking where it is going: into a bend)
+      const f = fw ?? 0.43 - (Z + 0.18) * 0.6, grips = realPose(RIDER, dt, { H: hip + 0.02, hz: -0.06, a: lean, fl: f, fr: f, fy: foot, hl: [-gx, gy, gz - Z], hr: [gx, gy, gz - Z], grab: true, look: riderLook });
       riderGrip = grips ? grips.map(g => Math.hypot(Math.abs(g[0]) - gx, g[1] - gy, g[2] - (gz - Z))) : null;     // (for the tests: how far each hand is from its grip)
       const it = PEOPLE.live.get(RIDER);
       if (it) {
