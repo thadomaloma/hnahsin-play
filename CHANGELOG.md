@@ -4,6 +4,12 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.61.1 (12 November 2026)
+
+- Aizawl Ride's sounds are back: the engine, the wind and tyres, the brake,
+  the birds, the short beeps, and the sound button to turn them off. Only the
+  words said aloud stay gone: no game says a word any more.
+
 ## 1.61.0 (12 November 2026)
 
 ### Aizawl Ride: new colours, real riders

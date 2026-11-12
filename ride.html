@@ -397,6 +397,7 @@
     <div class="brand"><b>Aizawl Ride</b><span>Zoram's real hill roads</span></div>
     <span class="wallet" id="wallet" aria-live="polite"><i class="coin"></i> 0</span>
     <button class="icon langbtn" id="langBtn" type="button" aria-label="Mizo or English">Mizo</button>
+    <button class="icon" id="sound" type="button" aria-pressed="true" aria-label="Sound">🔊</button>
   </header>
 
   <section class="card" aria-label="Aizawl Ride game">
@@ -902,7 +903,7 @@
       // said on the road, after whatever else is being said: when it is done, or a step of a few
       if (mode === 'playing' && (now >= x.goal || (x.goal <= 5 && kind !== 'coin'))) {
         const msg = now >= x.goal ? `🎯 <b>${L('Done!', 'A zo!')}</b> ${said(x)}` : `🎯 ${said(x)} · ${now} / ${x.goal}`;
-        setTimeout(() => { if (mode === 'playing') { toast(msg, true); } }, 1900);
+        setTimeout(() => { if (mode === 'playing') { toast(msg, true); if (now >= x.goal) beep(1180, 0.12); } }, 1900);
       }
     }
   }
@@ -960,6 +961,7 @@
   let cars = [], jams = [], braking = false, carT = 0, oncomingT = 0, eventWords = new Set();
   let peds = [], crossings = [], pedT = 0, stillT = 0, slowDone = false, jnMet = new Set(), pedSeeded = false;     // (how long stopped at a crossing: a secret badge; the junctions whose people are out, this ride)
   let load = 0, s, v, px, pvx, pax, laneFrom, laneV, laneA, laneTo, laneT, lane, coins, picked, coinsPut, rideMult, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
+  let soundOn = S.sound;
 
   function reset() {
     prepRoute();
@@ -4832,7 +4834,66 @@ void main() {
     clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.remove('show'), 1800);
   }
 
-  $('langBtn').onclick = () => { S.lang = S.lang === 'mz' ? 'en' : 'mz'; writeSave(); applyLang(); showParcel(); hud(true); syncReady(); drawRoutes(); if (panel === 'missionsView') drawMissions(); if (panel === 'garageView') { $('garageNote').textContent = ''; drawGarage(); } if (panel === 'mapView') drawMap(); };
+  // ---------- sound: the ride's own sounds, and short beeps; never needed ----------
+  // Made here, no files: the scooter's engine (a low buzz that climbs with the speed), the wind and the
+  // tyres on the road, the brake, and birds where the road runs through bamboo and trees. No horns: Aizawl
+  // does not honk.
+  let ride = null, birdT = 3;
+  function rideSound(dt) {
+    const on = soundOn && mode === 'playing';
+    if (!on && !ride) return;
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === 'suspended') ac.resume();
+      if (!ride) {
+        const g = ac.createGain(); g.gain.value = 0; g.connect(ac.destination);
+        const eng = ac.createOscillator(), eng2 = ac.createOscillator(), lp = ac.createBiquadFilter(), eg = ac.createGain();
+        eng.type = 'sawtooth'; eng2.type = 'square'; lp.type = 'lowpass'; lp.frequency.value = 380; eg.gain.value = 0.5;
+        eng.connect(lp); eng2.connect(lp); lp.connect(eg); eg.connect(g);
+        const buf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        const noise = ac.createBufferSource(); noise.buffer = buf; noise.loop = true;
+        const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 700; bp.Q.value = 0.6; const wg = ac.createGain(); wg.gain.value = 0;
+        const hp = ac.createBiquadFilter(); hp.type = 'bandpass'; hp.frequency.value = 3200; hp.Q.value = 8; const bg = ac.createGain(); bg.gain.value = 0;
+        const rp = ac.createBiquadFilter(); rp.type = 'highpass'; rp.frequency.value = 1800; const rg = ac.createGain(); rg.gain.value = 0;
+        noise.connect(bp); bp.connect(wg); wg.connect(g); noise.connect(hp); hp.connect(bg); bg.connect(g); noise.connect(rp); rp.connect(rg); rg.connect(g);
+        eng.start(); eng2.start(); noise.start();
+        ride = { g, eng, eng2, lp, wg, bg, rg };
+      }
+      const t = ac.currentTime, k = Math.min(1, v / 18);
+      ride.g.gain.setTargetAtTime(on ? 0.05 : 0, t, 0.15);
+      // the engine: higher with the speed, and with how hard it is pulling (a climb at walking pace still revs)
+      const rev = v * 5.5 + load * 28;
+      ride.eng.frequency.setTargetAtTime(48 + rev, t, 0.12); ride.eng2.frequency.setTargetAtTime(96 + rev * 2 + 3, t, 0.12);
+      ride.lp.frequency.setTargetAtTime(Math.min(20000, 300 + v * 30 + load * 420), t, 0.2);
+      ride.wg.gain.setTargetAtTime(0.15 + k * 0.6, t, 0.2);
+      ride.bg.gain.setTargetAtTime(braking && v > 3 ? 0.35 : 0, t, 0.05);       // the brake's squeal
+      ride.rg.gain.setTargetAtTime(cond.rain ? 0.5 : 0, t, 0.3);                  // the rain
+      // a bird now and then, where the road runs through trees
+      if (on && (birdT -= dt) <= 0) {
+        birdT = 2 + Math.random() * 5;
+        if (housesNear(Math.floor(s / SEG)) <= 2 && !cond.rain && !cond.night) for (let i = 0; i < 2 + (Math.random() * 3 | 0); i++) {
+          const o = ac.createOscillator(), bgn = ac.createGain(), at = t + i * 0.13, f = 2400 + Math.random() * 1600;
+          o.type = 'sine'; o.frequency.setValueAtTime(f, at); o.frequency.exponentialRampToValueAtTime(f * 1.4, at + 0.08);
+          bgn.gain.setValueAtTime(0.0001, at); bgn.gain.exponentialRampToValueAtTime(0.012, at + 0.02); bgn.gain.exponentialRampToValueAtTime(0.0001, at + 0.1);
+          o.connect(bgn); bgn.connect(ac.destination); o.start(at); o.stop(at + 0.12);
+        }
+      }
+    } catch (e) {}
+  }
+  // ---------- sound: short beeps, never needed ----------
+  let ac = null;
+  function beep(f = 600, d = 0.07, type = 'sine') {
+    if (!soundOn) return;
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = f; g.gain.value = 0.05; g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + d);
+      o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + d);
+    } catch (e) {}
+  }
+  function syncSound() { $('sound').textContent = soundOn ? '🔊' : '🔈'; $('sound').setAttribute('aria-pressed', soundOn); $('sound').setAttribute('aria-label', soundOn ? 'Sound on' : 'Sound off'); }
+  $('sound').onclick = () => { soundOn = !soundOn; S.sound = soundOn; writeSave(); syncSound(); beep(700); };
+  $('langBtn').onclick = () => { S.lang = S.lang === 'mz' ? 'en' : 'mz'; writeSave(); applyLang(); showParcel(); hud(true); syncReady(); drawRoutes(); if (panel === 'missionsView') drawMissions(); if (panel === 'garageView') { $('garageNote').textContent = ''; drawGarage(); } if (panel === 'mapView') drawMap(); beep(700); };
 
   // ---------- the game ----------
   function update(dt) {
@@ -4891,7 +4952,7 @@ void main() {
     if (hit) {
       hit.hit = true; shake = 1; crashT = 0; crashDir = hit.x < px ? 1 : -1;
       crashBy = `${hit.dir > 0 ? 'our way' : 'oncoming'} ${hit.kind} in lane ${hit.lane} (x ${hit.x.toFixed(1)}, ${(hit.at - s).toFixed(1)} m), scooter x ${px.toFixed(1)}`;
-      burst('#c33f3f'); mode = 'crashing'; braking = false; return;
+      beep(160, 0.3, 'sawtooth'); burst('#c33f3f'); mode = 'crashing'; braking = false; return;
     }
     // What the scooter meets: each coin once, the first obstacle ends the ride
     for (const t of things) {
@@ -4899,14 +4960,14 @@ void main() {
       if (t.got || t.hit || (t.kind === 'coin' ? Math.abs(t.at - s) > 0.9 : s < t.at - t.len / 2 - t.back - 0.9 || s > t.at + t.len / 2 + 0.9)) continue;
       if (t.kind === 'coin' ? Math.abs(LANES[t.lane] - px) > 1.15 : Math.abs(t.x - px) > t.half + 0.3) continue;
       if (t.kind === 'coin') {
-        t.got = true; coins++; picked++; dailyAdd('coin', 1, picked); burst('#ffd34d');
+        t.got = true; coins++; picked++; dailyAdd('coin', 1, picked); beep(880, 0.06); burst('#ffd34d');
         pops.push({ text: '+1', x: riderXY().x + (Math.random() - .5) * 30, y: riderXY().y - 110, life: 1 });
         const b = $('coins'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump');
         if (coins % 10 === 0) toast(L(`${coins} coins!`, `Coin ${coins}!`));
       } else {
         crashBy = `${t.kind} in lane ${t.lane}, scooter x ${px.toFixed(1)}`;
         t.hit = true; shake = 1; crashT = 0; crashDir = t.lane < lane || (t.lane === lane && px > LANES[lane]) ? 1 : -1;
-        burst('#c33f3f'); mode = 'crashing'; return;
+        beep(160, 0.3, 'sawtooth'); burst('#c33f3f'); mode = 'crashing'; return;
       }
     }
     things = things.filter(t => t.at + (t.len || 0) / 2 > s - 10 && !t.got);
@@ -4941,7 +5002,7 @@ void main() {
   function end(delivered) {
     if (banked) return;
     showTip(null);
-    banked = true; mode = delivered ? 'done' : 'over';
+    banked = true; mode = delivered ? 'done' : 'over'; rideSound(0);
     // the score: metres, 25 a coin, 500 for the delivery, times your rank's multiplier
     const score = Math.floor((Math.floor(s) + coins * 25 + (delivered ? 500 : 0)) * rideMult), best = bestOf(route.id);
     const xpBefore = xp(), rankBefore = rankOf(xpBefore), tiersBefore = ACH.map(tierOf);
@@ -5001,7 +5062,7 @@ void main() {
     $('endView').hidden = false;
     hud(true); draw();
     if (delivered) {
-     
+      beep(990, 0.2);
       // Record parcel delivery as correct encounter
       const vid = VOCAB_MAP && VOCAB_MAP[parcel[0].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')];
       if (vid && typeof Progress !== 'undefined' && Progress.recordEncounter) Progress.recordEncounter(vid, 'ride', true);
@@ -5032,8 +5093,8 @@ void main() {
     // Record quiz answer for progress tracking
     const vid = VOCAB_MAP && VOCAB_MAP[quizWord[0].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')];
     if (vid && typeof Progress !== 'undefined' && Progress.recordEncounter) Progress.recordEncounter(vid, 'ride', right);
-    if (right) { S.quizRight++; S.wallet += 10; S.lifetime += 10; dailyAdd('quiz', 1); if (!S.quizKnown.includes(quizWord[0])) S.quizKnown.push(quizWord[0]); $('endNews').insertAdjacentHTML('beforeend', award().map(badgeNews).join('')); syncWallet(true); $('quizA').innerHTML = L(`Right! <b>${quizWord[0]}</b> is ${quizWord[1]}`, `A dik! <b>${quizWord[0]}</b> chu ${quizWord[1]} a ni`) + ' · <i class="coin"></i> +10'; }
-    else { b.classList.add('no'); $('quizA').innerHTML = L(`<b>${quizWord[0]}</b> is ${quizWord[1]}. Next time!`, `<b>${quizWord[0]}</b> chu ${quizWord[1]} a ni. A dawt lehah!`); }
+    if (right) { S.quizRight++; S.wallet += 10; S.lifetime += 10; dailyAdd('quiz', 1); if (!S.quizKnown.includes(quizWord[0])) S.quizKnown.push(quizWord[0]); $('endNews').insertAdjacentHTML('beforeend', award().map(badgeNews).join('')); syncWallet(true); beep(990, 0.15); $('quizA').innerHTML = L(`Right! <b>${quizWord[0]}</b> is ${quizWord[1]}`, `A dik! <b>${quizWord[0]}</b> chu ${quizWord[1]} a ni`) + ' · <i class="coin"></i> +10'; }
+    else { b.classList.add('no'); beep(300, 0.15); $('quizA').innerHTML = L(`<b>${quizWord[0]}</b> is ${quizWord[1]}. Next time!`, `<b>${quizWord[0]}</b> chu ${quizWord[1]} a ni. A dawt lehah!`); }
     writeSave();
   });
   // ---------- the coach: tips on the first rides ----------
@@ -5079,7 +5140,7 @@ void main() {
   function frame(now) {
     if (mode !== 'playing' && mode !== 'crashing') { loopId = 0; return; }
     const dt = Math.min(0.04, (now - last) / 1000); last = now;
-    coach(dt); update(dt * slow);
+    coach(dt); update(dt * slow); rideSound(dt);
     draw(); dial();
     if (mode === 'playing' || mode === 'crashing') loopId = requestAnimationFrame(frame);
     else { loopId = 0; draw(); }
@@ -5100,7 +5161,7 @@ void main() {
     hnStat(`ride/${route.id}`, `Aizawl Ride: ${route.to}`);
   }
   // Pause stops everything: no time passes, nothing moves, nothing is hit
-  function pause() { if (mode !== 'playing') return; mode = 'paused'; syncBrake(); $('pauseView').hidden = false; syncPause(); $('resumeBtn').focus(); }
+  function pause() { if (mode !== 'playing') return; mode = 'paused'; syncBrake(); rideSound(0); $('pauseView').hidden = false; syncPause(); $('resumeBtn').focus(); }
   function resume() { if (mode !== 'paused') return; mode = 'playing'; $('pauseView').hidden = true; syncPause(); syncBrake(); run(); }
   function syncPause() {
     // on a phone, riding fills the screen like a game: no top bar, no frame, the controls over the road
@@ -5113,7 +5174,7 @@ void main() {
     b.textContent = mode === 'paused' ? '▶' : '⏸'; b.setAttribute('aria-label', mode === 'paused' ? 'Keep riding' : 'Pause');
   }
   $('pauseBtn').onclick = () => (mode === 'paused' ? resume() : pause());
-  function steer(d) { if (mode !== 'playing') return; const l = Math.max(0, Math.min(2, lane + d)); if (l !== lane) { lane = l; steered = true; } }
+  function steer(d) { if (mode !== 'playing') return; const l = Math.max(0, Math.min(2, lane + d)); if (l !== lane) { lane = l; steered = true; beep(440, 0.03); } }
 
   // ---------- choosing a road ----------
   function drawRoutes() {
@@ -5217,7 +5278,7 @@ void main() {
       if (!S.cos.owned.includes(x.id) && x.event) { $('garageNote').textContent = L(`Won in ${EVENTS.find(e => e.id === x.event).name}: its mission, in Missions while it is on.`, `${EVENTS.find(e => e.id === x.event).name} lai a tihtur zawh a hmuh theih.`); return; }
       if (!S.cos.owned.includes(x.id)) {
         if (S.wallet < x.price) { $('garageNote').textContent = L(`You need ${x.price - S.wallet} more coins for the ${x.name} ${x.slot === 'box' ? 'box' : x.slot}.`, `${x.slot === 'box' ? 'Box' : x.slot === 'helmet' ? 'Helmet' : 'Jacket'} ${x.name} tan coin ${x.price - S.wallet} i la mamawh.`); return; }
-        S.wallet -= x.price; S.cos.owned.push(x.id); syncWallet(true);
+        S.wallet -= x.price; S.cos.owned.push(x.id); syncWallet(true); beep(990, 0.15);
         $('garageNote').textContent = L(`The ${x.name} ${x.slot === 'box' ? 'box' : x.slot} is yours!`, `${x.slot === 'box' ? 'Box' : x.slot === 'helmet' ? 'Helmet' : 'Jacket'} ${x.name} i ta a ni ta!`);
       } else $('garageNote').textContent = L(`Wearing the ${x.name} ${x.slot === 'box' ? 'box' : x.slot}.`, `${x.slot === 'box' ? 'Box' : x.slot === 'helmet' ? 'Helmet' : 'Jacket'} ${x.name} i ha mek.`);
       S.cos[x.slot] = x.id; award();
@@ -5229,7 +5290,7 @@ void main() {
     if (!x) return;
     if (!(d ? hasDesign(x) : hasColour(x))) { $('garageNote').textContent = L(`${x.name} opens at ${fmt(x.need)} points. You have ${fmt(points())}: beat your best scores to get there.`, `${x.name} hi point ${fmt(x.need)}-ah a inhawng ang. Point ${fmt(points())} i nei: i score tha ber te paltlang la, i thleng ang.`); return; }
     if (d) S.design = x.id; else S.scooter = x.id;
-    $('garageNote').textContent = L(`${x.name}${d ? '' : ` (${x.en})`}: ready to ride.`, `${x.name}: chuan turin a inpeih.`);
+    $('garageNote').textContent = L(`${x.name}${d ? '' : ` (${x.en})`}: ready to ride.`, `${x.name}: chuan turin a inpeih.`); beep(990, 0.12);
     award(); writeSave(); drawGarage(); draw();
     const again = $('garageView').querySelector(d ? `[data-design="${x.id}"]` : `[data-id="${x.id}"]`); if (again) again.focus();
   });
@@ -5280,13 +5341,13 @@ void main() {
       const fe = festMission(); if (!fe || S.fest.claimed || S.fest.prog < fe.goal) return;
       const prize = COSMETICS.find(c => c.id === fe.prize);
       S.fest.claimed = true; if (!S.cos.owned.includes(prize.id)) S.cos.owned.push(prize.id); S.cos[prize.slot] = prize.id; award();
-      writeSave(); syncReady(); drawMissions(); return;
+      writeSave(); beep(1320, 0.2); syncReady(); drawMissions(); return;
     }
     const x = DAILY.find(y => y.id === b.dataset.daily);
     if (!x || !dailyReady(x)) return;                     // each paid once
     const r0 = rankOf();
-    S.daily.claimed.push(x.id); S.bonus = (S.bonus || 0) + x.reward; S.dailyDone = (S.dailyDone || 0) + 1; award(); writeSave(); syncReady(); drawMissions();
-    if (rankOf() > r0) { $('rankCard').insertAdjacentHTML('afterbegin', `<div class="rankup">🎉 New rank!</div>`); }
+    S.daily.claimed.push(x.id); S.bonus = (S.bonus || 0) + x.reward; S.dailyDone = (S.dailyDone || 0) + 1; award(); writeSave(); beep(990, 0.15); syncReady(); drawMissions();
+    if (rankOf() > r0) { $('rankCard').insertAdjacentHTML('afterbegin', `<div class="rankup">🎉 New rank!</div>`); beep(1320, 0.2); }
   });
 
   // ---------- the Aizawl map: deliveries between veng ----------
@@ -5527,7 +5588,7 @@ void main() {
     audit4All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; jams = planJams(); crossings = planCrossings(); out.push({ id: r.id, ...R3.audit4() }); } route = keep; reset(); return out; },
     audit2All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit2() }); } route = keep; R3.audit(); return out; } };
 
-  applyLang(); syncWallet(); syncReady(); syncPause(); drawRoutes(); showParcel(); reset(); resize();
+  applyLang(); syncSound(); syncWallet(); syncReady(); syncPause(); drawRoutes(); showParcel(); reset(); resize();
   // three.js is fetched once and kept on the phone; until then, and without WebGL, the picture is flat
   const three = /[?&]flat\b/.test(location.search) ? Promise.resolve() : import(THREE_URL).then(T => {
     try { R3 = make3d(T); } catch (e) { R3 = null; return; }
