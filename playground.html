@@ -807,7 +807,6 @@
   <footer>Test games for Hnahsin, using 327 picture words, 383 sentences and 203 sayings from the live content, and 1,928 dictionary words.</footer>
 </div>
 
-<script src="audio.js"></script>
 <script src="progress.js"></script>
 <script>// Counts which pages and games are played, with GoatCounter: no cookies and
 // nothing that identifies a person. hnStat('play/bee') counts one event.
@@ -935,22 +934,6 @@
     const bob = run ? -Math.abs(Math.sin(phase)) * 5 : 0;
     ctx.save();
     ctx.translate(0, bob);
-
-    // Track previous phase/pose for audio callbacks (called at most once per frame)
-    if (opts.onStep || opts.onPoseChange) {
-      const prevPhase = drawKid._prevPhase;
-      const prevPose = drawKid._prevPose;
-      if (prevPhase !== undefined && opts.onStep) {
-        // Fire onStep when phase crosses a step boundary (π intervals for footfalls)
-        const stepBoundary = Math.floor(phase / Math.PI) !== Math.floor(prevPhase / Math.PI);
-        if (stepBoundary) opts.onStep(phase);
-      }
-      if (prevPose !== undefined && prevPose !== pose && opts.onPoseChange) {
-        opts.onPoseChange(prevPose, pose);
-      }
-      drawKid._prevPhase = phase;
-      drawKid._prevPose = pose;
-    }
     // How far the body leans forward from the hips: a little to run, up to 60° in a deep bow.
     const lean = run ? 10 : bowing ? 3 + 57 * Math.max(0, Math.min(1, opts.bow ?? 1)) : pose === 'stand' ? 1 : 3;
     const hip = [57, 95], sh = at(hip[0], hip[1], 180 + lean, 32);
@@ -1888,7 +1871,6 @@ function soAnswer(side) {
   if (side === right) {
     so.score++; so.combo++;
     fb.className = 'feedback good'; fb.textContent = `${word(id)} · ${gloss(id)}`;
-    if (window.Audio) Audio.playWord(THINGS_DATA[id]);
     $('so-combo').textContent = so.combo >= 3 ? `🔥 ${so.combo} in a row` : '';
     // Record encounter for progress tracking
     if (window.Progress) {
@@ -1987,7 +1969,6 @@ $('tu-tubes').addEventListener('click', e => {
   const ball = tu.tubes[tu.held].pop();
   tu.tubes[i].push(ball); tu.held = null; tu.moves++;
   $('tu-feedback').className = 'feedback'; $('tu-feedback').textContent = `${word(ball.id)} · ${gloss(ball.id)}`;
-  if (window.Audio) Audio.playWord(THINGS_DATA[ball.id]);
   tuRender();
   if (tuDone(tu.tubes[i])) flash(document.querySelector(`#tu-tubes [data-i="${i}"]`), 'hop');
   if (tu.tubes.filter(t => t.length).every(tuDone)) {
@@ -2052,9 +2033,8 @@ function ruTick(t) {
   if (g.y >= 74) {
     const ok = ru.lane === g.correct;
     const fb = $('ru-feedback');
-    const entry = { mizo: word(g.target), english: gloss(g.target), audio: { recorded: null, tts: true } };
-    if (ok) { ru.score++; ru.speed += 1.5; fb.className = 'feedback good'; fb.textContent = `${word(g.target)} · ${gloss(g.target)}`; flash($('ru-rova'), 'hop'); if (window.Audio) window.Audio.playWord(entry); }
-    else { ru.hearts--; fb.className = 'feedback bad'; fb.textContent = `“${word(g.target)}” was ${emoji(g.target) ? emoji(g.target) + ' ' : ''}(${gloss(g.target)})`; flash($('ru-road'), 'shake'); if (window.Audio) window.Audio.playWord(entry); }
+    if (ok) { ru.score++; ru.speed += 1.5; fb.className = 'feedback good'; fb.textContent = `${word(g.target)} · ${gloss(g.target)}`; flash($('ru-rova'), 'hop'); }
+    else { ru.hearts--; fb.className = 'feedback bad'; fb.textContent = `“${word(g.target)}” was ${emoji(g.target) ? emoji(g.target) + ' ' : ''}(${gloss(g.target)})`; flash($('ru-road'), 'shake'); }
     // Record encounter for progress tracking
     if (window.Progress) {
       const folded = word(g.target).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -2173,7 +2153,6 @@ $('dr-wardrobe').addEventListener('click', e => {
   const id = b.dataset.id;
   dr.worn[SLOT_OF[id]] = id;
   $('dr-feedback').className = 'feedback'; $('dr-feedback').textContent = `${word(id)} · ${gloss(id)}`;
-  if (window.Audio) Audio.playWord(THINGS_DATA[id]);
   drRender();
   flash($('dr-rova'), 'pop');
 });
@@ -2184,7 +2163,6 @@ $('dr-rova').addEventListener('click', e => {
   if (!slot) return;
   const removedId = dr.worn[slot];
   $('dr-feedback').className = 'feedback'; $('dr-feedback').textContent = `Took off ${word(removedId)}`;
-  if (window.Audio) Audio.playWord(THINGS_DATA[removedId]);
   delete dr.worn[slot]; drRender();
 });
 $('dr-done').addEventListener('click', () => {
@@ -2204,7 +2182,6 @@ $('dr-done').addEventListener('click', () => {
   fb.className = 'feedback good';
   dr.ready = true;
   fb.textContent = `Rova is ready! +${2 * dr.want.length} stars`;
-  if (window.Audio) Audio.playWord(THINGS_DATA[dr.want[0]]);
   addStars(2 * dr.want.length);
   flash($('dr-rova'), 'hop');
   dr.level = Math.min(dr.level + 1, 4); store.set('lab.dr', dr.level);
@@ -2258,7 +2235,7 @@ $('op-board').addEventListener('click', e => {
   const fb = $('op-feedback');
   fb.className = 'feedback ' + (right ? 'good' : 'bad');
   fb.textContent = `${word(thing)} ${word(PAIRS[p][side])} · ${gloss(PAIRS[p][side])} ${gloss(thing)}  ·  ${word(PAIRS[p][1 - side])} · ${gloss(PAIRS[p][1 - side])}`;
-  if (right) { op.right++; addStars(1); flash(b, 'hop'); if (window.Audio) Audio.playWord(THINGS_DATA[thing]); } else flash(b, 'shake');
+  if (right) { op.right++; addStars(1); flash(b, 'hop'); } else flash(b, 'shake');
   // Record encounter for progress tracking
   if (window.Progress) {
     const folded = word(thing).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -2319,7 +2296,7 @@ $('dt-board').addEventListener('click', e => {
       const vid = window.WORDS_MAP && window.WORDS_MAP[folded];
       if (vid) window.Progress.recordEncounter(vid, 'playground', right);
     }
-    if (right) { dt.right++; addStars(2); if (window.Audio) Audio.playWord(THINGS_DATA[dt.answer]); }
+    if (right) { dt.right++; addStars(2); }
     $('dt-score').textContent = `${dt.right} of ${dt.total}`;
     setTimeout(dtNew, right ? 1500 : 2600);
     return;
@@ -2327,7 +2304,6 @@ $('dt-board').addEventListener('click', e => {
   const next = dt.order[dt.tapped.length];
   if (id === next) {
     dt.tapped.push(id);
-    if (window.Audio) Audio.playWord(THINGS_DATA[id]);
     // Record encounter for progress tracking
     if (window.Progress) {
       const folded = word(id).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -2433,7 +2409,6 @@ $('rs-board').addEventListener('click', e => {
   rs.tapped = true;
   const right = rs.says && ID_OF[part] === rs.target;
   rsShow(part, right ? '#43a047' : '#e53935', 600);
-  if (window.Audio) Audio.playWord(THINGS_DATA[ID_OF[part]]);
   rsResult(ID_OF[part]);
 });
 $('rs-start').addEventListener('click', () => {
@@ -2476,7 +2451,6 @@ $('ci-swatches').addEventListener('click', e => {
   if (isCorrect) {
     document.querySelectorAll(`#ci-pic [data-part="${part}"]`).forEach(el => el.setAttribute('fill', COLOURS[want]));
     fb.className = 'feedback good'; fb.textContent = `${word(want)} · ${gloss(want)}`;
-    if (window.Audio) Audio.playWord(THINGS_DATA[want]);
     ci.at++; ciAsk();
   } else {
     flash(b, 'shake');
@@ -2541,12 +2515,10 @@ function faAnswer(id, el) {
 }
 $('fa-tree').addEventListener('click', e => {
   const b = e.target.closest('button.person'); if (!b || fa.mode !== 0) return;
-  if (window.Audio) Audio.playWord(THINGS_DATA[b.dataset.id]);
   faAnswer(b.dataset.id, b);
 });
 $('fa-choices').addEventListener('click', e => {
   const b = e.target.closest('.choice'); if (!b) return;
-  if (window.Audio) Audio.playWord(THINGS_DATA[b.dataset.id]);
   faAnswer(b.dataset.id, b);
 });
 faNew();
@@ -2600,9 +2572,6 @@ $('bp-sea').addEventListener('click', e => {
   } else {
     bp.score--; fb.className = 'feedback bad'; fb.textContent = `That was ${word(el.dataset.id)} (${gloss(el.dataset.id)})`;
   }
-  // Play word audio
-  const entry = { mizo: word(el.dataset.id), english: gloss(el.dataset.id), audio: { recorded: null, tts: true } };
-  if (window.Audio) window.Audio.playWord(entry);
   // Record encounter for progress tracking
   if (window.Progress) {
     const folded = word(el.dataset.id).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -2650,7 +2619,6 @@ $('wm-holes').addEventListener('click', e => {
   const isCorrect = h.dataset.id === wm.target;
   if (isCorrect) {
     wm.score++; fb.className = 'feedback good'; fb.textContent = `${word(wm.target)} · ${gloss(wm.target)}`;
-    if (window.Audio) Audio.playWord(THINGS_DATA[wm.target]);
     if (++wm.hits >= 5) wmTarget();
   } else {
     wm.score--; fb.className = 'feedback bad'; fb.textContent = `That was ${word(h.dataset.id)} (${gloss(h.dataset.id)})`;
@@ -2714,7 +2682,6 @@ function wrRender() {
 $('wr-icons').addEventListener('click', e => {
   const b = e.target.closest('.item'); if (!b) return;
   wr.picked = b.dataset.id;
-  if (window.Audio) Audio.playWord(THINGS_DATA[b.dataset.id]);
   wrRender();
 });
 $('wr-board').addEventListener('click', e => {
@@ -2722,7 +2689,6 @@ $('wr-board').addEventListener('click', e => {
   if (!wr.picked) { $('wr-feedback').className = 'feedback bad'; $('wr-feedback').textContent = 'Pick a weather picture first.'; return; }
   wr.set[b.dataset.day] = wr.picked;
   $('wr-feedback').className = 'feedback'; $('wr-feedback').textContent = `${word(b.dataset.day)}: ${word(wr.picked)} · ${gloss(wr.picked)}`;
-  if (window.Audio) Audio.playWord(THINGS_DATA[wr.picked]);
   wrRender();
   flash(document.querySelector(`#wr-board [data-day="${b.dataset.day}"]`), 'pop');
 });
@@ -2750,7 +2716,6 @@ $('wr-check').addEventListener('click', () => {
       if (vid) window.Progress.recordEncounter(vid, 'playground', true);
     });
   }
-  if (window.Audio) Audio.playWord(THINGS_DATA[wr.want[wr.days[0]]]);
   addStars(wr.days.length);
   wr.level = Math.min(wr.level + 1, 5); store.set('lab.wr', wr.level);
   setTimeout(wrNew, 1500);
@@ -2805,7 +2770,6 @@ function fsMiss(text) {
 $('fs-kitchen').addEventListener('click', e => {
   const b = e.target.closest('.item'); if (!b || !fs.on || fs.busy || fs.plate.length >= 3) return;
   fs.plate.push(b.dataset.id);
-  if (window.Audio) Audio.playWord(THINGS_DATA[b.dataset.id]);
   fsRender();
 });
 $('fs-plate').addEventListener('click', e => {
@@ -2821,7 +2785,6 @@ $('fs-serve').addEventListener('click', () => {
     fs.served++; addStars(fs.order.length);
     $('fs-feedback').className = 'feedback good';
     $('fs-feedback').textContent = `Ka lâwm e! ${fs.order.map(id => `${word(id)} · ${gloss(id)}`).join(', ')}`;
-    if (window.Audio) Audio.playWord(THINGS_DATA[fs.order[0]]);
     flash($('fs-guest'), 'hop');
     // Record encounters for progress tracking
     if (window.Progress) {
@@ -2914,7 +2877,7 @@ function sbEnter() {
   }
   sb.word = []; sbRender();
 }
-$('sb-hive').addEventListener('click', e => { const b = e.target.closest('.hex'); if (!b) return; sb.word.push(b.dataset.t); if (window.Audio) Audio.playWord(THINGS_DATA[b.dataset.t] || {mizo: b.dataset.t, english: ''}); flash(b, 'pop'); sbRender(); });
+$('sb-hive').addEventListener('click', e => { const b = e.target.closest('.hex'); if (!b) return; sb.word.push(b.dataset.t); flash(b, 'pop'); sbRender(); });
 $('sb-del').addEventListener('click', () => { sb.word.pop(); sbRender(); });
 $('sb-enter').addEventListener('click', sbEnter);
 $('sb-shuffle').addEventListener('click', () => { shuffle(sbPuzzle().outer); sbHive(); });
@@ -2973,7 +2936,7 @@ function wfRender() {
 }
 $('wf-grid').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || wf.done || b.classList.contains('green')) return;
-  if (!wf.picked) { wf.picked = b.dataset.k; if (window.Audio) Audio.playWord(THINGS_DATA[b.textContent] || {mizo: b.textContent, english: ''}); wfRender(); return; }
+  if (!wf.picked) { wf.picked = b.dataset.k; wfRender(); return; }
   if (wf.picked === b.dataset.k) { wf.picked = null; wfRender(); return; }
   const [r1, c1] = wf.picked.split(',').map(Number), [r2, c2] = b.dataset.k.split(',').map(Number);
   [wf.grid[r1][c1], wf.grid[r2][c2]] = [wf.grid[r2][c2], wf.grid[r1][c1]];
@@ -3068,7 +3031,6 @@ $('st-grid').addEventListener('pointerdown', e => {
   // Tapping the last letter again sends the word.
   if (st.path.length && st.path[st.path.length - 1] === i) { stSubmit(); return; }
   st.dragging = true; st.moved = false; stAdd(i);
-  if (window.Audio) Audio.playWord(THINGS_DATA[stP().grid.flat()[i]] || {mizo: stP().grid.flat()[i], english: ''});
   stRender();
 });
 $('st-grid').addEventListener('pointermove', e => {
@@ -3115,7 +3077,7 @@ function snRender() {
   $('sn-answer').innerHTML = sn.answer.map(k => `<button class="tile-w" data-k="${k}">${esc(sn.tiles.find(t => t.k === k).t)}</button>`).join('');
   $('sn-tiles').innerHTML = sn.tiles.filter(t => !inAnswer.has(t.k)).map(t => `<button class="tile-w" data-k="${t.k}">${esc(t.t)}</button>`).join('');
 }
-$('sn-tiles').addEventListener('click', e => { const b = e.target.closest('.tile-w'); if (!b || sn.wait) return; sn.answer.push(Number(b.dataset.k)); if (window.Audio) Audio.playWord(THINGS_DATA[b.textContent] || {mizo: b.textContent, english: ''}); snRender(); });
+$('sn-tiles').addEventListener('click', e => { const b = e.target.closest('.tile-w'); if (!b || sn.wait) return; sn.answer.push(Number(b.dataset.k)); snRender(); });
 $('sn-answer').addEventListener('click', e => { const b = e.target.closest('.tile-w'); if (!b || $('sn-answer').classList.contains('good')) return; sn.answer = sn.answer.filter(k => k !== Number(b.dataset.k)); snRender(); });
 $('sn-hint').addEventListener('click', () => {
   const firstKey = 0;
@@ -3182,7 +3144,6 @@ $('sy-meanings').addEventListener('click', e => {
   if (i === sy.picked) {
     sy.matched.add(i); sy.picked = null;
     fb.className = 'feedback good'; fb.textContent = '✓ “' + sy.four[i][0] + '”';
-    if (window.Audio) Audio.playWord({mizo: sy.four[i][0], english: sy.four[i][1]});
     // Record encounter for progress tracking
     if (window.Progress) {
       const folded = sy.four[i][0].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -3295,7 +3256,6 @@ $('rv-choices').addEventListener('click', e => {
     rv.streak++;
     $('rv-feedback').className = 'feedback good';
     $('rv-feedback').textContent = 'Correct! 🎉';
-    if (window.Audio) Audio.playWord({ english: b.textContent });     // the meaning, said once answered
   } else {
     rv.streak = 0;
     $('rv-feedback').className = 'feedback bad';

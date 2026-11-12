@@ -4,6 +4,28 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.61.0 (12 November 2026)
+
+### Aizawl Ride: new colours, real riders
+
+- Seventeen new colours for your scooter, in four kinds you can browse in the
+  garage: paints (soft pink, matte grey, metallic brown, purple, silver and
+  gold, and pearl white), two colours (yellow and black, white and blue, cream
+  and red as the old scooters were, and more), Mizo puan (Puanchei,
+  Ngotekherh and Hmaram, woven into the body) and festivals (Chapchar Kut and
+  Krismas). Each kind shines as it would: metallic, pearl, matte or soft.
+- The scooter looks more like a real one: tyres with a tread, a leather seat,
+  and mirrors with glass. In the garage it turns slowly, so you see it from
+  every side.
+- You ride as a real person now, sitting on the seat with your hands on the
+  bars and a helmet on. The other riders on the road, and their pillion
+  passengers, are real people too.
+
+### No more sounds
+
+- The games are quiet now: Aizawl Ride's engine, wind and beeps are gone (and
+  its sound button), and no game says the words aloud any more.
+
 ## 1.60.0 (12 November 2026)
 
 ### Aizawl Ride: a scooter that rides like one

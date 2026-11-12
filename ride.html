@@ -63,7 +63,6 @@
 <title>Aizawl Ride · Hnahsin</title>
 <meta name="description" content="Ride a scooter along real Aizawl roads, dodge the roadblocks and deliver the parcel.">
 <script type="importmap">{"imports":{"three":"https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.module.min.js","https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.core.js":"https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.core.min.js"}}</script>
-<script src="audio.js"></script>
 <script src="progress.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap">
@@ -280,6 +279,9 @@
   .sheet .head p { color: #fff; }
   #startView .sheet { --pad: 14px; gap: 9px; padding: var(--pad); }
   #garageView .sheet { --tone: linear-gradient(160deg, #8e5bd0, #5b2fa0); }
+  /* the garage as a showroom: the scooter turns on the road above, the sheet sits below it */
+  #garageView { place-items: end center; background: linear-gradient(rgba(12, 18, 14, 0) 0 34%, rgba(12, 18, 14, .5) 62%); }
+  #garageView .sheet { max-height: 60%; }
   #mapView .sheet { --pad: 12px; --tone: linear-gradient(160deg, #1fa39a, #0e6d6a); }
   #mapView .sheet .head h2 { font-size: 24px; }
   #missionsView .sheet { --tone: linear-gradient(160deg, #f0a81c, #c96f00); }
@@ -395,7 +397,6 @@
     <div class="brand"><b>Aizawl Ride</b><span>Zoram's real hill roads</span></div>
     <span class="wallet" id="wallet" aria-live="polite"><i class="coin"></i> 0</span>
     <button class="icon langbtn" id="langBtn" type="button" aria-label="Mizo or English">Mizo</button>
-    <button class="icon" id="sound" type="button" aria-pressed="true" aria-label="Sound">🔊</button>
   </header>
 
   <section class="card" aria-label="Aizawl Ride game">
@@ -634,6 +635,12 @@
   // ---------- scooters, missions and badges ----------
   // Scooters come in four designs and in colours named by Mizo colour words. They look different and
   // ride the same. Each opens as your points grow (your best scores, added up; see the Aizawl map).
+  // A colour's body is its three tones: [the light panels (the apron, the front), the main body, the dark
+  // parts]. Its finish is how the paint shines: gloss, metallic, pearl, pastel (soft) or matte.
+  // kind: a plain paint; a two-tone theme (the front in one colour, the body in another); a Mizo puan woven
+  // over the body (its rows as the loom in Touch and learn has them); a festival's colours.
+  // (The colour words are the project's own: sendang, senduk, tangkarua and rangkachak come from the
+  // dictionary words and wait for a native speaker's review, as every word does.)
   const SCOOTERS = [
     { id: 'hring', name: 'hring', en: 'green', need: 0, body: ['#e2f58a', '#b9db4a', '#86a82e'] },
     { id: 'sen', name: 'sen', en: 'red', need: 1000, body: ['#ff9a8a', '#e0453a', '#a52a22'] },
@@ -641,7 +648,29 @@
     { id: 'var', name: 'vâr', en: 'white', need: 4500, body: ['#ffffff', '#ebe8e0', '#b9b6ad'] },
     { id: 'dum', name: 'dum', en: 'black', need: 7000, body: ['#6a6a6a', '#333333', '#151515'] },
     { id: 'eng', name: 'eng', en: 'yellow', need: 10000, body: ['#fff1a8', '#f2c230', '#b88a12'] },
+    { id: 'sendang', name: 'sendang', en: 'pink, soft', need: 1500, finish: 'pastel', body: ['#ffe1ea', '#f4a6bf', '#c46f8c'] },
+    { id: 'vutbuak', name: 'vutbuak', en: 'grey, matte', need: 3000, finish: 'matte', body: ['#b9bcbd', '#7d8285', '#45494c'] },
+    { id: 'uk', name: 'uk', en: 'brown, metallic', need: 5500, finish: 'metallic', body: ['#d6a77a', '#8a5a36', '#4a2f1c'] },
+    { id: 'senduk', name: 'senduk', en: 'purple, metallic', need: 8000, finish: 'metallic', body: ['#c9a6f0', '#7b4bc4', '#432474'] },
+    { id: 'tangkarua', name: 'tangkarua', en: 'silver, metallic', need: 11000, finish: 'metallic', body: ['#f2f4f6', '#c3c8cd', '#80868c'] },
+    { id: 'var-pearl', name: 'vâr', en: 'pearl white', need: 13000, finish: 'pearl', body: ['#ffffff', '#f6f3ec', '#cfc9bd'] },
+    { id: 'rangkachak', name: 'rangkachak', en: 'gold, metallic', need: 16000, finish: 'metallic', body: ['#ffe7a0', '#d4a017', '#8a6510'] },
+    { id: 'eng-dum', kind: 'two', name: 'eng leh dum', en: 'yellow and black', need: 2000, body: ['#1d1e20', '#f2c230', '#151515'] },
+    { id: 'var-dumpawl', kind: 'two', name: 'vâr leh dumpâwl', en: 'white and blue', need: 4000, body: ['#f6f3ec', '#2f5fae', '#1d3a6b'] },
+    { id: 'dum-hring', kind: 'two', name: 'dum leh hring', en: 'black and green, metallic', need: 6500, finish: 'metallic', body: ['#7ee36a', '#1f2224', '#0e0f10'] },
+    { id: 'var-sen', kind: 'two', name: 'vâr leh sen', en: 'cream and red, as the old scooters were', need: 9000, body: ['#f3ead2', '#b8322a', '#6e1e19'] },
+    { id: 'dum-rangkachak', kind: 'two', name: 'dum leh rangkachak', en: 'black and gold, metallic', need: 14000, finish: 'metallic', body: ['#d4a017', '#1b1b1d', '#0d0d0e'] },
+    { id: 'puanchei', kind: 'puan', name: 'puanchei', en: 'the finest Mizo puan', need: 7500, pattern: 'puanchei', body: ['#f4efe4', '#f4efe4', '#2a2522'] },
+    { id: 'ngotekherh', kind: 'puan', name: 'ngotekherh', en: 'the white checked puan', need: 10000, pattern: 'ngotekherh', body: ['#f4efe4', '#f4efe4', '#2a2522'] },
+    { id: 'hmaram', kind: 'puan', name: 'hmaram', en: 'the indigo puan with white patterns', need: 12500, pattern: 'hmaram', body: ['#232a48', '#232a48', '#141826'] },
+    { id: 'chapchar', kind: 'fest', name: 'Chapchar Kut', en: 'spring green, with the flags\u2019 red and yellow', need: 3500, body: ['#f2c230', '#2f8a4a', '#c8323d'] },
+    { id: 'krismas', kind: 'fest', name: 'Krismas', en: 'red and white, with a touch of gold', need: 5000, finish: 'metallic', body: ['#f4efe4', '#b8322a', '#d4a017'] },
   ];
+  const KINDS_OF_COLOUR = [['paint', 'Paint', 'Rawng'], ['two', 'Two colours', 'Rawng pahnih'], ['puan', 'Mizo puan', 'Mizo puan'], ['fest', 'Festivals', 'Kut']];
+  // a puan's swatch on its garage button: its main bands, as CSS stripes
+  const SWATCH_BANDS = { puanchei: [['#f4efe4', 5], ['#2a2522', 2], ['#c8323d', 3], ['#2a2522', 2], ['#f4efe4', 4], ['#2f8a4a', 2], ['#f4efe4', 4], ['#f2c230', 2]],
+    ngotekherh: [['#f4efe4', 7], ['#2a2522', 2], ['#f4efe4', 7], ['#2a2522', 5]], hmaram: [['#232a48', 6], ['#f4efe4', 2], ['#232a48', 6], ['#f4efe4', 1]] };
+  const swatchBands = id => { let y = 0; return SWATCH_BANDS[id].map(([c, h]) => `${c} ${y}px ${(y += h)}px`).join(', '); };
   const DESIGNS = [
     { id: 'everyday', name: 'Everyday', en: 'the town scooter, as Aizawl rides it', mz: 'khawpui scooter, Aizawl-in a chuan ang chiah', need: 0 },
     { id: 'classic', name: 'Classic', en: 'round and chrome, a round lamp, the old Italian way', mz: 'a hmel bial leh chrome, light bial, Italy hmanlai dan', need: 3000 },
@@ -771,7 +800,7 @@
     { id: 'chapchar', icon: '🌸', rare: 2, name: 'Chapchar Kut', mz: 'Chapchar Kut', how: 'Finish the Chapchar Kut mission (early March)', howMz: 'Chapchar Kut tihtur zo rawh (March tir)', got: () => S.cos.owned.includes('b-chapchar') },
     { id: 'vengall', icon: '🗺️', rare: 3, name: 'Every veng', mz: 'Veng zawng zawng', how: 'Reach all 26 veng', howMz: 'Veng 26 zawng zawng thleng rawh', got: () => !!CITY && CITY.veng.every(v => S.visited.includes(v.id)), prog: () => [CITY ? been(CITY.veng.map(v => v.id)) : S.visited.length, CITY ? CITY.veng.length : 26] },
     { id: 'streak7', icon: '🏆', rare: 3, name: 'A week running', mz: 'Kar khat zawn', how: 'Ride on 7 days in a row', howMz: 'Ni 7 zawn tlan rawh', got: () => S.streak.best >= 7, prog: () => [S.streak.n, 7] },
-    { id: 'colours', icon: '🎨', rare: 3, name: 'Every colour', mz: 'Rawng zawng zawng', how: 'Open every scooter colour', howMz: 'Scooter rawng zawng zawng hawng rawh', got: () => SCOOTERS.every(hasColour), prog: () => [SCOOTERS.filter(hasColour).length, SCOOTERS.length] },
+    { id: 'colours', icon: '🎨', rare: 3, name: 'Every colour', mz: 'Rawng zawng zawng', how: 'Open every scooter colour', howMz: 'Scooter rawng zawng zawng hawng rawh', got: () => PAINTS().every(hasColour), prog: () => [PAINTS().filter(hasColour).length, PAINTS().length] },
   ];
   // the badges just won (r: the ride just ended, if any), kept in the save
   const badgeNews = x => `<span>${x.icon} ${L('New badge', 'Badge thar')}: <b>${said(x)}</b> · ${L(RARITY[x.rare].name, RARITY[x.rare].mz)} · ✨ +${RARITY[x.rare].xp} XP</span>`;
@@ -837,6 +866,8 @@
   const bestOf = id => (id.startsWith('city:') ? S.cityBest[id.slice(5)] : S.best[id]) || 0;
   // a colour or a design is yours once your points reach it (colours bought with coins before stay yours)
   const hasColour = x => S.owned.includes(x.id) || points() >= x.need, hasDesign = x => points() >= x.need;
+  // (the badge for every colour counts the six it always had, so the new ones do not make it harder)
+  const PAINTS = () => SCOOTERS.filter(x => ['hring', 'sen', 'dumpawl', 'var', 'dum', 'eng'].includes(x.id));
   const myScooter = () => SCOOTERS.find(x => x.id === S.scooter && hasColour(x)) || SCOOTERS[0];
   const myDesign = () => DESIGNS.find(x => x.id === S.design && hasDesign(x)) || DESIGNS[0];
   // today's three: a new day starts them afresh
@@ -871,7 +902,7 @@
       // said on the road, after whatever else is being said: when it is done, or a step of a few
       if (mode === 'playing' && (now >= x.goal || (x.goal <= 5 && kind !== 'coin'))) {
         const msg = now >= x.goal ? `🎯 <b>${L('Done!', 'A zo!')}</b> ${said(x)}` : `🎯 ${said(x)} · ${now} / ${x.goal}`;
-        setTimeout(() => { if (mode === 'playing') { toast(msg, true); if (now >= x.goal) beep(1180, 0.12); } }, 1900);
+        setTimeout(() => { if (mode === 'playing') { toast(msg, true); } }, 1900);
       }
     }
   }
@@ -929,7 +960,6 @@
   let cars = [], jams = [], braking = false, carT = 0, oncomingT = 0, eventWords = new Set();
   let peds = [], crossings = [], pedT = 0, stillT = 0, slowDone = false, jnMet = new Set(), pedSeeded = false;     // (how long stopped at a crossing: a secret badge; the junctions whose people are out, this ride)
   let load = 0, s, v, px, pvx, pax, laneFrom, laneV, laneA, laneTo, laneT, lane, coins, picked, coinsPut, rideMult, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
-  let soundOn = S.sound;
 
   function reset() {
     prepRoute();
@@ -1428,7 +1458,6 @@
   function say(m, e, again) {
     if (eventWords.has(m) && !again) return;
     eventWords.add(m); toast(`<b>${m}</b> · ${e}`, true);
-    if (typeof Audio !== 'undefined' && Audio.playWord) Audio.playWord({ mizo: m, english: e });
     // Record encounter for progress tracking (exposure, not a quiz answer)
     const vid = VOCAB_MAP && VOCAB_MAP[m.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')];
     if (vid && typeof Progress !== 'undefined' && Progress.recordEncounter) Progress.recordEncounter(vid, 'ride-signage', true);
@@ -3272,11 +3301,19 @@ void main() {
       return b.done();
     })();
     const plateGeo = new T.PlaneGeometry(1, 1).rotateY(Math.PI);
+    // the tyres' tread: 40 blocks round the tyre (u goes round it), a groove round the middle of the tread
+    // (v runs across, from one sidewall to the other); the sidewalls smooth
+    const TREAD = tex(512, 64, g => {
+      g.fillStyle = '#9a9a9a'; g.fillRect(0, 0, 512, 64);
+      g.fillStyle = '#d8d8d8'; for (let i = 0; i < 40; i++) { g.fillRect(i * 12.8 + 1.5, 20, 9, 10); g.fillRect(i * 12.8 + 7.9, 34, 9, 10); }
+      g.fillStyle = '#9a9a9a'; g.fillRect(0, 31, 512, 2);
+    });
+    TREAD.colorSpace = T.NoColorSpace; TREAD.wrapS = T.RepeatWrapping;
     const VMAT = {
       paint: [new T.MeshPhongMaterial({ vertexColors: true, shininess: 60, specular: C('#555555') }), new T.MeshPhysicalMaterial({ vertexColors: true, metalness: 0.3, roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.06 })],
       glass: [new T.MeshPhongMaterial({ color: '#25313a', shininess: 90, specular: C('#8a9aa4') }), new T.MeshPhysicalMaterial({ color: '#141c24', metalness: 0, roughness: 0.03, clearcoat: 1, envMapIntensity: 1.6 })],
       chrome: [new T.MeshPhongMaterial({ color: '#d8dbde', shininess: 80, specular: C('#ffffff') }), new T.MeshStandardMaterial({ color: '#e8ebee', metalness: 1, roughness: 0.22 })],
-      tyre: [new T.MeshLambertMaterial({ color: '#1b1d1c' }), new T.MeshStandardMaterial({ color: '#1a1b1b', metalness: 0, roughness: 0.9 })],
+      tyre: [new T.MeshLambertMaterial({ color: '#1b1d1c', bumpMap: TREAD, bumpScale: 2.5 }), new T.MeshStandardMaterial({ color: '#1a1b1b', metalness: 0, roughness: 0.9, bumpMap: TREAD, bumpScale: 2.5 })],
     };
     const paintMat = VMAT.paint[0], chromeMat = VMAT.chrome[0];
     const vpool = (geo, kind, max) => { const m = pool(geo, VMAT[kind][0], max); m.userData.vm = kind; return m; };
@@ -3681,8 +3718,11 @@ void main() {
       }
       if (M.rider) {     // the rider, and now and then someone behind
         if (!c.jk) { const pick = a => a[Math.random() * a.length | 0]; c.jk = pick(JACKETS); c.hm = pick(HELMETS); c.lg = pick(LEGS); c.bag = Math.random() < 0.3 ? pick(BAGS) : ''; c.jk2 = pick(JACKETS); c.hm2 = pick(HELMETS); c.lg2 = pick(LEGS); }
-        rideOn(M.rider, c.jk, c.hm, c.lg, false, c.pillion ? '' : c.bag);
-        if (c.pillion) rideOn(M.rider, c.jk2, c.hm2, c.lg2, true, c.bag);
+        if (realRide && realRide.has(c)) rideReal(c, M.rider, dt);      // (the nearest riders in real bodies)
+        else {
+          rideOn(M.rider, c.jk, c.hm, c.lg, false, c.pillion ? '' : c.bag);
+          if (c.pillion) rideOn(M.rider, c.jk2, c.hm2, c.lg2, true, c.bag);
+        }
       }
       if (c.hazard && (time * 1.6) % 1 < 0.5) {     // the four indicators flashing together
         const [hu, hv, hx, , hh] = M.head, [tu, tv, tx, , th] = M.tail;
@@ -3694,6 +3734,9 @@ void main() {
     }
     function placeAll(far, dt) {
       for (const m of pools) m.n = 0;
+      // the riders nearest the camera ride in real bodies (6 at the best level, 4 at the middle one)
+      realRide = PEOPLE && level > 0 ? new Set(cars.filter(c => MODELS[c.kind].rider && c.at > s - 6 && c.at < s + 70)
+        .sort((a, b) => Math.abs(a.at - s) - Math.abs(b.at - s)).slice(0, level > 1 ? 6 : 4)) : null;
       const f = {};
       for (const c of cars) {
         if (c.at < s - 15 || c.at > s + far) continue;
@@ -3929,8 +3972,81 @@ void main() {
     const scoot = new T.Group(), lm = h => new T.MeshLambertMaterial({ color: h });
     // the body's three colours, each in a plain and a physically based material (the best level)
     const bodyMats = [0, 1, 2].map(() => [new T.MeshPhongMaterial({ vertexColors: true, shininess: 70, specular: C('#666666') }), new T.MeshPhysicalMaterial({ vertexColors: true, metalness: 0.3, roughness: 0.38, clearcoat: 1, clearcoatRoughness: 0.05 })]);
+    // How the paint shines, in both materials: [shininess, specular] for the plain one, and metalness,
+    // roughness, clearcoat, its roughness and a pearl's play of colour (iridescence) for the best level
+    const FINISH = { gloss: [70, '#666666', 0.3, 0.38, 1, 0.05, 0], metallic: [95, '#a0a0a0', 0.78, 0.28, 1, 0.06, 0],
+      pearl: [85, '#8c8c8c', 0.12, 0.24, 1, 0.03, 1], pastel: [28, '#3c3c3c', 0.04, 0.52, 0.45, 0.25, 0], matte: [6, '#1c1c1c', 0.08, 0.8, 0, 0.6, 0] };
+    // A Mizo puan woven over the light panels and the body: its rows, from the loom in Touch and learn
+    // (things/loom.js, FAMOUS and YARNS), drawn into a picture laid on the scooter by height (the bands run
+    // round it, as a puan's do round the one who wears it) and repeated along its length for the patterns
+    const YARN = { sen: '#c8323d', dum: '#2a2522', var: '#f4efe4', hring: '#2f8a4a', dumpawl: '#2f5fae', sendang: '#ec7fa6', eng: '#f2c230', ting: '#232a48' };
+    const PUANS = {
+      puanchei: { rows: [['var', 2], ['dum', 1], ['sen', 2], ['dum', 1], ['var', 1], ['var', 2, 'hring', 'teeth'], ['var', 1], ['var', 2, 'eng', 'wave'], ['var', 1], ['sen', 1], ['dum', 2], ['sen', 1],
+        ['var', 1], ['var', 2, 'dum', 'zig'], ['var', 1], ['var', 2, 'hring', 'fork'], ['var', 1], ['var', 2, 'eng', 'seed'], ['var', 1], ['dum', 1], ['sen', 2], ['dum', 1], ['var', 2]] },
+      ngotekherh: { grid: true, rows: [['var', 3], ['dum', 1], ['var', 4], ['dum', 1], ['var', 4], ['dum', 3], ['var', 4], ['dum', 1], ['var', 4], ['dum', 1], ['var', 3]] },
+      hmaram: { rows: [['ting', 1], ['ting', 1, 'var', 'seed'], ['ting', 1], ['ting', 2, 'var', 'star'], ['ting', 1], ['ting', 2, 'var', 'zig'], ['ting', 1], ['ting', 2, 'var', 'star'], ['ting', 1], ['ting', 1, 'var', 'seed'], ['ting', 1]] },
+    };
+    const puanTex = {};
+    const puanPicture = id => puanTex[id] || (puanTex[id] = (() => {
+      const P = PUANS[id], n = P.rows.reduce((a, r) => a + r[1], 0), W = 256, Hh = 512, rh = Hh / n;
+      const t = tex(W, Hh, g => {
+        let y = 0;
+        for (const [c, k, mc, m] of P.rows) {
+          const h = k * rh;
+          g.fillStyle = YARN[c]; g.fillRect(0, y, W, h + 0.5);
+          if (m) {     // the pattern woven into the row: sakei ha (teeth), disul (wave), kawkpuizikzial (zig), lenbuangthuam (fork), fanghma mu (seed), star
+            g.fillStyle = g.strokeStyle = YARN[mc]; g.lineWidth = Math.max(2, h * 0.16); const mid = y + h / 2, n2 = 8, step = W / n2;
+            for (let i = 0; i < n2; i++) {
+              const x = i * step;
+              g.beginPath();
+              if (m === 'teeth') { g.moveTo(x, y + h * 0.85); g.lineTo(x + step / 2, y + h * 0.15); g.lineTo(x + step, y + h * 0.85); g.closePath(); g.fill(); }
+              else if (m === 'wave') { for (let s = 0; s <= 16; s++) { const xx = x + step * s / 16, yy = mid + Math.sin(s / 16 * Math.PI * 2) * h * 0.28; s ? g.lineTo(xx, yy) : g.moveTo(xx, yy); } g.stroke(); }
+              else if (m === 'zig') { g.moveTo(x, mid + h * 0.25); g.lineTo(x + step / 4, mid - h * 0.25); g.lineTo(x + step / 2, mid + h * 0.25); g.lineTo(x + step * 3 / 4, mid - h * 0.25); g.lineTo(x + step, mid + h * 0.25); g.stroke(); }
+              else if (m === 'fork') { const cx = x + step / 2; g.moveTo(cx, y + h * 0.85); g.lineTo(cx, mid); g.lineTo(cx - step * 0.22, y + h * 0.15); g.moveTo(cx, mid); g.lineTo(cx + step * 0.22, y + h * 0.15); g.stroke(); }
+              else if (m === 'seed') { const cx = x + step / 2; g.moveTo(cx - step * 0.18, mid); g.lineTo(cx, y + h * 0.18); g.lineTo(cx + step * 0.18, mid); g.lineTo(cx, y + h * 0.82); g.closePath(); g.fill(); }
+              else if (m === 'star') { const cx = x + step / 2, r = h * 0.36; for (let s = 0; s < 8; s++) { const a = s / 8 * Math.PI * 2, rr = s % 2 ? r * 0.4 : r; s ? g.lineTo(cx + Math.cos(a) * rr, mid + Math.sin(a) * rr) : g.moveTo(cx + rr, mid); } g.closePath(); g.fill(); }
+            }
+          }
+          y += h;
+        }
+        if (P.grid) { g.fillStyle = YARN.dum; for (let i = 0; i < 5; i++) g.fillRect(i * W / 5 + W / 10 - 1, 0, 2, Hh); }   // ngotekherh's fine black lines, woven the other way: the grid (kherh)
+      });
+      t.wrapS = T.RepeatWrapping; t.wrapT = T.ClampToEdgeWrapping;
+      return t;
+    })());
+    // (a two-colour theme also wears its second colour along the top of the body, above uSplit, so it shows
+    // from behind as well as on the front)
+    const patU = { uPat: { value: null }, uPatOn: { value: 0 }, uTop: { value: new T.Color() }, uSplit: { value: 9 } };
+    for (const m of [...bodyMats[0], ...bodyMats[1]]) {
+      m.onBeforeCompile = sh => {
+        Object.assign(sh.uniforms, patU);
+        sh.vertexShader = 'varying vec3 vObj;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvObj = position;');
+        sh.fragmentShader = 'uniform sampler2D uPat;\nuniform float uPatOn;\nuniform vec3 uTop;\nuniform float uSplit;\nvarying vec3 vObj;\n' + sh.fragmentShader.replace('#include <color_fragment>',
+          '#include <color_fragment>\nif (uPatOn > 0.5) diffuseColor.rgb = texture2D(uPat, vec2(vObj.z * 1.6, (vObj.y - 0.22) / 1.0)).rgb * vColor.rgb;\n' +
+          'else if (vObj.y > uSplit && vObj.z < 0.3) diffuseColor.rgb = uTop * vColor.rgb;');
+      };
+      m.customProgramCacheKey = () => 'scooter-paint';
+    }
+    // a colour from the garage, put on: its three tones, its finish, and its puan if it has one
+    function paint(my) {
+      const f = FINISH[my.finish || 'gloss'];
+      my.body.forEach((h, i) => {
+        const [plain, best] = bodyMats[i];
+        plain.color.set(h); plain.shininess = f[0]; plain.specular.set(f[1]);
+        best.color.set(h); best.metalness = f[2]; best.roughness = f[3]; best.clearcoat = f[4]; best.clearcoatRoughness = f[5]; best.iridescence = f[6]; best.iridescenceIOR = 1.6;
+      });
+      patU.uPatOn.value = my.pattern ? 1 : 0;
+      if (my.pattern) patU.uPat.value = puanPicture(my.pattern);
+      patU.uSplit.value = my.kind === 'two' || my.kind === 'fest' ? 0.58 : 9;          // (9: above everything, no split)
+      patU.uTop.value.set(my.body[0]);
+    }
     const tailMat = new T.MeshBasicMaterial({ color: '#b8352a', toneMapped: false }), amber = new T.MeshBasicMaterial({ color: '#ffae1a', toneMapped: false });
     const jacket = lm('#3b78bf'), trousers = lm('#2c3e50'), dark = lm('#2a2622'), skin = lm('#e8b48a');
+    const GRAIN = tex(128, 128, g => { const d = g.createImageData(128, 128); for (let i = 0; i < d.data.length; i += 4) { const v = 120 + Math.random() * 60 | 0; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; } g.putImageData(d, 0, 0); });
+    GRAIN.colorSpace = T.NoColorSpace; GRAIN.wrapS = GRAIN.wrapT = T.RepeatWrapping; GRAIN.repeat.set(9, 9);
+    const leather = hex => [new T.MeshPhongMaterial({ color: hex, shininess: 34, specular: C('#2f2f2f'), bumpMap: GRAIN, bumpScale: 1.2 }),
+      new T.MeshStandardMaterial({ color: hex, roughness: 0.58, metalness: 0, bumpMap: GRAIN, bumpScale: 1.2 })];
+    const seatBlack = leather('#26221f'), seatBrown = leather('#5a3a24');
     const part = (geo, mat, x, y, z, sx = 1, sy = 1, sz = 1, rx = 0) => {
       const pair = Array.isArray(mat) ? mat : null, m = new T.Mesh(geo, pair ? pair[0] : mat);
       if (pair) m.userData.sw = pair;
@@ -3940,7 +4056,7 @@ void main() {
     const up = new T.Vector3(0, -1, 0);
     const limb = (a, b, r, mat) => {      // a capsule from a to b ([x, y, z], x to the right)
       const d = new T.Vector3(-(b[0] - a[0]), b[1] - a[1], b[2] - a[2]), L = d.length(), m = new T.Mesh(capHang, mat);
-      m.position.set(-a[0], a[1], a[2]); m.quaternion.setFromUnitVectors(up, d.normalize()); m.scale.set(r * 2, L / 2, r * 2); scoot.add(m);
+      m.position.set(-a[0], a[1], a[2]); m.quaternion.setFromUnitVectors(up, d.normalize()); m.scale.set(r * 2, L / 2, r * 2); into.add(m);
     };
     // Four designs, each a group of its own, shown one at a time: its body in the garage's three
     // colours (light, main, dark), its seat, chrome and black parts, its lights, wheels and plate, and
@@ -3953,7 +4069,7 @@ void main() {
       const P = { B: parts(), A: parts(), N: parts(), S: parts(), H: parts(), K: parts() };
       build(P);
       part(P.B.done(), bodyMats[1], 0, 0, 0); part(P.A.done(), bodyMats[0], 0, 0, 0); part(P.N.done(), bodyMats[2], 0, 0, 0);
-      part(P.S.done(), P.seat || dark, 0, 0, 0); part(P.H.done(), VMAT.chrome, 0, 0, 0); part(P.K.done(), black, 0, 0, 0);
+      part(P.S.done(), P.seat || seatBlack, 0, 0, 0); part(P.H.done(), VMAT.chrome, 0, 0, 0); part(P.K.done(), black, 0, 0, 0);
       for (const [z, r] of wheel) { wheels.push(part(tyreGeo, VMAT.tyre, 0, r, z, 0.13, r, r)); part(rimGeo, VMAT.chrome, 0, r, z, 0.13, r, r); }
       for (const e of [-1, 1]) part(box, amber, e * 0.17, P.indY || 0.52, -0.935 - (P.tailOut || 0), 0.06, 0.05, 0.02);   // rear indicators
       DESIGN3[id] = { g, boxY };
@@ -3981,7 +4097,7 @@ void main() {
       for (const e of [-1, 1]) { P.H.bar(-0.86, 0.43, -0.08, 0.45, e * 0.252, 0.006, 0.02); P.H.bar(-0.82, 0.66, -0.12, 0.68, e * 0.248, 0.006, 0.014); }   // chrome trims along the cowls
       P.H.box(0.705, 0.82, 0, 0.03, 0.2, 0.07);                                                      // the horn cast, the "tie" on the shield
       P.H.lamp(0.875, 1.08, 0, 0.09, 0.05);                                                          // the lamp's chrome ring
-      P.S.curve([[-0.8, 0.76], [-0.76, 0.87], [-0.4, 0.88], [-0.08, 0.86], [0.02, 0.77], [-0.1, 0.74]], 0.36, '#ffffff', 2); P.seat = brown;
+      P.S.curve([[-0.8, 0.76], [-0.76, 0.87], [-0.4, 0.88], [-0.08, 0.86], [0.02, 0.77], [-0.1, 0.74]], 0.36, '#ffffff', 2); P.seat = seatBrown;
       P.H.box(-0.66, 0.77, 0, 0.42, 0.03, 0.4); for (const e of [-1, 1]) P.H.rod(-0.88, 0.78, e * 0.19, -0.44, 0.78, e * 0.19, 0.012);   // the chrome rack
       for (const e of [-1, 1]) P.H.rod(0.64, 0.23, e * 0.06, 0.6, 0.62, e * 0.06, 0.022);
       part(ROD, headMat, 0, 1.08, 0.905, 0.075, 0.01, 0.075, Math.PI / 2);                          // the round lamp
@@ -4034,19 +4150,27 @@ void main() {
       part(plateGeo, plateMat, 0, 0.42, -0.95, 0.24, 0.1, 1);
       P.indY = 0.56; P.tailOut = 0.02;
     });
+    // The rider: drawn simply here (for the lowest quality, and until the real bodies have loaded), in a
+    // group of its own; the helmet in another, so it can sit on a real rider's head (see riderBody below)
+    const riderG = new T.Group(), helmetG = new T.Group(); scoot.add(riderG, helmetG); helmetG.position.set(0, 1.54, -0.2);
     for (const e of [-1, 1]) {
-      part(ball, dark, e * 0.3, 1.27, 0.68, 0.06, 0.045, 0.02);                                 // mirrors
+      into = scoot;
+      part(ball, dark, e * 0.3, 1.27, 0.68, 0.06, 0.045, 0.02);
+      part(ball, VMAT.chrome, e * 0.3, 1.27, 0.664, 0.05, 0.036, 0.006);                          // their glass                                 // mirrors
       part(box, dark, e * 0.33, 1.08, 0.72, 0.12, 0.045, 0.045);                                // grips
+      into = riderG;
       limb([e * 0.13, 0.85, -0.3], [e * 0.16, 0.87, 0.12], 0.08, trousers);                    // thighs
       limb([e * 0.16, 0.87, 0.12], [e * 0.17, 0.46, 0.24], 0.065, trousers);                   // shins, feet on the floorboard
       part(box, dark, e * 0.17, 0.42, 0.24, 0.11, 0.08, 0.22);                                  // shoes
       limb([e * 0.2, 1.33, -0.26], [e * 0.31, 1.1, 0.7], 0.062, jacket);                       // arms to the grips
     }
     part(torsoGeo, jacket, 0, 0.9, -0.36, 1.12, 1, 0.74, 0.28);                                   // the rider, leaning forward a little
+    into = helmetG;      // (the helmet's parts round its own middle)
     const helmetMat = new T.MeshPhongMaterial({ color: '#f2f2ee', shininess: 60, specular: C('#555555') }), helmetBand = lm('#c03a2e');
-    part(ball, helmetMat, 0, 1.54, -0.2, 0.16, 0.17, 0.18);                                   // helmet
-    part(ball, helmetBand, 0, 1.57, -0.2, 0.164, 0.045, 0.184);
-    part(ball, new T.MeshPhongMaterial({ color: '#1b2026', shininess: 90, specular: C('#8a9aa4') }), 0, 1.52, -0.1, 0.12, 0.07, 0.1);   // its visor
+    part(ball, helmetMat, 0, 0, 0, 0.16, 0.17, 0.18);                                         // helmet
+    part(ball, helmetBand, 0, 0.03, 0, 0.164, 0.045, 0.184);
+    part(ball, new T.MeshPhongMaterial({ color: '#1b2026', shininess: 90, specular: C('#8a9aa4') }), 0, -0.02, 0.1, 0.12, 0.07, 0.1);   // its visor
+    into = scoot;
     // the delivery box: insulated, rounded, Hnahsin on its back and sides (raised to sit on each design's rack)
     const boxG = new T.Group(); scoot.add(boxG); into = boxG;
     const boxMat = new T.MeshPhongMaterial({ color: '#ffc43d', emissive: '#3a2600', shininess: 30 });
@@ -4114,6 +4238,59 @@ void main() {
       scoot.traverse(m => { if (m.userData.sw) m.material = m.userData.sw[hi ? 1 : 0]; });
       envStep = -1; if (!hi) scene.environment = null;
     }
+    // A rider in the traffic, in a real body: on the seat where the model says the hips go, feet on its
+    // footrests, hands on its bars, leaning as it says; a helmet with its visor on the head; now and then a
+    // backpack. Someone riding behind sits a little higher, hands on their knees.
+    let realRide = null;
+    const mR = new T.Matrix4(), hv3 = new T.Vector3();
+    function helmetOn(p, hex) {
+      const it = PEOPLE.live.get(p); if (!it) return;
+      const h = toL(it.bones.Head.getWorldPosition(hv3));
+      put(pRound, h[0], h[1] + 0.1, h[2] + 0.02, 0.15, 0.16, 0.17, hex);                              // the helmet
+      put(pRound, h[0], h[1] + 0.07, h[2] + 0.11, 0.125, 0.065, 0.06, '#1b2026');                     // its visor
+    }
+    function rideReal(c, R, dt) {
+      // (a real arm is shorter than the models' seat-to-bars: the rider sits 18 cm further forward and leans a
+      // little more, so the elbows bend as a rider's do, not stiff arms held out)
+      const [hu0, hv] = R.hip, [gu, gv, gx] = R.grip, hu = hu0 + 0.18;
+      mR.copy(mB);
+      mB.multiply(mT.makeTranslation(0, 0, hu));
+      c.look = c.look || { shirt: c.jk, lower: c.lg, hair: '#1d1b22', jacket: 1 }; c.sc = c.sc || 1;
+      realPose(c, dt, { H: hv + 0.02, hz: 0, a: R.lean + 0.18, fl: R.foot[0] - hu, fr: R.foot[0] - hu, fy: R.foot[1], hl: [-gx, gv, gu - hu], hr: [gx, gv, gu - hu] });
+      helmetOn(c, c.hm);
+      const it = PEOPLE.live.get(c);
+      if (it && c.bag && !c.pillion) { const b = toL(it.bones.spine_02.getWorldPosition(hv3)); put(pBox, b[0], b[1] - 0.12, b[2] - 0.18, 0.3, 0.38, 0.13, c.bag, R.lean); }
+      if (c.pillion) {
+        mB.copy(mR).multiply(mT.makeTranslation(0, 0, hu0 - 0.4));
+        c.pill = c.pill || { look: { shirt: c.jk2, lower: c.lg2, hair: '#1d1b22', jacket: 1 }, sc: 1 };
+        realPose(c.pill, dt, { H: hv + 0.07, hz: 0, a: 0.08, fl: 0.3, fr: 0.3, fy: Math.max(0.38, R.foot[1]), hl: [-0.17, hv + 0.08, 0.34], hr: [0.17, hv + 0.08, 0.34] });
+        helmetOn(c.pill, c.hm2);
+        const ip = PEOPLE.live.get(c.pill);
+        if (ip && c.bag) { const b = toL(ip.bones.spine_02.getWorldPosition(hv3)); put(pBox, b[0], b[1] - 0.12, b[2] - 0.18, 0.3, 0.38, 0.13, c.bag, 0.08); }
+      }
+      mB.copy(mR);
+    }
+    // Our rider in a real body, sitting as a scooter rider sits: on the front of the seat, a little forward,
+    // feet on the floorboard, hands on the grips, in the jacket from the shop; the helmet on the head. For
+    // each design, how high its seat is (the hips) and its floorboard (the feet).
+    const RIDER = { look: { shirt: '#3b78bf', lower: '#2c3e50', hair: '#1d1b22', jacket: 1 }, sc: 1 };
+    const SEAT_AT = { everyday: [0.84, 0.5], classic: [0.9, 0.5], sport: [0.96, 0.52], electric: [0.86, 0.52] };
+    const rv = new T.Vector3();
+    function riderBody(dt, shirt) {
+      const real = !!PEOPLE && level > 0;
+      riderG.visible = !real;
+      if (!real) { helmetG.position.set(0, 1.54, -0.2); helmetG.rotation.set(0, 0, 0); return; }
+      const [hip, foot] = SEAT_AT[myDesign().id] || SEAT_AT.everyday, Z = -0.18;     // (the rider's own frame: on the seat, Z along the scooter)
+      scoot.updateMatrixWorld(true);
+      mB.copy(scoot.matrixWorld).multiply(mT.makeTranslation(0, 0, Z));
+      realPose(RIDER, dt, { H: hip + 0.02, hz: -0.04, a: 0.42, fl: 0.43, fr: 0.43, fy: foot, hl: [-0.31, 1.08, 0.72 - Z], hr: [0.31, 1.08, 0.72 - Z] });
+      const it = PEOPLE.live.get(RIDER);
+      if (it) {
+        const u = it.mat.userData.u; u.uShirt.value.set(shirt); u.uLong.value = 1;             // the jacket, long sleeves
+        it.bones.Head.getWorldPosition(rv); scoot.worldToLocal(rv);
+        helmetG.position.set(rv.x, rv.y + 0.11, rv.z + 0.02); helmetG.rotation.set(0.25, 0, 0);
+      }
+    }
     function draw3() {
       setRoute();
       const now = performance.now(), ms = lastT ? now - lastT : 16; lastT = now;
@@ -4152,7 +4329,7 @@ void main() {
       }
       // The scooter: it leans, bobs on the road, and tips over in a crash
       const my = myScooter();
-      if (painted !== my.id) { painted = my.id; my.body.forEach((h, i) => bodyMats[i].forEach(m => m.color.set(h))); }
+      if (painted !== my.id) { painted = my.id; paint(my); }
       // the rider's look from the shop: helmet, jacket, delivery box
       const hw = worn('helmet'), jw = worn('jacket'), bw = worn('box');
       if (dressed !== hw.id + jw.id + bw.id) {
@@ -4168,6 +4345,7 @@ void main() {
       const fall = mode === 'crashing' ? Math.min(1, crashT / 0.45) : 0, bob = mode === 'playing' && !reduce ? Math.sin(time * 31) * 0.006 + Math.sin(time * 7.3) * 0.004 : 0;
       scoot.position.set(fS.x, fS.y + bob - fall * 0.15, fS.z); scoot.rotation.set(fS.pitch, fS.yaw - (mode === 'crashing' ? 0 : 0.32 * Math.tanh(Math.atan2(pvx, Math.max(6, v)) * 0.8 / 0.32)), lean + crashDir * fall * 1.25, 'YXZ');   // it turns the way it is going (softly limited, never cut off)
       riderShadow.position.set(fS.x, fS.y + 0.03, fS.z); riderShadow.rotation.y = fS.yaw;
+      riderBody(Math.min(0.1, ms / 1000), jw.c[0]);
       // the sun follows a little ahead of the scooter, so its shadows cover what you see near you
       frame3(s + 14, 0, fA); sun.target.position.set(fA.x, fA.y, fA.z); sun.position.copy(sun.target.position).addScaledVector(sunDir, 150);
       ownSpin = (ownSpin + Math.min(Math.abs(v) / 0.26, 13) * (mode === 'playing' ? dts : 0)) % (Math.PI * 2); for (const w of wheels) w.rotation.x = ownSpin;   // (as the others' wheels)
@@ -4654,66 +4832,7 @@ void main() {
     clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.remove('show'), 1800);
   }
 
-  // ---------- sound: the ride's own sounds, and short beeps; never needed ----------
-  // Made here, no files: the scooter's engine (a low buzz that climbs with the speed), the wind and the
-  // tyres on the road, the brake, and birds where the road runs through bamboo and trees. No horns: Aizawl
-  // does not honk.
-  let ride = null, birdT = 3;
-  function rideSound(dt) {
-    const on = soundOn && mode === 'playing';
-    if (!on && !ride) return;
-    try {
-      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
-      if (ac.state === 'suspended') ac.resume();
-      if (!ride) {
-        const g = ac.createGain(); g.gain.value = 0; g.connect(ac.destination);
-        const eng = ac.createOscillator(), eng2 = ac.createOscillator(), lp = ac.createBiquadFilter(), eg = ac.createGain();
-        eng.type = 'sawtooth'; eng2.type = 'square'; lp.type = 'lowpass'; lp.frequency.value = 380; eg.gain.value = 0.5;
-        eng.connect(lp); eng2.connect(lp); lp.connect(eg); eg.connect(g);
-        const buf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-        const noise = ac.createBufferSource(); noise.buffer = buf; noise.loop = true;
-        const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 700; bp.Q.value = 0.6; const wg = ac.createGain(); wg.gain.value = 0;
-        const hp = ac.createBiquadFilter(); hp.type = 'bandpass'; hp.frequency.value = 3200; hp.Q.value = 8; const bg = ac.createGain(); bg.gain.value = 0;
-        const rp = ac.createBiquadFilter(); rp.type = 'highpass'; rp.frequency.value = 1800; const rg = ac.createGain(); rg.gain.value = 0;
-        noise.connect(bp); bp.connect(wg); wg.connect(g); noise.connect(hp); hp.connect(bg); bg.connect(g); noise.connect(rp); rp.connect(rg); rg.connect(g);
-        eng.start(); eng2.start(); noise.start();
-        ride = { g, eng, eng2, lp, wg, bg, rg };
-      }
-      const t = ac.currentTime, k = Math.min(1, v / 18);
-      ride.g.gain.setTargetAtTime(on ? 0.05 : 0, t, 0.15);
-      // the engine: higher with the speed, and with how hard it is pulling (a climb at walking pace still revs)
-      const rev = v * 5.5 + load * 28;
-      ride.eng.frequency.setTargetAtTime(48 + rev, t, 0.12); ride.eng2.frequency.setTargetAtTime(96 + rev * 2 + 3, t, 0.12);
-      ride.lp.frequency.setTargetAtTime(Math.min(20000, 300 + v * 30 + load * 420), t, 0.2);
-      ride.wg.gain.setTargetAtTime(0.15 + k * 0.6, t, 0.2);
-      ride.bg.gain.setTargetAtTime(braking && v > 3 ? 0.35 : 0, t, 0.05);       // the brake's squeal
-      ride.rg.gain.setTargetAtTime(cond.rain ? 0.5 : 0, t, 0.3);                  // the rain
-      // a bird now and then, where the road runs through trees
-      if (on && (birdT -= dt) <= 0) {
-        birdT = 2 + Math.random() * 5;
-        if (housesNear(Math.floor(s / SEG)) <= 2 && !cond.rain && !cond.night) for (let i = 0; i < 2 + (Math.random() * 3 | 0); i++) {
-          const o = ac.createOscillator(), bgn = ac.createGain(), at = t + i * 0.13, f = 2400 + Math.random() * 1600;
-          o.type = 'sine'; o.frequency.setValueAtTime(f, at); o.frequency.exponentialRampToValueAtTime(f * 1.4, at + 0.08);
-          bgn.gain.setValueAtTime(0.0001, at); bgn.gain.exponentialRampToValueAtTime(0.012, at + 0.02); bgn.gain.exponentialRampToValueAtTime(0.0001, at + 0.1);
-          o.connect(bgn); bgn.connect(ac.destination); o.start(at); o.stop(at + 0.12);
-        }
-      }
-    } catch (e) {}
-  }
-  // ---------- sound: short beeps, never needed ----------
-  let ac = null;
-  function beep(f = 600, d = 0.07, type = 'sine') {
-    if (!soundOn) return;
-    try {
-      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
-      const o = ac.createOscillator(), g = ac.createGain();
-      o.type = type; o.frequency.value = f; g.gain.value = 0.05; g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + d);
-      o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + d);
-    } catch (e) {}
-  }
-  function syncSound() { $('sound').textContent = soundOn ? '🔊' : '🔈'; $('sound').setAttribute('aria-pressed', soundOn); $('sound').setAttribute('aria-label', soundOn ? 'Sound on' : 'Sound off'); }
-  $('sound').onclick = () => { soundOn = !soundOn; S.sound = soundOn; writeSave(); syncSound(); beep(700); };
-  $('langBtn').onclick = () => { S.lang = S.lang === 'mz' ? 'en' : 'mz'; writeSave(); applyLang(); showParcel(); hud(true); syncReady(); drawRoutes(); if (panel === 'missionsView') drawMissions(); if (panel === 'garageView') { $('garageNote').textContent = ''; drawGarage(); } if (panel === 'mapView') drawMap(); beep(700); };
+  $('langBtn').onclick = () => { S.lang = S.lang === 'mz' ? 'en' : 'mz'; writeSave(); applyLang(); showParcel(); hud(true); syncReady(); drawRoutes(); if (panel === 'missionsView') drawMissions(); if (panel === 'garageView') { $('garageNote').textContent = ''; drawGarage(); } if (panel === 'mapView') drawMap(); };
 
   // ---------- the game ----------
   function update(dt) {
@@ -4772,7 +4891,7 @@ void main() {
     if (hit) {
       hit.hit = true; shake = 1; crashT = 0; crashDir = hit.x < px ? 1 : -1;
       crashBy = `${hit.dir > 0 ? 'our way' : 'oncoming'} ${hit.kind} in lane ${hit.lane} (x ${hit.x.toFixed(1)}, ${(hit.at - s).toFixed(1)} m), scooter x ${px.toFixed(1)}`;
-      beep(160, 0.3, 'sawtooth'); burst('#c33f3f'); mode = 'crashing'; braking = false; return;
+      burst('#c33f3f'); mode = 'crashing'; braking = false; return;
     }
     // What the scooter meets: each coin once, the first obstacle ends the ride
     for (const t of things) {
@@ -4780,14 +4899,14 @@ void main() {
       if (t.got || t.hit || (t.kind === 'coin' ? Math.abs(t.at - s) > 0.9 : s < t.at - t.len / 2 - t.back - 0.9 || s > t.at + t.len / 2 + 0.9)) continue;
       if (t.kind === 'coin' ? Math.abs(LANES[t.lane] - px) > 1.15 : Math.abs(t.x - px) > t.half + 0.3) continue;
       if (t.kind === 'coin') {
-        t.got = true; coins++; picked++; dailyAdd('coin', 1, picked); beep(880, 0.06); burst('#ffd34d');
+        t.got = true; coins++; picked++; dailyAdd('coin', 1, picked); burst('#ffd34d');
         pops.push({ text: '+1', x: riderXY().x + (Math.random() - .5) * 30, y: riderXY().y - 110, life: 1 });
         const b = $('coins'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump');
         if (coins % 10 === 0) toast(L(`${coins} coins!`, `Coin ${coins}!`));
       } else {
         crashBy = `${t.kind} in lane ${t.lane}, scooter x ${px.toFixed(1)}`;
         t.hit = true; shake = 1; crashT = 0; crashDir = t.lane < lane || (t.lane === lane && px > LANES[lane]) ? 1 : -1;
-        beep(160, 0.3, 'sawtooth'); burst('#c33f3f'); mode = 'crashing'; return;
+        burst('#c33f3f'); mode = 'crashing'; return;
       }
     }
     things = things.filter(t => t.at + (t.len || 0) / 2 > s - 10 && !t.got);
@@ -4822,7 +4941,7 @@ void main() {
   function end(delivered) {
     if (banked) return;
     showTip(null);
-    banked = true; mode = delivered ? 'done' : 'over'; rideSound(0);
+    banked = true; mode = delivered ? 'done' : 'over';
     // the score: metres, 25 a coin, 500 for the delivery, times your rank's multiplier
     const score = Math.floor((Math.floor(s) + coins * 25 + (delivered ? 500 : 0)) * rideMult), best = bestOf(route.id);
     const xpBefore = xp(), rankBefore = rankOf(xpBefore), tiersBefore = ACH.map(tierOf);
@@ -4882,8 +5001,7 @@ void main() {
     $('endView').hidden = false;
     hud(true); draw();
     if (delivered) {
-      beep(990, 0.2);
-      if (typeof Audio !== 'undefined' && Audio.playWord) Audio.playWord({ mizo: parcel[0], english: parcel[1] });
+     
       // Record parcel delivery as correct encounter
       const vid = VOCAB_MAP && VOCAB_MAP[parcel[0].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')];
       if (vid && typeof Progress !== 'undefined' && Progress.recordEncounter) Progress.recordEncounter(vid, 'ride', true);
@@ -4914,9 +5032,8 @@ void main() {
     // Record quiz answer for progress tracking
     const vid = VOCAB_MAP && VOCAB_MAP[quizWord[0].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')];
     if (vid && typeof Progress !== 'undefined' && Progress.recordEncounter) Progress.recordEncounter(vid, 'ride', right);
-    if (typeof Audio !== 'undefined' && Audio.playWord) Audio.playWord({ mizo: quizWord[0], english: quizWord[1] });     // (said once answered: said with the question, it would be the answer)
-    if (right) { S.quizRight++; S.wallet += 10; S.lifetime += 10; dailyAdd('quiz', 1); if (!S.quizKnown.includes(quizWord[0])) S.quizKnown.push(quizWord[0]); $('endNews').insertAdjacentHTML('beforeend', award().map(badgeNews).join('')); syncWallet(true); beep(990, 0.15); $('quizA').innerHTML = L(`Right! <b>${quizWord[0]}</b> is ${quizWord[1]}`, `A dik! <b>${quizWord[0]}</b> chu ${quizWord[1]} a ni`) + ' · <i class="coin"></i> +10'; }
-    else { b.classList.add('no'); beep(300, 0.15); $('quizA').innerHTML = L(`<b>${quizWord[0]}</b> is ${quizWord[1]}. Next time!`, `<b>${quizWord[0]}</b> chu ${quizWord[1]} a ni. A dawt lehah!`); }
+    if (right) { S.quizRight++; S.wallet += 10; S.lifetime += 10; dailyAdd('quiz', 1); if (!S.quizKnown.includes(quizWord[0])) S.quizKnown.push(quizWord[0]); $('endNews').insertAdjacentHTML('beforeend', award().map(badgeNews).join('')); syncWallet(true); $('quizA').innerHTML = L(`Right! <b>${quizWord[0]}</b> is ${quizWord[1]}`, `A dik! <b>${quizWord[0]}</b> chu ${quizWord[1]} a ni`) + ' · <i class="coin"></i> +10'; }
+    else { b.classList.add('no'); $('quizA').innerHTML = L(`<b>${quizWord[0]}</b> is ${quizWord[1]}. Next time!`, `<b>${quizWord[0]}</b> chu ${quizWord[1]} a ni. A dawt lehah!`); }
     writeSave();
   });
   // ---------- the coach: tips on the first rides ----------
@@ -4962,7 +5079,7 @@ void main() {
   function frame(now) {
     if (mode !== 'playing' && mode !== 'crashing') { loopId = 0; return; }
     const dt = Math.min(0.04, (now - last) / 1000); last = now;
-    coach(dt); update(dt * slow); rideSound(dt);
+    coach(dt); update(dt * slow);
     draw(); dial();
     if (mode === 'playing' || mode === 'crashing') loopId = requestAnimationFrame(frame);
     else { loopId = 0; draw(); }
@@ -4983,7 +5100,7 @@ void main() {
     hnStat(`ride/${route.id}`, `Aizawl Ride: ${route.to}`);
   }
   // Pause stops everything: no time passes, nothing moves, nothing is hit
-  function pause() { if (mode !== 'playing') return; mode = 'paused'; syncBrake(); rideSound(0); $('pauseView').hidden = false; syncPause(); $('resumeBtn').focus(); }
+  function pause() { if (mode !== 'playing') return; mode = 'paused'; syncBrake(); $('pauseView').hidden = false; syncPause(); $('resumeBtn').focus(); }
   function resume() { if (mode !== 'paused') return; mode = 'playing'; $('pauseView').hidden = true; syncPause(); syncBrake(); run(); }
   function syncPause() {
     // on a phone, riding fills the screen like a game: no top bar, no frame, the controls over the road
@@ -4996,7 +5113,7 @@ void main() {
     b.textContent = mode === 'paused' ? '▶' : '⏸'; b.setAttribute('aria-label', mode === 'paused' ? 'Keep riding' : 'Pause');
   }
   $('pauseBtn').onclick = () => (mode === 'paused' ? resume() : pause());
-  function steer(d) { if (mode !== 'playing') return; const l = Math.max(0, Math.min(2, lane + d)); if (l !== lane) { lane = l; steered = true; beep(440, 0.03); } }
+  function steer(d) { if (mode !== 'playing') return; const l = Math.max(0, Math.min(2, lane + d)); if (l !== lane) { lane = l; steered = true; } }
 
   // ---------- choosing a road ----------
   function drawRoutes() {
@@ -5034,15 +5151,34 @@ void main() {
     if (CITY) $('mapSub').textContent = vengOpen();
   };
   let panel = null;
+  // The garage's showroom: the camera goes round the scooter while the garage is open, so a colour or a
+  // design shows on it at once (still, when the phone asks for less motion)
+  function showroom(on) {
+    if (!R3) return;
+    if (!on) { R3.orbit(null); draw(); return; }
+    let a = 2.3, last = performance.now();
+    const step = now => {
+      if (panel !== 'garageView') return;
+      if (!reduce) a += Math.min(0.05, (now - last) / 1000) * 0.32;
+      last = now;
+      const wide = innerWidth > innerHeight;      // (aimed below it, so it shows above the sheet; less so on a wide screen)
+      R3.orbit({ ahead: 0, lat: px, angle: a, dist: wide ? 4.2 : 4.6, height: 1.35, aimY: wide ? -0.35 : -0.95 });
+      draw(); requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
   function openPanel(id) {
     panel = id; $('startView').hidden = true; $(id).hidden = false;
+    if (id === 'garageView') showroom(true);
     if (id === 'garageView') drawGarage(); else if (id === 'mapView') drawMap(); else if (id === 'missionsView') drawMissions();
     const f = $(id).querySelector('button'); if (f) f.focus({ preventScroll: true });
     $(id).querySelector('.sheet').scrollTop = 0;
   }
   function closePanel() {
     if (!panel) return;
+    const was = panel;
     $(panel).hidden = true; panel = null; $('resetAsk').hidden = true; $('garageNote').textContent = '';
+    if (was === 'garageView') showroom(false);
     $('startView').hidden = false; drawRoutes(); syncReady(); $('startBtn').focus();
   }
   document.querySelectorAll('[data-close]').forEach(b => b.onclick = closePanel);
@@ -5056,10 +5192,15 @@ void main() {
       const open = hasDesign(x), on = myDesign() === x;
       return `<button class="item" type="button" data-design="${x.id}" aria-pressed="${on}" aria-label="${x.name}, ${x.en}${open ? '' : `, opens at ${fmt(x.need)} points`}"${open ? '' : ' aria-disabled="true"'}><span class="sw design ${x.id}" aria-hidden="true">🛵</span><span><b>${x.name}</b><small>${L(x.en, x.mz)}</small></span><span class="tag">${on ? L('Riding', 'I chuan mek') : open ? L('Ride it', 'Chuang rawh') : lock(x)}</span></button>`;
     }).join('');
-    $('scooters').innerHTML = SCOOTERS.map(x => {
+    // the colours in their kinds, each swatch showing its look: a paint's shine, a theme's two colours, a puan's bands
+    const swatch = x => x.pattern ? `repeating-linear-gradient(0deg, ${swatchBands(x.pattern)})`
+      : x.kind === 'two' || x.kind === 'fest' ? `linear-gradient(135deg, ${x.body[0]} 0 45%, ${x.body[1]} 45% 85%, ${x.body[2]} 85%)`
+      : x.finish === 'metallic' || x.finish === 'pearl' ? `linear-gradient(135deg, ${x.body[0]}, ${x.body[1]} 45%, ${x.body[0]} 60%, ${x.body[2]})`
+      : `linear-gradient(135deg, ${x.body[0]}, ${x.body[2]})`;
+    $('scooters').innerHTML = KINDS_OF_COLOUR.map(([kind, en, mz]) => `<h4 class="slot">${L(en, mz)}</h4>` + SCOOTERS.filter(x => (x.kind || 'paint') === kind).map(x => {
       const open = hasColour(x), on = myScooter() === x;
-      return `<button class="item" type="button" data-id="${x.id}" aria-pressed="${on}" aria-label="${x.name}, ${x.en}${open ? '' : `, opens at ${fmt(x.need)} points`}"${open ? '' : ' aria-disabled="true"'}><span class="sw" style="background:linear-gradient(135deg, ${x.body[0]}, ${x.body[2]})"></span><span><b>${x.name}</b><small>${x.en}</small></span><span class="tag">${on ? L('Riding', 'I chuan mek') : open ? L('Ride it', 'Chuang rawh') : lock(x)}</span></button>`;
-    }).join('');
+      return `<button class="item" type="button" data-id="${x.id}" aria-pressed="${on}" aria-label="${x.name}, ${x.en}${open ? '' : `, opens at ${fmt(x.need)} points`}"${open ? '' : ' aria-disabled="true"'}><span class="sw" style="background:${swatch(x)}"></span><span><b>${x.name}</b><small>${x.en}</small></span><span class="tag">${on ? L('Riding', 'I chuan mek') : open ? L('Ride it', 'Chuang rawh') : lock(x)}</span></button>`;
+    }).join('')).join('');
     // the shop: helmets, jackets and boxes; what you have is worn with a tap, the rest are bought with coins
     $('shop').innerHTML = SLOTS.map(([slot, label]) => `<h4 class="slot">${label}</h4>` + COSMETICS.filter(x => x.slot === slot).map(x => {
       const own = S.cos.owned.includes(x.id), on = worn(slot) === x;
@@ -5076,7 +5217,7 @@ void main() {
       if (!S.cos.owned.includes(x.id) && x.event) { $('garageNote').textContent = L(`Won in ${EVENTS.find(e => e.id === x.event).name}: its mission, in Missions while it is on.`, `${EVENTS.find(e => e.id === x.event).name} lai a tihtur zawh a hmuh theih.`); return; }
       if (!S.cos.owned.includes(x.id)) {
         if (S.wallet < x.price) { $('garageNote').textContent = L(`You need ${x.price - S.wallet} more coins for the ${x.name} ${x.slot === 'box' ? 'box' : x.slot}.`, `${x.slot === 'box' ? 'Box' : x.slot === 'helmet' ? 'Helmet' : 'Jacket'} ${x.name} tan coin ${x.price - S.wallet} i la mamawh.`); return; }
-        S.wallet -= x.price; S.cos.owned.push(x.id); syncWallet(true); beep(990, 0.15);
+        S.wallet -= x.price; S.cos.owned.push(x.id); syncWallet(true);
         $('garageNote').textContent = L(`The ${x.name} ${x.slot === 'box' ? 'box' : x.slot} is yours!`, `${x.slot === 'box' ? 'Box' : x.slot === 'helmet' ? 'Helmet' : 'Jacket'} ${x.name} i ta a ni ta!`);
       } else $('garageNote').textContent = L(`Wearing the ${x.name} ${x.slot === 'box' ? 'box' : x.slot}.`, `${x.slot === 'box' ? 'Box' : x.slot === 'helmet' ? 'Helmet' : 'Jacket'} ${x.name} i ha mek.`);
       S.cos[x.slot] = x.id; award();
@@ -5088,7 +5229,7 @@ void main() {
     if (!x) return;
     if (!(d ? hasDesign(x) : hasColour(x))) { $('garageNote').textContent = L(`${x.name} opens at ${fmt(x.need)} points. You have ${fmt(points())}: beat your best scores to get there.`, `${x.name} hi point ${fmt(x.need)}-ah a inhawng ang. Point ${fmt(points())} i nei: i score tha ber te paltlang la, i thleng ang.`); return; }
     if (d) S.design = x.id; else S.scooter = x.id;
-    $('garageNote').textContent = L(`${x.name}${d ? '' : ` (${x.en})`}: ready to ride.`, `${x.name}: chuan turin a inpeih.`); beep(990, 0.12);
+    $('garageNote').textContent = L(`${x.name}${d ? '' : ` (${x.en})`}: ready to ride.`, `${x.name}: chuan turin a inpeih.`);
     award(); writeSave(); drawGarage(); draw();
     const again = $('garageView').querySelector(d ? `[data-design="${x.id}"]` : `[data-id="${x.id}"]`); if (again) again.focus();
   });
@@ -5139,13 +5280,13 @@ void main() {
       const fe = festMission(); if (!fe || S.fest.claimed || S.fest.prog < fe.goal) return;
       const prize = COSMETICS.find(c => c.id === fe.prize);
       S.fest.claimed = true; if (!S.cos.owned.includes(prize.id)) S.cos.owned.push(prize.id); S.cos[prize.slot] = prize.id; award();
-      writeSave(); beep(1320, 0.2); syncReady(); drawMissions(); return;
+      writeSave(); syncReady(); drawMissions(); return;
     }
     const x = DAILY.find(y => y.id === b.dataset.daily);
     if (!x || !dailyReady(x)) return;                     // each paid once
     const r0 = rankOf();
-    S.daily.claimed.push(x.id); S.bonus = (S.bonus || 0) + x.reward; S.dailyDone = (S.dailyDone || 0) + 1; award(); writeSave(); beep(990, 0.15); syncReady(); drawMissions();
-    if (rankOf() > r0) { $('rankCard').insertAdjacentHTML('afterbegin', `<div class="rankup">🎉 New rank!</div>`); beep(1320, 0.2); }
+    S.daily.claimed.push(x.id); S.bonus = (S.bonus || 0) + x.reward; S.dailyDone = (S.dailyDone || 0) + 1; award(); writeSave(); syncReady(); drawMissions();
+    if (rankOf() > r0) { $('rankCard').insertAdjacentHTML('afterbegin', `<div class="rankup">🎉 New rank!</div>`); }
   });
 
   // ---------- the Aizawl map: deliveries between veng ----------
@@ -5386,7 +5527,7 @@ void main() {
     audit4All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; jams = planJams(); crossings = planCrossings(); out.push({ id: r.id, ...R3.audit4() }); } route = keep; reset(); return out; },
     audit2All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit2() }); } route = keep; R3.audit(); return out; } };
 
-  applyLang(); syncSound(); syncWallet(); syncReady(); syncPause(); drawRoutes(); showParcel(); reset(); resize();
+  applyLang(); syncWallet(); syncReady(); syncPause(); drawRoutes(); showParcel(); reset(); resize();
   // three.js is fetched once and kept on the phone; until then, and without WebGL, the picture is flat
   const three = /[?&]flat\b/.test(location.search) ? Promise.resolve() : import(THREE_URL).then(T => {
     try { R3 = make3d(T); } catch (e) { R3 = null; return; }
