@@ -4129,11 +4129,11 @@ void main() {
     // dressed in their look, walking as fast as they go
     // a person's skin, the same each time (also for those not dressed from LOOKS: the road workers, the porters)
     const skinOf = p => SKIN[p.skin ?? (p.skin = Math.floor(Math.random() * SKIN.length))];
-    function person(p, dt) {
+    function person(p, dt, ease = {}) {
       const L = p.look, kind = L.stripes ? PEOPLE.woman : PEOPLE.man;
       let it = PEOPLE.live.get(p);
       if (!it) {
-        it = kind.free.pop() || kind.make(); PEOPLE.live.set(p, it); it.root.visible = true;
+        it = kind.free.pop() || kind.make(); PEOPLE.live.set(p, it); it.root.visible = true; it.kind = kind;
         const u = it.mat.userData.u, skin = skinOf(p);
         u.uSkin.value.set(skin).multiplyScalar(1.05); u.uShirt.value.set(L.shirt); u.uPants.value.set(L.lower); u.uStripe.value.set(L.stripes || L.lower);
         u.uShoe.value.set(p.tool && p.tool !== 'boss' ? '#1b1c1e' : SHOES[(Math.random() * SHOES.length) | 0]); u.uHair.value.set(L.elder ? GREY : L.hair); u.uLong.value = L.jacket || L.elder ? 1 : 0;
@@ -4148,7 +4148,45 @@ void main() {
       it.walk.weight += (w - it.walk.weight) * Math.min(1, dt * 6); it.idle.weight = 1 - it.walk.weight;
       it.walk.timeScale = Math.max(0.4, speed / (kind.female ? 0.95 : 1.3)) * (L.elder ? 0.85 : 1);     // (shorter steps in a puan)
       it.mixer.update(dt);
+      // the pose as the clip left it, kept to be put back (see unpose), and then the body at ease
+      const B = it.bones || (it.bones = boneMap(it.root));
+      const S = it.saved = { pelvis: B.pelvis.position.toArray(), q: [] }; POSED.forEach((n, i) => B[n].quaternion.toArray(S.q, i * 4));
+      atEase(it, p, dt, ease);
       return it;
+    }
+    // A body at ease, as people are: the fingers a little curled, as a hand is that holds nothing (more towards
+    // the little finger); standing, the arms nearer the body than the clip holds them; and now and then, as the
+    // delivery rider goes by close, a look at them. (Each finger curls about its own knuckle line, worked out
+    // once from the model's rest pose, where the palms face down.)
+    const CURL = { index: [0.2, 0.32, 0.22], middle: [0.28, 0.42, 0.28], ring: [0.34, 0.48, 0.3], pinky: [0.4, 0.55, 0.34], thumb: [0.04, 0.14, 0.18] };
+    const qC = new T.Quaternion(), vE = new T.Vector3(), vF = new T.Vector3(), DOWN = new T.Vector3(0, -1, 0);
+    function curlAxes(it) {
+      if (it.kind.curl) return it.kind.curl;
+      let sk = null; it.root.traverse(o => { if (o.isSkinnedMesh && !sk) sk = o.skeleton; });
+      const B = it.bones, rest = n => new T.Matrix4().copy(sk.boneInverses[sk.bones.indexOf(B[n])]).invert(), A = {};
+      for (const sd of ['l', 'r']) for (const f of Object.keys(CURL)) {
+        const d = vE.setFromMatrixPosition(rest(`${f}_03_${sd}`)).sub(vF.setFromMatrixPosition(rest(`${f}_01_${sd}`))).normalize();
+        const a = new T.Vector3().crossVectors(d, DOWN).normalize();                 // (turning about it brings the finger down, to the palm)
+        for (const k of [1, 2, 3]) { const n = `${f}_0${k}_${sd}`; A[n] = a.clone().applyQuaternion(new T.Quaternion().setFromRotationMatrix(rest(n)).invert()); }
+      }
+      return (it.kind.curl = A);
+    }
+    function atEase(it, p, dt, { hands = true, arms = true, look = true }) {
+      const B = it.bones;
+      if (hands) {
+        const A = curlAxes(it), f = p.ease ?? (p.ease = 0.6 + Math.random() * 0.4);
+        for (const sd of ['l', 'r']) for (const [fn, amt] of Object.entries(CURL)) for (let k = 0; k < 3; k++) { const n = `${fn}_0${k + 1}_${sd}`; B[n].quaternion.multiply(qC.setFromAxisAngle(A[n], amt[k] * f)); }
+      }
+      if (!arms && !look) return;
+      it.root.updateMatrixWorld(true); mInv.copy(mB).invert();
+      const st = it.idle.weight;
+      if (arms && st > 0.05) { dirW([0, 0, 1], vAxis); bend(B.upperarm_l, vAxis, -0.2 * st); bend(B.upperarm_r, vAxis, 0.2 * st); }
+      if (look && p.watching === undefined) {
+        const r = toL(scoot.position), near = Math.hypot(r[0], r[2]) < 12 && r[2] > -2 && (p.curious ?? (p.curious = Math.random() < 0.6));
+        const want = near ? Math.max(-1.1, Math.min(1.1, Math.atan2(-r[0], Math.max(0.4, r[2])))) : 0;
+        p.glance = (p.glance || 0) + (want - (p.glance || 0)) * Math.min(1, dt * 2.5);
+        if (Math.abs(p.glance) > 0.01) { dirW([0, 1, 0], vUp); bend(B.neck_01, vUp, p.glance * 0.4); bend(B.Head, vUp, p.glance * 0.6); }
+      }
     }
     const mS = new T.Matrix4();
     // after every person is placed: the bodies no one is using any more go back to be used again
@@ -4227,8 +4265,7 @@ void main() {
     }
     function realPose(p, dt, P) {
       const was = PEOPLE.live.get(p); if (was) unpose(was);
-      const it = person(p, dt), B = it.bones || (it.bones = boneMap(it.root));
-      const S = it.saved = { pelvis: B.pelvis.position.toArray(), q: [] }; POSED.forEach((n, i) => B[n].quaternion.toArray(S.q, i * 4));
+      const it = person(p, dt, { hands: !P.grab, arms: false, look: !P.grab }), B = it.bones;
       it.root.updateMatrixWorld(true); mInv.copy(mB).invert();
       const feet = ['l', 'r'].map(s => toL(B['foot_' + s].getWorldPosition(vH)));      // where the idle pose has the feet
       // the hips: down by the crouch, and back
@@ -4310,8 +4347,7 @@ void main() {
       if (L.bag) put(pBox, 0, 0.98, -0.16, 0.3, 0.36, 0.13, L.bag);                                          // a school bag on the back
       if (L.stick) { const x = L.umbrella ? -0.26 : 0.26; limbTo(pLimb, x, 0.86, 0.2, 0.02, 0.32, 0.03, '#6b4a2f'); }   // the walking stick (in the other hand, with an umbrella)
       if (!hold) return;
-      const B = it.bones || (it.bones = boneMap(it.root)), ph = p.phase * Math.PI / 2;
-      const S = it.saved = { pelvis: B.pelvis.position.toArray(), q: [] }; POSED.forEach((n, i) => B[n].quaternion.toArray(S.q, i * 4));
+      const B = it.bones, ph = p.phase * Math.PI / 2;
       it.root.updateMatrixWorld(true); mInv.copy(mB).invert();
       if (p.em) { dirW([-1, 0, 0], vAxis); for (const n of ['spine_01', 'spine_02', 'spine_03']) bend(B[n], vAxis, 0.24 / 3); bend(B.neck_01, vAxis, -0.14); }
       if (L.umbrella) {
@@ -4332,8 +4368,7 @@ void main() {
     // up over his shoulders holding its top, as Aizawl's porters carry a load
     function carryPose(p, dt) {
       const was = PEOPLE.live.get(p); if (was) unpose(was);
-      const it = person(p, dt), B = it.bones || (it.bones = boneMap(it.root));
-      const S = it.saved = { pelvis: B.pelvis.position.toArray(), q: [] }; POSED.forEach((n, i) => B[n].quaternion.toArray(S.q, i * 4));
+      const it = person(p, dt, { arms: false, look: false }), B = it.bones;
       it.root.updateMatrixWorld(true); mInv.copy(mB).invert();
       dirW([-1, 0, 0], vAxis);
       for (const n of ['spine_01', 'spine_02', 'spine_03']) bend(B[n], vAxis, 0.45 / 3);
@@ -5111,7 +5146,7 @@ void main() {
       mR.copy(mB);
       mB.multiply(mT.makeTranslation(0, 0, hu));
       c.look = c.look || { shirt: c.jk, lower: c.lg, hair: '#1d1b22', jacket: 1 }; c.sc = c.sc || 1;
-      realPose(c, dt, { H: hv + 0.02, hz: 0, a: R.lean + 0.18, fl: R.foot[0] - hu, fr: R.foot[0] - hu, fy: R.foot[1], hl: [-gx, gv, gu - hu], hr: [gx, gv, gu - hu] });
+      realPose(c, dt, { H: hv + 0.02, hz: 0, a: R.lean + 0.18, fl: R.foot[0] - hu, fr: R.foot[0] - hu, fy: R.foot[1], hl: [-gx, gv, gu - hu], hr: [gx, gv, gu - hu], grab: true });
       helmetOn(c, c.hm);
       const it = PEOPLE.live.get(c);
       if (it && c.bag && !c.pillion) { const b = toL(it.bones.spine_02.getWorldPosition(hv3)); put(pBox, b[0], b[1] - 0.12, b[2] - 0.18, 0.3, 0.38, 0.13, c.bag, R.lean); }

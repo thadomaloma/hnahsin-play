@@ -4,6 +4,14 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.67.4 (13 November 2026)
+
+- The people in Aizawl Ride look more at ease: their hands rest a little
+  curled, not spread flat, and standing they keep their arms by their sides.
+- As you ride close by, some of them turn their heads to watch you go.
+- The riders in the traffic hold their handlebars with their hands closed
+  round the grips.
+
 ## 1.67.3 (13 November 2026)
 
 - The games open faster on your phone. An update no longer fetches
