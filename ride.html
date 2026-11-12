@@ -5186,10 +5186,40 @@ void main() {
   }
 
   // ---------- sound: the ride's own sounds, and short beeps; never needed ----------
-  // Made here, no files: the scooter's engine (a low buzz that climbs with the speed), the wind and the
-  // tyres on the road, the brake, and birds where the road runs through bamboo and trees. No horns: Aizawl
-  // does not honk.
+  // Made here, no files. The engine as a scooter's is: one cylinder, four strokes, so the exhaust gives a
+  // puff every second turn (about 13 a second at idle, 50 at a cruise); each puff is played as its own short
+  // sound through the silencer, every one a little different in strength and timing, as no engine fires
+  // twice alike. The automatic gearbox (a belt, a CVT) holds the revs up while it pulls away, so the note
+  // rises at once and stays while the speed comes; off the throttle it falls back towards idle, now and then
+  // with a pop from the exhaust. A faint whirr of the belt; the valves ticking; the intake breathing under
+  // throttle. And the wind and the tyres on the road, the brake, the rain, and birds where the road runs
+  // through bamboo and trees. No horns: Aizawl does not honk.
   let ride = null, birdT = 3;
+  // one puff of the exhaust, as it comes out of the silencer: a thump (the silencer's body ringing low),
+  // two quicker resonances over it, and a hiss of gas at its start; made in a few versions, each a little different
+  function puff(seed, pop) {
+    const sr = ac.sampleRate, n = Math.floor(sr * (pop ? 0.16 : 0.11)), buf = ac.createBuffer(1, n, sr), d = buf.getChannelData(0);
+    let r = seed * 9301 + 49297; const rand = () => ((r = (r * 9301 + 49297) % 233280) / 233280);
+    const f1 = 82 + rand() * 22, f2 = 205 + rand() * 50, f3 = 470 + rand() * 120, p1 = rand() * 6, p2 = rand() * 6, p3 = rand() * 6;
+    let lp = 0, peak = 0;
+    for (let i = 0; i < n; i++) {
+      const t = i / sr, att = Math.min(1, t / 0.0015);
+      lp += ((rand() * 2 - 1) - lp) * 0.35;                                       // the hiss, a little softened
+      let x = att * (Math.exp(-t / (pop ? 0.05 : 0.032)) * Math.sin(2 * Math.PI * f1 * t + p1)
+        + 0.55 * Math.exp(-t / 0.018) * Math.sin(2 * Math.PI * f2 * t + p2)
+        + 0.28 * Math.exp(-t / 0.011) * Math.sin(2 * Math.PI * f3 * t + p3)
+        + (pop ? 0.9 : 0.45) * Math.exp(-t / 0.006) * lp);
+      d[i] = x; peak = Math.max(peak, Math.abs(x));
+    }
+    for (let i = 0; i < n; i++) d[i] /= peak;
+    return buf;
+  }
+  // a valve's tick: a tiny bright click
+  function tick() {
+    const sr = ac.sampleRate, n = Math.floor(sr * 0.012), buf = ac.createBuffer(1, n, sr), d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) { const t = i / sr; d[i] = Math.exp(-t / 0.0016) * Math.sin(2 * Math.PI * 4300 * t) * (0.6 + Math.random() * 0.4); }
+    return buf;
+  }
   function rideSound(dt) {
     const on = soundOn && mode === 'playing';
     if (!on && !ride) return;
@@ -5198,27 +5228,62 @@ void main() {
       if (ac.state === 'suspended') ac.resume();
       if (!ride) {
         const g = ac.createGain(); g.gain.value = 0; g.connect(ac.destination);
-        const eng = ac.createOscillator(), eng2 = ac.createOscillator(), lp = ac.createBiquadFilter(), eg = ac.createGain();
-        eng.type = 'sawtooth'; eng2.type = 'square'; lp.type = 'lowpass'; lp.frequency.value = 380; eg.gain.value = 0.5;
-        eng.connect(lp); eng2.connect(lp); lp.connect(eg); eg.connect(g);
+        // the engine: the puffs go through the silencer (a low-pass that opens with the throttle) and a little body
+        const eng = ac.createGain(); eng.gain.value = 1;
+        const muff = ac.createBiquadFilter(); muff.type = 'lowpass'; muff.frequency.value = 900; muff.Q.value = 0.9;
+        const body = ac.createBiquadFilter(); body.type = 'peaking'; body.frequency.value = 160; body.Q.value = 1.2; body.gain.value = 4;
+        const engOut = ac.createGain(); engOut.gain.value = 0.9;
+        eng.connect(muff); muff.connect(body); body.connect(engOut); engOut.connect(g);
+        const tickG = ac.createGain(); tickG.gain.value = 0.05; tickG.connect(g);
+        // the belt's whirr, faint, its pitch with the revs
+        const belt = ac.createOscillator(), beltBp = ac.createBiquadFilter(), beltG = ac.createGain();
+        belt.type = 'triangle'; beltBp.type = 'bandpass'; beltBp.Q.value = 3; beltG.gain.value = 0;
+        belt.connect(beltBp); beltBp.connect(beltG); beltG.connect(g);
+        // noise, for the intake, the wind, the tyres, the brake and the rain
         const buf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
         const noise = ac.createBufferSource(); noise.buffer = buf; noise.loop = true;
-        const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 700; bp.Q.value = 0.6; const wg = ac.createGain(); wg.gain.value = 0;
+        const inLp = ac.createBiquadFilter(); inLp.type = 'lowpass'; inLp.frequency.value = 420; const inG = ac.createGain(); inG.gain.value = 0;
+        const tyre = ac.createBiquadFilter(); tyre.type = 'lowpass'; tyre.frequency.value = 260; const tyG = ac.createGain(); tyG.gain.value = 0;
+        const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 0.5; const wg = ac.createGain(); wg.gain.value = 0;
         const hp = ac.createBiquadFilter(); hp.type = 'bandpass'; hp.frequency.value = 3200; hp.Q.value = 8; const bg = ac.createGain(); bg.gain.value = 0;
         const rp = ac.createBiquadFilter(); rp.type = 'highpass'; rp.frequency.value = 1800; const rg = ac.createGain(); rg.gain.value = 0;
-        noise.connect(bp); bp.connect(wg); wg.connect(g); noise.connect(hp); hp.connect(bg); bg.connect(g); noise.connect(rp); rp.connect(rg); rg.connect(g);
-        eng.start(); eng2.start(); noise.start();
-        ride = { g, eng, eng2, lp, wg, bg, rg };
+        for (const [f, gn] of [[inLp, inG], [tyre, tyG], [bp, wg], [hp, bg], [rp, rg]]) { noise.connect(f); f.connect(gn); gn.connect(g); }
+        belt.start(); noise.start();
+        ride = { g, eng, muff, engOut, tickG, belt, beltBp, beltG, inG, tyG, wg, bg, rg, puffs: [0, 1, 2, 3, 4, 5].map(i => puff(i + 1, false)), pops: [puff(11, true), puff(12, true)], tick: tick(),
+          rpm: 1600, th: 0, next: 0 };
       }
-      const t = ac.currentTime, k = Math.min(1, v / 18);
-      ride.g.gain.setTargetAtTime(on ? 0.05 : 0, t, 0.15);
-      // the engine: higher with the speed, and with how hard it is pulling (a climb at walking pace still revs)
-      const rev = v * 5.5 + load * 28;
-      ride.eng.frequency.setTargetAtTime(48 + rev, t, 0.12); ride.eng2.frequency.setTargetAtTime(96 + rev * 2 + 3, t, 0.12);
-      ride.lp.frequency.setTargetAtTime(Math.min(20000, 300 + v * 30 + load * 420), t, 0.2);
-      ride.wg.gain.setTargetAtTime(0.15 + k * 0.6, t, 0.2);
-      ride.bg.gain.setTargetAtTime(braking && v > 3 ? 0.35 : 0, t, 0.05);       // the brake's squeal
-      ride.rg.gain.setTargetAtTime(cond.rain ? 0.5 : 0, t, 0.3);                  // the rain
+      const t = ac.currentTime, R = ride, k = Math.min(1, v / 16), kmh = v * 3.6;
+      R.g.gain.setTargetAtTime(on ? 0.07 : 0, t, 0.15);
+      // the revs: the throttle open (the gearbox holds them up while it pulls), or shut (back towards idle, the
+      // wheel still turning the engine a little at speed); they rise quickly and fall more slowly
+      const th = on && !braking ? load : 0;
+      R.th += (th - R.th) * Math.min(1, dt * (th > R.th ? 8 : 4));
+      const want = R.th > 0.05 ? Math.min(7600, 2300 + kmh * 55 + R.th * 2700) : Math.max(1600, kmh > 8 ? 1400 + kmh * 42 : 1600);
+      R.rpm += (want - R.rpm) * Math.min(1, dt * (want > R.rpm ? 4 : 1.8));
+      // the puffs, laid out a moment ahead: one every second turn, never two alike
+      if (on) {
+        if (R.next < t) R.next = t + 0.02;
+        while (R.next < t + 0.12) {
+          const closed = R.th < 0.08, popNow = closed && R.rpm > 3200 && Math.random() < 0.06;
+          const src = ac.createBufferSource(), gn = ac.createGain();
+          src.buffer = popNow ? R.pops[Math.random() * 2 | 0] : R.puffs[Math.random() * R.puffs.length | 0];
+          src.playbackRate.value = (0.9 + R.rpm / 9000 * 0.35) * (0.96 + Math.random() * 0.08);   // (quicker puffs as it revs)
+          gn.gain.value = (popNow ? 1.3 : (0.42 + R.th * 0.58)) * (0.82 + Math.random() * 0.36) * (closed && Math.random() < 0.05 ? 0.3 : 1);   // (and shut, now and then a weak one)
+          src.connect(gn); gn.connect(R.eng); src.start(R.next);
+          const tk = ac.createBufferSource(); tk.buffer = R.tick; tk.playbackRate.value = 0.9 + Math.random() * 0.2; tk.connect(R.tickG); tk.start(R.next + 60 / R.rpm);   // a valve, between the puffs
+          R.next += 120 / R.rpm * (1 + (Math.random() - 0.5) * 0.05);
+        }
+      }
+      R.muff.frequency.setTargetAtTime(520 + R.th * 1500 + R.rpm * 0.08, t, 0.08);       // the throttle open, a harder, brighter note
+      R.engOut.gain.setTargetAtTime(0.75 + R.th * 0.35, t, 0.1);
+      R.tickG.gain.setTargetAtTime(0.03 + R.rpm / 7600 * 0.03, t, 0.2);
+      R.belt.frequency.setTargetAtTime(R.rpm / 60 * 7.5, t, 0.1); R.beltBp.frequency.setTargetAtTime(R.rpm / 60 * 7.5, t, 0.1);
+      R.beltG.gain.setTargetAtTime(v > 1 ? 0.035 + R.th * 0.03 : 0, t, 0.2);
+      R.inG.gain.setTargetAtTime(R.th * (0.12 + R.rpm / 7600 * 0.25), t, 0.08);           // the intake, breathing under throttle
+      R.tyG.gain.setTargetAtTime(k * 0.45, t, 0.2);                                       // the tyres on the road
+      R.wg.gain.setTargetAtTime(k * k * 0.5, t, 0.2);                                     // the wind, more as it goes faster
+      R.bg.gain.setTargetAtTime(braking && v > 3 ? 0.3 : 0, t, 0.05);                     // the brake's squeal
+      R.rg.gain.setTargetAtTime(cond.rain ? 0.5 : 0, t, 0.3);                             // the rain
       // a bird now and then, where the road runs through trees
       if (on && (birdT -= dt) <= 0) {
         birdT = 2 + Math.random() * 5;

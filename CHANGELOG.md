@@ -4,6 +4,14 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.64.2 (12 November 2026)
+
+- Aizawl Ride's scooter sounds like a scooter: a one-cylinder engine's puffs
+  through the silencer, none two alike (a putt-putt at idle, a steady note on
+  the move), the revs held up as it pulls away and falling back off the
+  throttle, now and then with a pop; the belt's whirr, the valves, the intake,
+  the tyres on the road and the wind.
+
 ## 1.64.1 (12 November 2026)
 
 - Aizawl Ride: Hnahsin DELIVERY on your delivery box reads cleanly in every
