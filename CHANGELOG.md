@@ -4,6 +4,13 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.64.1 (12 November 2026)
+
+- Aizawl Ride: Hnahsin DELIVERY on your delivery box reads cleanly in every
+  colour. The letters sit on the box's own colour (no patch of another shade
+  behind them), in the middle of each side, and on the puan and Chapchar Kut
+  boxes the puan's bands go round the box, clear of the writing.
+
 ## 1.64.0 (12 November 2026)
 
 ### Aizawl Ride: unloading at the shop

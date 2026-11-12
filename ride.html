@@ -1970,7 +1970,7 @@
     // the delivery box on the rack (in its bought colour, or a puan's stripes), its dark lid and Hnahsin on the back
     const bx = worn('box'), bg = ctx.createLinearGradient(0, -68, 0, -42); bg.addColorStop(0, shadeHex(bx.c[0], 0.2)); bg.addColorStop(1, shadeHex(bx.c[0], -0.12));
     ctx.fillStyle = bg; ctx.beginPath(); ctx.roundRect(-16, -68, 32, 26, 4); ctx.fill();
-    if (bx.puan) for (const [y, h, c] of [[-63, 2.5, '#c8323d'], [-58, 1.2, '#f2c230'], [-48, 2.5, '#c8323d'], [-45, 1.2, '#2f8a4a']]) { ctx.fillStyle = c; ctx.fillRect(-16, y, 32, h); }
+    if (bx.puan) for (const [y, h, c] of [[-64.5, 2, '#c8323d'], [-61.8, 1, '#f2c230'], [-48.4, 1, '#2f8a4a'], [-46.6, 2, '#c8323d']])     // (clear of the writing) { ctx.fillStyle = c; ctx.fillRect(-16, y, 32, h); }
     ctx.strokeStyle = 'rgba(35,30,22,.5)'; ctx.lineWidth = 1.2; ctx.stroke();
     rr(-17, -70, 34, 5, 2.5, '#2b2b2b');
     ctx.fillStyle = bx.c[1]; ctx.font = '800 6.5px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Hnahsin', 0, -54);
@@ -4507,15 +4507,24 @@ void main() {
     const boxMat = new T.MeshPhongMaterial({ color: '#ffc43d', emissive: '#3a2600', shininess: 30 });
     part(side([[-0.98, 0.76], [-0.98, 1.24], [-0.4, 1.24], [-0.4, 0.76]], 0.5, 0.07, 2), boxMat, 0, 0, 0);
     part(side([[-0.99, 1.17], [-0.99, 1.26], [-0.39, 1.26], [-0.39, 1.17]], 0.52, 0.04), lm('#2b2b2b'), 0, 0, 0);   // its lid
-    // its writing: Hnahsin DELIVERY on the box's colour; on the puanchei box, on a puan's bands
-    const boxTex = b => tex(128, 64, g => {
-      g.fillStyle = b.c[0]; g.fillRect(0, 0, 128, 64);
-      if (b.puan) for (const [y, h, c] of [[2, 6, '#c8323d'], [11, 2, '#f2c230'], [46, 2, '#2f8a4a'], [52, 7, '#c8323d'], [61, 2, '#f2c230']]) { g.fillStyle = c; g.fillRect(0, y, 128, h); }
-      g.fillStyle = b.c[1]; g.font = '800 30px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('Hnahsin', 64, 27); g.font = '700 13px sans-serif'; g.fillText('DELIVERY', 64, b.puan ? 40 : 51);
+    // its writing, Hnahsin and DELIVERY under it: the letters alone (the box's own colour round them, so there is
+    // no patch of another shade behind them), in the middle of each face, sized to fit in any box colour
+    const boxTex = b => tex(256, 128, g => {
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+      g.font = '800 62px "Plus Jakarta Sans", system-ui, sans-serif';
+      g.lineWidth = 6; g.strokeStyle = b.c[0]; g.strokeText('Hnahsin', 128, 50);     // (a rim in the box's colour keeps the letters apart from a band)
+      g.fillStyle = b.c[1]; g.fillText('Hnahsin', 128, 50);
+      g.font = '700 23px "Plus Jakarta Sans", system-ui, sans-serif'; if ('letterSpacing' in g) g.letterSpacing = '5px';
+      g.fillText('DELIVERY', 128, 101);
     });
-    const logo = new T.MeshLambertMaterial({ map: boxTex(COSMETICS.find(x => x.id === 'b-eng')) });
-    part(plane, logo, 0, 0.84, -1.012, 0.4, 0.22, 1).rotation.y = Math.PI;
-    for (const e of [-1, 1]) part(plane, logo, e * 0.258, 0.84, -0.69, 0.44, 0.22, 1).rotation.y = -e * Math.PI / 2;
+    const logo = new T.MeshLambertMaterial({ map: boxTex(COSMETICS.find(x => x.id === 'b-eng')), transparent: true, depthWrite: false });
+    part(plane, logo, 0, 0.865, -1.012, 0.46, 0.23, 1).rotation.y = Math.PI;
+    for (const e of [-1, 1]) part(plane, logo, e * 0.258, 0.865, -0.69, 0.46, 0.23, 1).rotation.y = -e * Math.PI / 2;
+    // a puan box: the puan's bands round the box itself, along its foot and under its lid, clear of the writing
+    const bands = new T.Group(); boxG.add(bands); into = bands;
+    for (const [y, h, c] of [[0.775, 0.045, '#c8323d'], [0.832, 0.014, '#f2c230'], [0.853, 0.01, '#2f8a4a'], [1.1, 0.01, '#2f8a4a'], [1.118, 0.014, '#f2c230'], [1.139, 0.03, '#c8323d']])
+      part(box, lm(c), 0, y, -0.69, 0.512, h, 0.596);
+    into = boxG;
     into = scoot;
     // our own lamp: a spot light from the headlight, down the road (off by day)
     const head = new T.SpotLight('#fff1d2', 0, 60, 0.46, 0.8, 1.2); head.position.set(0, 1.05, 0.95); head.target.position.set(0, 0, 14);
@@ -4667,7 +4676,7 @@ void main() {
         dressed = hw.id + jw.id + bw.id;
         helmetMat.color.set(hw.c[0]); helmetBand.color.set(hw.c[1]); jacket.color.set(jw.c[0]);
         boxMat.color.set(bw.c[0]); boxMat.emissive.set(bw.c[0]).multiplyScalar(0.12);
-        if (logo.map) logo.map.dispose(); logo.map = boxTex(bw); logo.needsUpdate = true;
+        if (logo.map) logo.map.dispose(); logo.map = boxTex(bw); logo.needsUpdate = true; bands.visible = !!bw.puan;
       }
       const dz = myDesign().id;
       if (shown !== dz) { shown = dz; for (const [id, d] of Object.entries(DESIGN3)) d.g.visible = id === dz; boxG.position.y = DESIGN3[dz].boxY; }
@@ -5911,7 +5920,7 @@ void main() {
     peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)), dog: !!p.dog, child: !!p.look.child })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, fareTaxi: (ahead, speed = 8) => { const c = newCar('taxi', 0, s + ahead, speed, 1); c.fare = 'want'; cars.push(c); return c; }, park: (kind, ahead, lane = 1, dir = 1, speed = 0) => { const c = newCar(kind, lane, s + ahead, dir * speed, dir); c.cruise = speed; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), holes: () => R3 && R3.holesSeen(), sizes: () => R3 && R3.sizes(), under: (k, lat) => R3 && R3.under(k, lat), probe: (k, lat, al) => R3 && R3.probe(k, lat, al), mem: () => R3 && R3.mem(), walker: (ahead, x, va = 1, vx = 0, look, dog) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; if (dog) p.dog = dog; peds.push(p); return peds.length; },
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
     // for the tests: ride a given road; and every road with how many crossings and jams it has
-    shopsWhy: sd => R3 && R3.shopsWhy(sd), routes: () => [...DATA.routes, ...CITY.jobs.map(routeOf)].map(r => ({ id: r.id, left: (r.housesL || []).slice(0, 300).reduce((a, b) => a + b, 0) })), useRoute: id => { route = [...DATA.routes, ...CITY.jobs.map(routeOf)].find(r => r.id === id); reset(); return route.length; }, go: () => start(),
+    shopsWhy: sd => R3 && R3.shopsWhy(sd), dress: (scooter, design, box) => { S.bonus = Math.max(S.bonus || 0, 1e6); if (scooter) { S.scooter = scooter; if (!S.owned.includes(scooter)) S.owned.push(scooter); } if (design) S.design = design; if (box) S.cos.box = box; return [myScooter().id, myDesign().id, worn('box').id]; }, routes: () => [...DATA.routes, ...CITY.jobs.map(routeOf)].map(r => ({ id: r.id, left: (r.housesL || []).slice(0, 300).reduce((a, b) => a + b, 0) })), useRoute: id => { route = [...DATA.routes, ...CITY.jobs.map(routeOf)].find(r => r.id === id); reset(); return route.length; }, go: () => start(),
     // for the tests: a vehicle of a kind, so far ahead, in a lane, at a speed, going our way (1) or towards us (-1)
     car: (kind, ahead, lane = 0, v = 0, dir = 1) => { cars.push(newCar(kind, lane, s + ahead, v, dir)); return cars.length; },
     plans: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push([r.id, Math.round(r.length), planCrossings().length, planJams().length]); } route = keep; reset(); return out; },
