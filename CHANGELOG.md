@@ -4,6 +4,19 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.64.0 (12 November 2026)
+
+### Aizawl Ride: unloading at the shop
+
+- A goods truck unloads only in front of a shop on your side of the road,
+  stopped with its back at the shop's door. The shop is open: its shutter
+  rolled up, shelves of goods, the shopkeeper in the doorway, and the sacks
+  piling up by its door.
+- The unloading looks as it does in Aizawl: the tailgate let down, a man on
+  the truck handing the sacks down, and two porters (hlawhfa) in turn, each
+  with his back to the truck while a sack is set on it, then carrying it bent
+  under its weight, both hands over his shoulders, to the shop and back.
+
 ## 1.63.2 (12 November 2026)
 
 - The home page's footer shows the day the games were last updated, next to

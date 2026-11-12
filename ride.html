@@ -1005,12 +1005,24 @@
   // drawn, and has its people: the road workers and the man with the flag, the porters carrying the sacks, people
   // waiting for the bus and getting on and off, a taxi's passenger.
   const ROAD_EDGE = 3.9;       // (the road's half width, as drawn)
+  // a shop at street level on the left at station i (in the flat view, where the street is busy and has a footpath)
+  const shopOn = i => R3 ? R3.shop(i, -1) : footpath(i) && housesNear(i) >= 14 ? { k: i, face: 6.4, along: 4, gy: 0 } : null;
   function roadblock(lane, at) {
     const near = housesNear(Math.floor(at / SEG));
     const pick = list => { let r = Math.random() * list.reduce((a, [, w]) => a + w, 0); for (const [k, w] of list) if ((r -= w) <= 0) return k; return list[0][0]; };
     // (the tests may ask for one kind)
-    const kind = (window.__ride && window.__blockKind) || pick(lane === 0 ? [['parked', 0.36], ['unload', 0.14], ['busstop', near >= 18 ? 0.12 : 0.02], ['works', 0.1], ['pothole', 0.14]]
+    let kind = (window.__ride && window.__blockKind) || pick(lane === 0 ? [['parked', 0.36], ['unload', 0.14], ['busstop', near >= 18 ? 0.12 : 0.02], ['works', 0.1], ['pothole', 0.14]]
       : [['works', 0.29], ['pothole', 0.42]]);      // (road works, half as often as they were)
+    // a goods truck unloads only in front of a shop (dawr kawt), on our side: it stops with its back at the shop's door
+    let shop = null;
+    // (most of the road is cut into the hill, so a shop at street level on the left is not often passed: by one,
+    // a truck is more often there, unloading)
+    if (lane === 0 && kind !== 'unload' && !(window.__ride && window.__blockKind) && Math.random() < 0.45 && [0, 1, -1, 2, -2].some(d => shopOn(Math.floor(at / SEG) + d))) kind = 'unload';
+    if (kind === 'unload') {
+      const i0 = Math.floor(at / SEG);
+      for (const d of [0, 1, -1, 2, -2, 3]) if ((shop = shopOn(i0 + d))) break;
+      if (shop) at = shop.k * SEG + KINDS.truck.len / 2 - 0.7; else kind = 'parked';
+    }
     // (a bus stops where there is a footpath; nothing parks across a side road on the left, road works go there instead)
     const mouth = (route.junctions || []).some(q => q[1] < 0 && Math.abs(q[0] * SEG - at) < 12);
     const vehicle = kind === 'parked' || kind === 'unload' || kind === 'busstop';
@@ -1018,7 +1030,11 @@
     if (t.kind === 'parked' || t.kind === 'unload' || t.kind === 'busstop') {
       const ck = t.kind === 'busstop' ? 'bus' : t.kind === 'unload' ? 'truck' : ['car', 'sedan', 'suv', 'taxi', 'taxi', 'car'][Math.random() * 6 | 0], K = KINDS[ck];
       t.car = { kind: ck, col: K.cols[Math.random() * K.cols.length | 0], len: K.len, wid: K.wid, hgt: K.hgt, x: -(ROAD_EDGE - 0.25 - K.wid / 2), dir: 1, v: 0, vx: 0, slowing: false, at, hazard: true };
-      t.lane = 0; t.x = t.car.x; t.half = K.wid / 2; t.len = K.len; if (t.kind === 'unload') t.back = 1.7;     // (the sacks, behind the truck)
+      t.lane = 0; t.x = t.car.x; t.half = K.wid / 2; t.len = K.len;
+      if (t.kind === 'unload') {     // (behind it, the porters going to and fro; in the truck, the sacks; its tailgate down)
+        t.back = 1.5; t.delivered = 0; Object.assign(t.car, { cargo: 'sacks', unload: true });
+        t.shop = shop ? { at: shop.k * SEG, face: shop.face, along: shop.along, gy: shop.gy } : null;
+      }
     } else { t.x = LANES[lane]; t.half = 1.15; t.len = t.kind === 'works' ? 7 : 2.6; }
     return t;
   }
@@ -1232,7 +1248,7 @@
   const newPed = (at, x, va, vx, look) => ({ at, x, va, vx, look: look || LOOKS[Math.random() * LOOKS.length | 0], phase: Math.random() * 4, cross: null, umb: UMBRELLAS[Math.random() * UMBRELLAS.length | 0] });
   // what a person wears as drawn: in the rain, the umbrella up (not the road workers or porters, whose hands are
   // full, nor those under the bus stop's roof)
-  const lookOf = p => (cond.rain && p.umb && !p.tool && !p.carry && !p.shelter && !p.look.umbrella ? p.lookU || (p.lookU = { ...p.look, umbrella: p.umb }) : p.look);
+  const lookOf = p => (cond.rain && p.umb && !p.tool && !p.haul && !p.loader && !p.shelter && !p.look.umbrella ? p.lookU || (p.lookU = { ...p.look, umbrella: p.umb }) : p.look);
   const DOGS = ['#8d5a33', '#2b2522', '#e9dcc4', '#c9a06a', '#6b6b6b'];
   // People walking the footpaths, coming into view far ahead: on their own, a parent with a child, two children
   // together, or someone walking their dog on a lead
@@ -1250,7 +1266,7 @@
   // digging, one raking the tar for the roller and one with a red flag for the traffic; porters (hlawhfa) carrying the sacks from the truck to
   // the footpath and back; people waiting for the bus by its door, someone getting on and someone off; a
   // taxi's passenger getting in or out. (Where there is no footpath, they keep to the road's edge.)
-  const WORKER = [{ shirt: '#ff7a1a', lower: '#3a3a3a', hair: '#1d1b22' }, { shirt: '#ff8f2e', lower: '#2c3e50', hair: '#1d1b22' }], PORTER = { shirt: '#6b7f5a', lower: '#3a3a3a', hair: '#1d1b22' };
+  const WORKER = [{ shirt: '#ff7a1a', lower: '#3a3a3a', hair: '#1d1b22' }, { shirt: '#ff8f2e', lower: '#2c3e50', hair: '#1d1b22' }], PORTER = { shirt: '#6b7f5a', lower: '#3a3a3a', hair: '#1d1b22' }, PORTER2 = { shirt: '#8a6d4b', lower: '#2c3e50', hair: '#1d1b22' };
   function crew(t) {
     const i = Math.floor(t.at / SEG), walk = walkHere(i, -1), path = walk ? -5.3 : -3.75, side = t.lane === 0 ? 1 : -1;
     const add = (at, x, o) => { const p = newPed(at, x, 0, 0); Object.assign(p, o); peds.push(p); return p; };
@@ -1262,8 +1278,15 @@
     } else if (t.kind === 'pothole') {
       add(t.at + 0.85, t.x + side * 0.35, { look: WORKER[1], aim: Math.PI, hat: '#f2c230', tool: 'tamper' });              // pounding the gravel down in the hole
     } else if (t.kind === 'unload') {
-      const at = t.at - t.len / 2 - 0.9, to = walkHere(Math.floor(at / SEG), -1) ? -5.3 : -3.75;
-      for (let k = 0; k < 2; k++) add(at - k * 0.7, t.x - 0.3 - k * 0.9, { look: PORTER, shuttle: [to, t.x - 0.3], vx: (k ? 1 : -1) * 0.9, carry: '#e4dccb' });
+      // two porters (hlawhfa) in turn: one waits at the tailgate while a sack is handed down to him, carries it on
+      // his back to the shop's door and sets it on the pile there, and comes back for the next; the man on the
+      // truck hands them down; the shopkeeper watches from the doorway
+      const tail = [t.at - t.len / 2 - 1.05, t.car.x + 0.15], S = t.shop;     // (just past the let-down tailgate)
+      const door = S ? [S.at + S.along * 0.18, -(S.face - 0.8)] : [tail[0] - 0.8, walk ? -5.3 : -3.75];
+      add(tail[0], tail[1], { look: PORTER, haul: { a: tail, b: door, t } });
+      add(door[0], door[1], { look: PORTER2, haul: { a: tail, b: door, t, wait: 1.4 } });
+      add(t.at - t.len / 2 + 0.55, t.car.x, { look: PORTER, lift: 1.1, loader: t, aim: Math.PI });
+      if (S) add(S.at - S.along * 0.3, -(S.face - 0.35), { aim: -Math.PI / 2 });
     } else if (t.kind === 'busstop' && walkHere(Math.floor((t.at + 3.3) / SEG), -1)) {
       const door = t.at + 3.3;
       for (let k = 0; k < 3; k++) add(door - 0.6 - k * 1.0, -5.2 - (k % 2) * 0.15, { aim: -Math.PI / 2, shelter: true });  // waiting at the front of the shelter, facing the bus
@@ -1331,9 +1354,22 @@
       }
     }
     for (const p of peds) {
-      if (p.shuttle) {      // a porter, to and fro between the truck and the footpath (carrying a sack one way)
-        p.x += p.vx * dt; if (p.x < p.shuttle[0]) { p.x = p.shuttle[0]; p.vx = Math.abs(p.vx); } if (p.x > p.shuttle[1]) { p.x = p.shuttle[1]; p.vx = -Math.abs(p.vx); }
-        p.phase += Math.abs(p.vx) * dt * 2.6; continue;
+      if (p.haul) {     // a porter: to the tailgate for a sack, with it to the shop's door, and back (slower with a sack on his back)
+        const H = p.haul;
+        if (H.wait > 0) {     // a sack being handed down to him, or being set down on the pile
+          p.va = p.vx = 0;
+          if ((H.wait -= dt) <= 0) { if (p.loaded) H.t.delivered++; p.loaded = !p.loaded; H.busy = false; }
+          continue;
+        }
+        const [ta, tx] = p.loaded ? H.b : H.a, da = ta - p.at, dx = tx - p.x, d = Math.hypot(da, dx), sp = p.loaded ? 0.85 : 1.25;
+        if (d < 0.06) {
+          p.va = p.vx = 0; H.wait = p.loaded ? 0.7 : 1.1; H.busy = !p.loaded;
+          p.aim = p.loaded ? Math.PI / 2 : Math.PI;     // (facing the shop; at the truck, his back to it, for the sack to be set on his back)
+          continue;
+        }
+        const step = Math.min(d, sp * dt);
+        p.va = da / d * sp; p.vx = dx / d * sp; p.at += da / d * step; p.x += dx / d * step; p.phase += sp * dt * 2.6;
+        continue;
       }
       if (p.hold) { if (p.at - s < 38) p.hold = false; else continue; }            // getting on or off as you come near
       if (p.board !== undefined && p.x >= p.board) { p.gone = true; continue; }     // in through the door
@@ -3331,10 +3367,8 @@ void main() {
         for (const u of [-3.37, -2.15, -0.9, 0.35, 1.56]) W.box(u, 1.68, e * 0.497, 0.08, 1.28, 0.03, POST);
         W.box(-0.9, 2.33, e * 0.49, 5.04, 0.06, 0.05, POST);
       }
-      for (const u of [1.55, -3.35]) {
-        W.box(u, 1.68, 0, 0.04, 1.25, 0.99, WOOD); W.box(u, 2.33, 0, 0.08, 0.06, 1.014, POST);
-        for (const v of [1.33, 1.66, 1.99]) W.box(u + Math.sign(u) * 0.023, v, 0, 0.006, 0.035, 1.0, PLANK);
-      }
+      W.box(1.55, 1.68, 0, 0.04, 1.25, 0.99, WOOD); W.box(1.55, 2.33, 0, 0.08, 0.06, 1.014, POST);     // the board at the front (the tailgate is drawn with each truck: shut, or let down)
+      for (const v of [1.33, 1.66, 1.99]) W.box(1.573, v, 0, 0.006, 0.035, 1.0, PLANK);
       W.box(-3.41, 1.16, 0, 0.02, 0.12, 0.92, '#c0392b');                                                                 // a red strip across the back
       P.box(0.75, 0.72, 0.43, 0.7, 0.34, 0.12, '#b9bdc0');                                                                // the fuel tank
       for (const u of wh) P.disc(u, 0.5, 0, 0.6, 0.6, '#0d0d0e');                                                         // the dark wheel wells, inside the wheels
@@ -3495,6 +3529,7 @@ void main() {
       if (stroke) { g.lineWidth = px * 0.18; g.strokeStyle = stroke; g.strokeText(words, w / 2, h / 2 + 1); }
       g.fillStyle = fg; g.fillText(words, w / 2, h / 2 + 1);
     });
+    const GOODS = ['#c0392b', '#f2c230', '#2e7d32', '#1565c0', '#e67e22', '#8e44ad', '#ecf0f1', '#795548'];     // what a shop's shelves hold, as colours
     const standSignM = pool(new T.PlaneGeometry(1, 1), new T.MeshLambertMaterial({ map: tex(256, 112, g => {
       g.fillStyle = '#f2c230'; g.beginPath(); g.roundRect(0, 0, 256, 112, 12); g.fill(); g.strokeStyle = '#1b1b1b'; g.lineWidth = 6; g.beginPath(); g.roundRect(7, 7, 242, 98, 8); g.stroke();
       g.fillStyle = '#1b1b1b'; g.font = '800 44px "Plus Jakarta Sans", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('TAXI STAND', 128, 58);
@@ -3518,7 +3553,7 @@ void main() {
     // angles forward of straight down; it gives back the elbow and the hand
     // what a roadblock's porters have with them: a sack on the shoulder (the road workers' tools are drawn with them, at work)
     const gear = p => {
-      if (p.carry && p.vx < 0) put(pBox, -0.14, 1.48, 0, 0.36, 0.26, 0.58, p.carry);
+      if (p.loaded) put(pRound, 0, 1.25, -0.2, 0.22, 0.36, 0.13, '#d8c8a0', 0.45);     // a sack on a porter's back
       if (p.dog) {     // a dog on a lead, trotting a little ahead on the left: body, head and ears, tail, four legs, and the lead to the hand
         const d = p.dog, dx = -0.42, dz = 0.95, ph = p.phase * Math.PI / 2, s0 = 1 / (p.sc || 1);
         put(pRound, dx, 0.42 * s0, dz, 0.11 * s0, 0.12 * s0, 0.29 * s0, d);                                            // the body
@@ -3846,6 +3881,8 @@ void main() {
     const boneMap = root => { const all = []; root.traverse(o => o.isBone && all.push(o)); return Object.fromEntries(BONES.map(n => [n, all.find(o => o.name === n || new RegExp('^' + n + '_\\d+$').test(o.name))])); };
     // sitting on a bench 0.45 m high: the hips down on it, the feet on the ground in front, the hands on the knees
     const SIT = { H: 0.5, hz: -0.08, a: -0.05, fl: 0.36, fr: 0.31, fy: 0.08, hl: [-0.15, 0.58, 0.3], hr: [0.15, 0.58, 0.32] };
+    // on a truck, bending to hand a sack down over the tailgate: the back bent, the hands low in front
+    const LOADER = { H: 0.8, hz: -0.06, a: 0.55, fl: 0.1, fr: -0.12, hl: [-0.17, 0.74, 0.46], hr: [0.17, 0.74, 0.46] };
     // standing at the kerb, waving down a taxi: the right arm up and out towards the road, the left at the side
     const HAIL = { H: 0.88, hz: 0, a: 0, fl: 0.02, fr: -0.04, hl: [-0.2, 0.84, 0.05], hr: [0.3, 1.6, 0.34] };
     function realPose(p, dt, P) {
@@ -3883,6 +3920,21 @@ void main() {
         put(pRound, ...onLine(onLine(top, u, -0.04), fw, 0.03), 0.15, 0.018, 0.16, p.hat, tilt);                          // and its brim
       }
       return grips;
+    }
+
+    // A porter with a sack on his back, walking (the walk clip, as it plays): bent forward under it, both hands
+    // up over his shoulders holding its top, as Aizawl's porters carry a load
+    function carryPose(p, dt) {
+      const was = PEOPLE.live.get(p); if (was) unpose(was);
+      const it = person(p, dt), B = it.bones || (it.bones = boneMap(it.root));
+      const S = it.saved = { pelvis: B.pelvis.position.toArray(), q: [] }; POSED.forEach((n, i) => B[n].quaternion.toArray(S.q, i * 4));
+      it.root.updateMatrixWorld(true); mInv.copy(mB).invert();
+      dirW([-1, 0, 0], vAxis);
+      for (const n of ['spine_01', 'spine_02', 'spine_03']) bend(B[n], vAxis, 0.45 / 3);
+      bend(B.neck_01, vAxis, -0.3);
+      ['l', 'r'].forEach((sd, i) => { const e = i ? 1 : -1; reachTo(B['upperarm_' + sd], B['lowerarm_' + sd], B['hand_' + sd], toW([e * 0.15, 1.47, -0.1], vTarget), dirW([e, -0.2, 0.8], vPole)); });
+      const c = toL(B.spine_03.getWorldPosition(vH));
+      put(pRound, c[0], c[1] - 0.08, c[2] - 0.2, 0.22, 0.36, 0.13, '#d8c8a0', 0.45);     // the sack, long and flat on his back
     }
 
     // A vehicle, in the frame set by base(): its body, wheels, lights, plates and rider (and its hazard lights, if on)
@@ -3934,11 +3986,17 @@ void main() {
         if (c.fareBk && !c.bk) c.bk = [c.fareBk.look.shirt, skinOf(c.fareBk), c.fareBk.look.hair];
         if (c.bk && Q.rear) sitIn(-x * 0.9, Q.rear, null, c.bk, sl, sy);
       }
+      if (c.kind === 'truck') {     // the tailgate, on its hinges at the floor: shut, or let down to unload (leaning back, its top on the road)
+        const th = c.unload ? 2.5 : 0, hv = 1.06 * sy, hu = -3.37 * sl, at = h => [hv + h * Math.cos(th), hu - h * Math.sin(th)];
+        put(vBox, 0, hv, hu, sw * 0.99, 1.25, 0.04, '#9c6b3d', -th);
+        for (const h of [0.27, 0.6, 0.93]) { const [v, u] = at(h); put(vBox, 0, v - 0.023 * Math.sin(th), u - 0.023 * Math.cos(th), sw, 0.035, 0.006, '#6f4a28', -th); }
+        { const [v, u] = at(1.22); put(vBox, 0, v, u, sw * 1.014, 0.06, 0.08, '#5a3b20', -th); }
+      }
       if (c.kind === 'truck') {     // what a truck carries: sacks, or a load under a tarpaulin roped down, or nothing
         if (c.cargo == null) { const r = Math.random(); c.cargo = r < 0.45 ? 'sacks' : r < 0.85 ? ['#1f5fa8', '#2e6b3f', '#b8322a', '#d9822b'][Math.random() * 4 | 0] : ''; }
         const fl = 1.1 * sy, bw = sw * 0.9;
         if (c.cargo === 'sacks') {
-          for (let i = 0; i < 5; i++) for (const e of [-1, 1]) for (let k = 0; k < (i < 4 ? 2 : 1); k++)
+          for (let i = c.unload ? 1 : 0; i < 5; i++) for (const e of [-1, 1]) for (let k = 0; k < (i < 4 ? 2 : 1); k++)     // (unloading, the back is clear: the man on it stands there)
             put(pRound, e * bw * 0.25 + (k ? e * -0.08 : 0), fl + 0.17 + k * 0.28, (-3.0 + i * 0.95 + k * 0.4) * sl, bw * 0.24, 0.17, 0.42, (i + k) % 2 ? '#d8c8a0' : '#c9b98f');
         } else if (c.cargo) {
           put(vBox, 0, fl + 0.55, -0.9 * sl, bw, 1.1, 4.7 * sl, c.cargo); put(pRound, 0, fl + 1.1, -0.9 * sl, bw * 0.5, 0.26, 2.38 * sl, c.cargo);
@@ -4017,7 +4075,19 @@ void main() {
             put(vBox, 0, 0, 0, 0.06, 2.55, 0.06, '#8d9092');
             for (const e of [-1, 1]) put(standSignM, 0, 2.3, e * 0.035, 0.82, 0.36, 1, '#ffffff', 0, e > 0 ? 0 : Math.PI);
           }
-          if (t.kind === 'unload') for (let i = 0; i < 5; i++)      // its sacks, set down on the road behind it
+          if (t.kind === 'unload' && t.shop) {     // the shop they go to: its shutter rolled up, shelves of goods inside, the sacks piling up by its door
+            const S = t.shop, A = S.along;
+            frame3(S.at, -(S.face - 0.08), f); f.y += S.gy; f.pitch = 0; base(f);     // (upright, as the house is, on a slope too)
+            put(vBox, 0, 0, 0, 0.05, 2.42, A * 0.92, '#2b2723');                                                      // the open front, dark inside
+            put(vBox, 0.06, 2.4, 0, 0.24, 0.24, A * 0.96, '#c9c9c9');                                                 // the shutter, rolled up over it
+            for (let r = 0; r < 3; r++) {                                                                              // shelves, and what is on them
+              const y = 0.5 + r * 0.55; put(vBox, 0.07, y, 0, 0.14, 0.03, A * 0.86, '#6b4a2f');
+              for (let i = 0; i < 7; i++) put(vBox, 0.09, y + 0.03, (i - 3) * A * 0.12, 0.09, 0.14 + ((i + r) % 3) * 0.06, A * 0.085, GOODS[(i * 3 + r) % GOODS.length]);
+            }
+            put(vBox, 0.25, 0, -A * 0.28, 0.5, 0.75, 0.9, '#7a5a3a');                                                // the counter at the front
+            const pile = Math.min(10, 2 + (t.delivered | 0));
+            for (let i = 0; i < pile; i++) put(pRound, 0.55 + (i % 2) * 0.32, 0.32 + Math.floor(i / 4) * 0.27, A * 0.08 + (i % 4 > 1 ? 0.45 : 0), 0.26, 0.17, 0.38, i % 2 ? '#d8c8a0' : '#c9b98f');
+          } else if (t.kind === 'unload') for (let i = 0; i < 5; i++)      // (the flat view's fallback: its sacks, set down on the road behind it)
             put(vBox, ((i % 3) - 1) * 0.62, i > 2 ? 0.42 : 0, -t.len / 2 - 0.55 - (i % 2) * 0.62, 0.58, 0.42, 0.85, i % 2 ? '#e4dccb' : '#cfc3a2', 0, (i * 0.7 + t.seed) % 0.5 - 0.25);
           continue;
         }
@@ -4097,8 +4167,8 @@ void main() {
       const real = new Set(peds.filter(p => p.at > s - 6 && p.at < s + far).sort((a, b) => Math.abs(a.at - s) - Math.abs(b.at - s)).slice(0, 16));
       for (const p of peds) {
         if (p.at < s - 6 || p.at > s + far) continue;
-        frame3(p.at, p.x, f); f.pitch = 0; f.y += Math.abs(p.x) > HALF ? 0.15 : 0;     // on the footpath, or on the road
-        const face = p.vx ? (p.vx > 0 ? -Math.PI / 2 : Math.PI / 2) : p.va ? (p.va < 0 ? Math.PI : 0) : p.aim ?? 0;
+        frame3(p.at, p.x, f); f.pitch = 0; f.y += (Math.abs(p.x) > HALF ? 0.15 : 0) + (p.lift || 0);     // on the footpath, or on the road (or up on a truck)
+        const face = p.vx || p.va ? Math.atan2(-(p.vx || 0), p.va || 0) : p.aim ?? 0;
         if (p.face === undefined) { p.face = face; p.sc = p.look.child ? 0.6 + Math.random() * 0.14 : 0.93 + Math.random() * 0.12; }     // (a child, smaller)
         let turn = face - p.face; turn -= Math.round(turn / (Math.PI * 2)) * Math.PI * 2;
         p.face += turn * Math.min(1, dt * 7);                 // turning round takes a moment
@@ -4107,6 +4177,12 @@ void main() {
         if (p.tool) { worker(p, dt, PEOPLE && level > 0 && real.has(p) ? P => realPose(p, dt, P) : P => workerBody(p, P)); continue; }      // a road worker, at work
         if (p.sit && PEOPLE && level > 0 && real.has(p)) { realPose(p, dt, SIT); continue; }                                                  // sitting on the bus stop's bench
         if (p.hail && PEOPLE && level > 0 && real.has(p)) { realPose(p, dt, HAIL); gear(p); continue; }                                       // waving down a taxi
+        if (p.loaded && PEOPLE && level > 0 && real.has(p)) { carryPose(p, dt); continue; }                                                  // a porter, a sack on his back
+        if (p.loader && PEOPLE && level > 0 && real.has(p)) {                                                                                 // the man on the truck, handing a sack down
+          realPose(p, dt, LOADER);
+          if (peds.some(q => q.haul && q.haul.t === p.loader && q.haul.busy)) put(pRound, 0, 0.74, 0.5, 0.36, 0.13, 0.22, '#d8c8a0');
+          continue;
+        }
         if (PEOPLE && level > 0 && real.has(p)) {        // a real body (for the nearest people); what they carry is drawn with it
           person(p, dt);
           const L = lookOf(p);
@@ -4117,7 +4193,7 @@ void main() {
         }
         // A walk: each leg swings from the hip and bends at the knee as it comes forward; the arms
         // swing against the legs. An elder stoops a little and takes shorter steps.
-        const L = lookOf(p), ph = p.phase * Math.PI / 2, old = L.elder ? 1 : 0, stoop = old * 0.22, skin = skinOf(p);
+        const L = lookOf(p), ph = p.phase * Math.PI / 2, old = L.elder ? 1 : 0, stoop = old * 0.22 + (p.loaded ? 0.35 : 0), skin = skinOf(p);
         const H = 0.86 + Math.abs(Math.cos(ph)) * 0.025, sh = H + 0.55 - stoop * 0.08, fw = stoop * 0.6;
         for (const e of [-1, 1]) {
           const lp = ph + (e > 0 ? 0 : Math.PI), th = Math.sin(lp) * (old ? 0.26 : 0.42), kn = 0.08 + Math.max(0, Math.cos(lp)) * (old ? 0.35 : 0.6);
@@ -4126,7 +4202,8 @@ void main() {
           limbTo(pLimb, e * 0.09, H, 0, ky, kz, 0.15, legs); limbTo(pLimb, e * 0.09, ky, kz, ay, az, 0.115, legs);
           put(pBox, e * 0.09, ay - 0.05, az + 0.05, 0.1, 0.07, 0.24, L.stripes ? '#6b4a33' : '#2a2522');      // shoes; sandals under a puan
           const ua = -Math.sin(lp) * (old ? 0.16 : 0.32), sleeve = L.jacket || old ? L.shirt : skin;
-          const [ey, ez, hy, hz] = e > 0 && p.hail ? armTo(e * 0.2, sh, fw, 2.4, 2.8, L.shirt, sleeve)
+          const [ey, ez, hy, hz] = p.loaded ? armTo(e * 0.2, sh, fw, 2.75, 3.9, L.shirt, sleeve)
+            : e > 0 && p.hail ? armTo(e * 0.2, sh, fw, 2.4, 2.8, L.shirt, sleeve)
             : e > 0 && L.umbrella ? armTo(e * 0.2, sh, fw, 0.35, 2.2, L.shirt, sleeve)
             : e > 0 && L.stick ? armTo(e * 0.2, sh, fw, 0.3, 0.9, L.shirt, sleeve)
             : armTo(e * 0.2, sh, fw, ua, ua + 0.25 + Math.max(0, -Math.sin(lp)) * 0.25, L.shirt, sleeve);
@@ -4978,8 +5055,21 @@ void main() {
       for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) { const i = (y * w + x) * 4; if (px[i] > 200 && px[i + 1] < 90 && px[i + 2] > 200) { n++; const d = px[i + 1] / 255 / 0.3 * 1000; near = Math.min(near, d); if (y < h * 0.5) { low++; sx += x; } } }
       return n ? { share: +(n / (w * h / 4)).toFixed(4), low: +(low / (w * h / 4)).toFixed(4), near: Math.round(near), x: low ? +(sx / low / w).toFixed(2) : null } : 0;
     }
+    // a shop at street level by station i on this side, as drawn (its shutter and signboard): how far its front is
+    // from the road's middle, how wide it is along the road, the ground there (only where that is level with the road)
+    const shopAt = (i, sd) => {
+      setRoute(); const k = Math.floor(i);
+      if (k < 1 || k >= W3.n - 2 || W3.gone[sd][k] || W3.gone[sd][k + 1] || !footpath(k) || Math.abs(sideAt(k, sd)) >= 2.5) return null;
+      const h = W3.home[(k * 2 + (sd > 0 ? 1 : 0)) * 3];
+      return h && Math.abs(h.gy) < 0.6 ? { k, face: h.off - h.w / 2, along: h.d * 0.7, gy: h.gy } : null;
+    };
+    // for the tests: why the shops on a side are where they are (how many stations pass each test)
+    const shopsWhy = sd => { setRoute(); const n = { all: 0, kept: 0, foot: 0, level: 0, town: 0, home: 0, flat: 0 };
+      for (let k = 1; k < W3.n - 2; k++) { n.all++; if (W3.gone[sd][k] || W3.gone[sd][k + 1] || !footpath(k)) continue; n.foot++; if (Math.abs(sideAt(k, sd)) >= 2.5) continue; n.level++;
+        if (housesOn(sd, k) < 4) continue; n.town++; const h = W3.home[(k * 2 + (sd > 0 ? 1 : 0)) * 3]; if (!h) continue; n.home++; if (Math.abs(h.gy) < 0.6) n.flat++; if (shopAt(k, sd)) n.kept++; }
+      return n; };
     const walkable = (i, sd) => { setRoute(); i = clamp(i, 0, W3.n - 1); return !W3.bare[sd][i] && !W3.gone[sd][i] && !W3.ride[i]; };
-    return { draw: draw3, size, setPlan, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, audit9, audit10, audit11, audit12, audit13, audit14, holesSeen, walkable,
+    return { draw: draw3, size, setPlan, shop: shopAt, shopsWhy, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, audit9, audit10, audit11, audit12, audit13, audit14, holesSeen, walkable,
       // for the tests: which earlier stretches of road lie under the middle of sample k, and how high
       under: (k, lat = 0) => { setRoute(); const { P, R, Y, grid, n } = W3, x = P[k].x + R[k].x * lat, z = P[k].z + R[k].z * lat, out = [];
         for (const kk of new Set([...Array(9).keys()].flatMap(i => [...Array(9).keys()].map(j => grid.get((Math.floor(x / 12) + i - 4) + ',' + (Math.floor(z / 12) + j - 4)) || []).flat()))) {
@@ -5821,7 +5911,7 @@ void main() {
     peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)), dog: !!p.dog, child: !!p.look.child })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, fareTaxi: (ahead, speed = 8) => { const c = newCar('taxi', 0, s + ahead, speed, 1); c.fare = 'want'; cars.push(c); return c; }, park: (kind, ahead, lane = 1, dir = 1, speed = 0) => { const c = newCar(kind, lane, s + ahead, dir * speed, dir); c.cruise = speed; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), holes: () => R3 && R3.holesSeen(), sizes: () => R3 && R3.sizes(), under: (k, lat) => R3 && R3.under(k, lat), probe: (k, lat, al) => R3 && R3.probe(k, lat, al), mem: () => R3 && R3.mem(), walker: (ahead, x, va = 1, vx = 0, look, dog) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; if (dog) p.dog = dog; peds.push(p); return peds.length; },
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
     // for the tests: ride a given road; and every road with how many crossings and jams it has
-    useRoute: id => { route = [...DATA.routes, ...CITY.jobs.map(routeOf)].find(r => r.id === id); reset(); return route.length; }, go: () => start(),
+    shopsWhy: sd => R3 && R3.shopsWhy(sd), routes: () => [...DATA.routes, ...CITY.jobs.map(routeOf)].map(r => ({ id: r.id, left: (r.housesL || []).slice(0, 300).reduce((a, b) => a + b, 0) })), useRoute: id => { route = [...DATA.routes, ...CITY.jobs.map(routeOf)].find(r => r.id === id); reset(); return route.length; }, go: () => start(),
     // for the tests: a vehicle of a kind, so far ahead, in a lane, at a speed, going our way (1) or towards us (-1)
     car: (kind, ahead, lane = 0, v = 0, dir = 1) => { cars.push(newCar(kind, lane, s + ahead, v, dir)); return cars.length; },
     plans: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push([r.id, Math.round(r.length), planCrossings().length, planJams().length]); } route = keep; reset(); return out; },
