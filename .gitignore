@@ -1,3 +1,7 @@
 # The sources are a private repo (hnahsin-play-source), cloned here as source/.
 source/
 __pycache__/
+# Local only: browser-test output, npm packages, macOS folder files
+.playwright-mcp/
+node_modules/
+.DS_Store

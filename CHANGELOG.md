@@ -4,6 +4,17 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.67.3 (13 November 2026)
+
+- The games open faster on your phone. An update no longer fetches
+  everything again: the game engines, the Hnahsin app, Aizawl Ride's people,
+  far city and moped stay on your phone until they really change. When the
+  network is slow, a game opens from your phone after three seconds instead
+  of waiting.
+- Aizawl Ride is lighter on your phone: water tanks only on the buildings
+  near enough to see, and full bodies only for the people near you.
+- Files no game used are gone.
+
 ## 1.67.2 (12 November 2026)
 
 - Aizawl Ride's rider holds the handlebar as a rider does: the hands closed
