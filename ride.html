@@ -2225,6 +2225,15 @@ void main() {
         wt = mix(wt, vec4(1.0), max(col, para) * (1.0 - vTrim.w));
         wt.rgb *= mix(1.0, 0.93, col) * mix(1.0, 1.06, (1.0 - step(0.14, vTrim.z))) * mix(0.78, 1.0, smoothstep(0.0, 0.07, side));
         diffuseColor *= wt;
+        // weathered, as the walls of a rainy hill town are: dark streaks run down from the top, and fainter ones
+        // from under each floor's windows; grime and splashed mud along the foot; the paint a little uneven
+        if (vTrim.w < 0.5) {
+          float across = vW.x + vW.z, st = smoothstep(0.52, 0.86, texture2D(detail, vec2(across * 0.9, vW.y * 0.035)).r);
+          float fromTop = exp(-vTrim.z * 0.3), fromSill = exp(-fract(vWall.y) * 3.0) * 0.45, up = vWall.y * 3.0;
+          float foot = 1.0 - smoothstep(0.0, 1.1, up), mottle = texture2D(detail, vec2(across, vW.y) * 0.21).r;
+          diffuseColor.rgb *= (1.0 - st * (fromTop * 0.26 + fromSill * 0.12)) * (1.0 - foot * 0.16) * (0.95 + mottle * 0.1);
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.42, 0.36, 0.3), foot * 0.12);
+        }
         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.66, 0.64, 0.6), vTrim.w * 0.75);
         diffuseColor.rgb *= 1.0 - uNight * 0.38;     // at night the pale walls stay dim under the moon, so the lit windows and the lamps stand out
         // at night some windows are lit, warm, one window (and floor) at a time
@@ -2253,6 +2262,8 @@ void main() {
     // Aizawl's houses: mostly white and cream, many painted (sky blue, mint, lemon, salmon, lavender), some bare concrete
     const WALL3 = ['#f4f1ea', '#f1e8d4', '#ece0c4', '#f4f1ea', '#f1e8d4', '#f3e3a0', '#e8c46e', '#a8cce4', '#7fb0d6', '#bfe0c8', '#8fc7a4',
       '#f2b8a4', '#e89a74', '#d8c6e6', '#c4e4e2', '#f5cfd6', '#b7b4ac', '#a3a6a5', '#e9d9b0', '#d1dcc0'];
+    // what hangs out to dry, and the balconies' plants
+    const CLOTHES = ['#c0392b', '#f4f4f0', '#1565c0', '#f2c230', '#2e7d32', '#e0457b', '#3a3a3a', '#8e44ad', '#e67e22', '#5a7f9c'], GREENS = ['#3f7a3a', '#4f8a3a', '#2f6b35', '#5a9a45'];
     const SHOP = ['#5f7f9c', '#8a9096', '#a3524a', '#4f7f5f', '#b98a2e', '#6b5f8a'], SIGNBAND = ['#c0392b', '#1565c0', '#2e7d32', '#f2c230', '#e67e22', '#ffffff'];
     // ---------- trees: bark and wood, and leaves drawn on cards with gaps you can see through ----------
     // Four kinds, each built once and then placed many times: broad-leaved trees, bamboo (mau) clumps,
@@ -2729,7 +2740,7 @@ void main() {
         for (let i = 0; i < 4; i++) { const [a, b] = [c[i], c[(i + 1) % 4]]; st.quad(pt(k, a[0], h0, a[1]), pt(k, b[0], h0, b[1]), pt(k, b[0], h1, b[1]), pt(k, a[0], h1, a[1]), hex); }
         st.quad(...c.map(([x, z]) => pt(k, x, h1, z)), hex);
       };
-      const LAMP = [], HALO = [], POOL = [], YARD = [], BULB = [], STAR = [], FLAG = [], fest = festival(), H = [], RF = [], TK = [], TW = { broad: [], tall: [], bamboo: [], banana: [], kuhva: [], pine: [], shrub: [] }, BAL = [], RAIL = [], SHUT = [], BAND = [], POLE = [], ARM = [], WIRE = [];
+      const LAMP = [], HALO = [], POOL = [], YARD = [], BULB = [], STAR = [], FLAG = [], fest = festival(), H = [], RF = [], TK = [], TW = { broad: [], tall: [], bamboo: [], banana: [], kuhva: [], pine: [], shrub: [] }, BAL = [], RAIL = [], SHUT = [], COL = [], REBAR = [], DISH = [], LINE = [], CLOTH = [], PLANT = [], POT = [], AC = [], BAND = [], POLE = [], ARM = [], WIRE = [];
       // An electric pole every 36 m in town, on the near side, and the ends of its crossarm for the wires
       const poleAt = k => {
         if (k < 0 || k >= n || k % 9 || !footpath(k)) return null;
@@ -2863,14 +2874,54 @@ void main() {
                 SHUT.push({ p: pt(k, sd * (face - 0.03), gy), yaw: yaw[k], s: [0.06, 2.5, along], c: SHOP[(k * 7 + j) % SHOP.length] });
                 BAND.push({ p: pt(k, sd * (face - 0.05), gy + 2.6), yaw: yaw[k], s: [0.1, 0.55, along * 1.05], c: SIGNBAND[(k * 5) % SIGNBAND.length] });
               }
-              // balconies on the floors above, with railings
+              // balconies on the floors above, with railings; on some, plants in pots, or the washing hung over the railing
               if (top - gy > 6.5 && rnd(k, 70 + sd) < 0.7) for (let fl = 1; fl <= Math.min(5, Math.floor((top - gy) / 3) - 1); fl++) {
                 BAL.push({ p: pt(k, sd * (face - 0.45), gy + fl * 3 - 0.12), yaw: yaw[k], s: [0.9, 0.12, along * 0.8], c: '#d9d4c8' });
                 RAIL.push({ p: pt(k, sd * (face - 0.88), gy + fl * 3), yaw: yaw[k], s: [0.05, 0.85, along * 0.8], c: rnd(k, fl) < 0.5 ? '#3a3a3a' : '#efece4' });
+                const rb = rnd(k * 5 + fl, sd + 90);
+                if (rb < 0.4) for (let i = 0, m = 2 + (rb < 0.2); i < m; i++) {
+                  const a = (i / (m - 1 || 1) - 0.5) * along * 0.6;
+                  POT.push({ p: pt(k, sd * (face - 0.6), gy + fl * 3, a), yaw: yaw[k], s: [0.28, 0.28, 0.28], c: '#a65a3a' });
+                  PLANT.push({ p: pt(k, sd * (face - 0.6), gy + fl * 3 + 0.48, a), s: [0.24, 0.22 + rnd(i, fl) * 0.12, 0.24], c: GREENS[(k + i + fl) % GREENS.length] });
+                } else if (rb < 0.65) {     // (a shirt, a towel, a lungi, each its own size, unevenly spaced)
+                  let a = -along * 0.36;
+                  for (let i = 0; i < 4 && a < along * 0.36; i++) {
+                    const cw = 0.28 + rnd(k + i, fl * 3) * 0.32, cl = 0.38 + rnd(i, k + fl) * 0.45;
+                    CLOTH.push({ p: pt(k, sd * (face - 0.92), gy + fl * 3 + 0.88 - cl, a + cw / 2), yaw: yaw[k] + (rnd(k, i + fl) - 0.5) * 0.25, s: [0.03, cl, cw], c: CLOTHES[(k * 3 + i + fl) % CLOTHES.length] });
+                    a += cw + 0.08 + rnd(i + 5, k) * 0.2;
+                  }
+                }
               }
+              // an air-conditioner or two on the wall, under a window
+              if (top - gy > 3.5 && rnd(k, 95 + sd) < 0.35) for (let fl = 0; fl < Math.min(4, Math.floor((top - gy) / 3)); fl++) if (rnd(k + fl, 97) < 0.45)
+                AC.push({ p: pt(k, sd * (face - 0.17), gy + fl * 3 + 0.35, (rnd(fl, k) < 0.5 ? -1 : 1) * (along * 0.42 + 0.35)), yaw: yaw[k], s: [0.32, 0.5, 0.78], c: '#e2e3e0' });
             }
             if (top - gy < 9 && rnd(k, j + 21) < 0.45) RF.push({ p: [p[0], Y[k] + top, p[2]], yaw: yaw[k], s: [w * 1.08, 1.3, d * 1.05], c: ROOF[(k * 3 + j) % ROOF.length] });
-            else if (rnd(k, j + 31) < 0.5) { const q = pt(k, sd * (off + (rnd(k, j) - 0.5) * d * 0.5), 0); TK.push({ p: [q[0], Y[k] + top, q[2]], s: [1.1, 1.3, 1.1], c: '#2b2d2c' }); }   // the black water tank
+            else {
+              if (rnd(k, j + 31) < 0.5) { const q = pt(k, sd * (off + (rnd(k, j) - 0.5) * d * 0.5), 0); TK.push({ p: [q[0], Y[k] + top, q[2]], s: [1.1, 1.3, 1.1], c: '#2b2d2c' }); }   // the black water tank
+              const roofAt = (u, v, h = 0) => pt(k, sd * (off + u * w / 2), top + h, v * d / 2);     // (u across the house, v along it, from -1 to 1)
+              if (rnd(k, j + 41) < 0.3) {     // the next floor begun: concrete columns at the corners, their steel rods sticking up, rusting
+                const ch = 0.8 + rnd(k, j + 43) * 1.2;
+                for (const [u, v] of [[-0.88, -0.88], [0.88, -0.88], [0.88, 0.88], [-0.88, 0.88]]) {
+                  const q = roofAt(u, v); COL.push({ p: q, yaw: yaw[k], s: [0.3, ch, 0.3], c: '#b9b4aa' });
+                  for (const [ox, oz] of [[-0.08, -0.08], [0.08, 0.08], [0.08, -0.08]]) REBAR.push({ p: [q[0] + ox, q[1] + ch, q[2] + oz], s: [0.022, 0.4 + rnd(ox * 9, oz * 7 + k) * 0.35, 0.022], c: '#7a4a32' });
+                }
+              }
+              if (rnd(k, j + 47) < 0.4) {     // a dish for the television, on a short mast, tilted to the sky
+                const q = roofAt(0.4, -0.55); COL.push({ p: q, yaw: yaw[k], s: [0.05, 0.85, 0.05], c: '#8d9092' });
+                DISH.push({ p: [q[0], q[1] + 0.95, q[2]], yaw: yaw[k] + (rnd(k, j + 49) - 0.5) * 2, rx: -1.0, s: [0.4, 0.4, 0.07], c: '#ebebe6' });
+              }
+              if (rnd(k, j + 53) < 0.3) {     // the washing on a line between two posts
+                for (const v of [-0.7, 0.7]) COL.push({ p: roofAt(-0.15, v), yaw: yaw[k], s: [0.05, 1.65, 0.05], c: '#8d9092' });
+                LINE.push({ p: roofAt(-0.15, -0.7, 1.58), yaw: yaw[k], s: [0.02, 0.02, d * 0.7], c: '#5a5a5a' });
+                let a = -0.6;
+                for (let i = 0; i < 6 && a < 0.6; i++) {
+                  const cw = (0.3 + rnd(k + i, j + 61) * 0.35) / (d / 2), cl = 0.4 + rnd(i, k + j + 63) * 0.5;
+                  CLOTH.push({ p: roofAt(-0.15, a + cw / 2, 1.58 - cl), yaw: yaw[k] + (rnd(k, i + j) - 0.5) * 0.2, s: [0.03, cl, cw * d / 2], c: CLOTHES[(k + i * 3 + j) % CLOTHES.length] });
+                  a += cw + (0.1 + rnd(i + 7, k) * 0.25) / (d / 2);
+                }
+              }
+            }
           }
           // Where the ground falls between the road and the house beside it, a concrete yard at the road's
           // level joins them, as Aizawl's houses below the road have: no slot to look down into
@@ -2915,7 +2966,8 @@ void main() {
         }
       }
       if (WIRE.length) { const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(WIRE, 3)); grp.add(new T.LineSegments(g, wireMat)); }
-      [instanced(box, plainMat, BAL), instanced(box, plainMat, RAIL), instanced(box, shutterMat, SHUT), instanced(box, plainMat, BAND), instanced(pole, plainMat, POLE), instanced(box, plainMat, ARM), instanced(box, plainMat, YARD), instanced(box, lampMat, LAMP), instanced(blob, poolMat, POOL), instanced(haloGeo, haloMat, HALO), instanced(box, glowMat, BULB), instanced(starGeo, glowMat, STAR), instanced(flagGeo, flagMat, FLAG)].forEach(m => m && grp.add(m));
+      [instanced(box, plainMat, COL), instanced(box, plainMat, REBAR), instanced(disc, plainMat, DISH), instanced(box, plainMat, LINE), instanced(box, plainMat, CLOTH), instanced(box, plainMat, POT), instanced(ball, plainMat, PLANT), instanced(box, plainMat, AC),
+      instanced(box, plainMat, BAL), instanced(box, plainMat, RAIL), instanced(box, shutterMat, SHUT), instanced(box, plainMat, BAND), instanced(pole, plainMat, POLE), instanced(box, plainMat, ARM), instanced(box, plainMat, YARD), instanced(box, lampMat, LAMP), instanced(blob, poolMat, POOL), instanced(haloGeo, haloMat, HALO), instanced(box, glowMat, BULB), instanced(starGeo, glowMat, STAR), instanced(flagGeo, flagMat, FLAG)].forEach(m => m && grp.add(m));
       [st.mesh(), instanced(box, houseMat, H), instanced(prism, plainMat, RF), instanced(tank, plainMat, TK),
         ...Object.entries(TW).flatMap(([kind, list]) => [TREES[kind].wood.attributes.position.count ? instanced(TREES[kind].wood, woodMat, list) : null, instanced(TREES[kind].leaves, leafMat, list)])].forEach(m => m && grp.add(m));
       grp.userData.mid = P[Math.min(n - 1, (k0 + k1) >> 1)];

@@ -4,6 +4,14 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.66.1 (12 November 2026)
+
+- Aizawl Ride's houses look lived in: on the flat roofs, the next floor begun
+  (columns with their steel rods sticking up), dishes for the television and
+  the washing on a line; plants and washing on the balconies; air
+  conditioners on the walls; and the walls weathered, streaked by the rain
+  from the top and under the windows, grimy along the foot.
+
 ## 1.66.0 (12 November 2026)
 
 ### Aizawl Ride: the whole city round you
