@@ -4,6 +4,15 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.67.1 (12 November 2026)
+
+- Aizawl Ride's Moped looks more like the real thing: its curves are smooth,
+  it is shaded darker low down and underneath, its wheels are round with a
+  treaded tyre and silver spokes, its mirrors are round with their glass, its
+  seat is black leather, and it carries a number plate. Your box sits over
+  its carrier, so the rails no longer cross the writing.
+- The scooter's engine sound never drops below its idle.
+
 ## 1.67.0 (12 November 2026)
 
 - Aizawl Ride has a fifth scooter in the garage, the Moped: the little

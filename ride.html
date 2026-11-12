@@ -4878,42 +4878,72 @@ void main() {
     });
     // The moped: Polyfork's Delivery Moped (CC BY 4.0, in the credits), the little delivery moped of the Cub
     // kind, with a carrier for the box and a tray in front. Its parts are told apart by their colours in the
-    // model, and each is given ours: the body the garage's colour, the seat black, the bright parts chrome,
-    // its lamps lit. Its own box comes off for ours; its wheels turn as ours do. Until it has come (or if it
-    // cannot), the Everyday stands in for it.
+    // model, and each is given ours: the body the garage's colour, the seat black leather, the carrier, tray
+    // and bars painted silver, its lamps lit. Made to look less like a model: its curves smooth (its hard
+    // edges kept), shaded darker low down and underneath, where the light reaches less; round tyres and
+    // spoked wheels in place of its faceted ones; a number plate. Its own box and stand come off (our box,
+    // a little larger, sits over its carrier, so the carrier's rails are inside it and never across the
+    // writing); its wheels turn as ours do. Until it has come (or if it cannot), the Everyday stands in.
     {
       const g = new T.Group(); g.visible = false; g.position.z = 0.03; scoot.add(g);
-      DESIGN3.moped = { g, boxY: 0.02, boxS: [0.9, 1.1, 0.8], ready: false };
-      const tyre = [lm('#1b1d1c'), new T.MeshStandardMaterial({ color: '#1a1b1b', metalness: 0, roughness: 0.9 })];
-      const ZONES = [['#3f8a5e', bodyMats[1]], ['#f0efec', [lm('#f2efe6'), new T.MeshStandardMaterial({ color: '#f2efe6', roughness: 0.6 })]], ['#d8dadd', [new T.MeshPhongMaterial({ color: '#c9cdd1', shininess: 60, specular: C('#777777') }), new T.MeshStandardMaterial({ color: '#c9cdd1', metalness: 0.35, roughness: 0.4 })]],     // (painted silver: the carrier, tray, bars and wheel centres)
-       
-        ['#6b7278', [lm('#4e5459'), new T.MeshStandardMaterial({ color: '#4e5459', metalness: 0.4, roughness: 0.5 })]], ['#3c4145', black], ['#2e3134', tyre],
+      DESIGN3.moped = { g, boxY: 0.04, boxS: [1.08, 1.1, 0.84], ready: false };
+      const own = (hex, shin, spec, rough, metal) => [new T.MeshPhongMaterial({ color: hex, shininess: shin, specular: C(spec), vertexColors: true }), new T.MeshStandardMaterial({ color: hex, roughness: rough, metalness: metal, vertexColors: true })];
+      const seat = leather('#24211f'); for (const x of seat) x.vertexColors = true;
+      const ZONES = [['#3f8a5e', bodyMats[1]], ['#f0efec', own('#f2efe6', 30, '#333333', 0.55, 0)], ['#d8dadd', own('#c9cdd1', 60, '#777777', 0.4, 0.35)],
+        ['#6b7278', own('#4e5459', 40, '#555555', 0.5, 0.4)], ['#3c4145', seat], ['#2e3134', own('#1b1d1c', 8, '#111111', 0.9, 0)],
         ['#e3edf2', headMat], ['#d6452f', tailMat], ['#f0c24b', amber]].map(([h, m]) => [C(h), m]);
+      const SILVER = 2, SEAT = 4, TYRE = 5, LIT = 6;     // (the zones after these are its lamps: lit, not shaded)
       const zoneOf = (r, gr, b) => { let best = 0, d = 9; ZONES.forEach(([c], i) => { const e = Math.abs(c.r - r) + Math.abs(c.g - gr) + Math.abs(c.b - b); if (e < d) { d = e; best = i; } }); return best; };
+      const v = new T.Vector3(), nm = new T.Matrix3(), smooth = (a, b, x) => Math.min(1, Math.max(0, (x - a) / (b - a)));
       (async () => {
-        const { GLTFLoader } = await import(ADDONS + 'loaders/GLTFLoader.js');
+        const [{ GLTFLoader }, BGU] = await Promise.all([import(ADDONS + 'loaders/GLTFLoader.js'), import(ADDONS + 'utils/BufferGeometryUtils.js')]);
         const m = (await new GLTFLoader().loadAsync('ride/moped.glb?v=1f5d584d')).scene;
         m.getObjectByName('cargo').removeFromParent(); m.getObjectByName('kickstand').removeFromParent();     // (ridden: the stand is up)
+        m.updateMatrixWorld(true);
         const meshes = []; m.traverse(o => { if (o.isMesh) meshes.push(o); });
         for (const o of meshes) {      // each mesh in its parts, by colour: a mesh of each, in its own material
-          const geo = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry, P = geo.attributes.position, N = geo.attributes.normal, K = geo.attributes.color, by = ZONES.map(() => [[], []]);
+          const wheel = /^wheel/.test(o.parent.name), geo = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry, P = geo.attributes.position, K = geo.attributes.color, by = ZONES.map(() => []);
           for (let t = 0; t < P.count; t += 3) {
-            const z = by[zoneOf(K.getX(t), K.getY(t), K.getZ(t))];
-            for (let k = t; k < t + 3; k++) { z[0].push(P.getX(k), P.getY(k), P.getZ(k)); z[1].push(N.getX(k), N.getY(k), N.getZ(k)); }
+            const z = zoneOf(K.getX(t), K.getY(t), K.getZ(t));
+            if (wheel && (z === TYRE || z === SILVER)) continue;     // (its tyre and wheel centre: ours instead, below)
+            if (o.name === 'front-assembly' && z === SEAT && P.getY(t) > 0.55 && P.getY(t + 1) > 0.55 && P.getY(t + 2) > 0.55) continue;     // (its mirror heads, flat octagons: round ones below)
+            for (let k = t; k < t + 3; k++) by[z].push(P.getX(k), P.getY(k), P.getZ(k));
           }
-          by.forEach(([pos, nor], i) => {
+          nm.getNormalMatrix(o.matrixWorld);
+          by.forEach((pos, i) => {
             if (!pos.length) return;
-            const gg = new T.BufferGeometry(), mat = ZONES[i][1];
-            gg.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); gg.setAttribute('normal', new T.Float32BufferAttribute(nor, 3));
-            gg.setAttribute('color', new T.Float32BufferAttribute(new Float32Array(pos.length).fill(1), 3));     // (the paint's tone: its own colour, as given)
-            const mesh = new T.Mesh(gg, Array.isArray(mat) ? mat[extras ? 1 : 0] : mat); if (Array.isArray(mat)) mesh.userData.sw = mat;
+            let gg = new T.BufferGeometry(); gg.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
+            gg = BGU.toCreasedNormals(gg, 0.85);    // smooth across its curves (an octagon reads round), sharp at its edges
+            const Pn = gg.attributes.position, Nn = gg.attributes.normal, col = new Float32Array(Pn.count * 3), uv = new Float32Array(Pn.count * 2);
+            for (let k = 0; k < Pn.count; k++) {
+              v.fromBufferAttribute(Pn, k).applyMatrix4(o.matrixWorld); const y = v.y, x = v.x, zz = v.z;
+              v.fromBufferAttribute(Nn, k).applyMatrix3(nm).normalize();
+              // darker low down, and on what faces the ground (the paint's tone: its own colour, as given, above)
+              const t = i >= LIT ? 1 : (0.74 + 0.26 * smooth(0.1, 0.8, y)) * (1 + 0.3 * Math.min(0, v.y));
+              col[k * 3] = col[k * 3 + 1] = col[k * 3 + 2] = t;
+              uv[k * 2] = (x + zz) * 3; uv[k * 2 + 1] = (y + zz) * 3;     // (for the seat's grain)
+            }
+            gg.setAttribute('color', new T.BufferAttribute(col, 3)); gg.setAttribute('uv', new T.BufferAttribute(uv, 2));
+            const mat = ZONES[i][1], mesh = new T.Mesh(gg, Array.isArray(mat) ? mat[extras ? 1 : 0] : mat); if (Array.isArray(mat)) mesh.userData.sw = mat;
             mesh.castShadow = true; o.parent.add(mesh);
           });
           o.removeFromParent();
         }
-        for (const n of ['wheel-rear', 'wheel-front']) wheels.push(m.getObjectByName(n));
+        const bars = m.getObjectByName('fork-mount');     // (the handlebar's own frame: what turns with it)
+        for (const e of [-1, 1]) {     // round mirrors with their glass, facing the rider, where its own were
+          const h = new T.Mesh(ball, black); h.position.set(e * 0.268, 0.602, -0.112); h.scale.set(0.062, 0.036, 0.014); h.castShadow = true;
+          const gl = new T.Mesh(ball, VMAT.chrome[extras ? 1 : 0]); gl.userData.sw = VMAT.chrome; gl.position.set(e * 0.268, 0.602, -0.124); gl.scale.set(0.055, 0.03, 0.004);
+          bars.add(h, gl);
+        }
+        for (const n of ['wheel-rear', 'wheel-front']) {     // round tyres with their tread, and spokes, as a Cub's wheels are
+          const w = m.getObjectByName(n), add = (geo, pair, sx, r) => { const x = new T.Mesh(geo, pair[extras ? 1 : 0]); x.userData.sw = pair; x.scale.set(sx, r, r); x.castShadow = true; w.add(x); };
+          add(tyreGeo, VMAT.tyre, 0.1, 0.255); add(spokeGeo, VMAT.chrome, 0.16, 0.25);
+          wheels.push(w);
+        }
+        const plate = new T.Mesh(plateGeo, plateMat); plate.position.set(0, 0.44, -0.875); plate.scale.set(0.2, 0.1, 1); m.add(plate);     // the number plate, under the tail lamp
+        const back = new T.Mesh(box, black); back.position.set(0, 0.47, -0.868); back.scale.set(0.05, 0.08, 0.012); m.add(back);           // (on its bracket)
         g.add(m); DESIGN3.moped.ready = true; shown = '';
-      })().catch(() => { DESIGN3.moped.ready = null; });
+      })().catch(e => { DESIGN3.moped.ready = null; console.warn('moped', e); });
     }
     // The rider: drawn simply here (for the lowest quality, and until the real bodies have loaded), in a
     // group of its own; the helmet in another, so it can sit on a real rider's head (see riderBody below)
@@ -5716,7 +5746,7 @@ void main() {
       const th = on && !braking ? load : 0;
       R.th += (th - R.th) * Math.min(1, dt * (th > R.th ? 8 : 4));
       const want = R.th > 0.05 ? Math.min(7600, 2300 + kmh * 55 + R.th * 2700) : Math.max(1600, kmh > 8 ? 1400 + kmh * 42 : 1600);
-      R.rpm += (want - R.rpm) * Math.min(1, dt * (want > R.rpm ? 4 : 1.8));
+      R.rpm = Math.max(900, R.rpm + (want - R.rpm) * Math.min(1, Math.max(0, dt) * (want > R.rpm ? 4 : 1.8)));     // (never below idle, whatever the step)
       // the puffs, laid out a moment ahead: one every second turn, never two alike
       if (on) {
         if (R.next < t) R.next = t + 0.02;
