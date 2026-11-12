@@ -485,7 +485,7 @@
           <div class="head"><h2 id="creditsTitle" data-t="credits">Credits</h2></div>
           <p class="fine" data-t="creditsIntro">Real roads, hills and houses of Aizawl.</p>
           <ul class="credits">
-            <li><b>Roads and places:</b> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, ODbL</li>
+            <li><b>Roads, places and the city's buildings:</b> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, ODbL</li>
             <li><b>Hills:</b> Copernicus WorldDEM-30 © DLR e.V. 2010–2014 and © Airbus Defence and Space GmbH 2014–2018, provided under COPERNICUS by the European Union and ESA</li>
             <li><b>Houses:</b> Google Open Buildings (CC BY 4.0)</li>
             <li><b>People:</b> Quaternius, Universal Base Characters (CC0)</li>
@@ -2139,7 +2139,7 @@
     // the land further out: the same ground, in a softer haze that never quite hides it (as the far hills are
     // drawn), so across a valley there are hills to see and not a gap of haze
     const farMat = new T.MeshLambertMaterial({ vertexColors: true, side: T.DoubleSide });
-    farMat.onBeforeCompile = sh => { grain(sh); sh.fragmentShader = sh.fragmentShader.replace('#include <fog_fragment>', '#ifdef USE_FOG\n  gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, smoothstep(fogNear, fogFar * 1.5, vFogDepth) * 0.86);\n#endif'); };
+    farMat.onBeforeCompile = sh => { grain(sh); sh.fragmentShader = sh.fragmentShader.replace('#include <fog_fragment>', '#ifdef USE_FOG\n  gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, smoothstep(fogNear, fogFar * 3.2, vFogDepth) * 0.8);\n#endif'); };
     const plainMat = new T.MeshLambertMaterial(), glowMat = new T.MeshBasicMaterial({ toneMapped: false });
     // street lamps: dark by day, warm at night, each with its pool of light on the road; lit windows at night
     // At night: a soft round glow (brightest in the middle, fading out), the pool a lamp throws (wide and
@@ -2561,7 +2561,7 @@ void main() {
         for (let k = i - 1; k <= i + 1; k++) { junc[sd][k] = 1; bare[sd][k] = true; }
         jns.push([i, sd, c]);
       }
-      return { n, P, R, F, yaw, Y, ext, grid, bare, gone, half, junc, jns, minY: Math.min(...Y) };
+      return { n, P, R, F, yaw, Y, ext, grid, bare, gone, half, junc, jns, minY: Math.min(...Y), org: [X[0], Z[0]] };     // (org: where the road starts on its map line)
     }
     // Would a thing at (x, z), r metres round and from height y0 to y1, stand on the road anywhere along
     // it? Aizawl's roads loop round the hills and come back past themselves, so a house beside one
@@ -3031,9 +3031,22 @@ void main() {
     // the ground beside the nearest stretch of road does, with a gentle roll; built-up where the road's
     // houses are many (a patchwork of walls and roofs, as Aizawl's hillsides look from across a valley).
     // Next to the road it keeps under the near ground, and the haze softens it with distance.
-    let farLand = null;
+    let farLand = null, farTown = null;
+    // the true height of the land at (x, z) on the map, in the route's own heights (W3.base lines them up)
+    // (the far data is in the city map's frame, from its corner; a route's map line is in that frame (city.json)
+    // or in the projection's own metres (routes.json: the corner further), and the road is drawn from its start)
+    // (and the road is drawn from where it starts, north towards -z): a point of the far data at (x, z) is
+    // drawn at (x + fo[0], fo[1] - z)
+    const farOff = () => { const o = route.id.startsWith('city:') ? [0, 0] : FAR.corner; return [o[0] - W3.org[0], W3.org[1] - o[1]]; };
+    const demAt = (x, z) => {
+      const L = FAR.land, [ox, oz] = W3.fo || [0, 0]; x -= ox; z = oz - z;
+      const i = clamp((x - L.x0) / L.step, 0, L.nx - 1.001), j = clamp((z - L.z0) / L.step, 0, L.nz - 1.001), i0 = Math.floor(i), j0 = Math.floor(j), ti = i - i0, tj = j - j0;
+      const h = (a, b) => L.h[b * L.nx + a] / 10;
+      return L.low + (h(i0, j0) * (1 - ti) + h(i0 + 1, j0) * ti) * (1 - tj) + (h(i0, j0 + 1) * (1 - ti) + h(i0 + 1, j0 + 1) * ti) * tj - W3.base;
+    };
     function farGround() {
-      const { n, P, R, Y } = W3, STEP = 15, R0 = 58, R1 = 340, ks = [];
+      // (with the true land, it reaches much further, a little coarser: across the valleys to the next hills)
+      const { n, P, R, Y } = W3, STEP = FAR ? (level === 0 ? 25 : 20) : 15, R0 = 58, R1 = FAR ? (level === 0 ? 800 : 1100) : 340, ks = [];     // (on the lowest level, less far and coarser: quicker to make on a phone)
       for (let k = 0; k < n; k += 5) ks.push(k);
       if (ks[ks.length - 1] !== n - 1) ks.push(n - 1);
       let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
@@ -3048,16 +3061,26 @@ void main() {
         const floor = clamp(g * 4, -200, -40), at = 30 + (floor / g - 1) / 0.02;
         return d <= at ? h : Math.min(floor - g * 0.018 * (d - at), 40);
       };
+      // (with the true land: how built-up it is round each point, from the buildings there, for its colour)
+      const town = FAR && townGrid(x0, z0, x1, z1), townAt = (x, z) => { if (!town) return 0; const v = town.g[Math.floor((z - z0) / 40) * town.w + Math.floor((x - x0) / 40)]; return Math.min(1, (v || 0) / 4); };
       for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
         const x = x0 + i * STEP, z = z0 + j * STEP;
-        let dmin = Infinity, near = 0, hs = 0, ws = 0, ts = 0;
+        let dmin = Infinity, near = 0, hs = 0, ws = 0, ts = 0, cs = 0, cw = 0;
         for (const k of ks) {
           const dx = x - P[k].x, dz = z - P[k].z, d2 = dx * dx + dz * dz;
-          if (d2 > (R1 + 80) ** 2) continue;
+          if (FAR && W3.corr && d2 < 600 * 600) { const w = 1 / Math.max(25, Math.sqrt(d2)) ** 4; cs += W3.corr[k] * w; cw += w; }
+          if (d2 > (FAR ? 300 : R1 + 80) ** 2) { if (d2 < dmin * dmin) dmin = Math.sqrt(d2); continue; }
           const d = Math.sqrt(d2), sd = dx * R[k].x + dz * R[k].z >= 0 ? 1 : -1;
           const v = Y[k] + (W3.ride ? W3.ride[k] : 0) + far(sideAt(k, sd), Math.max(d, 30)), w = 1 / Math.max(25, d) ** 4;
           if (d < dmin) { dmin = d; near = v; }
           hs += v * w; ws += w; ts += Math.min(1, housesOn(sd, k) / 6) * w;
+        }
+        if (FAR) {     // the true land, coming in from about 70 m out (nearer, the near ground's own slope carried on)
+          const t = clamp((dmin - 70) / 130, 0, 1), guess = ws ? hs / ws : 0, fix = cw ? cs / cw * clamp(1 - (dmin - 300) / 300, 0, 1) : 0;     // (the drift there, fading out from 300 m)
+          let h = (ws ? guess * (1 - t) : 0) + (demAt(x, z) - fix) * (ws ? t : 1);
+          if (dmin < 90) h = Math.min(h, near - 2.5 - (90 - dmin) * 0.05);
+          H[j * nx + i] = h; D[j * nx + i] = dmin; TN[j * nx + i] = Math.max(ws ? ts / ws : 0, townAt(x, z));
+          continue;
         }
         if (!ws || dmin > R1 + 20) continue;
         const roll = (Math.sin(x * 0.013 + z * 0.007) + Math.sin(x * 0.005 - z * 0.011 + 1.3)) * 4 * clamp((dmin - 70) / 90, 0, 1);
@@ -3068,11 +3091,12 @@ void main() {
       // one corner for each point, shared by the cells round it (so the hills are smooth), each with its own
       // colour: greens, and in town the pale walls and grey and red roofs of houses, softly mixed
       const pos = new Float32Array(nx * nz * 3), col = new Float32Array(nx * nz * 3), idx = [], c = new T.Color();
+      const YARDS = ['#9a958a', '#8f8a7f', '#a39e92', '#857d6e', '#7c8566', '#6f7d5c'];
       const GREEN = ['#5b8a45', '#567f42', '#5f8c48', '#52793f'], TOWN = ['#b9b2a2', '#aaa494', '#c2bba8', '#98a2a6', '#b39f92', '#a4ad9a', '#86837b', '#96604f', '#6c7780'];
       for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
         const v = j * nx + i, r = rnd(i * 7 + 1, j * 13 + 2);
         pos[v * 3] = x0 + i * STEP; pos[v * 3 + 1] = Number.isNaN(H[v]) ? 0 : H[v]; pos[v * 3 + 2] = z0 + j * STEP;
-        c.set(r < TN[v] * 0.7 ? TOWN[Math.floor(rnd(i + 3, j + 5) * TOWN.length)] : GREEN[Math.floor(r * 97) % GREEN.length]);
+        c.set(r < TN[v] * 0.7 ? (FAR ? YARDS : TOWN)[Math.floor(rnd(i + 3, j + 5) * (FAR ? YARDS : TOWN).length)] : GREEN[Math.floor(r * 97) % GREEN.length]);     // (with the real buildings standing on it, the ground between them: concrete, earth, scrub)
         col[v * 3] = c.r; col[v * 3 + 1] = c.g; col[v * 3 + 2] = c.b;
       }
       for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) {
@@ -3083,8 +3107,87 @@ void main() {
       const g = new T.BufferGeometry();
       g.setAttribute('position', new T.BufferAttribute(pos, 3)); g.setAttribute('color', new T.BufferAttribute(col, 3)); g.setIndex(idx);
       g.computeVertexNormals(); g.computeBoundingSphere();
+      if (FAR) { let low = Infinity; for (let v = 0; v < nx * nz; v++) if (!Number.isNaN(H[v])) low = Math.min(low, H[v]); W3.farLow = low - 25; }     // (the valley floor plane, under the true valleys)
+      W3.farGrid = { x0, z0, step: STEP, nx, nz, H };     // (so the far buildings stand on the land as it is drawn)
       const m = new T.Mesh(g, farMat); m.receiveShadow = true; m.userData.far = true;
       return m;
+    }
+    // how many buildings in each 40 m square, over an area (for the far land's colour)
+    function townGrid(x0, z0, x1, z1) {
+      const w = Math.ceil((x1 - x0) / 40) + 1, h = Math.ceil((z1 - z0) / 40) + 1, g = new Uint16Array(w * h), B = FAR.b;
+      const [ox, oz] = W3.fo || [0, 0];
+      for (let i = 0; i < B.n; i++) { const x = B.x[i] + ox, z = oz - B.z[i]; if (x < x0 || x > x1 || z < z0 || z > z1) continue; g[Math.floor((z - z0) / 40) * w + Math.floor((x - x0) / 40)]++; }
+      return { g, w };
+    }
+    // The city away from the road: every building mapped there, out to a kilometre (less on the lowest
+    // level), as a house is drawn by the road (its walls, windows on every floor, columns and parapet, a flat
+    // roof, lit windows at night), standing on the true land: its foot down to the lowest ground under it, its
+    // floors counted up from the highest. On a small house now and then a pitched tin roof; on the others,
+    // often, the black water tank. Not within 60 m of the road: the houses there are drawn with it.
+    const farHouseMat = new T.MeshLambertMaterial({ map: windowTex }), farPlain = new T.MeshLambertMaterial();
+    const softHaze = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <fog_fragment>', '#ifdef USE_FOG\n  gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, smoothstep(fogNear, fogFar * 3.2, vFogDepth) * 0.8);\n#endif'); };
+    farHouseMat.onBeforeCompile = sh => { houseMat.onBeforeCompile(sh); softHaze(sh); };
+    farHouseMat.customProgramCacheKey = () => 'farHouse';
+    farPlain.onBeforeCompile = softHaze; farPlain.customProgramCacheKey = () => 'farPlain';
+    const TIN = ['#a8432f', '#8a2f2f', '#2f5f8a', '#3f7a4a', '#7d8288', '#b5523b'];
+    // the far land's height at (x, z), as drawn (where it is drawn; else the true land)
+    const landAt = (x, z) => {
+      const G = W3.farGrid; if (!G) return demAt(x, z);
+      const i = (x - G.x0) / G.step, j = (z - G.z0) / G.step, i0 = Math.floor(i), j0 = Math.floor(j);
+      if (i0 < 0 || j0 < 0 || i0 >= G.nx - 1 || j0 >= G.nz - 1) return demAt(x, z);
+      const ti = i - i0, tj = j - j0, h = (a, b) => G.H[b * G.nx + a], v = [h(i0, j0), h(i0 + 1, j0), h(i0, j0 + 1), h(i0 + 1, j0 + 1)];
+      if (v.some(Number.isNaN)) return demAt(x, z);
+      return (v[0] * (1 - ti) + v[1] * ti) * (1 - tj) + (v[2] * (1 - ti) + v[3] * ti) * tj;
+    };
+    function farCity() {
+      if (farTown) { scene.remove(farTown); farTown.traverse(o => { if (o.isInstancedMesh) o.dispose(); }); farTown = null; }
+      if (!FAR || !W3) return;
+      const { n, P } = W3, B = FAR.b, RB = level === 0 ? 650 : 1000, CELL = 30;
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (const q of P) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); z0 = Math.min(z0, q.z); z1 = Math.max(z1, q.z); }
+      x0 -= RB; z0 -= RB; x1 += RB; z1 += RB;
+      // how far each 30 m square is from the road
+      const gw = Math.ceil((x1 - x0) / CELL) + 1, gh = Math.ceil((z1 - z0) / CELL) + 1, dist = new Float32Array(gw * gh).fill(1e9), rr = Math.ceil(RB / CELL);
+      for (let k = 0; k < n; k += 2) {
+        const ci = Math.floor((P[k].x - x0) / CELL), cj = Math.floor((P[k].z - z0) / CELL);
+        for (let j = Math.max(0, cj - rr); j <= Math.min(gh - 1, cj + rr); j++) for (let i = Math.max(0, ci - rr); i <= Math.min(gw - 1, ci + rr); i++) {
+          const dx = x0 + (i + 0.5) * CELL - P[k].x, dz = z0 + (j + 0.5) * CELL - P[k].z, d = dx * dx + dz * dz;
+          if (d < dist[j * gw + i]) dist[j * gw + i] = d;
+        }
+      }
+      const H = [], RF = [], TK = [], [ox, oz] = W3.fo; let skipped = 0;
+      for (let i = 0; i < B.n; i++) {
+        const x = B.x[i] + ox, z = oz - B.z[i];
+        if (x < x0 || x > x1 || z < z0 || z > z1) continue;
+        const d = Math.sqrt(dist[Math.floor((z - z0) / CELL) * gw + Math.floor((x - x0) / CELL)]);
+        if (d > RB) continue;
+        const a = B.a[i] / 4, dd = B.d[i] / 4, ang = -B.yaw[i] / 255 * Math.PI, c = Math.cos(ang), s = Math.sin(ang);     // (minus: north is -z)
+        // Near the road (within 60 m: its own hillside), a building stands on that hillside as it is drawn, and
+        // none within 34 m of it (the houses there being the road's own), nor past where a bend's hillside stops
+        let onHill = null;
+        if (d < 90) {
+          let kb = 0, best = Infinity;
+          for (let k = 0; k < n; k++) { const q = (P[k].x - x) ** 2 + (P[k].z - z) ** 2; if (q < best) { best = q; kb = k; } }
+          const lat = (x - P[kb].x) * W3.R[kb].x + (z - P[kb].z) * W3.R[kb].z, sd = lat >= 0 ? 1 : -1, off = Math.abs(lat), dist = Math.sqrt(best);
+          if (dist < 34 + a / 2) continue;
+          if (dist < 60 + a / 2) {
+            if (W3.gone[sd][kb] || W3.bare[sd][kb] || off > W3.ext[sd][kb] - 2 || off < 30) continue;
+            onHill = W3.Y[kb] + (W3.ride ? W3.ride[kb] : 0) + groundAt(kb, sd, off);
+          }
+        }
+        let lo = Infinity, hi = -Infinity;
+        if (onHill !== null) { lo = onHill - 2; hi = onHill; }
+        else for (const [u, w] of [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5], [0, 0]]) { const g = landAt(x + c * u * a - s * w * dd, z + s * u * a + c * w * dd); lo = Math.min(lo, g); hi = Math.max(hi, g); }
+        const fl = B.fl[i], r = rnd(x, z), top = hi + fl * 3 + 0.4, bot = lo - 1.5;
+        if (d < 120 && inHome(x, bot, top, z, Math.max(a, dd) / 2)) { skipped++; continue; }     // (not inside one of the road's own houses)
+        H.push({ p: [x, bot, z], yaw: -ang, s: [a, top - bot, dd], c: B.ch[i] ? '#f4f1ea' : WALL3[Math.floor(r * WALL3.length)] });
+        if (fl <= 2 && r < 0.55) RF.push({ p: [x, top, z], yaw: -ang, s: [a * 1.06, Math.min(2.2, dd * 0.35), dd * 1.06], c: TIN[Math.floor(rnd(z, x) * TIN.length)] });
+        else if (rnd(x + 3, z) < 0.5) TK.push({ p: [x + c * a * 0.25, top, z + s * a * 0.25], s: [1.1, 1.3, 1.1], c: '#2b2d2c' });
+      }
+      farTown = new T.Group();
+      for (const m of [instanced(box, farHouseMat, H), instanced(prism, farPlain, RF), instanced(tank, farPlain, TK)]) if (m) { m.castShadow = m.receiveShadow = false; farTown.add(m); }
+      farTown.userData.count = H.length; farTown.userData.skipped = skipped;
+      scene.add(farTown);
     }
     function setRoute() {
       if (built === route.id) return;
@@ -3102,11 +3205,27 @@ void main() {
       // stretches), you see ground there, not the valley floor far below
       if (fill) { scene.remove(fill); fill.geometry.dispose(); }
       fill = baseGround(); scene.add(fill);
-      if (farLand) { scene.remove(farLand); farLand.geometry.dispose(); }
-      farLand = farGround(); scene.add(farLand);
+      farAll();
       // the valley floor far below, so no gap in the hillside shows the sky
       if (!under) { under = new T.Mesh(new T.PlaneGeometry(8000, 8000).rotateX(-Math.PI / 2), new T.MeshLambertMaterial({ color: '#557e45' })); scene.add(under); }
-      under.position.set(0, W3.minY - 70, 0);
+      under.position.set(0, Math.min(W3.minY - 70, W3.farLow ?? Infinity), 0);
+    }
+    // the land away from the road and the city on it: (again) for this route, the true land lined up with its heights
+    function farAll() {
+      W3.base = 0; W3.fo = FAR ? farOff() : [0, 0];
+      if (FAR) {
+        let sum = 0, sq = 0; for (let k = 0; k < W3.n; k++) { const d = demAt(W3.P[k].x, W3.P[k].z) - W3.Y[k]; sum += d; sq += d * d; }
+        W3.base = sum / W3.n; W3.baseSpread = Math.sqrt(Math.max(0, sq / W3.n - W3.base * W3.base));     // (for the tests: small when the land lines up)
+        // where the route's own heights drift from the true land's, by how much (smoothed over about 50 m):
+        // the land and the buildings beside each stretch take that stretch's, so they meet the road as they should
+        const raw = W3.P.map((q, k) => demAt(q.x, q.z) - W3.Y[k]), corr = new Float32Array(W3.n);
+        for (let k = 0; k < W3.n; k++) { let a = 0, c = 0; for (let j = Math.max(0, k - 6); j <= Math.min(W3.n - 1, k + 6); j++) { a += raw[j]; c++; } corr[k] = a / c; }
+        W3.corr = corr;
+      }
+      if (farLand) { scene.remove(farLand); farLand.geometry.dispose(); }
+      farLand = farGround(); scene.add(farLand);
+      farCity();
+      if (under) under.position.y = Math.min(W3.minY - 70, W3.farLow ?? Infinity);
     }
 
     // ---------- placing things: a frame on the road, then parts in it ----------
@@ -5275,7 +5394,7 @@ void main() {
         if (housesOn(sd, k) < 4) continue; n.town++; const h = W3.home[(k * 2 + (sd > 0 ? 1 : 0)) * 3]; if (!h) continue; n.home++; if (Math.abs(h.gy) < 0.6) n.flat++; if (shopAt(k, sd)) n.kept++; }
       return n; };
     const walkable = (i, sd) => { setRoute(); i = clamp(i, 0, W3.n - 1); return !W3.bare[sd][i] && !W3.gone[sd][i] && !W3.ride[i]; };
-    return { draw: draw3, size, setPlan, shop: shopAt, shopsWhy, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, audit9, audit10, audit11, audit12, audit13, audit14, holesSeen, walkable,
+    return { draw: draw3, size, setPlan, farReady: () => { if (W3 && built) farAll(); }, w3info: () => W3 && { base: W3.base, spread: W3.baseSpread, fo: W3.fo, n: W3.n, left: W3.corr ? Math.sqrt(W3.P.reduce((a, q, k) => a + (demAt(q.x, q.z) - W3.corr[k] - W3.Y[k]) ** 2, 0) / W3.n) : null }, farCount: () => (farTown ? farTown.userData.count : 0), farSkipped: () => (farTown ? farTown.userData.skipped : 0), shop: shopAt, shopsWhy, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, audit9, audit10, audit11, audit12, audit13, audit14, holesSeen, walkable,
       // for the tests: which earlier stretches of road lie under the middle of sample k, and how high
       under: (k, lat = 0) => { setRoute(); const { P, R, Y, grid, n } = W3, x = P[k].x + R[k].x * lat, z = P[k].z + R[k].z * lat, out = [];
         for (const kk of new Set([...Array(9).keys()].flatMap(i => [...Array(9).keys()].map(j => grid.get((Math.floor(x / 12) + i - 4) + ',' + (Math.floor(z / 12) + j - 4)) || []).flat()))) {
@@ -5973,6 +6092,19 @@ void main() {
     return cityP || (cityP = fetch('ride/city.json?v=9463910e').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => (CITY = d)).catch(e => { cityP = null; throw e; }));
   }
   const vengOf = id => CITY.veng.find(v => v.id === id) || CITY.veng[0];
+  // What is seen away from the road (ride/far.json, from bake_far.py): the true lie of the land round the
+  // city (Copernicus elevation), and the city's buildings on it (every one mapped on OpenStreetMap), in the
+  // map's own frame, as the routes are. Fetched once the 3D view is up; till then the land is guessed.
+  let FAR = null, farP = null;
+  const bytes = s => { const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
+  function loadFar() {
+    return farP || (farP = fetch('ride/far.json?v=f47f1f44').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => {
+      const L = d.land, B = d.buildings;
+      FAR = { corner: d.corner || [0, 0], land: { ...L, h: new Uint16Array(bytes(L.h).buffer) },
+        b: { n: B.n, x: new Int16Array(bytes(B.x).buffer), z: new Int16Array(bytes(B.z).buffer), a: bytes(B.a), d: bytes(B.d), yaw: bytes(B.yaw), fl: bytes(B.fl), ch: bytes(B.ch) } };
+      if (R3) R3.farReady();
+    }).catch(() => { farP = null; }));
+  }
   // A packed list of small numbers (one character each) back into numbers
   const unpack = (str, lo, scale = 1) => Array.from(str, ch => (CITY.alphabet.indexOf(ch) + lo) * scale);
   const steps = flat => { const out = []; let x = 0, z = 0; for (let i = 0; i < flat.length; i += 2) { x += flat[i]; z += flat[i + 1]; out.push([x, z]); } return out; };
@@ -6182,7 +6314,7 @@ void main() {
     peds: peds.map(p => ({ at: p.at, x: p.x, shop: !!p.shop, em: !!p.em, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)), dog: !!p.dog, child: !!p.look.child })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, fareTaxi: (ahead, speed = 8) => { const c = newCar('taxi', 0, s + ahead, speed, 1); c.fare = 'want'; cars.push(c); return c; }, park: (kind, ahead, lane = 1, dir = 1, speed = 0) => { const c = newCar(kind, lane, s + ahead, dir * speed, dir); c.cruise = speed; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), holes: () => R3 && R3.holesSeen(), sizes: () => R3 && R3.sizes(), under: (k, lat) => R3 && R3.under(k, lat), probe: (k, lat, al) => R3 && R3.probe(k, lat, al), mem: () => R3 && R3.mem(), walker: (ahead, x, va = 1, vx = 0, look, dog, extra) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; if (dog) p.dog = dog; if (extra) Object.assign(p, extra); peds.push(p); return peds.length; },
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
     // for the tests: ride a given road; and every road with how many crossings and jams it has
-    shopsWhy: sd => R3 && R3.shopsWhy(sd), dress: (scooter, design, box) => { S.bonus = Math.max(S.bonus || 0, 1e6); if (scooter) { S.scooter = scooter; if (!S.owned.includes(scooter)) S.owned.push(scooter); } if (design) S.design = design; if (box) S.cos.box = box; return [myScooter().id, myDesign().id, worn('box').id]; }, routes: () => [...DATA.routes, ...CITY.jobs.map(routeOf)].map(r => ({ id: r.id, left: (r.housesL || []).slice(0, 300).reduce((a, b) => a + b, 0) })), useRoute: id => { route = [...DATA.routes, ...CITY.jobs.map(routeOf)].find(r => r.id === id); reset(); return route.length; }, go: () => start(),
+    shopsWhy: sd => R3 && R3.shopsWhy(sd), dress: (scooter, design, box) => { S.bonus = Math.max(S.bonus || 0, 1e6); if (scooter) { S.scooter = scooter; if (!S.owned.includes(scooter)) S.owned.push(scooter); } if (design) S.design = design; if (box) S.cos.box = box; return [myScooter().id, myDesign().id, worn('box').id]; }, farCount: () => R3 && R3.farCount(), farSkipped: () => R3 && R3.farSkipped(), w3info: () => R3 && R3.w3info(), farLoaded: () => !!FAR, routes: () => [...DATA.routes, ...CITY.jobs.map(routeOf)].map(r => ({ id: r.id, left: (r.housesL || []).slice(0, 300).reduce((a, b) => a + b, 0) })), useRoute: id => { route = [...DATA.routes, ...CITY.jobs.map(routeOf)].find(r => r.id === id); reset(); return route.length; }, go: () => start(),
     // for the tests: a vehicle of a kind, so far ahead, in a lane, at a speed, going our way (1) or towards us (-1)
     car: (kind, ahead, lane = 0, v = 0, dir = 1) => { cars.push(newCar(kind, lane, s + ahead, v, dir)); return cars.length; },
     plans: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push([r.id, Math.round(r.length), planCrossings().length, planJams().length]); } route = keep; reset(); return out; },
@@ -6206,6 +6338,7 @@ void main() {
   const three = /[?&]flat\b/.test(location.search) ? Promise.resolve() : import(THREE_URL).then(T => {
     try { R3 = make3d(T); } catch (e) { R3 = null; return; }
     $('gl').classList.add('on'); R3.setPlan(); resize();
+    loadFar();
   }).catch(() => {});
   hnStat('ride', 'Aizawl Ride');
   // the Aizawl map once three.js is in (on a slow line they would share it, and the picture comes first);

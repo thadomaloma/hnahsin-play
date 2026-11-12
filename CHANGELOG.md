@@ -4,6 +4,18 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.66.0 (12 November 2026)
+
+### Aizawl Ride: the whole city round you
+
+- Across the valleys you see Aizawl's other hills, built up as they are: the
+  land round every ride is the true lie of the land, and on it stand the
+  city's real buildings, every one mapped on OpenStreetMap (some 50,000),
+  each where it is, as big as it is, with its windows, water tanks and tin
+  roofs, and its windows lit at night.
+- Near the road the land meets it as it should, and the buildings on the
+  hillside beside the road are the real ones too.
+
 ## 1.65.4 (12 November 2026)
 
 - Aizawl Ride's road looks like a road that is used: darker where the wheels
