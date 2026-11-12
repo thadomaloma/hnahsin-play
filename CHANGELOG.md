@@ -4,6 +4,11 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.63.2 (12 November 2026)
+
+- The home page's footer shows the day the games were last updated, next to
+  the version, in place of a "What's new" link that no longer was.
+
 ## 1.63.1 (12 November 2026)
 
 - Hnahsin Playground's Days and times no longer stops when it asks which day
