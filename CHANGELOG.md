@@ -4,6 +4,15 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.66.2 (12 November 2026)
+
+- Aizawl Ride's Everyday scooter is the classic delivery scooter: a long round
+  body swelling at the back under a long black seat, a flat floor running into
+  a front shield that sweeps up to the handlebar, a round lamp in the
+  handlebar, a big round mudguard over the small front wheel, an amber light
+  on the shield, round mirrors, a grey exhaust, and a big delivery box on the
+  rack, up to your shoulders. Your colours stay as you chose them.
+
 ## 1.66.1 (12 November 2026)
 
 - Aizawl Ride's houses look lived in: on the flat roofs, the next floor begun

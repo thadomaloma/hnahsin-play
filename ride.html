@@ -4771,18 +4771,34 @@ void main() {
       part(P.S.done(), P.seat || seatBlack, 0, 0, 0); part(P.H.done(), VMAT.chrome, 0, 0, 0); part(P.K.done(), black, 0, 0, 0);
       for (const [z, r] of wheel) { wheels.push(part(tyreGeo, VMAT.tyre, 0, r, z, 0.13, r, r)); part(rimGeo, VMAT.chrome, 0, r, z, 0.13, r, r); }
       for (const e of [-1, 1]) part(box, amber, e * 0.17, P.indY || 0.52, -0.935 - (P.tailOut || 0), 0.06, 0.05, 0.02);   // rear indicators
-      DESIGN3[id] = { g, boxY };
+      DESIGN3[id] = { g, boxY, boxS: P.boxS || [1, 1, 1] };
       into = scoot;
       return g;
     };
-    // Everyday: the town scooter (an Activa), as the traffic's scooters are
-    design('everyday', 0, [[0.62, 0.25], [-0.56, 0.25]], P => {
-      scooterBody(P.B, P.B, P.N, P.S, P.H);                                                       // (the apron in the main colour too)
-      P.H.box(-0.66, 0.74, 0, 0.42, 0.03, 0.4);                                                   // the rack
-      part(box, tailMat, 0, 0.5, -0.94, 0.2, 0.07, 0.02);
-      for (const e of [-1, 1]) part(box, amber, e * 0.27, 1.06, 0.9, 0.06, 0.04, 0.02);
-      part(plateGeo, plateMat, 0, 0.36, -0.94, 0.24, 0.1, 1);
-      part(box, headMat, 0, 1.06, 0.93, 0.2, 0.07, 0.02);
+    // Everyday: the delivery scooter, as the classic delivery scooter is drawn: a long round body swelling at
+    // the back under a long black seat, a flat floor in the body's colour running into a front shield that
+    // sweeps up to the handlebar, a round lamp in the handlebar, a big round mudguard over the small front
+    // wheel, an amber light on the shield's front, round mirrors, the exhaust low on the right, and a big
+    // delivery box on the rack (the box drawn larger on this one: up to the rider's shoulders)
+    design('everyday', 0, [[0.66, 0.23], [-0.56, 0.23]], P => {
+      P.B.curve([[-0.92, 0.36], [-0.98, 0.54], [-0.9, 0.7], [-0.62, 0.78], [-0.2, 0.77], [0.02, 0.66], [0.08, 0.46], [0.0, 0.32], [-0.3, 0.28], [-0.7, 0.29]], 0.54, '#ffffff', 4);   // the rear body
+      P.B.box(0.27, 0.36, 0, 0.5, 0.05, 0.38);                                                        // the floor, in the body's colour
+      for (let i = -2; i <= 2; i++) P.K.box(0.27, 0.388, i * 0.065, 0.44, 0.012, 0.02);              // its rubber strips
+      P.B.curve([[0.44, 0.33], [0.5, 0.6], [0.57, 0.9], [0.62, 1.01], [0.7, 0.99], [0.77, 0.72], [0.73, 0.45], [0.6, 0.31]], 0.46, '#ffffff', 3);   // the front shield
+      P.B.curve([[0.5, 0.28], [0.55, 0.46], [0.68, 0.53], [0.86, 0.47], [0.93, 0.32], [0.85, 0.36], [0.68, 0.42], [0.58, 0.36]], 0.24, '#ffffff', 3);   // the big round mudguard
+      P.B.curve([[0.58, 1.0], [0.62, 1.11], [0.78, 1.15], [0.87, 1.08], [0.8, 1.0]], 0.54, '#ffffff', 3);   // the handlebar cover
+      P.H.lamp(0.87, 1.08, 0, 0.085, 0.05);                                                            // the lamp's chrome ring
+      P.S.curve([[-0.66, 0.76], [-0.62, 0.86], [-0.3, 0.88], [-0.04, 0.86], [0.03, 0.77], [-0.1, 0.74]], 0.34, '#ffffff', 2);   // the long black seat
+      P.H.box(-0.7, 0.78, 0, 0.44, 0.03, 0.42); for (const e of [-1, 1]) P.H.rod(-0.92, 0.79, e * 0.2, -0.48, 0.79, e * 0.2, 0.012);   // the rack, for the box
+      for (const e of [-1, 1]) P.H.rod(0.66, 0.23, e * 0.06, 0.62, 0.62, e * 0.06, 0.022);          // the fork
+      P.H.rod(-0.8, 0.27, -0.22, -0.12, 0.25, -0.21, 0.058); P.H.rod(-0.93, 0.29, -0.22, -0.78, 0.27, -0.22, 0.036);   // the exhaust, grey metal, low on the side
+      P.K.box(-0.3, 0.24, 0.12, 0.5, 0.12, 0.08);                                                    // the engine under the body
+      part(ROD, headMat, 0, 1.08, 0.895, 0.07, 0.01, 0.07, Math.PI / 2);                              // the round lamp
+      part(box, amber, 0, 0.7, 0.772, 0.06, 0.09, 0.02);                                              // the amber light on the shield's front
+      part(box, tailMat, 0, 0.56, -0.975, 0.16, 0.08, 0.02);
+      for (const e of [-1, 1]) part(box, amber, e * 0.3, 1.06, 0.83, 0.05, 0.04, 0.02);
+      part(plateGeo, plateMat, 0, 0.38, -0.97, 0.24, 0.1, 1);
+      P.indY = 0.55; P.tailOut = 0.03; P.boxS = [1.14, 1.3, 1.16];
     });
     // Classic: a round monocoque body swelling at the back, a tall bell of a front mudguard, a round
     // chrome-ringed lamp on the handlebar, chrome trims and a two-tone brown seat
@@ -4982,7 +4998,7 @@ void main() {
     // feet on the floorboard, hands on the grips, in the jacket from the shop; the helmet on the head. For
     // each design, how high its seat is (the hips) and its floorboard (the feet).
     const RIDER = { look: { shirt: '#3b78bf', lower: '#2c3e50', hair: '#1d1b22', jacket: 1 }, sc: 1 };
-    const SEAT_AT = { everyday: [0.84, 0.5], classic: [0.9, 0.5], sport: [0.96, 0.52], electric: [0.86, 0.52] };
+    const SEAT_AT = { everyday: [0.88, 0.42], classic: [0.9, 0.5], sport: [0.96, 0.52], electric: [0.86, 0.52] };
     const rv = new T.Vector3();
     function riderBody(dt, shirt) {
       const real = !!PEOPLE && level > 0;
@@ -5047,7 +5063,11 @@ void main() {
         if (logo.map) logo.map.dispose(); logo.map = boxTex(bw); logo.needsUpdate = true; bands.visible = !!bw.puan;
       }
       const dz = myDesign().id;
-      if (shown !== dz) { shown = dz; for (const [id, d] of Object.entries(DESIGN3)) d.g.visible = id === dz; boxG.position.y = DESIGN3[dz].boxY; }
+      if (shown !== dz) {
+        shown = dz; for (const [id, d] of Object.entries(DESIGN3)) d.g.visible = id === dz;
+        // the box: its foot on the rack and its front behind the rider, however big this design draws it
+        const D = DESIGN3[dz], [bx, by, bz] = D.boxS; boxG.scale.set(bx, by, bz); boxG.position.set(0, D.boxY + 0.77 * (1 - by), -0.4 * (1 - bz));
+      }
       if (extras && envStep !== hazeStep) makeEnv();     // the sky in the paint follows the light of the day
       frame3(s, px, fS);
       const fall = mode === 'crashing' ? Math.min(1, crashT / 0.45) : 0, bob = mode === 'playing' && !reduce ? Math.sin(time * 31) * 0.006 + Math.sin(time * 7.3) * 0.004 : 0;
