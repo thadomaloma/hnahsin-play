@@ -4,6 +4,13 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.65.4 (12 November 2026)
+
+- Aizawl Ride's road looks like a road that is used: darker where the wheels
+  run, dusty by the kerbs, patched where it was dug up, with fine cracks, oil
+  in the lanes and the paint worn thin; in the rain it is dark and wet, with
+  puddles by the kerbs.
+
 ## 1.65.3 (12 November 2026)
 
 - Aizawl Ride's footpaths are a little busier: about a third more people

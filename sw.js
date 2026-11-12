@@ -4,7 +4,7 @@
 // The Flutter app under app/ is kept as it is fetched (it is too big to fetch all up front).
 // The pages ask for audio.js and progress.js without a fingerprint, so they are kept under those names;
 // each release's new VERSION fetches them fresh.
-const VERSION = 'hnahsin-136';
+const VERSION = 'hnahsin-137';
 const CORE = [
   './', 'index.html', 'theme.css?v=d03db89c', 'home.js?v=3dc16de9', 'rova.js?v=f35ca6fa', 'stats.js?v=ff1d2eba', 'audio.js', 'progress.js', 'journey.html', 'pics/rova-sheet.webp?v=b2946a39', 'playground.html', 'things.html', 'ride.html', 'ride/city.json?v=9463910e', 'pics/ride.jpg', 'pics/things-zokhua.webp', 'pics/things-zokhua.json', 'pics/things-kumtluang.webp', 'pics/things-kumtluang.json', 'pics/things-loom.svg', 'pics/things-loom.json', 'pics/things-bazar.webp', 'pics/things-bazar.json',
   'favicon.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'manifest.webmanifest',

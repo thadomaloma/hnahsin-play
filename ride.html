@@ -2090,7 +2090,52 @@
       sh.fragmentShader = GRAIN_F + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>' + GRAIN_MIX).replace('#include <map_fragment>', frag);
     };
     const groundMat = new T.MeshLambertMaterial({ vertexColors: true, side: T.DoubleSide });
-    groundMat.onBeforeCompile = sh => grain(sh);
+    // The road, worn as a road is (from where each point is across it and along it, so the wear lies along the
+    // lanes): the asphalt polished darker where the wheels run, dustier and paler by the kerbs and between the
+    // tracks; patches where it was dug up and filled again (some new and black, some old and grey); thin cracks;
+    // oil dropped in the middle of the lanes; the painted lines worn thin where the wheels cross them and in
+    // places. In the rain, all of it darker and wet, with puddles by the kerbs.
+    const roadU = { uWet: { value: 0 } };
+    const ROAD_V = `attribute vec3 rd;\nvarying vec3 vRd;\n`, ROAD_F = `uniform float uWet;\nvarying vec3 vRd;\n
+      float hash2(vec2 q) { return fract(sin(dot(q, vec2(12.9898, 78.233))) * 43758.5453); }`;
+    const ROAD_MIX = `
+      if (vRd.x > 0.5) {
+        float lat = vRd.y, al = vRd.z;
+        float lane = lat - floor((lat + 1.2) / 2.4) * 2.4;                       // across its lane, from the lane's middle
+        float track = exp(-pow((abs(lane) - 0.72) / 0.24, 2.0));                // where the wheels of the cars run
+        float mid = exp(-pow(lane / 0.32, 2.0));                                 // the middle of the lane (and the two-wheelers' line)
+        float edge = smoothstep(2.9, 3.75, abs(lat));                            // by the kerbs: dust and grit
+        float n1 = texture2D(detail, vec2(lat, al) * 0.11).r, n2 = texture2D(detail, vec2(lat * 0.33 + 7.0, al * 0.021)).r, n3 = texture2D(detail, vec2(lat * 0.71, al * 0.17) + 3.0).r;
+        vec3 asph = diffuseColor.rgb * (1.0 - track * 0.13 + edge * 0.12 + mid * 0.03 + (n2 - 0.5) * 0.16);
+        asph = mix(asph, asph * vec3(1.06, 1.02, 0.94), edge * 0.6);             // the dust is a little brown
+        // patches, dug and filled again: a rectangle in some lanes' stretches, its edge a little ragged
+        vec2 cq = vec2(al / 11.0, (lat + 4.8) / 2.4), cell = floor(cq), fq = fract(cq);
+        float h = hash2(cell);
+        if (h > 0.78) {
+          float rag = (n1 - 0.5) * 0.08;
+          float inP = step(0.15 + rag, fq.x) * step(fq.x, 0.62 + rag) * step(0.12 + rag, fq.y) * step(fq.y, 0.86 - rag);
+          asph *= mix(1.0, h > 0.9 ? 0.74 : 1.13, inP);
+        }
+        // thin cracks, here and there
+        float cr = abs(texture2D(detail, vec2(lat * 0.5, al * 0.25)).r - 0.5);
+        asph *= 1.0 - (1.0 - smoothstep(0.0, 0.009, cr)) * smoothstep(0.6, 0.74, n2) * 0.28;
+        // oil, in the middle of the lanes
+        asph *= 1.0 - mid * smoothstep(0.66, 0.8, n3) * 0.22;
+        if (vRd.x > 1.5) {     // a painted line: worn thin where the wheels cross it, and in patches
+          float wear = clamp(smoothstep(0.42, 0.78, texture2D(detail, vec2(lat, al) * 0.9).r) * 0.6 + track * 0.45 + smoothstep(0.55, 0.8, n2) * 0.25, 0.0, 0.78);
+          diffuseColor.rgb = mix(diffuseColor.rgb * (0.93 + n1 * 0.07), vec3(0.36, 0.37, 0.36) * (1.0 - track * 0.1), wear);
+        } else diffuseColor.rgb = asph;
+        // wet: darker, and puddles where it lies low by the kerbs
+        float pud = uWet * smoothstep(2.9, 3.5, abs(lat)) * smoothstep(0.6, 0.72, texture2D(detail, vec2(lat * 0.45, al * 0.09) + 11.0).r);     // (round puddles, not streaks)
+        diffuseColor.rgb *= 1.0 - uWet * 0.28;
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.52, 0.56, 0.6), pud * 0.55);
+      }`;
+    groundMat.onBeforeCompile = sh => {
+      grain(sh);
+      sh.uniforms.uWet = roadU.uWet;
+      sh.vertexShader = ROAD_V + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vRd = rd;');
+      sh.fragmentShader = ROAD_F + sh.fragmentShader.replace(GRAIN_MIX, GRAIN_MIX + ROAD_MIX);
+    };
     // the land further out: the same ground, in a softer haze that never quite hides it (as the far hills are
     // drawn), so across a valley there are hills to see and not a gap of haze
     const farMat = new T.MeshLambertMaterial({ vertexColors: true, side: T.DoubleSide });
@@ -2571,15 +2616,19 @@ void main() {
     }
     const nearJunc = (k, sd, r = 3) => { for (let kk = Math.max(0, k - r); kk <= Math.min(W3.n - 1, k + r); kk++) if (W3.junc[sd][kk]) return true; return false; };
     function strip() {
-      const p = [], c = [], by = [], what = [];      // by: the sample that built each corner, and what it is (kept for the tests, not drawn)
+      const p = [], c = [], rd = [], by = [], what = [];      // by: the sample that built each corner, and what it is (kept for the tests, not drawn)
       return {
         at: 0,
         kind: 'ground',
-        quad(a, b, cc, d, hex) { const k = C(hex); for (const v of [a, b, cc, a, cc, d]) { p.push(v[0], v[1], v[2]); c.push(k.r, k.g, k.b); by.push(this.at); what.push(this.kind); } },
+        // (e: for the road, each corner's [asphalt 1 or paint 2, metres across, metres along], for its wear)
+        quad(a, b, cc, d, hex, e) {
+          const k = C(hex), vs = [a, b, cc, a, cc, d], es = e ? [e[0], e[1], e[2], e[0], e[2], e[3]] : null;
+          vs.forEach((v, i) => { p.push(v[0], v[1], v[2]); c.push(k.r, k.g, k.b); rd.push(...(es ? es[i] : [0, 0, 0])); by.push(this.at); what.push(this.kind); });
+        },
         mesh() {
           if (!p.length) return null;
           const g = new T.BufferGeometry();
-          g.setAttribute('position', new T.Float32BufferAttribute(p, 3)); g.setAttribute('color', new T.Float32BufferAttribute(c, 3));
+          g.setAttribute('position', new T.Float32BufferAttribute(p, 3)); g.setAttribute('color', new T.Float32BufferAttribute(c, 3)); g.setAttribute('rd', new T.Float32BufferAttribute(rd, 3));
           g.computeVertexNormals(); g.computeBoundingSphere(); g.userData.by = by; g.userData.what = what; const m = new T.Mesh(g, groundMat); m.receiveShadow = true; return m;
         },
       };
@@ -2742,7 +2791,7 @@ void main() {
         }
         // where its corners lie over an earlier pass, they take that road's height, so the two meet without a step
         const on = (kk, lat, h) => { const q = pt(kk, lat, 0), ey = earlierY(q[0], q[2], q[1], k - 6); if (ey !== null) q[1] = ey; q[1] += h; return q; };
-        const roadQ = (l0, l1, m0, m1, h, hex) => st.quad(on(k, l0, h), on(k, l1, h), on(k + 1, m1, h), on(k + 1, m0, h), hex);
+        const roadQ = (l0, l1, m0, m1, h, hex) => { const f = h > 0.01 ? 2 : 1; st.quad(on(k, l0, h), on(k, l1, h), on(k + 1, m1, h), on(k + 1, m0, h), hex, [[f, l0, k * SEG], [f, l1, k * SEG], [f, m1, (k + 1) * SEG], [f, m0, (k + 1) * SEG]]); };
         for (const [a0, a1, b0, b1] of strips) if (!over((a0 + b0) / 2, (a1 + b1) / 2)) roadQ(a0, a1, b0, b1, 0, even ? '#5b5e5c' : '#565957');
         for (const e of [-1, 1]) if (full(e) && !over(e * (HALF - 0.18), e * (HALF - 0.06))) roadQ(e * (HALF - 0.18), e * (HALF - 0.06), e * (HALF - 0.18), e * (HALF - 0.06), 0.02, '#e9e4d0');
         if (even) for (const m of [-LANE / 2, LANE / 2]) if (Math.min(hw(Math.sign(m), k), hw(Math.sign(m), k + 1)) > Math.abs(m) + 0.2 && !over(m - 0.12, m + 0.12)) roadQ(m - 0.12, m + 0.12, m - 0.12, m + 0.12, 0.02, '#f4efd9');
@@ -4809,7 +4858,7 @@ void main() {
       if (night || rain) { scene.fog.color.copy(fogCol); scene.fog.near = night ? 10 : 14; scene.fog.far = far * (night ? 0.55 : 0.6); sky.material.uniforms.low.value.copy(fogCol); }
       sun.intensity = night ? 0.24 : rain ? 1.2 : 2.6; hemi.intensity = night ? 0.24 : rain ? 1.5 : 2.1;
       groundMat.color.setScalar(rain ? 0.8 : 1);
-      rainG.visible = rain;
+      rainG.visible = rain; roadU.uWet.value = rain ? 1 : 0;
       if (rain) {
         const a = rainPos.array;
         for (let i = 0; i < a.length; i += 6) { a[i + 1] -= 24 * dts; a[i + 4] -= 24 * dts; if (a[i + 4] < -2) { a[i + 1] += 22; a[i + 4] += 22; } }
