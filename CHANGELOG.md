@@ -4,6 +4,21 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.65.0 (12 November 2026)
+
+### Aizawl Ride: people as they are
+
+- Umbrellas look and are held as real ones: a dome on eight ribs, the cloth
+  sagging a little between them, a tip and a hooked handle; held in the right
+  hand in front of the chest, the shaft leaning back over the shoulder so it
+  covers the head, swaying a little with the steps.
+- Some people carry a shopping bag in the hand, and some women carry an em on
+  their back, its strap across the forehead, bent a little under it.
+- The road workers wear rubber boots and work gloves, each works at his own
+  pace, and now and then one straightens up and rests on his shovel or rake.
+  The man with the flag waves it when traffic comes, and holds it lowered
+  when none does.
+
 ## 1.64.2 (12 November 2026)
 
 - Aizawl Ride's scooter sounds like a scooter: a one-cylinder engine's puffs

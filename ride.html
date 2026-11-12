@@ -1248,7 +1248,7 @@
   const newPed = (at, x, va, vx, look) => ({ at, x, va, vx, look: look || LOOKS[Math.random() * LOOKS.length | 0], phase: Math.random() * 4, cross: null, umb: UMBRELLAS[Math.random() * UMBRELLAS.length | 0] });
   // what a person wears as drawn: in the rain, the umbrella up (not the road workers or porters, whose hands are
   // full, nor those under the bus stop's roof)
-  const lookOf = p => (cond.rain && p.umb && !p.tool && !p.haul && !p.loader && !p.shelter && !p.look.umbrella ? p.lookU || (p.lookU = { ...p.look, umbrella: p.umb }) : p.look);
+  const lookOf = p => (cond.rain && p.umb && !p.tool && !p.haul && !p.loader && !p.em && !p.shelter && !p.look.umbrella ? p.lookU || (p.lookU = { ...p.look, umbrella: p.umb }) : p.look);
   const DOGS = ['#8d5a33', '#2b2522', '#e9dcc4', '#c9a06a', '#6b6b6b'];
   // People walking the footpaths, coming into view far ahead: on their own, a parent with a child, two children
   // together, or someone walking their dog on a lead
@@ -1261,7 +1261,13 @@
     else if (r < 0.32) { peds.push(newPed(at, x, va, 0, pick(KIDS))); peds.push(newPed(at + 0.5, x + inner, va, 0, pick(KIDS))); }               // two children
     else if (r < 0.4) { const p = newPed(at, x, va * 0.85, 0, pick(ADULTS)); p.dog = pick(DOGS); peds.push(p); }                                   // with a dog
     else peds.push(newPed(at, x, va, 0));
+    // what some carry: a shopping bag from the bazar in the hand; an em on the back (a woman in her puan, the strap on her brow)
+    for (const p of peds.slice(-2)) if (p.at >= at - 0.1 && p.at <= at + 0.6 && !p.look.child && !p.look.stick && !p.shop && !p.em) {
+      if (p.look.stripes && !p.look.long && Math.random() < 0.3) { p.em = true; p.va *= 0.85; }
+      else if (Math.random() < 0.22) p.shop = SHOPBAGS[Math.random() * SHOPBAGS.length | 0];
+    }
   }
+  const SHOPBAGS = ['#f4f4f0', '#f4f4f0', '#2e6da4', '#e0457b', '#f2c230', '#2e7d32', '#1b1b1b'];
   // The people of a roadblock, set out as it comes near. Road workers in orange with yellow hard hats, two
   // digging, one raking the tar for the roller and one with a red flag for the traffic; porters (hlawhfa) carrying the sacks from the truck to
   // the footpath and back; people waiting for the bus by its door, someone getting on and someone off; a
@@ -3636,6 +3642,25 @@ void main() {
       g.fillStyle = '#fff'; g.font = '800 40px "Plus Jakarta Sans", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('BUS STOP', 128, 120);
     }), side: T.DoubleSide }), 12);
     // (room for a busy street: the people on the footpaths and at the junctions, the riders of the two-wheelers)
+    // an umbrella's canopy: a dome on eight ribs, each panel sagging a little between them, as the cloth does
+    // (1 across and 0.42 high, its edge at 0; both sides drawn, so it is seen from under too)
+    const umbGeo = (() => {
+      const N = 32, M = 7, pos = [], idx = [];
+      for (let j = 0; j <= M; j++) for (let i = 0; i <= N; i++) {
+        const t = j / M, a = i / N * Math.PI * 2, f = (i % 4) / 4, sag = Math.sin(Math.PI * f) * t;
+        const r = Math.sin(t * 1.25) / Math.sin(1.25) * (1 - 0.07 * sag), y = 0.42 * Math.cos(t * 1.25) - 0.13 - 0.05 * sag;
+        pos.push(Math.cos(a) * r * 0.5, y, Math.sin(a) * r * 0.5);
+      }
+      for (let j = 0; j < M; j++) for (let i = 0; i < N; i++) { const a = j * (N + 1) + i, b = a + N + 1; idx.push(a, b, a + 1, a + 1, b, b + 1); }
+      const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
+    })();
+    // an em: the Mizo carrying basket of woven bamboo, wide at the mouth, narrow at the foot (open at the top)
+    const emMat = new T.MeshLambertMaterial({ side: T.DoubleSide, map: tex(64, 64, g => {
+      g.fillStyle = '#b48a4f'; g.fillRect(0, 0, 64, 64); g.strokeStyle = '#8a6434'; g.lineWidth = 2;
+      for (let i = -64; i < 128; i += 8) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 64, 64); g.stroke(); g.beginPath(); g.moveTo(i + 64, 0); g.lineTo(i, 64); g.stroke(); }
+      g.fillStyle = '#6e4c27'; g.fillRect(0, 0, 64, 4);
+    }) });
+    const pUmb = pool(umbGeo, new T.MeshLambertMaterial({ side: T.DoubleSide }), 60), pEm = pool(new T.CylinderGeometry(0.5, 0.17, 1, 14, 1, true).translate(0, 0.5, 0), emMat, 24);
     const pUp = pool(capUp, plainMat, 160), pLimb = pool(capHang, plainMat, 1500), pRound = pool(ball, plainMat, 900), pPuan = pool(skirt, puanMat, 60), pTorso = pool(torsoGeo, plainMat, 280), pBox = pool(box, plainMat, 420), pCone = pool(cone, plainMat, 40);
     const JACKETS = ['#2c3e50', '#7a3b2e', '#3b5f3a', '#1f3a68', '#5b4a3a', '#8e1b3a', '#d8d4cc', '#4a4f57'], HELMETS = ['#f2f2ee', '#231e16', '#c0392b', '#1565c0', '#f2c230', '#6b6e70'];
     const LEGS = ['#2c3e50', '#3b5b8a', '#34495e', '#1f1f1f', '#5b4a3a', '#46628f'], BAGS = ['#1f1f1f', '#2c3e50', '#7a3b2e', '#3b5f3a'];   // trousers and jeans; backpacks
@@ -3667,7 +3692,7 @@ void main() {
       const pole = [e * 0.5, -1, -0.4], pn = pole[0] * n[0] + pole[1] * n[1] + pole[2] * n[2], pp = pole.map((v, i) => v - pn * n[i]), pl = Math.hypot(...pp) || 1;
       const E = S.map((v, i) => v + n[i] * a + pp[i] / pl * h), W = S.map((v, i) => v + n[i] * d);
       limb3(pLimb, ...S, ...E, 0.1, top); limb3(pLimb, ...E, ...W, 0.08, low);
-      put(pRound, ...W, 0.05, 0.05, 0.05, '#c9b48a');                                                         // work gloves
+      put(pRound, ...W, 0.05, 0.05, 0.05, '#d9c27a');                                                         // work gloves
       return W;
     };
     // the body: P = { H: hip height, hz: hip forward, a: lean forward, fl/fr: the feet forward, hl/hr: the hands [x, y, z] }
@@ -3676,7 +3701,8 @@ void main() {
       for (const e of [-1, 1]) {
         const [ky, kz, ay, az] = ik(P.H, P.hz, 0.09, e < 0 ? P.fl : P.fr, 0.43, 0.41, true);
         limbTo(pLimb, e * 0.1, P.H, P.hz, ky, kz, 0.15, L.lower); limbTo(pLimb, e * 0.1, ky, kz, ay, az, 0.115, L.lower);
-        put(pBox, e * 0.1, 0.0, az + 0.04, 0.12, 0.09, 0.27, '#3a2a1c');                                     // work boots
+        put(pBox, e * 0.1, 0.0, az + 0.04, 0.12, 0.09, 0.27, '#1b1c1e');                                     // rubber boots,
+        limbTo(pLimb, e * 0.1, ky + (ay - ky) * 0.55, kz + (az - kz) * 0.55, ay, az, 0.13, '#1b1c1e');        // up the calf
       }
       put(pTorso, 0, ty, tz, 1.04, 1, 0.66, L.shirt, P.a);
       for (const v of [0.13, 0.31]) put(pBox, 0, ty + v * ca, tz + v * sa, 0.36, 0.04, 0.24, '#dfe3e6', P.a);   // the vest's shining bands
@@ -3699,9 +3725,22 @@ void main() {
     // A worker at work. body(P) poses the body (a real one, or the simple one) and gives back where its hands
     // got to; the tool is drawn through those hands, so it is always held.
     function worker(p, dt, body) {
+      const rate = p.rate ?? (p.rate = 0.82 + Math.random() * 0.32);     // (each at his own pace)
+      // now and then a digger or the man with the rake straightens up and rests, leaning on his tool, for a few seconds
+      let rest = false;
+      if (p.tool === 'shovel' || p.tool === 'rake') {
+        p.restIn = (p.restIn ?? 5 + Math.random() * 14) - dt;
+        if (p.restIn < 0) { p.restT = (p.restT || 0) + dt; rest = true; if (p.restT > (p.restFor ?? (p.restFor = 3 + Math.random() * 3))) { p.restIn = 9 + Math.random() * 16; p.restT = 0; p.restFor = null; } }
+      }
       const was = p.work ?? (p.work = Math.random() * 4);
-      p.work = was + dt;
-      if (p.tool === 'shovel') {
+      if (!rest) p.work = was + dt * rate;
+      if (rest) {
+        const foot = [0.02, 0.02, 0.5], top = [0.03, 1.07, 0.34], d = unit(sub(top, foot)), len = Math.hypot(...sub(top, foot));
+        const [hl, hr] = body({ H: 0.88, hz: -0.03, a: 0.07, fl: 0.1, fr: -0.09, hl: [-0.04, 1.1, 0.35], hr: [0.08, 1.03, 0.36] });
+        const g = [(hl[0] + hr[0]) / 2, (hl[1] + hr[1]) / 2, (hl[2] + hr[2]) / 2], dd = unit(sub(g, foot));
+        if (p.tool === 'shovel') { rod(pBox, foot, dd, 0.3, 0.22, 0.025, STEEL); rod(pBox, onLine(foot, dd, 0.28), dd, Math.hypot(...sub(g, foot)) - 0.18, 0.03, 0.03, WOOD); }   // the blade on the ground, the handle up to his hands
+        else { put(pBox, foot[0], 0.01, foot[2], 0.44, 0.07, 0.05, '#55585b'); rod(pBox, foot, dd, Math.hypot(...sub(g, foot)) + 0.08, 0.028, 0.028, WOOD); }
+      } else if (p.tool === 'shovel') {
         const u = (p.work / 2) % 1, [, a, c, gy, gz, th] = keyed(DIG, u), dir = [0, -Math.cos(th), Math.sin(th)], G = [-0.03, gy, gz];
         const lo = onLine(G, dir, 0.42), [hl, hr] = body({ H: 0.88 - c, hz: -0.1 * a, a, fl: 0.16, fr: -0.12, hl: G, hr: lo });
         const g = inHands(hl, hr, G, lo), d = dir, tip = onLine(g, d, 1.02);
@@ -3730,9 +3769,11 @@ void main() {
           const k = (u - 0.68) / 0.32, r = 0.07 * (1 + 2 * k) * (1 - k);
           for (const [dx, dz] of [[-0.16, -0.04], [0.16, -0.04], [0, 0.15], [0, -0.14]]) put(smokeM, cx + dx * (1 + k * 1.5), 0.04 + k * 0.1, cz + dz * (1 + k * 1.5), r, r * 0.8, r, DUST);
         }
-      } else {      // the flag: held up, waved side to side for the traffic to come past
-        const w = p.work * 3.4, rz = Math.sin(w) * 0.75, rx = 0.15;
-        const [, hr] = body({ H: 0.88, hz: -0.02, a: 0.03, fl: 0.06, fr: -0.06, hl: [-0.24, 0.4, 0.06 + Math.sin(w * 0.5) * 0.03], hr: [0.24, 1.42, 0.24] });
+      } else {      // the flag: held up and waved side to side as traffic comes; with none coming, held lowered, at rest
+        const coming = s > p.at - 75 && s < p.at + 3 || cars.some(c => c.dir > 0 && c.at > p.at - 60 && c.at < p.at);
+        p.wave = (p.wave ?? 0) + ((coming ? 1 : 0) - (p.wave ?? 0)) * Math.min(1, dt * 2.5);
+        const wv = p.wave, w = p.work * 3.4, rz = Math.sin(w) * 0.75 * wv + Math.sin(p.work * 0.7) * 0.05 * (1 - wv), rx = 0.15 + 2.3 * (1 - wv);
+        const [, hr] = body({ H: 0.88, hz: -0.02, a: 0.03, fl: 0.06, fr: -0.06, hl: [-0.24, 0.4, 0.06 + Math.sin(w * 0.5) * 0.03], hr: [0.24, 1.0 + 0.42 * wv, 0.2 + 0.04 * wv] });
         const bx = hr[0], by = hr[1] - 0.12, bz = hr[2], P = 0.95, up = [Math.sin(rz), Math.cos(rz) * Math.cos(rx), Math.cos(rz) * Math.sin(rx)];
         put(pBox, bx, by, bz, 0.025, P, 0.025, '#5a4636', rx, 0, rz);                                            // the stick
         const fz = rz + Math.sin(w * 2.3) * 0.18, side = [-Math.cos(fz) * 0.17, Math.sin(fz) * Math.cos(rx) * 0.17, Math.sin(fz) * Math.sin(rx) * 0.17];
@@ -3814,7 +3855,7 @@ void main() {
         it = kind.free.pop() || kind.make(); PEOPLE.live.set(p, it); it.root.visible = true;
         const u = it.mat.userData.u, skin = skinOf(p);
         u.uSkin.value.set(skin).multiplyScalar(1.05); u.uShirt.value.set(L.shirt); u.uPants.value.set(L.lower); u.uStripe.value.set(L.stripes || L.lower);
-        u.uShoe.value.set(SHOES[(Math.random() * SHOES.length) | 0]); u.uHair.value.set(L.elder ? GREY : L.hair); u.uLong.value = L.jacket || L.elder ? 1 : 0;
+        u.uShoe.value.set(p.tool ? '#1b1c1e' : SHOES[(Math.random() * SHOES.length) | 0]); u.uHair.value.set(L.elder ? GREY : L.hair); u.uLong.value = L.jacket || L.elder ? 1 : 0;
         const pick = kind.female ? (L.bun ? 'Buns' : L.long ? 'Long' : Math.random() < 0.5 ? 'Buns' : 'Long') : (Math.random() < 0.6 ? 'SimpleParted' : 'Buzzed');
         it.hairs.forEach(h => (h.visible = h.name.includes(pick)));
         it.mixer.setTime(Math.random() * 2);
@@ -3910,6 +3951,11 @@ void main() {
         B['hand_' + s].getWorldPosition(vH); B['lowerarm_' + s].getWorldPosition(vN);
         return toL(vH.addScaledVector(vH.clone().sub(vN).normalize(), 0.07 * (p.sc || 1)));
       });
+      // a worker's rubber boots, up to the middle of the calf, and the work gloves
+      if (p.tool) {
+        for (const sd of ['l', 'r']) { const f = toL(B['foot_' + sd].getWorldPosition(vH)), k = toL(B['calf_' + sd].getWorldPosition(vN)); limb3(pLimb, ...f, ...onLine(f, sub(k, f), 0.45), 0.135, '#1b1c1e'); }
+        for (const g of grips) put(pRound, ...g, 0.052, 0.05, 0.06, '#d9c27a');
+      }
       // a worker's vest's shining bands round the chest, and the hard hat on the head
       const ca = Math.cos(P.a), sa = Math.sin(P.a);
       if (p.tool) for (const n of ['spine_02', 'spine_03']) { const c = toL(B[n].getWorldPosition(vH)); put(pBox, c[0], c[1] - 0.02, c[2] + 0.025 * ca, 0.32, 0.03, 0.21, '#dfe3e6', P.a * (n === 'spine_02' ? 0.5 : 0.85)); }
@@ -3920,6 +3966,55 @@ void main() {
         put(pRound, ...onLine(onLine(top, u, -0.04), fw, 0.03), 0.15, 0.018, 0.16, p.hat, tilt);                          // and its brim
       }
       return grips;
+    }
+
+    // An umbrella held up in the right hand, from where the hand is: the shaft through the hand, the hook of the
+    // handle under it, the canopy over the head (the shaft leaning back a little, over the shoulder, as it is held),
+    // swaying a little with the steps
+    const umbrella = (h, col, p, ph) => {
+      const rx = -0.1 + Math.sin(ph * 2) * 0.025, rz = -0.1 + (p.umbTilt ?? (p.umbTilt = (Math.random() - 0.5) * 0.1)) + Math.sin(ph) * 0.03;
+      const up = [Math.sin(rz), Math.cos(rz) * Math.cos(rx), Math.cos(rz) * Math.sin(rx)], at = k => [h[0] + up[0] * k, h[1] + up[1] * k, h[2] + up[2] * k];
+      put(pBox, ...at(-0.1), 0.016, 1.13, 0.016, '#2b2b2b', rx, 0, rz);                                     // the shaft, to the tip over the canopy
+      const hk = at(-0.12); put(pRound, hk[0], hk[1] - 0.02, hk[2] + 0.03, 0.022, 0.03, 0.045, '#3b2a1e');   // the handle's hook
+      put(pUmb, ...at(0.72), 1, 1, 1, col, rx, 0, rz);                                                       // the canopy
+    };
+    // a shopping bag in the left hand, swinging a little as they walk
+    const bagIn = (h, col, ph) => {
+      for (const e of [-1, 1]) limb3(pLimb, h[0], h[1], h[2], h[0] + e * 0.05, h[1] - 0.13, h[2], 0.012, col);
+      put(pRound, h[0], h[1] - 0.29, h[2] + Math.sin(ph) * 0.02, 0.13, 0.17, 0.07, col, Math.sin(ph) * 0.12);
+    };
+    // an em on the back, its strap (hnam) across the forehead, greens in it: from the bottom of the back to above the shoulders
+    const emOn = (bot, top, brow) => {
+      const d = sub(top, bot), len = Math.hypot(...d), rx = Math.atan2(d[2], d[1]);
+      put(pEm, ...bot, 0.52, len, 0.52, '#ffffff', rx);
+      for (const e of [-1, 1]) limb3(pLimb, top[0] + e * 0.2, top[1] - 0.02, top[2] + 0.06, brow[0] + e * 0.07, brow[1], brow[2], 0.02, '#5a4636');
+      put(pRound, top[0], top[1] - 0.03, top[2], 0.17, 0.07, 0.17, '#4f8a3a');
+    };
+    // Someone walking, in a real body (the walk clip, as it plays), with what they carry; holding something,
+    // the arm is posed to it (and with an em, the back bent a little under it)
+    function walkReal(p, dt) {
+      const L = lookOf(p), hold = L.umbrella || p.shop || p.em;
+      const was = PEOPLE.live.get(p); if (was) unpose(was);
+      const it = person(p, dt);
+      if (L.bag) put(pBox, 0, 0.98, -0.16, 0.3, 0.36, 0.13, L.bag);                                          // a school bag on the back
+      if (L.stick) { const x = L.umbrella ? -0.26 : 0.26; limbTo(pLimb, x, 0.86, 0.2, 0.02, 0.32, 0.03, '#6b4a2f'); }   // the walking stick (in the other hand, with an umbrella)
+      if (!hold) return;
+      const B = it.bones || (it.bones = boneMap(it.root)), ph = p.phase * Math.PI / 2;
+      const S = it.saved = { pelvis: B.pelvis.position.toArray(), q: [] }; POSED.forEach((n, i) => B[n].quaternion.toArray(S.q, i * 4));
+      it.root.updateMatrixWorld(true); mInv.copy(mB).invert();
+      if (p.em) { dirW([-1, 0, 0], vAxis); for (const n of ['spine_01', 'spine_02', 'spine_03']) bend(B[n], vAxis, 0.24 / 3); bend(B.neck_01, vAxis, -0.14); }
+      if (L.umbrella) {
+        reachTo(B.upperarm_r, B.lowerarm_r, B.hand_r, toW([0.09, 1.16 + Math.sin(ph * 2) * 0.01, 0.22], vTarget), dirW([1, -1, -0.4], vPole));
+        umbrella(toL(B.hand_r.getWorldPosition(vH)), L.umbrella, p, ph);
+      }
+      if (p.shop) {
+        reachTo(B.upperarm_l, B.lowerarm_l, B.hand_l, toW([-0.24, 0.8, 0.03 + Math.sin(ph) * 0.05], vTarget), dirW([-1, -0.3, -0.6], vPole));
+        bagIn(toL(B.hand_l.getWorldPosition(vH)), p.shop, ph);
+      }
+      if (p.em) {
+        const s1 = toL(B.spine_01.getWorldPosition(vH)), s3 = toL(B.spine_03.getWorldPosition(vH)), hd = toL(B.Head.getWorldPosition(vH));
+        emOn([s1[0], s1[1] - 0.04, s1[2] - 0.22], [s3[0], s3[1] + 0.16, s3[2] - 0.33], [hd[0], hd[1] + 0.07, hd[2] + 0.09]);
+      }
     }
 
     // A porter with a sack on his back, walking (the walk clip, as it plays): bent forward under it, both hands
@@ -4183,17 +4278,10 @@ void main() {
           if (peds.some(q => q.haul && q.haul.t === p.loader && q.haul.busy)) put(pRound, 0, 0.74, 0.5, 0.36, 0.13, 0.22, '#d8c8a0');
           continue;
         }
-        if (PEOPLE && level > 0 && real.has(p)) {        // a real body (for the nearest people); what they carry is drawn with it
-          person(p, dt);
-          const L = lookOf(p);
-          if (L.bag) put(pBox, 0, 0.98, -0.16, 0.3, 0.36, 0.13, L.bag);                                     // a school bag on the back
-          if (L.umbrella) { put(pBox, 0.2, 1.05, 0.22, 0.025, 0.95, 0.025, '#231e16'); put(pCone, 0.2, 1.95, 0.22, 0.62, 0.3, 0.62, L.umbrella); }
-          if (L.stick) limbTo(pLimb, 0.26, 0.86, 0.2, 0.02, 0.32, 0.03, '#6b4a2f');                        // the walking stick
-          gear(p); continue;
-        }
+        if (PEOPLE && level > 0 && real.has(p)) { walkReal(p, dt); gear(p); continue; }     // a real body (for the nearest people), with what they carry
         // A walk: each leg swings from the hip and bends at the knee as it comes forward; the arms
         // swing against the legs. An elder stoops a little and takes shorter steps.
-        const L = lookOf(p), ph = p.phase * Math.PI / 2, old = L.elder ? 1 : 0, stoop = old * 0.22 + (p.loaded ? 0.35 : 0), skin = skinOf(p);
+        const L = lookOf(p), ph = p.phase * Math.PI / 2, old = L.elder ? 1 : 0, stoop = old * 0.22 + (p.loaded ? 0.35 : 0) + (p.em ? 0.18 : 0), skin = skinOf(p);
         const H = 0.86 + Math.abs(Math.cos(ph)) * 0.025, sh = H + 0.55 - stoop * 0.08, fw = stoop * 0.6;
         for (const e of [-1, 1]) {
           const lp = ph + (e > 0 ? 0 : Math.PI), th = Math.sin(lp) * (old ? 0.26 : 0.42), kn = 0.08 + Math.max(0, Math.cos(lp)) * (old ? 0.35 : 0.6);
@@ -4205,10 +4293,12 @@ void main() {
           const [ey, ez, hy, hz] = p.loaded ? armTo(e * 0.2, sh, fw, 2.75, 3.9, L.shirt, sleeve)
             : e > 0 && p.hail ? armTo(e * 0.2, sh, fw, 2.4, 2.8, L.shirt, sleeve)
             : e > 0 && L.umbrella ? armTo(e * 0.2, sh, fw, 0.35, 2.2, L.shirt, sleeve)
+            : e < 0 && p.shop ? armTo(e * 0.2, sh, fw, 0.06 + Math.sin(ph) * 0.08, 0.16, L.shirt, sleeve)
             : e > 0 && L.stick ? armTo(e * 0.2, sh, fw, 0.3, 0.9, L.shirt, sleeve)
             : armTo(e * 0.2, sh, fw, ua, ua + 0.25 + Math.max(0, -Math.sin(lp)) * 0.25, L.shirt, sleeve);
           put(pRound, e * 0.215, hy, hz, 0.045, 0.05, 0.045, skin);                                             // hands
-          if (e > 0 && L.umbrella) { put(pBox, 0.215, hy, hz, 0.025, 2.0 - hy, 0.025, '#231e16'); put(pCone, 0.215, 1.95, hz, 0.62, 0.3, 0.62, L.umbrella); }
+          if (e > 0 && L.umbrella) umbrella([0.215, hy, hz], L.umbrella, p, ph);
+          if (e < 0 && p.shop) bagIn([-0.215, hy, hz], p.shop, ph);
           if (e > 0 && L.stick) limbTo(pLimb, 0.23, hy, hz, 0.02, hz + 0.14, 0.03, '#6b4a2f');                 // the walking stick
         }
         if (L.stripes) put(pPuan, 0, 0.26, 0, 0.21, 0.74, 0.15, L.stripes);                                  // the puan, its stripes in her colour
@@ -4220,6 +4310,7 @@ void main() {
         if (L.bun) put(pRound, 0, hy + 0.06, hz - 0.12, 0.055, 0.055, 0.055, L.hair);
         if (L.long) put(pBox, 0, hy - 0.3, hz - 0.085, 0.2, 0.32, 0.05, L.hair);
         if (L.bag) put(pBox, 0, H + 0.12, -0.17, 0.3, 0.36, 0.13, L.bag);                                    // a school bag on the back
+        if (p.em) emOn([0, H + 0.05, -0.2], [0, H + 0.68, -0.34], [0, H + 0.86, 0.12]);
         gear(p);
       }
       peopleDone();
@@ -5982,7 +6073,7 @@ void main() {
   // (the tests may ask for only some roads: window.__only, a list of route ids)
   const testRoutes = () => [...DATA.routes, ...CITY.jobs.map(routeOf)].filter(r => !window.__only || window.__only.includes(r.id));
   if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ kind: c.kind, lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, wid: c.wid, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
-    peds: peds.map(p => ({ at: p.at, x: p.x, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)), dog: !!p.dog, child: !!p.look.child })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, fareTaxi: (ahead, speed = 8) => { const c = newCar('taxi', 0, s + ahead, speed, 1); c.fare = 'want'; cars.push(c); return c; }, park: (kind, ahead, lane = 1, dir = 1, speed = 0) => { const c = newCar(kind, lane, s + ahead, dir * speed, dir); c.cruise = speed; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), holes: () => R3 && R3.holesSeen(), sizes: () => R3 && R3.sizes(), under: (k, lat) => R3 && R3.under(k, lat), probe: (k, lat, al) => R3 && R3.probe(k, lat, al), mem: () => R3 && R3.mem(), walker: (ahead, x, va = 1, vx = 0, look, dog) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; if (dog) p.dog = dog; peds.push(p); return peds.length; },
+    peds: peds.map(p => ({ at: p.at, x: p.x, shop: !!p.shop, em: !!p.em, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)), dog: !!p.dog, child: !!p.look.child })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, fareTaxi: (ahead, speed = 8) => { const c = newCar('taxi', 0, s + ahead, speed, 1); c.fare = 'want'; cars.push(c); return c; }, park: (kind, ahead, lane = 1, dir = 1, speed = 0) => { const c = newCar(kind, lane, s + ahead, dir * speed, dir); c.cruise = speed; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), holes: () => R3 && R3.holesSeen(), sizes: () => R3 && R3.sizes(), under: (k, lat) => R3 && R3.under(k, lat), probe: (k, lat, al) => R3 && R3.probe(k, lat, al), mem: () => R3 && R3.mem(), walker: (ahead, x, va = 1, vx = 0, look, dog, extra) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; if (dog) p.dog = dog; if (extra) Object.assign(p, extra); peds.push(p); return peds.length; },
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
     // for the tests: ride a given road; and every road with how many crossings and jams it has
     shopsWhy: sd => R3 && R3.shopsWhy(sd), dress: (scooter, design, box) => { S.bonus = Math.max(S.bonus || 0, 1e6); if (scooter) { S.scooter = scooter; if (!S.owned.includes(scooter)) S.owned.push(scooter); } if (design) S.design = design; if (box) S.cos.box = box; return [myScooter().id, myDesign().id, worn('box').id]; }, routes: () => [...DATA.routes, ...CITY.jobs.map(routeOf)].map(r => ({ id: r.id, left: (r.housesL || []).slice(0, 300).reduce((a, b) => a + b, 0) })), useRoute: id => { route = [...DATA.routes, ...CITY.jobs.map(routeOf)].find(r => r.id === id); reset(); return route.length; }, go: () => start(),
