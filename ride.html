@@ -489,6 +489,7 @@
             <li><b>Hills:</b> Copernicus WorldDEM-30 © DLR e.V. 2010–2014 and © Airbus Defence and Space GmbH 2014–2018, provided under COPERNICUS by the European Union and ESA</li>
             <li><b>Houses:</b> Google Open Buildings (CC BY 4.0)</li>
             <li><b>People:</b> Quaternius, Universal Base Characters (CC0)</li>
+            <li><b>Moped:</b> <a href="https://polyfork.dev/asset/delivery-moped-1aa2ce" target="_blank" rel="noopener">Delivery Moped</a> by <a href="https://polyfork.dev" target="_blank" rel="noopener">Polyfork</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> (recoloured; its box and stand taken off)</li>
             <li><b>3D:</b> three.js (MIT)</li>
           </ul>
           <a class="fine" href="https://github.com/thadomaloma/hnahsin-play/blob/main/CREDITS.md" target="_blank" rel="noopener" data-t="allCredits">All the credits</a>
@@ -675,6 +676,7 @@
   const DESIGNS = [
     { id: 'everyday', name: 'Everyday', en: 'the town scooter, as Aizawl rides it', mz: 'khawpui scooter, Aizawl-in a chuan ang chiah', need: 0 },
     { id: 'classic', name: 'Classic', en: 'round and chrome, a round lamp, the old Italian way', mz: 'a hmel bial leh chrome, light bial, Italy hmanlai dan', need: 3000 },
+    { id: 'moped', name: 'Moped', en: 'the little delivery moped: a carrier for the box, a tray in front', mz: 'delivery moped te: a hnungah box chhuanna, a hmaah bawm', need: 5000 },
     { id: 'sport', name: 'Sport', en: 'sharp lines, twin lights, a raised tail', mz: 'a hmel hriam, light kawp, a mei chawi sang', need: 8000 },
     { id: 'electric', name: 'Electric', en: 'smooth and quiet, LED lights and a screen', mz: 'a nem a, a ri lo, LED light leh screen nen', need: 14000 },
   ];
@@ -701,9 +703,10 @@
   const COSMETICS = [
     { id: 'h-var', slot: 'helmet', name: 'vâr', en: 'white', price: 0, c: ['#f2f2ee', '#c03a2e'] },
     { id: 'h-dum', slot: 'helmet', name: 'dum', en: 'black', price: 60, c: ['#232323', '#f2c230'] },
-    { id: 'h-sen', slot: 'helmet', name: 'sen', en: 'red', price: 80, c: ['#c0392b', '#f4f4f0'] },
+    { id: 'h-sen', slot: 'helmet', name: 'sen', en: 'red', price: 0, c: ['#e05252', '#f4f4f0'] },
     { id: 'h-dumpawl', slot: 'helmet', name: 'dumpâwl', en: 'blue', price: 100, c: ['#1565c0', '#f4f4f0'] },
     { id: 'h-rangkachak', slot: 'helmet', name: 'rangkachak', en: 'gold', price: 250, c: ['#d4a017', '#1b1b1b'] },
+    { id: 'j-serthlum', slot: 'jacket', name: 'serthlum', en: 'orange, a short-sleeved shirt', price: 0, c: ['#ee6b3d'], short: true },     // (the delivery rider's own, to start with)
     { id: 'j-dumpawl', slot: 'jacket', name: 'dumpâwl', en: 'blue', price: 0, c: ['#3b78bf'] },
     { id: 'j-hring', slot: 'jacket', name: 'hring', en: 'green', price: 80, c: ['#2e7d4f'] },
     { id: 'j-eng', slot: 'jacket', name: 'eng', en: 'yellow', price: 100, c: ['#e8b923'] },
@@ -816,7 +819,7 @@
   };
   const fresh = () => ({ v: 1, best: {}, wallet: 0, lifetime: 0, metres: 0, rides: 0, deliveries: {}, bestCoins: 0, bestMetres: 0, bestTime: 0,
     owned: ['hring'], scooter: 'hring', design: 'everyday', badges: [], claimed: [], words: [], route: '', sound: true,
-    at: 'dawrpui', visited: [], cityDone: 0, cityBest: {}, jams: 0, crossed: 0, bonus: 0, dailyDone: 0, quizRight: 0, quizAsked: 0, quizKnown: [], streak: { day: '', n: 0, best: 0 }, cleanRun: 0, cleanBest: 0, badgesSeen: [], tips: [], lang: 'en', fest: { id: '', year: 0, prog: 0, claimed: false }, cos: { owned: ['h-var', 'j-dumpawl', 'b-eng'], helmet: 'h-var', jacket: 'j-dumpawl', box: 'b-eng' }, stars: {}, daily: { day: '', prog: {}, claimed: [] } });
+    at: 'dawrpui', visited: [], cityDone: 0, cityBest: {}, jams: 0, crossed: 0, bonus: 0, dailyDone: 0, quizRight: 0, quizAsked: 0, quizKnown: [], streak: { day: '', n: 0, best: 0 }, cleanRun: 0, cleanBest: 0, badgesSeen: [], tips: [], lang: 'en', fest: { id: '', year: 0, prog: 0, claimed: false }, cos: { owned: ['h-var', 'h-sen', 'j-dumpawl', 'j-serthlum', 'b-eng'], helmet: 'h-sen', jacket: 'j-serthlum', box: 'b-eng' }, look2: true, stars: {}, daily: { day: '', prog: {}, claimed: [] } });
   function readSave() {
     const f = fresh();
     let d = null;
@@ -853,6 +856,9 @@
     if (d.cos && typeof d.cos === 'object') {     // the rider's look: what was bought, what is worn
       f.cos.owned = [...new Set([...f.cos.owned, ...ids(d.cos.owned, COSMETICS.map(x => x.id))])];
       for (const [slot] of SLOTS) { const w = d.cos[slot]; if (f.cos.owned.includes(w) && COSMETICS.some(x => x.id === w && x.slot === slot)) f.cos[slot] = w; }
+      // (saved before the delivery rider's own look came: still in the white helmet and blue jacket that were
+      // given to start with, the rider takes the new look once; a look chosen in the garage stays)
+      if (d.look2 !== true && (d.cos.helmet || 'h-var') === 'h-var' && (d.cos.jacket || 'j-dumpawl') === 'j-dumpawl') { f.cos.helmet = 'h-sen'; f.cos.jacket = 'j-serthlum'; }
     }
     if (d.stars && typeof d.stars === 'object') for (const [k, v] of Object.entries(d.stars)) if (/^([a-z]{2,20}|city:[a-z]{2,20}>[a-z]{2,20})$/.test(k) && [1, 2, 3].includes(v)) f.stars[k] = v;
     const dd = d.daily;
@@ -4078,7 +4084,7 @@ void main() {
         sh.fragmentShader = 'uniform vec3 uSkin, uShirt, uPants, uStripe, uShoe, uHair;\nuniform float uLong;\nvarying vec4 vMask;\nvarying float vY;\n' + sh.fragmentShader.replace('#include <map_fragment>', `
           vec3 det = texture2D(map, vMapUv).rgb * 2.0;                       // the skin's own detail, 1 on average
           vec3 col = uSkin * det;
-          float shirt = step(0.75, vMask.r) + uLong * step(0.25, vMask.r) * step(vMask.r, 0.75);
+          float shirt = smoothstep(0.62, 0.88, vMask.r) + uLong * smoothstep(0.12, 0.38, vMask.r);   // soft hems, not cut along the triangles
           col = mix(col, uShirt, clamp(shirt, 0.0, 1.0));
           float band = fract(vY * 7.0), puan = step(0.25, vMask.a) * step(vMask.a, 0.75);
           col = mix(col, mix(uPants, uStripe, puan * step(0.66, band) * step(band, 0.84)), step(0.5, vMask.g));   // trousers, or a puan and its stripes
@@ -4740,7 +4746,7 @@ void main() {
       patU.uTop.value.set(my.body[0]);
     }
     const tailMat = new T.MeshBasicMaterial({ color: '#b8352a', toneMapped: false }), amber = new T.MeshBasicMaterial({ color: '#ffae1a', toneMapped: false });
-    const jacket = lm('#3b78bf'), trousers = lm('#2c3e50'), dark = lm('#2a2622'), skin = lm('#e8b48a');
+    const jacket = lm('#ee6b3d'), forearm = lm('#e8b48a'), trousers = lm('#2f7fc4'), dark = lm('#2a2622'), skin = lm('#e8b48a'), shoes = lm('#eef0f2');
     const GRAIN = tex(128, 128, g => { const d = g.createImageData(128, 128); for (let i = 0; i < d.data.length; i += 4) { const v = 120 + Math.random() * 60 | 0; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; } g.putImageData(d, 0, 0); });
     GRAIN.colorSpace = T.NoColorSpace; GRAIN.wrapS = GRAIN.wrapT = T.RepeatWrapping; GRAIN.repeat.set(9, 9);
     const leather = hex => [new T.MeshPhongMaterial({ color: hex, shininess: 34, specular: C('#2f2f2f'), bumpMap: GRAIN, bumpScale: 1.2 }),
@@ -4788,6 +4794,11 @@ void main() {
       P.B.curve([[0.5, 0.28], [0.55, 0.46], [0.68, 0.53], [0.86, 0.47], [0.93, 0.32], [0.85, 0.36], [0.68, 0.42], [0.58, 0.36]], 0.24, '#ffffff', 3);   // the big round mudguard
       P.B.curve([[0.58, 1.0], [0.62, 1.11], [0.78, 1.15], [0.87, 1.08], [0.8, 1.0]], 0.54, '#ffffff', 3);   // the handlebar cover
       P.H.lamp(0.87, 1.08, 0, 0.085, 0.05);                                                            // the lamp's chrome ring
+      for (const e of [-1, 1]) {
+        P.H.rod(0.7, 1.12, e * 0.24, 0.68, 1.26, e * 0.3, 0.01);                                       // the mirrors' stalks
+        P.H.rod(0.66, 1.11, e * 0.22, 0.67, 1.09, e * 0.38, 0.008);                                    // the brake levers, before the grips
+        P.H.box(0.6, 1.08, e * 0.25, 0.06, 0.05, 0.05);                                                // the switches by each grip
+      }
       P.S.curve([[-0.66, 0.76], [-0.62, 0.86], [-0.3, 0.88], [-0.04, 0.86], [0.03, 0.77], [-0.1, 0.74]], 0.34, '#ffffff', 2);   // the long black seat
       P.H.box(-0.7, 0.78, 0, 0.44, 0.03, 0.42); for (const e of [-1, 1]) P.H.rod(-0.92, 0.79, e * 0.2, -0.48, 0.79, e * 0.2, 0.012);   // the rack, for the box
       for (const e of [-1, 1]) P.H.rod(0.66, 0.23, e * 0.06, 0.62, 0.62, e * 0.06, 0.022);          // the fork
@@ -4865,25 +4876,76 @@ void main() {
       part(plateGeo, plateMat, 0, 0.42, -0.95, 0.24, 0.1, 1);
       P.indY = 0.56; P.tailOut = 0.02;
     });
+    // The moped: Polyfork's Delivery Moped (CC BY 4.0, in the credits), the little delivery moped of the Cub
+    // kind, with a carrier for the box and a tray in front. Its parts are told apart by their colours in the
+    // model, and each is given ours: the body the garage's colour, the seat black, the bright parts chrome,
+    // its lamps lit. Its own box comes off for ours; its wheels turn as ours do. Until it has come (or if it
+    // cannot), the Everyday stands in for it.
+    {
+      const g = new T.Group(); g.visible = false; g.position.z = 0.03; scoot.add(g);
+      DESIGN3.moped = { g, boxY: 0.02, boxS: [0.9, 1.1, 0.8], ready: false };
+      const tyre = [lm('#1b1d1c'), new T.MeshStandardMaterial({ color: '#1a1b1b', metalness: 0, roughness: 0.9 })];
+      const ZONES = [['#3f8a5e', bodyMats[1]], ['#f0efec', [lm('#f2efe6'), new T.MeshStandardMaterial({ color: '#f2efe6', roughness: 0.6 })]], ['#d8dadd', [new T.MeshPhongMaterial({ color: '#c9cdd1', shininess: 60, specular: C('#777777') }), new T.MeshStandardMaterial({ color: '#c9cdd1', metalness: 0.35, roughness: 0.4 })]],     // (painted silver: the carrier, tray, bars and wheel centres)
+       
+        ['#6b7278', [lm('#4e5459'), new T.MeshStandardMaterial({ color: '#4e5459', metalness: 0.4, roughness: 0.5 })]], ['#3c4145', black], ['#2e3134', tyre],
+        ['#e3edf2', headMat], ['#d6452f', tailMat], ['#f0c24b', amber]].map(([h, m]) => [C(h), m]);
+      const zoneOf = (r, gr, b) => { let best = 0, d = 9; ZONES.forEach(([c], i) => { const e = Math.abs(c.r - r) + Math.abs(c.g - gr) + Math.abs(c.b - b); if (e < d) { d = e; best = i; } }); return best; };
+      (async () => {
+        const { GLTFLoader } = await import(ADDONS + 'loaders/GLTFLoader.js');
+        const m = (await new GLTFLoader().loadAsync('ride/moped.glb?v=1f5d584d')).scene;
+        m.getObjectByName('cargo').removeFromParent(); m.getObjectByName('kickstand').removeFromParent();     // (ridden: the stand is up)
+        const meshes = []; m.traverse(o => { if (o.isMesh) meshes.push(o); });
+        for (const o of meshes) {      // each mesh in its parts, by colour: a mesh of each, in its own material
+          const geo = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry, P = geo.attributes.position, N = geo.attributes.normal, K = geo.attributes.color, by = ZONES.map(() => [[], []]);
+          for (let t = 0; t < P.count; t += 3) {
+            const z = by[zoneOf(K.getX(t), K.getY(t), K.getZ(t))];
+            for (let k = t; k < t + 3; k++) { z[0].push(P.getX(k), P.getY(k), P.getZ(k)); z[1].push(N.getX(k), N.getY(k), N.getZ(k)); }
+          }
+          by.forEach(([pos, nor], i) => {
+            if (!pos.length) return;
+            const gg = new T.BufferGeometry(), mat = ZONES[i][1];
+            gg.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); gg.setAttribute('normal', new T.Float32BufferAttribute(nor, 3));
+            gg.setAttribute('color', new T.Float32BufferAttribute(new Float32Array(pos.length).fill(1), 3));     // (the paint's tone: its own colour, as given)
+            const mesh = new T.Mesh(gg, Array.isArray(mat) ? mat[extras ? 1 : 0] : mat); if (Array.isArray(mat)) mesh.userData.sw = mat;
+            mesh.castShadow = true; o.parent.add(mesh);
+          });
+          o.removeFromParent();
+        }
+        for (const n of ['wheel-rear', 'wheel-front']) wheels.push(m.getObjectByName(n));
+        g.add(m); DESIGN3.moped.ready = true; shown = '';
+      })().catch(() => { DESIGN3.moped.ready = null; });
+    }
     // The rider: drawn simply here (for the lowest quality, and until the real bodies have loaded), in a
     // group of its own; the helmet in another, so it can sit on a real rider's head (see riderBody below)
     const riderG = new T.Group(), helmetG = new T.Group(); scoot.add(riderG, helmetG); helmetG.position.set(0, 1.54, -0.2);
+    const GRIP_Z = 0.6, ourBars = [];
+    // where each design's grips are: ours (below), or the moped's own handlebar; and how much lower its rider sits
+    const GRIPS = { moped: [0.27, 1.05, 0.28] }, gripOf = id => GRIPS[id] || [0.33, 1.08, GRIP_Z], RIDER_DROP = { moped: 0.06 };
     for (const e of [-1, 1]) {
       into = scoot;
-      part(ball, dark, e * 0.3, 1.27, 0.68, 0.06, 0.045, 0.02);
-      part(ball, VMAT.chrome, e * 0.3, 1.27, 0.664, 0.05, 0.036, 0.006);                          // their glass                                 // mirrors
-      part(box, dark, e * 0.33, 1.08, 0.72, 0.12, 0.045, 0.045);                                // grips
+      ourBars.push(part(ball, dark, e * 0.3, 1.27, 0.68, 0.06, 0.045, 0.02));
+      ourBars.push(part(ball, VMAT.chrome, e * 0.3, 1.27, 0.664, 0.05, 0.036, 0.006));            // their glass                                 // mirrors
+      ourBars.push(part(box, dark, e * 0.33, 1.08, GRIP_Z, 0.12, 0.045, 0.045));                // grips (at the back of the handlebar, where a rider's hands reach)
       into = riderG;
       limb([e * 0.13, 0.85, -0.3], [e * 0.16, 0.87, 0.12], 0.08, trousers);                    // thighs
       limb([e * 0.16, 0.87, 0.12], [e * 0.17, 0.46, 0.24], 0.065, trousers);                   // shins, feet on the floorboard
-      part(box, dark, e * 0.17, 0.42, 0.24, 0.11, 0.08, 0.22);                                  // shoes
-      limb([e * 0.2, 1.33, -0.26], [e * 0.31, 1.1, 0.7], 0.062, jacket);                       // arms to the grips
+      part(box, shoes, e * 0.17, 0.42, 0.24, 0.11, 0.08, 0.22);                                 // white shoes
     }
-    part(torsoGeo, jacket, 0, 0.9, -0.36, 1.12, 1, 0.74, 0.28);                                   // the rider, leaning forward a little
+    const simpleArms = {};      // the arms to the grips: the sleeve, then the forearm (bare, in a short-sleeved shirt), and the hands round them
+    for (const id of ['', 'moped']) {
+      const g = simpleArms[id] = new T.Group(), [gx, gy, gz] = gripOf(id), drop = RIDER_DROP[id] || 0; riderG.add(g); into = g; g.visible = !id;
+      for (const e of [-1, 1]) {
+        const sh = [e * 0.2, 1.33, -0.26], gp = [e * (gx - 0.02), gy + 0.02 + drop, gz - 0.02], el = sh.map((v, i) => v + (gp[i] - v) * 0.45);
+        limb(sh, el, 0.064, jacket); limb(el, gp, 0.055, forearm);
+        part(ball, skin, gp[0], gp[1] + 0.012, gp[2], 0.045, 0.04, 0.05);
+      }
+    }
+    into = riderG;
+    part(torsoGeo, jacket, 0, 0.9, -0.36, 1.12, 1, 0.74, 0.12);                                   // the rider, sitting up
     into = helmetG;      // (the helmet's parts round its own middle)
     const helmetMat = new T.MeshPhongMaterial({ color: '#f2f2ee', shininess: 60, specular: C('#555555') }), helmetBand = lm('#c03a2e');
     part(ball, helmetMat, 0, 0, 0, 0.16, 0.17, 0.18);                                         // helmet
-    part(ball, helmetBand, 0, 0.03, 0, 0.164, 0.045, 0.184);
+    for (const e of [-1, 1]) part(ball, helmetBand, e * 0.158, -0.005, -0.01, 0.014, 0.042, 0.042);     // a round badge each side, in its second colour
     part(ball, new T.MeshPhongMaterial({ color: '#1b2026', shininess: 90, specular: C('#8a9aa4') }), 0, -0.02, 0.1, 0.12, 0.07, 0.1);   // its visor
     into = scoot;
     // the delivery box: insulated, rounded, Hnahsin on its back and sides (raised to sit on each design's rack)
@@ -4997,20 +5059,24 @@ void main() {
     // Our rider in a real body, sitting as a scooter rider sits: on the front of the seat, a little forward,
     // feet on the floorboard, hands on the grips, in the jacket from the shop; the helmet on the head. For
     // each design, how high its seat is (the hips) and its floorboard (the feet).
-    const RIDER = { look: { shirt: '#3b78bf', lower: '#2c3e50', hair: '#1d1b22', jacket: 1 }, sc: 1 };
-    const SEAT_AT = { everyday: [0.88, 0.42], classic: [0.9, 0.5], sport: [0.96, 0.52], electric: [0.86, 0.52] };
-    const rv = new T.Vector3();
+    const RIDER = { look: { shirt: '#ee6b3d', lower: '#2f7fc4', hair: '#1d1b22' }, sc: 1 };
+    const SEAT_AT = { everyday: [0.88, 0.42, 0.18, 0.45], classic: [0.9, 0.5, 0.18, 0.45], sport: [0.96, 0.52, 0.18, 0.62], electric: [0.86, 0.52, 0.18, 0.4], moped: [0.8, 0.32, -0.14, 0.35] };     // [hips, feet, how far forward, the back's lean]: near enough the bars for bent elbows
+    const rv = new T.Vector3(); let riderGrip = null;
     function riderBody(dt, shirt) {
       const real = !!PEOPLE && level > 0;
       riderG.visible = !real;
-      if (!real) { helmetG.position.set(0, 1.54, -0.2); helmetG.rotation.set(0, 0, 0); return; }
-      const [hip, foot] = SEAT_AT[myDesign().id] || SEAT_AT.everyday, Z = -0.18;     // (the rider's own frame: on the seat, Z along the scooter)
+      if (!real) { helmetG.position.set(0, 1.54 - (RIDER_DROP[shown] || 0), -0.2); helmetG.rotation.set(0, 0, 0); return; }
+      const [hip, foot, Z, lean, fw] = SEAT_AT[shown] || SEAT_AT.everyday, [gx, gy, gz] = gripOf(shown);     // (the rider's own frame: on the seat, Z along the scooter)
       scoot.updateMatrixWorld(true);
       mB.copy(scoot.matrixWorld).multiply(mT.makeTranslation(0, 0, Z));
-      realPose(RIDER, dt, { H: hip + 0.02, hz: -0.04, a: 0.42, fl: 0.43, fr: 0.43, fy: foot, hl: [-0.31, 1.08, 0.72 - Z], hr: [0.31, 1.08, 0.72 - Z] });
+      // (sitting a little forward, the hands on the grips, the elbows bent)
+      const f = fw ?? 0.43 - (Z + 0.18) * 0.6, grips = realPose(RIDER, dt, { H: hip + 0.02, hz: -0.06, a: lean, fl: f, fr: f, fy: foot, hl: [-gx, gy, gz - Z], hr: [gx, gy, gz - Z] });
+      riderGrip = grips ? grips.map(g => Math.hypot(Math.abs(g[0]) - gx, g[1] - gy, g[2] - (gz - Z))) : null;     // (for the tests: how far each hand is from its grip)
       const it = PEOPLE.live.get(RIDER);
       if (it) {
-        const u = it.mat.userData.u; u.uShirt.value.set(shirt); u.uLong.value = 1;             // the jacket, long sleeves
+        const u = it.mat.userData.u, jw = worn('jacket');
+        u.uShirt.value.set(shirt); u.uLong.value = jw.short ? 0 : 1;                               // a shirt with short sleeves, or a jacket
+        u.uPants.value.set('#2f7fc4'); u.uShoe.value.set('#eef0f2');                               // blue jeans, white shoes
         it.bones.Head.getWorldPosition(rv); scoot.worldToLocal(rv);
         helmetG.position.set(rv.x, rv.y + 0.11, rv.z + 0.02); helmetG.rotation.set(0.25, 0, 0);
       }
@@ -5058,13 +5124,16 @@ void main() {
       const hw = worn('helmet'), jw = worn('jacket'), bw = worn('box');
       if (dressed !== hw.id + jw.id + bw.id) {
         dressed = hw.id + jw.id + bw.id;
-        helmetMat.color.set(hw.c[0]); helmetBand.color.set(hw.c[1]); jacket.color.set(jw.c[0]);
+        helmetMat.color.set(hw.c[0]); helmetBand.color.set(hw.c[1]); jacket.color.set(jw.c[0]); forearm.color.set(jw.short ? '#e8b48a' : jw.c[0]);
         boxMat.color.set(bw.c[0]); boxMat.emissive.set(bw.c[0]).multiplyScalar(0.12);
         if (logo.map) logo.map.dispose(); logo.map = boxTex(bw); logo.needsUpdate = true; bands.visible = !!bw.puan;
       }
-      const dz = myDesign().id;
+      const mine = myDesign().id, dz = DESIGN3[mine].ready === false || DESIGN3[mine].ready === null ? 'everyday' : mine;
       if (shown !== dz) {
         shown = dz; for (const [id, d] of Object.entries(DESIGN3)) d.g.visible = id === dz;
+        for (const b of ourBars) b.visible = !GRIPS[dz];
+        for (const [id, a] of Object.entries(simpleArms)) a.visible = id === (GRIPS[dz] ? dz : '');
+        riderG.position.y = -(RIDER_DROP[dz] || 0);
         // the box: its foot on the rack and its front behind the rider, however big this design draws it
         const D = DESIGN3[dz], [bx, by, bz] = D.boxS; boxG.scale.set(bx, by, bz); boxG.position.set(0, D.boxY + 0.77 * (1 - by), -0.4 * (1 - bz));
       }
@@ -5466,7 +5535,7 @@ void main() {
         if (housesOn(sd, k) < 4) continue; n.town++; const h = W3.home[(k * 2 + (sd > 0 ? 1 : 0)) * 3]; if (!h) continue; n.home++; if (Math.abs(h.gy) < 0.6) n.flat++; if (shopAt(k, sd)) n.kept++; }
       return n; };
     const walkable = (i, sd) => { setRoute(); i = clamp(i, 0, W3.n - 1); return !W3.bare[sd][i] && !W3.gone[sd][i] && !W3.ride[i]; };
-    return { draw: draw3, size, setPlan, farReady: () => { if (W3 && built) farAll(); }, w3info: () => W3 && { base: W3.base, spread: W3.baseSpread, fo: W3.fo, n: W3.n, left: W3.corr ? Math.sqrt(W3.P.reduce((a, q, k) => a + (demAt(q.x, q.z) - W3.corr[k] - W3.Y[k]) ** 2, 0) / W3.n) : null }, farCount: () => (farTown ? farTown.userData.count : 0), farSkipped: () => (farTown ? farTown.userData.skipped : 0), shop: shopAt, shopsWhy, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, audit9, audit10, audit11, audit12, audit13, audit14, holesSeen, walkable,
+    return { draw: draw3, size, setPlan, farReady: () => { if (W3 && built) farAll(); }, w3info: () => W3 && { base: W3.base, spread: W3.baseSpread, fo: W3.fo, n: W3.n, left: W3.corr ? Math.sqrt(W3.P.reduce((a, q, k) => a + (demAt(q.x, q.z) - W3.corr[k] - W3.Y[k]) ** 2, 0) / W3.n) : null }, farCount: () => (farTown ? farTown.userData.count : 0), riderGrip: () => riderGrip, seatAt: (d, v) => { SEAT_AT[d] = v; }, farSkipped: () => (farTown ? farTown.userData.skipped : 0), shop: shopAt, shopsWhy, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, audit9, audit10, audit11, audit12, audit13, audit14, holesSeen, walkable,
       // for the tests: which earlier stretches of road lie under the middle of sample k, and how high
       under: (k, lat = 0) => { setRoute(); const { P, R, Y, grid, n } = W3, x = P[k].x + R[k].x * lat, z = P[k].z + R[k].z * lat, out = [];
         for (const kk of new Set([...Array(9).keys()].flatMap(i => [...Array(9).keys()].map(j => grid.get((Math.floor(x / 12) + i - 4) + ',' + (Math.floor(z / 12) + j - 4)) || []).flat()))) {
@@ -6386,7 +6455,7 @@ void main() {
     peds: peds.map(p => ({ at: p.at, x: p.x, shop: !!p.shop, em: !!p.em, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)), dog: !!p.dog, child: !!p.look.child })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, fareTaxi: (ahead, speed = 8) => { const c = newCar('taxi', 0, s + ahead, speed, 1); c.fare = 'want'; cars.push(c); return c; }, park: (kind, ahead, lane = 1, dir = 1, speed = 0) => { const c = newCar(kind, lane, s + ahead, dir * speed, dir); c.cruise = speed; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), holes: () => R3 && R3.holesSeen(), sizes: () => R3 && R3.sizes(), under: (k, lat) => R3 && R3.under(k, lat), probe: (k, lat, al) => R3 && R3.probe(k, lat, al), mem: () => R3 && R3.mem(), walker: (ahead, x, va = 1, vx = 0, look, dog, extra) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; if (dog) p.dog = dog; if (extra) Object.assign(p, extra); peds.push(p); return peds.length; },
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
     // for the tests: ride a given road; and every road with how many crossings and jams it has
-    shopsWhy: sd => R3 && R3.shopsWhy(sd), dress: (scooter, design, box) => { S.bonus = Math.max(S.bonus || 0, 1e6); if (scooter) { S.scooter = scooter; if (!S.owned.includes(scooter)) S.owned.push(scooter); } if (design) S.design = design; if (box) S.cos.box = box; return [myScooter().id, myDesign().id, worn('box').id]; }, farCount: () => R3 && R3.farCount(), farSkipped: () => R3 && R3.farSkipped(), w3info: () => R3 && R3.w3info(), farLoaded: () => !!FAR, routes: () => [...DATA.routes, ...CITY.jobs.map(routeOf)].map(r => ({ id: r.id, left: (r.housesL || []).slice(0, 300).reduce((a, b) => a + b, 0) })), useRoute: id => { route = [...DATA.routes, ...CITY.jobs.map(routeOf)].find(r => r.id === id); reset(); return route.length; }, go: () => start(),
+    shopsWhy: sd => R3 && R3.shopsWhy(sd), dress: (scooter, design, box) => { S.bonus = Math.max(S.bonus || 0, 1e6); if (scooter) { S.scooter = scooter; if (!S.owned.includes(scooter)) S.owned.push(scooter); } if (design) S.design = design; if (box) S.cos.box = box; return [myScooter().id, myDesign().id, worn('box').id]; }, farCount: () => R3 && R3.farCount(), riderGrip: () => R3 && R3.riderGrip(), seatAt: (d, v) => R3 && R3.seatAt(d, v), farSkipped: () => R3 && R3.farSkipped(), w3info: () => R3 && R3.w3info(), farLoaded: () => !!FAR, routes: () => [...DATA.routes, ...CITY.jobs.map(routeOf)].map(r => ({ id: r.id, left: (r.housesL || []).slice(0, 300).reduce((a, b) => a + b, 0) })), useRoute: id => { route = [...DATA.routes, ...CITY.jobs.map(routeOf)].find(r => r.id === id); reset(); return route.length; }, go: () => start(),
     // for the tests: a vehicle of a kind, so far ahead, in a lane, at a speed, going our way (1) or towards us (-1)
     car: (kind, ahead, lane = 0, v = 0, dir = 1) => { cars.push(newCar(kind, lane, s + ahead, v, dir)); return cars.length; },
     plans: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push([r.id, Math.round(r.length), planCrossings().length, planJams().length]); } route = keep; reset(); return out; },

@@ -20,6 +20,11 @@ Hnahsin Games is developed by Maloma Thado.
 - **The people in Aizawl Ride** are made from Quaternius's
   [Universal Base Characters](https://quaternius.com/packs/universalbasecharacters.html)
   (CC0), dressed and given their walk for Hnahsin.
+- **The Moped in Aizawl Ride** (`ride/moped.glb`) is
+  [Delivery Moped](https://polyfork.dev/asset/delivery-moped-1aa2ce) by
+  [Polyfork](https://polyfork.dev),
+  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). In the game it is
+  recoloured in its parts, and its own box and stand are taken off.
 
 ## Maps
 

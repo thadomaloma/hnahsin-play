@@ -4,6 +4,21 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.67.0 (12 November 2026)
+
+- Aizawl Ride has a fifth scooter in the garage, the Moped: the little
+  delivery moped, with a carrier for your box behind the seat and a tray in
+  front. It wears the colour you choose, its lamps light up, and you sit
+  upright on it as its riders do. It opens at 5,000 points.
+- Your rider now holds the handlebar on every scooter, hands on the grips
+  and elbows a little bent, sitting on the seat with feet on the floor.
+- Your rider looks the part: a red helmet with a dark visor, an orange
+  short-sleeved shirt, blue jeans and white shoes. If you have not changed
+  your helmet or jacket in the shop, you get the new look; what you chose
+  yourself stays as it is.
+- The Everyday scooter has brake levers, switches and mirror stalks on its
+  handlebar.
+
 ## 1.66.2 (12 November 2026)
 
 - Aizawl Ride's Everyday scooter is the classic delivery scooter: a long round
