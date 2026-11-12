@@ -4,6 +4,12 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.63.1 (12 November 2026)
+
+- Hnahsin Playground's Days and times no longer stops when it asks which day
+  is naktuk (tomorrow) or nimin (yesterday): the words vawiin and naktuk were
+  missing from the game.
+
 ## 1.63.0 (12 November 2026)
 
 ### Aizawl Ride: Aizawl's taxis
