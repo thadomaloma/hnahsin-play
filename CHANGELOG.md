@@ -4,6 +4,22 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.60.0 (12 November 2026)
+
+### Aizawl Ride: a scooter that rides like one
+
+- The hills slow you down, as they would a loaded delivery scooter: about
+  36 km/h up a climb of 1 in 10, 27 up 1 in 7, 22 up 1 in 5, and 14 to 16 km/h
+  up Aizawl's steepest streets, but it never stalls. Down a steep hill the rider
+  brakes a little and goes slower than on the flat.
+- You cruise at 40 km/h, up to 58 on a long ride (it was up to 65), and take
+  about five seconds to get there from a standstill.
+- The view widens a little as you go faster, and the engine works harder on a
+  climb, even slowly.
+- Changing lanes is smooth: the scooter leans into the move and steers across
+  in one sweep. Before, the view lagged behind it, so it swung past its lane and
+  slid back.
+
 ## 1.59.1 (6 November 2026)
 
 - Offline, the games keep the words said aloud and your progress: the files

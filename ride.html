@@ -567,7 +567,10 @@
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---------- constants needed early for SCENE_WORDS ----------
-  const LANE = 2.4, LANES = [-LANE, 0, LANE], LANE_T = 0.6;   // lane centres, metres from the road's middle; a lane change takes LANE_T s
+  const LANE = 2.4, LANES = [-LANE, 0, LANE], LANE_T = 0.85;  // lane centres, metres from the road's middle; a lane change takes LANE_T s
+  // (0.85 s: at riding speed the scooter steers across, about 5 m/s sideways at most, rather than sliding)
+  // the scooter, loaded: rider and parcel 170 kg; the engine's power at the wheel (W) and its strongest pull (N)
+  const MASS = 170, POWER = 2200, PULL = 650;          // (650 N: enough to pull away up the steepest streets, 1 in 3)
   const SEG = 4, VIEW = 50;                         // a segment per sample; how many are drawn ahead
   const PLAYER_Z = 3;                               // the scooter rides this far ahead of the camera
   const CURVE = 0.55, CURVE_MAX = 0.045, HILL = 0.8;  // real bends and hills, softened to fit the screen
@@ -925,7 +928,7 @@
   }
   let cars = [], jams = [], braking = false, carT = 0, oncomingT = 0, eventWords = new Set();
   let peds = [], crossings = [], pedT = 0, stillT = 0, slowDone = false, jnMet = new Set(), pedSeeded = false;     // (how long stopped at a crossing: a secret badge; the junctions whose people are out, this ride)
-  let s, v, px, pvx, pax, laneFrom, laneV, laneA, laneTo, laneT, lane, coins, picked, coinsPut, rideMult, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
+  let load = 0, s, v, px, pvx, pax, laneFrom, laneV, laneA, laneTo, laneT, lane, coins, picked, coinsPut, rideMult, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
   let soundOn = S.sound;
 
   function reset() {
@@ -4099,10 +4102,10 @@ void main() {
     const cam = new T.Vector3(), aim = new T.Vector3(), want = new T.Vector3(), fogCol = new T.Color();
     const HZ = HAZES.map(c => new T.Color(`rgb(${c})`)), MIST = C('#ecf2ee'), SKY0 = C('#4f9be0'), SKY1 = C('#7f9fcf'), SUN0 = C('#fff2dc'), SUN1 = C('#ffb070'), WARM = C('#ffe2c0'), WHITE = C('#ffffff');
     const rider = { x: 0, y: 0 }, fA = {}, fB = {}, fS = {};
-    let extras = null, orbit = null;
+    let extras = null, orbit = null, baseFov = 52;
     function size() {
       renderer.setPixelRatio(Math.min(devicePixelRatio || 1, LEVELS[level].pr)); renderer.setSize(W, H, false);
-      camera.aspect = W / H; camera.fov = W / H < 1 ? 64 : 52; camera.updateProjectionMatrix();
+      camera.aspect = W / H; baseFov = W / H < 1 ? 64 : 52; camera.fov = baseFov; camera.updateProjectionMatrix();
       // the best level: sun shadows (the blob shadows grow fainter), and paint, glass and chrome that are physically based
       const hi = level === 2;
       if (extras === hi) return;
@@ -4163,7 +4166,7 @@ void main() {
       if (extras && envStep !== hazeStep) makeEnv();     // the sky in the paint follows the light of the day
       frame3(s, px, fS);
       const fall = mode === 'crashing' ? Math.min(1, crashT / 0.45) : 0, bob = mode === 'playing' && !reduce ? Math.sin(time * 31) * 0.006 + Math.sin(time * 7.3) * 0.004 : 0;
-      scoot.position.set(fS.x, fS.y + bob - fall * 0.15, fS.z); scoot.rotation.set(fS.pitch, fS.yaw - (mode === 'crashing' ? 0 : 0.22 * Math.tanh(Math.atan2(pvx, Math.max(6, v)) * 0.5 / 0.22)), lean + crashDir * fall * 1.25, 'YXZ');   // it turns the way it is going (softly limited, never cut off)
+      scoot.position.set(fS.x, fS.y + bob - fall * 0.15, fS.z); scoot.rotation.set(fS.pitch, fS.yaw - (mode === 'crashing' ? 0 : 0.32 * Math.tanh(Math.atan2(pvx, Math.max(6, v)) * 0.8 / 0.32)), lean + crashDir * fall * 1.25, 'YXZ');   // it turns the way it is going (softly limited, never cut off)
       riderShadow.position.set(fS.x, fS.y + 0.03, fS.z); riderShadow.rotation.y = fS.yaw;
       // the sun follows a little ahead of the scooter, so its shadows cover what you see near you
       frame3(s + 14, 0, fA); sun.target.position.set(fA.x, fA.y, fA.z); sun.position.copy(sun.target.position).addScaledVector(sunDir, 150);
@@ -4174,8 +4177,12 @@ void main() {
       placeAll(far, Math.min(0.1, ms / 1000));
       // The camera rides behind the scooter and above, the way it is heading, looking down the road
       // (in a tight bend it swings round a moment later, so the scooter stays in the picture)
-      // across, the camera follows the scooter a moment behind, so a lane change sweeps rather than jerks
-      camX = mode === 'playing' ? camX + (px - camX) * (1 - Math.exp(-Math.min(0.1, ms / 1000) * 6)) : px;
+      // across, the camera goes with the scooter: its lane change is a smooth curve already, and a camera that
+      // lags behind it overshoots on the screen (the scooter swings past, then drifts back as the camera catches up)
+      camX = px;
+      // the view widens a little with the speed (4 degrees at full speed), as the world rushes by
+      const fov = baseFov + (mode === 'playing' && !reduce ? Math.min(1, v / 16) * 4 : 0);
+      if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = fov; camera.updateProjectionMatrix(); }
       frame3(s, camX * 0.55, fB); frame3(s + 9, camX * 0.35, fA);
       want.set(fB.x - Math.sin(fB.yaw) * 5.4, fB.y + 2.3 + Math.sin(fB.pitch) * 5.4, fB.z - Math.cos(fB.yaw) * 5.4); aim.set(fA.x, fA.y + 0.9, fA.z);
       if (orbit && orbit.rider) cam.copy(want);      // for the tests only: the rider's own camera, at once
@@ -4674,8 +4681,10 @@ void main() {
       }
       const t = ac.currentTime, k = Math.min(1, v / 18);
       ride.g.gain.setTargetAtTime(on ? 0.05 : 0, t, 0.15);
-      ride.eng.frequency.setTargetAtTime(48 + v * 5.5, t, 0.12); ride.eng2.frequency.setTargetAtTime(96 + v * 11 + 3, t, 0.12);
-      ride.lp.frequency.setTargetAtTime(Math.min(20000, 300 + v * 30), t, 0.2);
+      // the engine: higher with the speed, and with how hard it is pulling (a climb at walking pace still revs)
+      const rev = v * 5.5 + load * 28;
+      ride.eng.frequency.setTargetAtTime(48 + rev, t, 0.12); ride.eng2.frequency.setTargetAtTime(96 + rev * 2 + 3, t, 0.12);
+      ride.lp.frequency.setTargetAtTime(Math.min(20000, 300 + v * 30 + load * 420), t, 0.2);
       ride.wg.gain.setTargetAtTime(0.15 + k * 0.6, t, 0.2);
       ride.bg.gain.setTargetAtTime(braking && v > 3 ? 0.35 : 0, t, 0.05);       // the brake's squeal
       ride.rg.gain.setTargetAtTime(cond.rain ? 0.5 : 0, t, 0.3);                  // the rain
@@ -4716,10 +4725,21 @@ void main() {
       if (crashT > 0.9) end(false);
       return;
     }
-    // Speed builds up to a top speed that rises slowly; it eases off on a steep climb
-    const top = 11 + Math.min(7, time * 0.1), climb = roadAt(route.grade, s, 1e-3);
-    if (braking) v = Math.max(0, v - (cond.rain ? 8 : 12) * dt);   // a firm brake: stops in a few metres (more on a wet road)
-    else v += ((top - Math.max(0, climb) * 12) - v) * Math.min(1, dt * 0.9);
+    // Speed as a loaded delivery scooter has it (rider and parcel, 170 kg): the engine pulls with what power it
+    // has (strong from a standstill, less as the speed grows), against the slope, the tyres and the air. The
+    // rider holds a cruising speed that rises slowly over the ride (40 km/h, then up to 58); on a climb the
+    // engine runs out of power first (about 40 km/h up 1 in 10, 22 up 1 in 5, 15 on Aizawl's steepest), and
+    // down a steep hill the rider brakes gently and goes a little slower than on the flat.
+    const grade = roadAt(route.grade, s, 1e-3), sinA = grade / Math.sqrt(1 + grade * grade), cosA = 1 / Math.sqrt(1 + grade * grade);
+    const top = 11 + Math.min(5, time * 0.08), cruise = top - Math.max(0, -grade) * 18;
+    const resist = MASS * 9.8 * (sinA + 0.015 * cosA) + 0.6 * 0.55 * v * v;          // slope, rolling, air
+    if (braking) { v = Math.max(0, v - (cond.rain ? 8 : 12) * dt); load = 0; }      // a firm brake: stops in a few metres (more on a wet road)
+    else {
+      const pull = Math.min(PULL, POWER / Math.max(v, 1));                         // what the engine can give
+      const drive = Math.max(-MASS * 3, Math.min(pull, resist + MASS * (cruise - v) * 1.5));   // what the rider asks of it (brakes when below 0)
+      load = Math.max(0, drive) / pull;
+      v = Math.max(0, v + (drive - resist) / MASS * dt);
+    }
     s += v * dt;
     stillT = v < 0.3 && crossings.some(c => c.state === 'crossing' && c.at - s > -1 && c.at - s < 25) ? stillT + dt : 0;
     if (stillT >= 10) slowDone = true;
@@ -4737,8 +4757,9 @@ void main() {
       pax = ((-60 * u + 180 * u2 - 120 * u3) * (p0 - p1) + (-36 * u + 96 * u2 - 60 * u3) * v0 + (1 - 9 * u + 18 * u2 - 10 * u3) * a0) / (T * T);
       px = Math.max(-LANE - 0.5, Math.min(LANE + 0.5, px));
     } else { px = laneTo; pvx = 0; pax = 0; }
-    // Lean with the lane change, and into the bend (the curve is smooth already, so it follows closely)
-    const want = Math.max(-0.4, Math.min(0.4, pvx * 0.03 + curvAt(s) * v * v * 0.012));
+    // Lean as a rider does: into the move as it starts (with the push sideways, not the speed sideways), upright
+    // again as it settles, and into the bend
+    const want = Math.max(-0.4, Math.min(0.4, 0.3 * Math.tanh(pax / 14) + curvAt(s) * v * v * 0.012));
     lean += (want - lean) * Math.min(1, dt * 14);
     if (!reduce && Math.random() < dt * 9) sparks.push({ x: riderXY().x + 9, y: riderXY().y - 8, vx: (Math.random() - .5) * 20, vy: 30 + Math.random() * 20, r: 2.5, life: 0.6, c: '#9aa39b', a: 0.5, puff: true });
     bgX += curvAt(s) * v * dt * W * 0.9;
