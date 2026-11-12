@@ -4,6 +4,14 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.65.2 (12 November 2026)
+
+- Aizawl Ride's road workers look like road workers: each wears a bright
+  safety vest, with its shining bands round it, over his own shirt; a
+  supervisor in his own clothes and a white hard hat stands by with his hands
+  on his hips, now and then pointing at the work; and the man with the flag,
+  the supervisor and anyone resting turn their heads to watch you go by.
+
 ## 1.65.1 (12 November 2026)
 
 - Aizawl Ride: you can see into the city buses and the trucks. In a bus, its

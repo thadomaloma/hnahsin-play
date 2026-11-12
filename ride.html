@@ -1272,17 +1272,20 @@
   // digging, one raking the tar for the roller and one with a red flag for the traffic; porters (hlawhfa) carrying the sacks from the truck to
   // the footpath and back; people waiting for the bus by its door, someone getting on and someone off; a
   // taxi's passenger getting in or out. (Where there is no footpath, they keep to the road's edge.)
-  const WORKER = [{ shirt: '#ff7a1a', lower: '#3a3a3a', hair: '#1d1b22' }, { shirt: '#ff8f2e', lower: '#2c3e50', hair: '#1d1b22' }], PORTER = { shirt: '#6b7f5a', lower: '#3a3a3a', hair: '#1d1b22' }, PORTER2 = { shirt: '#8a6d4b', lower: '#2c3e50', hair: '#1d1b22' };
+  const WORKER = [{ shirt: '#3b5b8a', lower: '#3a3a3a', hair: '#1d1b22' }, { shirt: '#6b6e70', lower: '#2c3e50', hair: '#1d1b22' }, { shirt: '#d8d4c8', lower: '#3b4a5a', hair: '#1d1b22' }, { shirt: '#2f4f3a', lower: '#3a3a3a', hair: '#1d1b22' }],
+    VESTS = ['#ff7a1a', '#ff8f2e', '#c6ef3a'], BOSS = { shirt: '#f4f4f0', lower: '#3b3f44', hair: '#1d1b22' }, PORTER = { shirt: '#6b7f5a', lower: '#3a3a3a', hair: '#1d1b22' }, PORTER2 = { shirt: '#8a6d4b', lower: '#2c3e50', hair: '#1d1b22' };
   function crew(t) {
     const i = Math.floor(t.at / SEG), walk = walkHere(i, -1), path = walk ? -5.3 : -3.75, side = t.lane === 0 ? 1 : -1;
-    const add = (at, x, o) => { const p = newPed(at, x, 0, 0); Object.assign(p, o); peds.push(p); return p; };
+    const add = (at, x, o) => { const p = newPed(at, x, 0, 0); Object.assign(p, o); if (p.tool && !p.vest && p.tool !== 'boss') p.vest = VESTS[Math.random() * VESTS.length | 0]; peds.push(p); return p; };
+    const W = () => WORKER[Math.random() * WORKER.length | 0];
     if (t.kind === 'works') {
-      add(t.at + 0.9, t.x + side * 0.45, { look: WORKER[0], aim: Math.PI / 2 * side, hat: '#f2c230', tool: 'shovel' });     // digging the trench,
-      add(t.at + 2.1, t.x + side * 0.5, { look: WORKER[1], aim: Math.PI / 2 * side, hat: '#f2c230', tool: 'shovel' });      // throwing the earth on the heap past it
-      add(t.at - 0.2, t.x + side * 0.45, { look: WORKER[1], aim: Math.PI, hat: '#f2c230', tool: 'rake' });                  // raking the tar out for the roller
-      add(t.at - 4.5, t.x + side * 0.95, { look: WORKER[0], aim: Math.PI, hat: '#f2c230', tool: 'flag' });                  // facing the traffic, by the sign
+      add(t.at + 0.9, t.x + side * 0.45, { look: W(), aim: Math.PI / 2 * side, hat: '#f2c230', tool: 'shovel' });     // digging the trench,
+      add(t.at + 2.1, t.x + side * 0.5, { look: W(), aim: Math.PI / 2 * side, hat: '#f2c230', tool: 'shovel' });      // throwing the earth on the heap past it
+      add(t.at - 0.2, t.x + side * 0.45, { look: W(), aim: Math.PI, hat: '#f2c230', tool: 'rake' });                  // raking the tar out for the roller
+      add(t.at - 4.5, t.x + side * 0.95, { look: W(), aim: Math.PI, hat: '#f2c230', tool: 'flag', vest: '#ff7a1a' });  // facing the traffic, by the sign
+      add(t.at + 3.3, t.x - side * 0.8, { look: BOSS, aim: -Math.PI / 2 * side, hat: '#f4f4f0', tool: 'boss' });      // the supervisor, in his own clothes, watching the work
     } else if (t.kind === 'pothole') {
-      add(t.at + 0.85, t.x + side * 0.35, { look: WORKER[1], aim: Math.PI, hat: '#f2c230', tool: 'tamper' });              // pounding the gravel down in the hole
+      add(t.at + 0.85, t.x + side * 0.35, { look: W(), aim: Math.PI, hat: '#f2c230', tool: 'tamper' });              // pounding the gravel down in the hole
     } else if (t.kind === 'unload') {
       // two porters (hlawhfa) in turn: one waits at the tailgate while a sack is handed down to him, carries it on
       // his back to the shop's door and sets it on the pile there, and comes back for the next; the man on the
@@ -3693,8 +3696,17 @@ void main() {
       for (let i = -64; i < 128; i += 8) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 64, 64); g.stroke(); g.beginPath(); g.moveTo(i + 64, 0); g.lineTo(i, 64); g.stroke(); }
       g.fillStyle = '#6e4c27'; g.fillRect(0, 0, 64, 4);
     }) });
+    const ringM = pool(new T.CylinderGeometry(1, 1, 1, 20, 1, true), plainMat, 80);
+    // a worker's high-visibility vest over his shirt, from the small of his back (A) up to his neck (B): the vest
+    // fitted to the body, and its two shining bands round it
+    const vestOn = (A, B, col, wide = 1) => {
+      const u = unit(sub(B, A)), len = Math.hypot(...sub(B, A)), sy = len / 0.5, rz = Math.asin(Math.max(-1, Math.min(1, u[0]))), rx = Math.atan2(u[2], u[1]);
+      const vx = 1.13 * wide, vz = 0.86 * wide;     // (a little loose, as a vest hangs over a shirt)
+      put(pTorso, ...A, vx, sy, vz, col, rx, 0, rz);
+      for (const h of [0.12, 0.3]) put(ringM, ...onLine(A, u, h * sy), 0.152 * vx + 0.005, 0.034, 0.152 * vz + 0.005, '#eef1f2', rx, 0, rz);
+    };
     const pUmb = pool(umbGeo, new T.MeshLambertMaterial({ side: T.DoubleSide }), 60), pEm = pool(new T.CylinderGeometry(0.5, 0.17, 1, 14, 1, true).translate(0, 0.5, 0), emMat, 24);
-    const pUp = pool(capUp, plainMat, 160), pLimb = pool(capHang, plainMat, 1500), pRound = pool(ball, plainMat, 900), pPuan = pool(skirt, puanMat, 60), pTorso = pool(torsoGeo, plainMat, 280), pBox = pool(box, plainMat, 420), pCone = pool(cone, plainMat, 40);
+    const pUp = pool(capUp, plainMat, 160), pLimb = pool(capHang, plainMat, 1900), pRound = pool(ball, plainMat, 1150), pPuan = pool(skirt, puanMat, 60), pTorso = pool(torsoGeo, plainMat, 400), pBox = pool(box, plainMat, 600), pCone = pool(cone, plainMat, 40);
     const JACKETS = ['#2c3e50', '#7a3b2e', '#3b5f3a', '#1f3a68', '#5b4a3a', '#8e1b3a', '#d8d4cc', '#4a4f57'], HELMETS = ['#f2f2ee', '#231e16', '#c0392b', '#1565c0', '#f2c230', '#6b6e70'];
     const LEGS = ['#2c3e50', '#3b5b8a', '#34495e', '#1f1f1f', '#5b4a3a', '#46628f'], BAGS = ['#1f1f1f', '#2c3e50', '#7a3b2e', '#3b5f3a'];   // trousers and jeans; backpacks
 
@@ -3738,7 +3750,7 @@ void main() {
         limbTo(pLimb, e * 0.1, ky + (ay - ky) * 0.55, kz + (az - kz) * 0.55, ay, az, 0.13, '#1b1c1e');        // up the calf
       }
       put(pTorso, 0, ty, tz, 1.04, 1, 0.66, L.shirt, P.a);
-      for (const v of [0.13, 0.31]) put(pBox, 0, ty + v * ca, tz + v * sa, 0.36, 0.04, 0.24, '#dfe3e6', P.a);   // the vest's shining bands
+      if (p.vest) vestOn([0, ty, tz], [0, ty + 0.5 * ca, tz + 0.5 * sa], p.vest, 0.93);                       // the vest, over the shirt
       const sy = ty + 0.45 * ca, sz = tz + 0.45 * sa;
       const hands = [-1, 1].map(e => arm3([e * 0.2, sy, sz], e < 0 ? P.hl : P.hr, e, L.shirt, skin));
       put(pUp, 0, ty + 0.52 * ca, tz + 0.52 * sa, 0.09, 0.05, 0.09, skin, P.a);                              // neck
@@ -3761,13 +3773,18 @@ void main() {
       const rate = p.rate ?? (p.rate = 0.82 + Math.random() * 0.32);     // (each at his own pace)
       // now and then a digger or the man with the rake straightens up and rests, leaning on his tool, for a few seconds
       let rest = false;
+      p.watching = false;
       if (p.tool === 'shovel' || p.tool === 'rake') {
         p.restIn = (p.restIn ?? 5 + Math.random() * 14) - dt;
         if (p.restIn < 0) { p.restT = (p.restT || 0) + dt; rest = true; if (p.restT > (p.restFor ?? (p.restFor = 3 + Math.random() * 3))) { p.restIn = 9 + Math.random() * 16; p.restT = 0; p.restFor = null; } }
       }
       const was = p.work ?? (p.work = Math.random() * 4);
       if (!rest) p.work = was + dt * rate;
-      if (rest) {
+      p.watching = rest || p.tool === 'flag' || p.tool === 'boss';
+      if (p.tool === 'boss') {     // the supervisor: hands on his hips, now and then pointing at what is to be done next
+        const point = (p.work / 7) % 1 > 0.78;
+        body({ H: 0.88, hz: -0.02, a: 0.02, fl: 0.1, fr: -0.09, hl: [-0.22, 0.98, -0.05], hr: point ? [0.3, 1.36, 0.5] : [0.22, 0.98, -0.05] });
+      } else if (rest) {
         const foot = [0.02, 0.02, 0.5], top = [0.03, 1.07, 0.34], d = unit(sub(top, foot)), len = Math.hypot(...sub(top, foot));
         const [hl, hr] = body({ H: 0.88, hz: -0.03, a: 0.07, fl: 0.1, fr: -0.09, hl: [-0.04, 1.1, 0.35], hr: [0.08, 1.03, 0.36] });
         const g = [(hl[0] + hr[0]) / 2, (hl[1] + hr[1]) / 2, (hl[2] + hr[2]) / 2], dd = unit(sub(g, foot));
@@ -3888,7 +3905,7 @@ void main() {
         it = kind.free.pop() || kind.make(); PEOPLE.live.set(p, it); it.root.visible = true;
         const u = it.mat.userData.u, skin = skinOf(p);
         u.uSkin.value.set(skin).multiplyScalar(1.05); u.uShirt.value.set(L.shirt); u.uPants.value.set(L.lower); u.uStripe.value.set(L.stripes || L.lower);
-        u.uShoe.value.set(p.tool ? '#1b1c1e' : SHOES[(Math.random() * SHOES.length) | 0]); u.uHair.value.set(L.elder ? GREY : L.hair); u.uLong.value = L.jacket || L.elder ? 1 : 0;
+        u.uShoe.value.set(p.tool && p.tool !== 'boss' ? '#1b1c1e' : SHOES[(Math.random() * SHOES.length) | 0]); u.uHair.value.set(L.elder ? GREY : L.hair); u.uLong.value = L.jacket || L.elder ? 1 : 0;
         const pick = kind.female ? (L.bun ? 'Buns' : L.long ? 'Long' : Math.random() < 0.5 ? 'Buns' : 'Long') : (Math.random() < 0.6 ? 'SimpleParted' : 'Buzzed');
         it.hairs.forEach(h => (h.visible = h.name.includes(pick)));
         it.mixer.setTime(Math.random() * 2);
@@ -3919,7 +3936,7 @@ void main() {
     // (the mixer writes a bone only when its value changes, so a bone the idle barely moves would keep the
     // pose and add to it each frame: the bones are put back as the clip left them before it runs again, and
     // before the body goes to someone else)
-    const POSED = ['spine_01', 'spine_02', 'spine_03', 'neck_01', 'thigh_l', 'calf_l', 'thigh_r', 'calf_r', 'upperarm_l', 'lowerarm_l', 'upperarm_r', 'lowerarm_r'];
+    const POSED = ['spine_01', 'spine_02', 'spine_03', 'neck_01', 'Head', 'thigh_l', 'calf_l', 'thigh_r', 'calf_r', 'upperarm_l', 'lowerarm_l', 'upperarm_r', 'lowerarm_r'];
     function unpose(it) {
       if (!it.saved) return;
       const B = it.bones, S = it.saved;
@@ -3950,7 +3967,7 @@ void main() {
       aimBone(b, iC.sub(iB), iT.copy(iA).addScaledVector(iD, d).sub(iB));
     }
     const bend = (bone, axis, angle) => { qD.setFromAxisAngle(axis, angle); bone.getWorldQuaternion(qW); bone.parent.getWorldQuaternion(qP); bone.quaternion.copy(qP.invert().multiply(qD.multiply(qW))); bone.updateMatrixWorld(true); };
-    const vTarget = new T.Vector3(), vPole = new T.Vector3(), vAxis = new T.Vector3(), vH = new T.Vector3(), vN = new T.Vector3();
+    const vTarget = new T.Vector3(), vPole = new T.Vector3(), vAxis = new T.Vector3(), vUp = new T.Vector3(), vH = new T.Vector3(), vN = new T.Vector3();
     // the bones by name (the woman's come with _1 after them: the loader keeps names apart)
     const boneMap = root => { const all = []; root.traverse(o => o.isBone && all.push(o)); return Object.fromEntries(BONES.map(n => [n, all.find(o => o.name === n || new RegExp('^' + n + '_\\d+$').test(o.name))])); };
     // sitting on a bench 0.45 m high: the hips down on it, the feet on the ground in front, the hands on the knees
@@ -3972,6 +3989,12 @@ void main() {
       dirW([-1, 0, 0], vAxis);                                                   // (the body's own x, unmirrored: turning about it bends forward)
       for (const n of ['spine_01', 'spine_02', 'spine_03']) bend(B[n], vAxis, P.a / 3);
       bend(B.neck_01, vAxis, -P.a * 0.35);
+      if (p.watching !== undefined) {
+        const r = toL(scoot.position), far = Math.hypot(r[0], r[2]) > 24 || r[2] < -3;
+        const want = p.watching && !far ? Math.max(-1.1, Math.min(1.1, Math.atan2(-r[0], Math.max(0.3, r[2])))) : 0;
+        p.lookA = (p.lookA || 0) + (want - (p.lookA || 0)) * Math.min(1, dt * 3);
+        if (Math.abs(p.lookA) > 0.01) { dirW([0, 1, 0], vUp); bend(B.neck_01, vUp, p.lookA * 0.4); bend(B.Head, vUp, p.lookA * 0.6); }
+      }
       // the legs to the feet, the arms to the hands
       ['l', 'r'].forEach((s, i) => {
         const f = feet[i], fz = i ? P.fr : P.fl;
@@ -3985,13 +4008,12 @@ void main() {
         return toL(vH.addScaledVector(vH.clone().sub(vN).normalize(), 0.07 * (p.sc || 1)));
       });
       // a worker's rubber boots, up to the middle of the calf, and the work gloves
-      if (p.tool) {
+      if (p.tool && p.tool !== 'boss') {
         for (const sd of ['l', 'r']) { const f = toL(B['foot_' + sd].getWorldPosition(vH)), k = toL(B['calf_' + sd].getWorldPosition(vN)); limb3(pLimb, ...f, ...onLine(f, sub(k, f), 0.45), 0.135, '#1b1c1e'); }
         for (const g of grips) put(pRound, ...g, 0.052, 0.05, 0.06, '#d9c27a');
       }
-      // a worker's vest's shining bands round the chest, and the hard hat on the head
-      const ca = Math.cos(P.a), sa = Math.sin(P.a);
-      if (p.tool) for (const n of ['spine_02', 'spine_03']) { const c = toL(B[n].getWorldPosition(vH)); put(pBox, c[0], c[1] - 0.02, c[2] + 0.025 * ca, 0.32, 0.03, 0.21, '#dfe3e6', P.a * (n === 'spine_02' ? 0.5 : 0.85)); }
+      // a worker's vest over his shirt, and the hard hat on the head
+      if (p.vest) vestOn(toL(B.spine_01.getWorldPosition(vH)), toL(B.neck_01.getWorldPosition(vN)), p.vest);
       if (p.hat) {
         const h = toL(B.Head.getWorldPosition(vH)), nk = toL(B.neck_01.getWorldPosition(vN)), u = unit(sub(h, nk)), tilt = Math.atan2(u[2], u[1]);
         const top = onLine(h, u, 0.15), fw = [0, -u[2], u[1]];
@@ -4254,7 +4276,7 @@ void main() {
           put(vBox, rx, 0.78 + buzz, rz + 0.08, 0.04, 0.4, 0.04, '#2b2b2b', 0.5);                         // the steering column
           put(vBox, rx, 1.1 + buzz, rz + 0.25, 0.3, 0.03, 0.3, '#2b2b2b', 0.5);                           // and its wheel
           if (PEOPLE && level > 0) {     // the driver, a real body sitting on the seat: feet on the footrest, hands on the wheel
-            const drv = t.driver || (t.driver = { look: WORKER[1], hat: '#f2c230', sc: 1, tool: 'drive' });
+            const drv = t.driver || (t.driver = { look: WORKER[1], hat: '#f2c230', sc: 1, tool: 'drive', vest: '#ff7a1a' });
             mK.copy(mB); mB.multiply(mT.makeTranslation(-rx, buzz, rz - 0.32));
             realPose(drv, dt, { H: 0.88, hz: -0.02, a: -0.04, fl: 0.4, fr: 0.4, fy: 0.46, hl: [-0.13, 1.12, 0.55], hr: [0.13, 1.12, 0.55] });
             mB.copy(mK);
@@ -4262,7 +4284,7 @@ void main() {
             const hy = 0.82 + buzz, hz = rz - 0.32, W = WORKER[1], sk = SKIN[1];
             for (const e of [-1, 1]) { limbTo(pLimb, rx + e * 0.1, hy, hz, hy - 0.02, hz + 0.42, 0.15, W.lower); limbTo(pLimb, rx + e * 0.1, hy - 0.02, hz + 0.42, 0.5 + buzz, hz + 0.5, 0.115, W.lower); }
             put(pTorso, rx, hy + 0.1, hz, 1.04, 1, 0.66, W.shirt, -0.05);
-            for (const v of [0.13, 0.31]) put(pBox, rx, hy + 0.1 + v, hz, 0.36, 0.04, 0.24, '#dfe3e6', -0.05);
+            vestOn([rx, hy + 0.1, hz], [rx, hy + 0.6, hz - 0.03], '#ff7a1a', 0.93);
             for (const e of [-1, 1]) arm3([rx + e * 0.2, hy + 0.55, hz], [rx + e * 0.13, 1.12 + buzz, rz + 0.2], e, W.shirt, sk);
             put(pRound, rx, hy + 0.8, hz, 0.105, 0.125, 0.115, sk);
             put(pRound, rx, hy + 0.89, hz, 0.135, 0.085, 0.145, '#f2c230'); put(pRound, rx, hy + 0.85, hz + 0.04, 0.16, 0.02, 0.17, '#f2c230');
@@ -5215,7 +5237,7 @@ void main() {
       probe: (k, lat = 0.1, along = SEG / 2) => { setRoute(); const f = frame3(k * SEG + along, lat, {}), ray = new T.Raycaster(new T.Vector3(f.x, f.y + 40, f.z), new T.Vector3(0, -1, 0), 0, 120);
         const all = pieces.flatMap(g => g.children).concat(fill ? [fill] : []);
         return { y: +f.y.toFixed(2), hits: ray.intersectObjects(all, false).slice(0, 6).map(h => [+(h.point.y - f.y).toFixed(2), h.object.userData.fill ? 'fill' : h.object.isInstancedMesh ? 'inst' : (h.object.geometry.userData.what || [])[h.face.a], (h.object.geometry.userData.by || [])[h.face.a]]) }; },
-      mem: () => ({ ...renderer.info.memory, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, programs: renderer.info.programs.length, objects: scene.children.length, people: PEOPLE ? PEOPLE.live.size : -1, fullest: pools.reduce((b, m) => Math.max(b, m.count / m.max), 0), full: pools.filter(m => m.count >= m.max).length }),     // for the tests: what the GPU holds, and how near a pool is to full
+      mem: () => ({ ...renderer.info.memory, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, programs: renderer.info.programs.length, objects: scene.children.length, people: PEOPLE ? PEOPLE.live.size : -1, fullest: pools.reduce((b, m) => Math.max(b, m.count / m.max), 0), full: pools.filter(m => m.count >= m.max).length, which: pools.filter(m => m.count / m.max > 0.7).map(m => `${m.geometry.type}:${m.count}/${m.max}`) }),     // for the tests: what the GPU holds, and how near a pool is to full
       // for the tests: each vehicle's size as drawn (length, width with the mirrors, height in metres), and our scooter's
       sizes: () => Object.fromEntries([...Object.keys(KINDS).map(k => { const M = MODELS[k], K = KINDS[k], b = new T.Box3().setFromBufferAttribute(M.paint.attributes.position); return [k, { len: +((b.max.z - b.min.z) * K.len / M.len).toFixed(2), wid: +((M.single ? b.max.x - b.min.x : (b.max.x - b.min.x) * K.wid)).toFixed(2), hgt: +(b.max.y * K.hgt / M.hgt).toFixed(2), wheel: +(M.wheels[0][1] * K.hgt / M.hgt * 2).toFixed(2) }]; }), ['me', (() => { const p0 = scoot.position.clone(), r0 = scoot.rotation.clone(); scoot.position.set(0, 0, 0); scoot.rotation.set(0, 0, 0); scoot.updateMatrixWorld(true); const b = new T.Box3().setFromObject(scoot); scoot.position.copy(p0); scoot.rotation.copy(r0); scoot.updateMatrixWorld(true); return { len: +(b.max.z - b.min.z).toFixed(2), wid: +(b.max.x - b.min.x).toFixed(2), hgt: +(b.max.y - b.min.y).toFixed(2) }; })()]]) };
   }
