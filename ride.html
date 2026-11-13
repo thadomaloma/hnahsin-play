@@ -6642,10 +6642,12 @@ void main() {
       pax = ((-60 * u + 180 * u2 - 120 * u3) * (p0 - p1) + (-36 * u + 96 * u2 - 60 * u3) * v0 + (1 - 9 * u + 18 * u2 - 10 * u3) * a0) / (T * T);
       px = Math.max(-LANE - 0.5, Math.min(LANE + 0.5, px));
     } else { px = laneTo; pvx = 0; pax = 0; }
-    // Lean as a rider does: into the move as it starts (with the push sideways, not the speed sideways), upright
-    // again as it settles, and into the bend
-    const want = Math.max(-0.4, Math.min(0.4, 0.3 * Math.tanh(pax / 14) + curvAt(s) * v * v * 0.012));
-    lean += (want - lean) * Math.min(1, dt * 14);
+    // Lean as a rider does, and no more: into a lane change gently as it moves across (with the speed sideways,
+    // a touch ahead of it with the push: about 8 degrees at most), upright again as it arrives, with no flick the
+    // other way; into a bend as far as its speed asks (13 degrees at most); and all of it eased in and out
+    const bend = Math.max(-0.22, Math.min(0.22, curvAt(s) * v * v * 0.012));
+    const want = Math.max(-0.3, Math.min(0.3, 0.11 * Math.tanh(pvx / 4) + 0.03 * Math.tanh(pax / 14) + bend));
+    lean += (want - lean) * Math.min(1, dt * 7);
     if (!reduce && Math.random() < dt * 9) sparks.push({ x: riderXY().x + 9, y: riderXY().y - 8, vx: (Math.random() - .5) * 20, vy: 30 + Math.random() * 20, r: 2.5, life: 0.6, c: '#9aa39b', a: 0.5, puff: true });
     bgX += curvAt(s) * v * dt * W * 0.9;
     shake = Math.max(0, shake - dt * 3);
@@ -7285,7 +7287,7 @@ void main() {
   // For the automatic tests only (?test in the address): read the ride and steer.
   // (the tests may ask for only some roads: window.__only, a list of route ids)
   const testRoutes = () => [...DATA.routes, ...CITY.jobs.map(routeOf)].filter(r => !window.__only || window.__only.includes(r.id));
-  if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ kind: c.kind, lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, wid: c.wid, x: c.x, jam: !!c.jam, blink: c.blink, hazard: !!c.hazard, bay: !!c.bay, across: !!c.across, nose: c.nose || 0 })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
+  if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, lean, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ kind: c.kind, lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, wid: c.wid, x: c.x, jam: !!c.jam, blink: c.blink, hazard: !!c.hazard, bay: !!c.bay, across: !!c.across, nose: c.nose || 0 })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
     peds: peds.map(p => ({ at: p.at, x: p.x, shop: !!p.shop, em: !!p.em, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)), dog: !!p.dog, child: !!p.look.child })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, fareTaxi: (ahead, speed = 8) => { const c = newCar('taxi', 0, s + ahead, speed, 1); c.fare = 'want'; cars.push(c); return c; }, park: (kind, ahead, lane = 1, dir = 1, speed = 0) => { const c = newCar(kind, lane, s + ahead, dir * speed, dir); c.cruise = speed; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), holes: () => R3 && R3.holesSeen(), sizes: () => R3 && R3.sizes(), under: (k, lat) => R3 && R3.under(k, lat), probe: (k, lat, al) => R3 && R3.probe(k, lat, al), mem: () => R3 && R3.mem(), tris: () => R3 && R3.tris(), juncs: () => (juncs || []).map(j => ({ at: Math.round(j.at), sd: j.sd, main: j.main, police: !!j.police, phase: j.phase, obeyed: j.obeyed, ran: j.ranNow, len: Math.round(j.len), met: j.met, yielding: !!j.yielder, waited: j.waited, paid: j.paid, cars: j.cars.map(c => c.kind + ':' + (c.side ? c.side.phase : 'road')) })), allJuncs: () => R3 && R3.junctions(), walker: (ahead, x, va = 1, vx = 0, look, dog, extra) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; if (dog) p.dog = dog; if (extra) Object.assign(p, extra); peds.push(p); return peds.length; },
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
     // for the tests: ride a given road; and every road with how many crossings and jams it has

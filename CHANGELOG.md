@@ -4,7 +4,16 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
-## 1.75.0 (13 November 2026)
+## 1.75.1 (14 November 2026)
+
+### Aizawl Ride: a gentler lean
+
+- Changing lanes, the scooter now leans gently into the move (about 8
+  degrees at most) and straightens smoothly as it arrives, instead of
+  tipping hard and flicking the other way. On a bend it leans as its speed
+  asks, never more than about 13 degrees.
+
+## 1.75.0 (14 November 2026)
 
 ### Aizawl Ride: faster scooters, each its own
 
