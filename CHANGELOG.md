@@ -4,6 +4,15 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.68.4 (13 November 2026)
+
+- Aizawl Ride's taxis look like the real Alto 800: the headlamps set into
+  the front below the bonnet, full-width bumpers with round ends, rounder
+  corners, dark rain visors over the side windows, and mud flaps behind the
+  wheels.
+- Every car on the road is rounder where its body turns (its shoulders, roof
+  and sills), not cut in flat facets.
+
 ## 1.68.3 (13 November 2026)
 
 - Aizawl Ride's scooter sounds like a scooter: each firing a kick of gas

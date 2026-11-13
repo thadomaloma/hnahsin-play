@@ -3445,7 +3445,11 @@ void main() {
         const R = [[0, vb], [W * 0.86, vb], [W * 0.97, vb + 0.05], [W, vb + (vw - vb) * 0.5], [W * 0.985, vw - 0.03], [W * 0.96, vw], [(W * 0.96 + Wt) / 2, vw + c * 0.5], [Wt, vw + c * 0.9], [Wt * 0.75, vt], [0, vt + 0.015]];
         return [...R, ...R.slice(1, 9).reverse().map(([x, v]) => [-x, v])];
       };
-      const rings = U.map(u => ring(u)), N = 18;
+      // and smoothed: a point between each two, on the curve through them (so the body is round where it turns,
+      // not cut in facets); the 18 points keep their numbers doubled (window k of the 18 is 2k of the 36)
+      const smoothRing = r => r.flatMap((p1, k) => { const n = r.length, p0 = r[(k + n - 1) % n], p2 = r[(k + 1) % n], p3 = r[(k + 2) % n];
+        return [p1, [(-p0[0] + 9 * p1[0] + 9 * p2[0] - p3[0]) / 16, (-p0[1] + 9 * p1[1] + 9 * p2[1] - p3[1]) / 16]]; });
+      const rings = U.map(u => smoothRing(ring(u))), N = 36;
       const strip = (from, to, idx, out, lift, hole) => {     // a mesh over stations from..to, through ring points idx (leaving out the holes)
         const pos = [], col = [], ind = [], sel = U.map((u, i) => i).filter(i => U[i] >= from - 1e-6 && U[i] <= to + 1e-6);
         sel.forEach(i => idx.forEach(k => { const [x, v] = rings[i][k]; pos.push(x * out, v + lift, U[i]); col.push(1, 1, 1); }));
@@ -3477,12 +3481,12 @@ void main() {
       const [s0, s1] = GL.side, cuts = [s0, ...(GL.pillars || []).flat(), s1];
       const panes = []; for (let i = 0; i < cuts.length; i += 2) panes.push([cuts[i], cuts[i + 1]]);
       const within = (u, r) => r && u > r[0] && u < r[1];
-      const open = (u, j) => ((j === 5 || j === 6 || j === 11 || j === 12) && panes.some(r => within(u, r))) || ((j === 8 || j === 9) && (within(u, GL.ws) || within(u, GL.rw)));
+      const open = (u, j) => (((j >= 10 && j <= 13) || (j >= 22 && j <= 25)) && panes.some(r => within(u, r))) || (j >= 16 && j <= 19 && (within(u, GL.ws) || within(u, GL.rw)));
       const body = strip(U[0], U[U.length - 1], [...Array(N + 1).keys()].map(k => k % N), 1, 0, open);
-      const dk = C(DK); body.pos.forEach((_, i) => { if (i % 3) return; const k = (i / 3) % (N + 1) % N; if (k <= 1 || k >= 17) body.col.splice(i, 3, dk.r, dk.g, dk.b); });
+      const dk = C(DK); body.pos.forEach((_, i) => { if (i % 3) return; const k = (i / 3) % (N + 1) % N; if (k <= 2 || k >= 34) body.col.splice(i, 3, dk.r, dk.g, dk.b); });
       const glass = [];
-      for (let i = 0; i < cuts.length; i += 2) { glass.push(strip(cuts[i], cuts[i + 1], [5, 6, 7], 1.012, 0.002)); glass.push(strip(cuts[i], cuts[i + 1], [11, 12, 13], 1.012, 0.002)); }
-      for (const k of ['ws', 'rw']) if (GL[k]) glass.push(strip(GL[k][0], GL[k][1], [8, 9, 10], 1.012, 0.012));
+      for (let i = 0; i < cuts.length; i += 2) { glass.push(strip(cuts[i], cuts[i + 1], [10, 11, 12, 13, 14], 1.012, 0.002)); glass.push(strip(cuts[i], cuts[i + 1], [22, 23, 24, 25, 26], 1.012, 0.002)); }
+      for (const k of ['ws', 'rw']) if (GL[k]) glass.push(strip(GL[k][0], GL[k][1], [16, 17, 18, 19, 20], 1.012, 0.012));
       return { paint: geo([body], true), glass: geo(glass, false), half, top, waist, bottom };
     }
     // What is seen through a car's windows, and its black trim outside: the cabin's floor at the window line
@@ -3544,7 +3548,7 @@ void main() {
     function alto() {
       const P = parts(), G = parts(), H = parts(), I = parts();
       const glass = { side: [-1.42, 0.74], pillars: [[-0.5, -0.41]], ws: [0.08, 0.76], rw: [-1.66, -1.47] };
-      const B = loft({ L: 3.4, sill: 0.26, wheels: [[1.15, 0.27, 0.38], [-1.2, 0.27, 0.38]], tumble: 0.82,
+      const B = loft({ L: 3.4, sill: 0.26, wheels: [[1.15, 0.27, 0.38], [-1.2, 0.27, 0.38]], tumble: 0.82, endF: 0.42, endR: 0.42,     // (its corners round, seen from above)
         waist: [[-1.7, 0.86], [-1.0, 0.89], [0.75, 0.88], [1.3, 0.78], [1.7, 0.66]],
         top: [[-1.7, 0.8], [-1.68, 1.05], [-1.6, 1.3], [-1.45, 1.4], [0.05, 1.44], [0.76, 0.92], [1.3, 0.8], [1.7, 0.67]], glass });
       P.mesh(B.paint); G.mesh(B.glass);
@@ -3555,10 +3559,17 @@ void main() {
         for (const u of [0.3, -0.78]) H.box(u, 0.78, e * 0.497, 0.11, 0.03, 0.01);                         // door handles
       }
       for (const u of [1.15, -1.2]) P.disc(u, 0.27, 0, 0.36, 0.9, '#0d0d0e');                                // wheel wells
-      for (const u of [1.7, -1.7]) P.box(u, 0.36, 0, 0.12, 0.17, 0.72, DK);                                  // bumpers
-      P.box(1.71, 0.55, 0, 0.03, 0.06, 0.36, '#0e0f10'); H.box(1.722, 0.6, 0, 0.02, 0.02, 0.3);              // the narrow grille
+      for (const u of [1.69, -1.69]) {                                                                         // the bumpers, across the whole front and back, their ends round
+        P.box(u, 0.37, 0, 0.13, 0.16, 0.78, DK);
+        for (const e of [-1, 1]) P.ball(u - Math.sign(u) * 0.05, 0.37, e * 0.39, 0.1, 0.08, 0.07, DK);
+      }
+      P.box(1.69, 0.5, 0, 0.03, 0.06, 0.34, '#0e0f10'); H.box(1.702, 0.53, 0, 0.02, 0.016, 0.28);           // the narrow grille, between the lamps
+      for (const e of [-1, 1]) {
+        P.box(-0.68, 1.39, e * 0.425, 1.36, 0.014, 0.05, '#1b2026');                                       // the rain visors over the side windows (the hills' taxis have them)
+        for (const u of [0.72, -1.62]) P.box(u, 0.2, e * 0.43, 0.012, 0.2, 0.15, DK);                       // mud flaps behind the wheels
+      }
       return { paint: P.done(), glass: G.done(), chrome: H.done(), cabin: I.done(), len: 3.4, hgt: 1.44, wheels: [[1.15, 0.27], [-1.2, 0.27]], track: 0.42, tw: 0.17, rim: 'cap',
-        head: [1.7, 0.71, 0.3, 0.2, 0.09], tail: [-1.71, 0.92, 0.31, 0.09, 0.2], plate: [-1.73, 0.5], front: [1.73, 0.38],
+        head: [1.68, 0.63, 0.3, 0.2, 0.085], tail: [-1.7, 0.95, 0.32, 0.08, 0.2], plate: [-1.73, 0.5], front: [1.73, 0.38],
         seats: { hip: [-0.15, 0.55], rear: [-0.95, 0.57], wheel: [0.25, 0.95] }, sign: [-0.45, 1.44], words: [-1.535, 1.335, 0.6] };
     }
     function sedan() {      // a Dzire: a hatchback's front with a short boot
