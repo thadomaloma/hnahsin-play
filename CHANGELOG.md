@@ -4,6 +4,16 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.68.1 (13 November 2026)
+
+- Aizawl Ride's Sport and Electric scooters have real round bodies too.
+  The Sport is a sleek wedge rising to its tail, with dark lower panels, a
+  sharp front cowl holding twin LED lamps, an apron round your legs, a
+  tunnel between your feet and a small mudguard close over the front tyre.
+  The Electric is one smooth body with a tall, smooth front holding its dark
+  glass panel, LED strip and lamp, and its screen on a rounded handlebar
+  cover.
+
 ## 1.68.0 (13 November 2026)
 
 - Aizawl Ride's delivery scooters have real round bodies. The Everyday and
