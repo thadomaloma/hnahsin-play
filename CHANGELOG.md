@@ -4,6 +4,14 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.74.3 (13 November 2026)
+
+### Aizawl Ride: trees clear of the wires
+
+- No tree beside the road grows through the electric wires any more: where
+  the wires run across the hillside on a bend, from one pole to the next, a
+  tree there is left out.
+
 ## 1.74.2 (13 November 2026)
 
 ### Aizawl Ride: the hillside meets the land
