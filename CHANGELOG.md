@@ -4,6 +4,18 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.72.0 (13 November 2026)
+
+### Aizawl Ride: buses at their stops
+
+- Bus stops are most often just before a junction now, as in Aizawl. A bus
+  stands at its stop a while, people getting on and off, then puts on its
+  right indicator and pulls out into the lane in front of you. If you are
+  close behind it, it waits for you to pass first.
+- When a stop is empty, another bus comes along now and then, puts on its
+  left indicator, slows and pulls in to the kerb, and stands there with its
+  hazard lights on.
+
 ## 1.71.0 (13 November 2026)
 
 ### Aizawl Ride: the rush hours

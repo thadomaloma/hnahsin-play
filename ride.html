@@ -1022,7 +1022,8 @@
     const near = housesNear(Math.floor(at / SEG));
     const pick = list => { let r = Math.random() * list.reduce((a, [, w]) => a + w, 0); for (const [k, w] of list) if ((r -= w) <= 0) return k; return list[0][0]; };
     // (the tests may ask for one kind)
-    let kind = (window.__ride && window.__blockKind) || pick(lane === 0 ? [['parked', 0.36], ['unload', 0.14], ['busstop', near >= 18 ? 0.12 : 0.02], ['works', 0.1], ['pothole', 0.14]]
+    const nearJn = (route.junctions || []).some(q => q[0] * SEG - at > 14 && q[0] * SEG - at < 45);     // (a junction a little ahead: a bus stop there, more often)
+    let kind = (window.__ride && window.__blockKind) || pick(lane === 0 ? [['parked', 0.36], ['unload', 0.14], ['busstop', near >= 18 ? (nearJn ? 0.5 : 0.12) : nearJn ? 0.2 : 0.02], ['works', 0.1], ['pothole', 0.14]]
       : [['works', 0.29], ['pothole', 0.42]]);      // (road works, half as often as they were)
     // a goods truck unloads only in front of a shop (dawr kawt), on our side: it stops with its back at the shop's door
     let shop = null;
@@ -1126,7 +1127,7 @@
     const car = { kind: 'taxi', col: K.cols[Math.random() * K.cols.length | 0], len: K.len, wid: K.wid, hgt: K.hgt, x: -(ROAD_EDGE - 0.25 - K.wid / 2), dir: 1, v: 0, vx: 0, slowing: false, at, off: true, stand: true };
     return { kind: 'parked', lane: 0, at, hit: false, seed: Math.random(), back: 0, car, x: car.x, half: K.wid / 2, len: K.len, stand: true };
   };
-  const thingNear = (lane, from, to) => things.some(t => t.kind !== 'coin' && t.lane === lane && t.at + t.len / 2 > from && t.at - t.len / 2 - t.back < to);
+  const thingNear = (lane, from, to) => things.some(t => t.kind !== 'coin' && !t.empty && t.lane === lane && t.at + t.len / 2 > from && t.at - t.len / 2 - t.back < to);
   // ---------- the side roads: traffic coming out of them, and going into them ----------
   // At each junction the picture draws (a side road going off up or down the hillside), people come down the side
   // road on scooters and motorbikes, in taxis and cars, stop at its white line and wait for a gap: then turn out,
@@ -1279,6 +1280,42 @@
     // the words, the first time: someone waiting to come out ahead
     if (!eventWords.has('fimkhur') && juncs.some(j => j.at - s > 0 && j.at - s < 45 && j.cars.some(c => c.side && c.side.phase === 'wait'))) say('fimkhur', 'careful · someone is coming out of the side road');
   }
+  // ---------- the bus stops: buses pulling in, and out again ----------
+  // A bus stands at its stop a while (people getting on and off), then, its indicator going, pulls out into
+  // the lane ahead of you (it waits for you if you are close behind it); its bay is empty then. Now and then
+  // another comes along, in front of you, slows with its indicator going and pulls in to the empty bay.
+  const BUS_X = -(ROAD_EDGE - 0.25 - KINDS.bus.wid / 2);
+  function busStops(dt) {
+    for (const t of things) {
+      if (t.kind !== 'busstop' || t.hit) continue;
+      const ahead = t.at - s;
+      if (t.state === undefined) { t.state = 'in'; t.dwell = 3 + Math.random() * 6; }
+      if (t.state === 'in' && t.car && ahead < 140) {
+        t.dwell -= dt;
+        if (t.dwell < 0 && ahead > 24 && ahead < 115 && !(lane === 0 && ahead < 34) && !cars.some(c => c.lane === 0 && c.dir > 0 && c.at > t.at - 26 && c.at < t.at + 12)) {
+          const c = t.car; t.car = null; t.empty = true; t.state = 'empty';                 // out of the bay, into the lane
+          Object.assign(c, { lane: 0, at: t.at, x: BUS_X, vx: 0, v: 0.5, cruise: 7.5, dir: 1, hazard: false, blink: 1, two: false, pullX: null, leaving: 3 });
+          cars.push(c);
+        }
+      } else if (t.state === 'empty' && ahead > 75 && ahead < 150 && Math.random() < dt * 0.3) {
+        const at = Math.max(s + 28, t.at - 70);
+        if (at < t.at - 22 && !carNear(0, at - 12, at + 12) && !(lane === 0 && Math.abs(at - s) < 14)) {     // another comes, ahead of you, for the bay
+          const c = newCar('bus', 0, at, 7, 1); c.bay = t; t.state = 'coming'; cars.push(c);
+        }
+      }
+    }
+  }
+  function busIn(c, d, want) {      // a bus coming to its bay: the left indicator, slowing, in to the kerb, stopping
+    const t = c.bay, rel = t.at - c.at;
+    if (rel < 45) { c.blink = -1; want = Math.min(want, Math.sqrt(3.2 * Math.max(0, rel - 0.3))); }     // (slowing to stop at the bay)
+    if (rel < 18) { c.pullX = BUS_X; c.lane = 0; }
+    if ((rel < 1 && Math.abs(c.v) < 1.5) || rel < -1.5) {      // in the bay: stopped there, its hazard lights on, as the others stand
+      c.gone = true; c.bay = null;
+      t.car = Object.assign({}, c, { at: t.at, x: BUS_X, v: 0, vx: 0, hazard: true, blink: 0, gone: false, pullX: null }); t.empty = false; t.state = 'in'; t.dwell = 4 + Math.random() * 6;
+      return 0;
+    }
+    return want;
+  }
   function traffic(dt) {
     const far = s + VIEW * SEG - 6;
     // New traffic far ahead: slower cars on our side, and cars coming the other way
@@ -1323,12 +1360,15 @@
       }
     }
     junctionTraffic(dt);
+    busStops(dt);
     // Each car, either way: keeps its lane, slows for what is ahead (the one in front, the scooter,
     // people on a zebra crossing), goes round an obstacle if it can
     for (const c of cars) {
       if (c.side) continue;     // (on a side road, or turning: moved by junctionTraffic)
       const d = c.dir;
       let want = c.fare ? fare(c, dt) : c.cruise;
+      if (c.bay) want = busIn(c, d, want);
+      if (c.leaving && (c.leaving -= dt) <= 0) { c.leaving = 0; c.blink = 0; }     // (out of the bay: its indicator off)
       if (c.turnOff) {          // slowing to turn into a side road, then turning
         const j = c.turnOff, rel = (j.at - c.at) * d;
         want = Math.min(want, 3.2 + Math.max(0, rel - 8) * 0.35);
@@ -1354,7 +1394,7 @@
         if (g > -1 && g < gap) { gap = Math.max(0, g); aheadV = 0; }
       }
       if (d > 0) {
-        const block = things.find(t => t.kind !== 'coin' && t.lane === c.lane && t.at + t.len / 2 > c.at && t.at - t.len / 2 - t.back - c.at < 22);
+        const block = things.find(t => t.kind !== 'coin' && !t.empty && t.lane === c.lane && t.at + t.len / 2 > c.at && t.at - t.len / 2 - t.back - c.at < 22);
         if (block && !c.jam) {
           const other = 1 - c.lane;
           if (c.lane < 2 && !carNear(other, c.at - 8, c.at + 14) && !thingNear(other, c.at - 4, c.at + 24) && !(lane === other && Math.abs(s - c.at) < 8)) c.lane = other;
@@ -1371,7 +1411,7 @@
     cars = cars.filter(c => !c.gone && c.at > s - 12 && c.at < s + VIEW * SEG + 40);
     // Hints and words: a car for the first time, and the brake when a queue is ahead
     if (!eventWords.has('motor') && cars.some(c => c.dir > 0 && !c.two && c.at - s < 70 && c.at > s)) say('motor', 'car');
-    { const b = things.find(t => BLOCK_WORDS[t.kind] && !t.hit && t.at > s && t.at - s < 45); if (b && !eventWords.has(BLOCK_WORDS[b.kind][0])) say(...BLOCK_WORDS[b.kind]); }
+    { const b = things.find(t => BLOCK_WORDS[t.kind] && !t.hit && !t.empty && t.at > s && t.at - s < 45); if (b && !eventWords.has(BLOCK_WORDS[b.kind][0])) say(...BLOCK_WORDS[b.kind]); }
     const queue = jams.find(j => (j.state === 'stopped' || j.state === 'waiting') && j.cars && j.cars.some(c => c.at - s < 120 && c.at > s));
     if (queue && !eventWords.has('tlar')) say('tlar', 'row · a queue ahead, hold Brake');
     const giving = cars.find(c => c.yieldTo && c.lane === lane && c.at > s && c.at - s < 45 && Math.abs(c.v) < 1) || (juncs && juncs.find(j => j.police && j.phase === 'side' && j.at - s > 9 && j.at - s < 50));
@@ -1910,7 +1950,7 @@
       if (a.idx === route.curv.length - 1 || (a.wz <= route.length && a.wz + SEG > route.length)) finish(a);
       if (signAt.has(a.idx)) noHonking(a);
       if (walkSignAt.has(a.idx)) crossingSign(a);
-      for (const t of (by.get(i) || []).sort((p, q) => q.at - p.at)) t.dir ? vehicle(t, P, i) : t.car ? (t.kind === 'busstop' && shelter(t, P, i), vehicle(t.car, P, i)) : t.look ? person(t, P, i) : thing(t, P, i);
+      for (const t of (by.get(i) || []).sort((p, q) => q.at - p.at)) t.dir ? vehicle(t, P, i) : t.car || t.kind === 'busstop' ? (t.kind === 'busstop' && shelter(t, P, i), t.car && vehicle(t.car, P, i)) : t.look ? person(t, P, i) : thing(t, P, i);
       ctx.globalAlpha = 1;
       ctx.restore();
     }
@@ -4775,8 +4815,8 @@ void main() {
         if (t.got || t.at + (t.len || 0) / 2 < s - 8 || t.at - (t.len || 0) / 2 - (t.back || 0) > s + far) continue;     // (a bus or a truck is long: drawn till all of it is behind)
         frame3(t.at, LANES[t.lane], f); base(f);
         if (t.kind === 'coin') { put(coinM, 0, 0.62, 0, 0.38, 0.38, 0.09, '#ffd34d', 0, time * 5 + t.at); put(shadows, 0, 0.03, 0, 0.6, 1, 0.3, '#000'); continue; }
-        if (t.car) {     // a vehicle stopped by the kerb: drawn as the traffic is, its hazard lights flashing
-          frame3(t.at, t.car.x, f); base(f); drawCar(t.car, dt);
+        if (t.car || t.kind === 'busstop') {     // a vehicle stopped by the kerb: drawn as the traffic is, its hazard lights flashing (a bus stop's bay, empty or not)
+          frame3(t.at, t.car ? t.car.x : BUS_X, f); base(f); if (t.car) drawCar(t.car, dt);
           if (t.kind === 'busstop') {
             for (const e of [-1, 1]) put(vBox, e * 1.32, 0.004, 0.4, 0.12, 0.012, 10.6, '#f2c230');                   // the bus bay, in yellow on the road
             for (const z of [-4.9, 5.7]) put(vBox, 0, 0.004, z, 2.76, 0.012, 0.12, '#f2c230');
@@ -6274,7 +6314,7 @@ void main() {
     // What the scooter meets: each coin once, the first obstacle ends the ride
     for (const t of things) {
       // as long and as wide as it is drawn, with the scooter's own size: 0.9 m from its middle along, 0.3 m across
-      if (t.got || t.hit || (t.kind === 'coin' ? Math.abs(t.at - s) > 0.9 : s < t.at - t.len / 2 - t.back - 0.9 || s > t.at + t.len / 2 + 0.9)) continue;
+      if (t.got || t.hit || t.empty || (t.kind === 'coin' ? Math.abs(t.at - s) > 0.9 : s < t.at - t.len / 2 - t.back - 0.9 || s > t.at + t.len / 2 + 0.9)) continue;
       if (t.kind === 'coin' ? Math.abs(LANES[t.lane] - px) > 1.15 : Math.abs(t.x - px) > t.half + 0.3) continue;
       if (t.kind === 'coin') {
         t.got = true; coins++; picked++; dailyAdd('coin', 1, picked); beep(880, 0.06); burst('#ffd34d');
@@ -6897,7 +6937,7 @@ void main() {
   // For the automatic tests only (?test in the address): read the ride and steer.
   // (the tests may ask for only some roads: window.__only, a list of route ids)
   const testRoutes = () => [...DATA.routes, ...CITY.jobs.map(routeOf)].filter(r => !window.__only || window.__only.includes(r.id));
-  if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ kind: c.kind, lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, wid: c.wid, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
+  if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ kind: c.kind, lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, wid: c.wid, x: c.x, jam: !!c.jam, blink: c.blink, hazard: !!c.hazard, bay: !!c.bay })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
     peds: peds.map(p => ({ at: p.at, x: p.x, shop: !!p.shop, em: !!p.em, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)), dog: !!p.dog, child: !!p.look.child })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, fareTaxi: (ahead, speed = 8) => { const c = newCar('taxi', 0, s + ahead, speed, 1); c.fare = 'want'; cars.push(c); return c; }, park: (kind, ahead, lane = 1, dir = 1, speed = 0) => { const c = newCar(kind, lane, s + ahead, dir * speed, dir); c.cruise = speed; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), holes: () => R3 && R3.holesSeen(), sizes: () => R3 && R3.sizes(), under: (k, lat) => R3 && R3.under(k, lat), probe: (k, lat, al) => R3 && R3.probe(k, lat, al), mem: () => R3 && R3.mem(), tris: () => R3 && R3.tris(), juncs: () => (juncs || []).map(j => ({ at: Math.round(j.at), sd: j.sd, main: j.main, police: !!j.police, phase: j.phase, obeyed: j.obeyed, ran: j.ranNow, len: Math.round(j.len), met: j.met, yielding: !!j.yielder, waited: j.waited, paid: j.paid, cars: j.cars.map(c => c.kind + ':' + (c.side ? c.side.phase : 'road')) })), allJuncs: () => R3 && R3.junctions(), walker: (ahead, x, va = 1, vx = 0, look, dog, extra) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; if (dog) p.dog = dog; if (extra) Object.assign(p, extra); peds.push(p); return peds.length; },
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
     // for the tests: ride a given road; and every road with how many crossings and jams it has
