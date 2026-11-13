@@ -4,6 +4,19 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.68.7 (13 November 2026)
+
+- Aizawl Ride's delivery scooter gets up every road. On thirteen of the city
+  routes the map had a few steps far steeper than any street in Aizawl, and
+  the scooter stood stuck on them. Now it climbs the hills as they really
+  are (never steeper than Aizawl's steepest streets), and at a walking pace
+  it always has a little more pull than the hill, so it creeps on up and
+  never stops.
+- The motorbikes in the traffic are round as they are made: the Splendor's
+  tank, side panel, tail and seat; the Royal Enfield's teardrop tank and
+  deep mudguards; the Pulsar's muscular tank, upswept tail and fairing. The
+  full-face helmets are closed in front.
+
 ## 1.68.6 (13 November 2026)
 
 - Aizawl Ride's city buses and goods trucks are round at their corners, as

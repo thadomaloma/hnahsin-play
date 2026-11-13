@@ -3743,18 +3743,19 @@ void main() {
         head: [0.93, 1.09, 0, 0.16, 0.06], tail: [-0.94, 0.55, 0, 0.18, 0.06], plate: [-0.94, 0.4],
         rider: { hip: [-0.36, 0.92], knee: [0.14, 0.9], foot: [0.24, 0.44], grip: [0.72, 1.1, 0.3], lean: 0.12 } };
     }
+    const ST = (st, tw = 0.7, bw = 0.8) => st.map(q => [q[0], q[1], q[2], q[3], q[4] ?? tw, q[5] ?? bw]);     // (a shell's stations, for the motorbikes)
     function motorbike() {  // a Splendor
       const P = parts(), H = parts();
-      P.curve([[-0.18, 0.8], [-0.04, 0.93], [0.2, 0.97], [0.42, 0.92], [0.47, 0.81], [0.24, 0.74], [0.0, 0.74]], 0.3, '#ffffff', 3);   // tank
-      P.curve([[-0.45, 0.55], [-0.4, 0.74], [-0.08, 0.76], [-0.04, 0.56]], 0.22, '#ffffff', 2);               // side panel
-      P.curve([[-0.95, 0.66], [-0.96, 0.73], [-0.5, 0.82], [-0.42, 0.74]], 0.15, '#ffffff', 2);              // tail
-      P.curve([[-0.74, 0.79], [-0.68, 0.88], [-0.3, 0.89], [-0.08, 0.86], [-0.1, 0.79]], 0.25, '#1c1c1d', 2); // seat
-      P.side(guard(0.64, 0.3, 0.33, 0.37, 0.12, 0.7), 0.12, 0.01); P.side(guard(-0.64, 0.3, 0.33, 0.36, 0.3, 0.75), 0.13, 0.01, 1);   // mudguards
+      P.shell(ST([[0.48, 0.83, 0.88, 0.04], [0.42, 0.76, 0.93, 0.12], [0.2, 0.74, 0.97, 0.15], [0.0, 0.75, 0.92, 0.13], [-0.16, 0.79, 0.86, 0.05]]), '#ffffff', 2.4);   // the tank, round
+      P.shell(ST([[-0.06, 0.58, 0.74, 0.04], [-0.12, 0.56, 0.75, 0.11], [-0.36, 0.56, 0.74, 0.11], [-0.43, 0.6, 0.72, 0.04]], 0.85, 0.85), '#ffffff', 3);   // the side panel
+      P.shell(ST([[-0.42, 0.74, 0.8, 0.06], [-0.55, 0.72, 0.82, 0.09], [-0.85, 0.68, 0.76, 0.07], [-0.96, 0.68, 0.72, 0.03]]), '#ffffff', 2.6);   // the tail
+      P.shell(ST([[-0.08, 0.8, 0.86, 0.06], [-0.16, 0.8, 0.89, 0.12], [-0.45, 0.8, 0.9, 0.13], [-0.7, 0.8, 0.87, 0.1], [-0.75, 0.81, 0.84, 0.04]], 0.85, 1), '#1c1c1d', 3);   // the seat
+      P.arch(0.64, 0.3, 0.32, 0.38, 2.2, 0.06, 0.02, 0.02); P.arch(-0.64, 0.3, 0.32, 0.94, 2.36, 0.065, 0.02, 0.025);   // the mudguards, round over the wheels
       P.bar(0.52, 0.97, 0.18, 0.42, 0, 0.05, 0.05, DK); P.bar(-0.05, 0.75, -0.62, 0.3, 0.12, 0.03, 0.03, DK); P.bar(-0.05, 0.75, -0.62, 0.3, -0.12, 0.03, 0.03, DK);   // frame and swing arm
       P.box(-0.02, 0.36, 0, 0.42, 0.24, 0.24, '#2a2b2d');                                                   // the crankcase
       for (let i = 0; i < 5; i++) H.bar(0.12 + i * 0.012, 0.46 + i * 0.055, 0.32 + i * 0.012, 0.46 + i * 0.055, 0, 0.2, 0.012);   // the cylinder's fins
       P.box(-0.35, 0.33, -0.12, 0.6, 0.08, 0.03, DK);                                                       // chain guard
-      P.curve([[0.56, 0.92], [0.6, 1.04], [0.72, 1.06], [0.76, 0.94], [0.68, 0.88]], 0.2, '#ffffff', 2);     // headlight cowl
+      P.shell(ST([[0.58, 0.93, 1.0, 0.05], [0.64, 0.9, 1.06, 0.1], [0.72, 0.91, 1.06, 0.1], [0.78, 0.94, 1.02, 0.06]]), '#ffffff', 2.6);   // the headlamp's cowl
       P.lamp(0.69, 1.08, 0, 0.05, 0.04, '#1c1c1d');                                                         // speedometer
       for (const e of [-1, 1]) { H.rod(0.64, 0.3, e * 0.07, 0.56, 1.0, e * 0.07, 0.024); H.rod(-0.6, 0.3, e * 0.13, -0.42, 0.76, e * 0.13, 0.02); H.rod(0.5, 1.03, e * 0.2, 0.5, 1.2, e * 0.26, 0.01); P.ball(0.5, 1.22, e * 0.27, 0.02, 0.04, 0.055, DK); }   // fork, rear shocks, mirrors
       H.rod(0.5, 1.03, -0.33, 0.5, 1.03, 0.33, 0.016);                                                      // handlebar
@@ -3766,11 +3767,11 @@ void main() {
     }
     function classic() {    // a Royal Enfield Classic: teardrop tank, deep mudguards, round chrome lamp, a long chrome exhaust
       const P = parts(), H = parts();
-      P.curve([[-0.22, 0.86], [-0.02, 0.99], [0.3, 1.02], [0.5, 0.95], [0.52, 0.85], [0.2, 0.8], [-0.1, 0.8]], 0.34, '#ffffff', 3);   // the teardrop tank
-      P.side(guard(0.72, 0.33, 0.37, 0.42, 0.02, 0.78), 0.16, 0.01, 2); P.side(guard(-0.72, 0.33, 0.37, 0.43, 0.22, 0.97), 0.17, 0.01, 2);   // deep mudguards
-      P.curve([[-0.42, 0.52], [-0.4, 0.74], [-0.12, 0.76], [-0.1, 0.52]], 0.3, '#ffffff', 2);               // the tool boxes
-      P.curve([[-0.32, 0.86], [-0.28, 0.95], [0.0, 0.96], [0.02, 0.87]], 0.3, '#3b2a20', 2);                 // the sprung saddle
-      P.curve([[-0.78, 0.9], [-0.74, 0.97], [-0.42, 0.97], [-0.4, 0.9]], 0.25, '#3b2a20', 2);                 // the pillion pad
+      P.shell(ST([[0.52, 0.86, 0.94, 0.05], [0.45, 0.82, 1.0, 0.14], [0.25, 0.8, 1.03, 0.17], [0.0, 0.81, 0.99, 0.15], [-0.18, 0.84, 0.92, 0.07], [-0.24, 0.87, 0.89, 0.02]], 0.65, 0.75), '#ffffff', 2.2);   // the teardrop tank
+      P.arch(0.72, 0.33, 0.36, 0.06, 2.45, 0.075, 0.03, 0.08); P.arch(-0.72, 0.33, 0.37, 0.69, 3.05, 0.08, 0.03, 0.09);   // the deep mudguards, wrapping the wheels
+      P.shell(ST([[-0.1, 0.54, 0.74, 0.05], [-0.14, 0.52, 0.75, 0.14], [-0.38, 0.52, 0.75, 0.14], [-0.42, 0.55, 0.72, 0.05]], 0.9, 0.9), '#ffffff', 4);   // the tool boxes
+      P.shell(ST([[0.02, 0.87, 0.9, 0.05], [-0.04, 0.86, 0.95, 0.14], [-0.22, 0.86, 0.96, 0.15], [-0.3, 0.87, 0.94, 0.08]], 0.85, 1), '#3b2a20', 3);   // the sprung saddle
+      P.shell(ST([[-0.4, 0.9, 0.93, 0.04], [-0.45, 0.9, 0.97, 0.11], [-0.72, 0.9, 0.97, 0.11], [-0.78, 0.91, 0.94, 0.04]], 0.85, 1), '#3b2a20', 3);   // the pillion pad
       for (const e of [-1, 1]) H.rod(-0.28, 0.86, e * 0.08, -0.32, 0.76, e * 0.08, 0.018);                  // saddle springs
       P.bar(0.56, 1.0, 0.2, 0.42, 0, 0.055, 0.055, DK); P.bar(-0.05, 0.8, -0.72, 0.33, 0.13, 0.03, 0.035, DK); P.bar(-0.05, 0.8, -0.72, 0.33, -0.13, 0.03, 0.035, DK);
       H.curve([[-0.2, 0.25], [-0.25, 0.45], [0.05, 0.5], [0.3, 0.42], [0.3, 0.24], [0.05, 0.2]], 0.26, '#ffffff', 2);   // the silver engine
@@ -3784,12 +3785,13 @@ void main() {
     }
     function sport() {      // a Pulsar or an Apache: tank shrouds, a headlamp fairing, a split seat and an upswept tail
       const P = parts(), H = parts();
-      P.side([[-0.2, 0.86], [0.06, 1.0], [0.38, 0.99], [0.56, 0.86], [0.46, 0.68], [0.12, 0.72]], 0.38, 0.05);   // the tank and its shrouds
-      P.side([[-0.98, 0.98], [-1.0, 1.03], [-0.55, 0.94], [-0.22, 0.88], [-0.28, 0.78], [-0.62, 0.82]], 0.2, 0.03);   // the upswept tail
-      P.curve([[-0.24, 0.87], [-0.2, 0.93], [0.02, 0.95], [0.04, 0.87]], 0.28, '#1c1c1d', 2); P.curve([[-0.62, 0.94], [-0.58, 0.99], [-0.3, 0.93], [-0.28, 0.88]], 0.2, '#1c1c1d', 2);   // the split seat
-      P.side([[0.54, 0.84], [0.6, 1.08], [0.7, 1.16], [0.8, 0.98], [0.74, 0.82]], 0.3, 0.03);              // the headlamp fairing
-      P.box(0.64, 1.0, 0, 0.1, 0.14, 0.24, '#141516');                                                   // the visor's dark glass
-      P.side(guard(0.66, 0.3, 0.33, 0.36, 0.15, 0.55), 0.12, 0.01);
+      P.shell(ST([[0.56, 0.8, 0.9, 0.06], [0.48, 0.7, 0.98, 0.17], [0.25, 0.7, 1.0, 0.19], [0.05, 0.72, 0.98, 0.16], [-0.18, 0.84, 0.92, 0.07]], 0.7, 0.9), '#ffffff', 3.5);   // the tank and its shrouds, muscular
+      P.shell(ST([[-0.24, 0.8, 0.88, 0.08], [-0.4, 0.82, 0.92, 0.1], [-0.7, 0.86, 0.98, 0.08], [-0.95, 0.95, 1.02, 0.05], [-1.0, 0.98, 1.03, 0.02]]), '#ffffff', 3.2);   // the upswept tail
+      P.shell(ST([[0.04, 0.88, 0.9, 0.05], [-0.02, 0.87, 0.94, 0.13], [-0.2, 0.87, 0.95, 0.14], [-0.26, 0.88, 0.93, 0.06]], 0.85, 1), '#1c1c1d', 3);   // the split seat: the rider's,
+      P.shell(ST([[-0.3, 0.9, 0.92, 0.04], [-0.34, 0.9, 0.97, 0.1], [-0.58, 0.93, 0.99, 0.09], [-0.62, 0.95, 0.98, 0.03]], 0.85, 1), '#1c1c1d', 3);   // and the pillion's, higher
+      P.shell(ST([[0.54, 0.86, 1.06, 0.08], [0.62, 0.84, 1.14, 0.15], [0.72, 0.86, 1.14, 0.14], [0.8, 0.9, 1.02, 0.08]], 0.65, 0.8), '#ffffff', 3);   // the headlamp fairing, sharp
+      P.bar(0.7, 1.13, 0.6, 1.24, 0, 0.2, 0.012, '#141516');                                             // its smoked screen
+      P.arch(0.66, 0.3, 0.32, 0.47, 1.73, 0.065, 0.02, 0.02);                                             // the front mudguard
       P.side([[-0.1, 0.18], [-0.12, 0.3], [0.34, 0.32], [0.4, 0.2]], 0.26, 0.04, '#232425');                 // the belly pan
       P.box(0.06, 0.42, 0, 0.42, 0.26, 0.26, '#2a2b2d');                                                   // engine
       for (const e of [-1, 1]) { P.bar(0.5, 0.95, -0.05, 0.42, e * 0.13, 0.04, 0.05, DK); P.bar(-0.05, 0.62, -0.66, 0.3, e * 0.12, 0.035, 0.04, DK); H.rod(0.66, 0.3, e * 0.08, 0.56, 1.0, e * 0.08, 0.03); H.rod(0.52, 1.04, e * 0.12, 0.5, 1.0, e * 0.32, 0.016); P.ball(0.58, 1.18, e * 0.24, 0.02, 0.035, 0.06, DK); }
@@ -5261,7 +5263,7 @@ void main() {
       put(pRound, h[0], h[1] + 0.105, h[2] + 0.0, 0.028, 0.158, 0.172, dark ? '#c9ccd0' : '#1d1e20');  // a stripe over the top, as most have
       const full = p.full ?? (p.full = Math.random() < 0.5);
       put(pRound, h[0], h[1] + (full ? 0.06 : 0.075), h[2] + 0.098, 0.126, full ? 0.078 : 0.058, 0.08, '#22303a');   // its smoked visor (down to the chin bar, on a full-face one)
-      if (full) put(pRound, h[0], h[1] - 0.012, h[2] + 0.095, 0.112, 0.055, 0.078, hex);                  // and the chin bar, closing the front
+      if (full) put(pRound, h[0], h[1] - 0.012, h[2] + 0.094, 0.13, 0.058, 0.086, hex);                   // and the chin bar, closing the front
     }
     function rideReal(c, R, dt) {
       // (a real arm is shorter than the models' seat-to-bars: the rider sits 18 cm further forward and leans a
@@ -6034,12 +6036,18 @@ void main() {
     // rider holds a cruising speed that rises slowly over the ride (40 km/h, then up to 58); on a climb the
     // engine runs out of power first (about 40 km/h up 1 in 10, 22 up 1 in 5, 15 on Aizawl's steepest), and
     // down a steep hill the rider brakes gently and goes a little slower than on the flat.
-    const grade = roadAt(route.grade, s, 1e-3), sinA = grade / Math.sqrt(1 + grade * grade), cosA = 1 / Math.sqrt(1 + grade * grade);
+    // The slope it climbs: the rise over the 24 m round it (the map's heights come every 4 m, and from a few
+    // metres of error a single step can read as a wall), and never steeper than Aizawl's steepest streets,
+    // about 1 in 2.6, however the map has it; the road is drawn as the map has it all the same
+    const hAt = x => roadAt(route.height, Math.max(0, x), 0.1), g0 = Math.max(0, s - 12);
+    const grade = Math.max(-0.38, Math.min(0.38, (hAt(s + 12) - hAt(g0)) / (s + 12 - g0))), sinA = grade / Math.sqrt(1 + grade * grade), cosA = 1 / Math.sqrt(1 + grade * grade);
     const top = 11 + Math.min(5, time * 0.08), cruise = top - Math.max(0, -grade) * 18;
     const resist = MASS * 9.8 * (sinA + 0.015 * cosA) + 0.6 * 0.55 * v * v;          // slope, rolling, air
     if (braking) { v = Math.max(0, v - (cond.rain ? 8 : 12) * dt); load = 0; }      // a firm brake: stops in a few metres (more on a wet road)
     else {
-      const pull = Math.min(PULL, POWER / Math.max(v, 1));                         // what the engine can give
+      // what the engine can give; and at a walking pace, in its lowest ratio, always a little more than the hill
+      // takes, so it creeps on up the steepest bit and never stands stuck on it
+      const pull = Math.max(Math.min(PULL, POWER / Math.max(v, 1)), v < 2.5 ? resist + MASS * 0.6 : 0);
       const drive = Math.max(-MASS * 3, Math.min(pull, resist + MASS * (cruise - v) * 1.5));   // what the rider asks of it (brakes when below 0)
       load = Math.max(0, drive) / pull;
       v = Math.max(0, v + (drive - resist) / MASS * dt);
