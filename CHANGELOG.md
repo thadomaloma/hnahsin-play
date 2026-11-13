@@ -4,6 +4,20 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.69.0 (13 November 2026)
+
+### Aizawl Ride: the side roads come alive
+
+- At the junctions along your road, people come down the side roads on
+  scooters and motorbikes, in taxis and cars, wait at the white line with
+  their indicators going, and turn out when there is a gap: on to your side,
+  or across to the far side. Cars on the road turn off into the side roads
+  too, slowing as they go in, and drive away up the hill.
+- Where a main road meets yours it is busy, and when someone has waited a
+  while, a driver stops to let them out, as Aizawl's drivers do. A little
+  queue gathers behind him: wait in it (not round it on the wrong side) for
+  +5 coins, *zah* (respect), and it counts towards your queue missions.
+
 ## 1.68.7 (13 November 2026)
 
 - Aizawl Ride's delivery scooter gets up every road. On thirteen of the city

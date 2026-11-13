@@ -964,6 +964,7 @@
     const q = location.search, d = new Date(), h = d.getHours() + d.getMinutes() / 60, m = d.getMonth();
     return { night: /[?&]night\b/.test(q) || (!/[?&]day\b/.test(q) && (h >= 18.5 || h < 5.5)), rain: /[?&]rain\b/.test(q) || (!/[?&]dry\b/.test(q) && Math.random() < (m >= 5 && m <= 8 ? 0.4 : 0.12)) };
   }
+  let juncs = null;      // the junctions the picture draws, with their side roads' traffic (made when the road is)
   let cars = [], jams = [], braking = false, carT = 0, oncomingT = 0, eventWords = new Set();
   let peds = [], crossings = [], pedT = 0, stillT = 0, slowDone = false, jnMet = new Set(), pedSeeded = false;     // (how long stopped at a crossing: a secret badge; the junctions whose people are out, this ride)
   let load = 0, s, v, px, pvx, pax, laneFrom, laneV, laneA, laneTo, laneT, lane, coins, picked, coinsPut, rideMult, things, nextRow, lastOpen, bgX, passed, shake, sparks, pops, time, lean, crashT, crashDir, best0, bestShown;
@@ -973,7 +974,7 @@
     prepRoute();
     s = 0; v = 0; lane = 1; px = 0; pvx = 0; pax = 0; laneFrom = laneV = laneA = laneTo = 0; laneT = LANE_T; coins = 0; time = 0; bgX = 0; shake = 0; lean = 0; crashT = 0; crashDir = 1;
     things = []; sparks = []; pops = []; nextRow = 70; lastOpen = 1; passed = new Set();
-    cars = []; jams = planJams(); crossings = planCrossings(); peds = []; pedT = 0; jnMet = new Set(); pedSeeded = false; buildStrip(); prepMini(); braking = false; carT = 3; oncomingT = 5; eventWords = new Set(); brakeHint(false);
+    cars = []; juncs = null; jams = planJams(); crossings = planCrossings(); peds = []; pedT = 0; jnMet = new Set(); pedSeeded = false; buildStrip(); prepMini(); braking = false; carT = 3; oncomingT = 5; eventWords = new Set(); brakeHint(false);
     best0 = bestOf(route.id); bestShown = false; wordsSeen = new Set(); wordT = 4; picked = 0; coinsPut = 0; rideMult = multOf(rankOf()); stillT = 0; slowDone = false;
     plan(); hud(true);
     if (R3) R3.setPlan();
@@ -1122,6 +1123,120 @@
     return { kind: 'parked', lane: 0, at, hit: false, seed: Math.random(), back: 0, car, x: car.x, half: K.wid / 2, len: K.len, stand: true };
   };
   const thingNear = (lane, from, to) => things.some(t => t.kind !== 'coin' && t.lane === lane && t.at + t.len / 2 > from && t.at - t.len / 2 - t.back < to);
+  // ---------- the side roads: traffic coming out of them, and going into them ----------
+  // At each junction the picture draws (a side road going off up or down the hillside), people come down the side
+  // road on scooters and motorbikes, in taxis and cars, stop at its white line and wait for a gap: then turn out,
+  // on to our side (a left turn, from the left, as India drives) or across to the far side. And cars on the road
+  // turn off into it, their indicator going, slowing as they turn. Where a main road meets this one it is busy,
+  // and when someone has waited a while a driver on the road stops to let them out, as Aizawl's drivers do: a
+  // little queue gathers behind him. Waiting in it (not going round on the wrong side) earns a few coins.
+  const SIDE_MIX = ['scooter', 'scooter', 'scooter', 'bike', 'bike', 'taxi', 'taxi', 'car', 'suv', 'classic', 'sport'];
+  const STOP_O = ROAD_EDGE + 2.4;                          // (the side road's white line, metres from the middle)
+  const bez = (a, b, c, t) => (1 - t) * (1 - t) * a + 2 * (1 - t) * t * b + t * t * c;
+  const bezD = (a, b, c, t) => 2 * (1 - t) * (b - a) + 2 * t * (c - b);
+  function sideCar(j, o, phase) {
+    const c = newCar(SIDE_MIX[Math.random() * SIDE_MIX.length | 0], -1, j.at, 0, 1);
+    c.lane = -1; c.x = j.sd * o; c.side = { j, phase, t: 0, o }; c.head = j.sd * Math.PI / 2;     // (facing the road)
+    if (c.kind === 'taxi') c.off = false;
+    j.cars.push(c); cars.push(c); return c;
+  }
+  // is the way clear for one coming out of junction j into lane L, going dir? (a stopped car before it, waiting, is no bar)
+  function clearFor(j, L, dir) {
+    const lanes = dir > 0 ? (j.sd < 0 ? [L] : [0, 1, 2]) : (j.sd > 0 ? [2] : [0, 1, 2]);
+    for (const c of cars) {
+      if (c.side || !lanes.includes(c.lane)) continue;
+      const rel = (c.at - j.at) * c.dir, sp = Math.abs(c.v);     // (how far past the junction it is, the way it goes)
+      if (rel > -7 && rel < 10) return false;
+      if (rel <= -7 && rel > -26 && sp > 1) return false;
+    }
+    const me = s - j.at;     // the scooter: not if it is coming and near (stopped short of the junction, it waits for them)
+    if (lanes.includes(lane) && me > -24 && me < 5 && (v > 1 || me > -5)) return false;
+    return true;
+  }
+  function junctionTraffic(dt) {
+    if (!R3) return;
+    if (!juncs) juncs = R3.junctions().map(j => ({ ...j, cars: [], met: false, next: 0, waited: false, paid: false, yielder: null }));
+    for (const j of juncs) {
+      const ahead = j.at - s;
+      // as it comes near: some waiting already at the white line; and more coming down while you are near
+      if (!j.met && ahead < 170 && ahead > 50) {
+        j.met = true;
+        const n = j.main ? 2 + (Math.random() * 3 | 0) : Math.random() < 0.6 ? 1 + (Math.random() * 2 | 0) : 0;
+        for (let k = 0; k < n; k++) sideCar(j, STOP_O + 2 + k * 6.5, 'in');
+        j.next = 2 + Math.random() * 3;
+      }
+      if (j.met && ahead > -10 && ahead < 150 && (j.next -= dt) <= 0) {
+        if (j.cars.filter(c => c.side && c.side.phase !== 'away').length < 4) sideCar(j, Math.min(j.len, 45), 'in');
+        j.next = j.main ? 2.5 + Math.random() * 3 : 6 + Math.random() * 7;
+      }
+      // the ones on the side road, in order from the front
+      const queue = j.cars.filter(c => c.side && (c.side.phase === 'in' || c.side.phase === 'wait')).sort((a, b) => a.side.o - b.side.o);
+      queue.forEach((c, k) => {
+        const S = c.side, stopAt = k === 0 ? STOP_O : queue[k - 1].side.o + (queue[k - 1].len + c.len) / 2 + 1.4;
+        if (S.phase === 'in') {
+          const sp = Math.min(4.5, Math.max(0, S.o - stopAt) * 1.2);
+          S.o = Math.max(stopAt, S.o - sp * dt); c.v = sp; c.x = j.sd * S.o;
+          if (k === 0 && S.o <= STOP_O + 0.05) { S.phase = 'wait'; S.t = 0; S.dir = j.sd < 0 ? (Math.random() < 0.72 ? 1 : -1) : (Math.random() < 0.72 ? -1 : 1); S.L = S.dir > 0 ? 0 : 2; }
+        } else if (S.phase === 'wait') {
+          c.v = 0; S.t += dt;
+          c.blink = S.dir > 0 ? (j.sd < 0 ? -1 : 1) : (j.sd < 0 ? 1 : -1);      // (its indicator, the way it will turn)
+          // a busy junction: after a while, a driver on the road stops to let it out
+          if (j.main && S.t > 2.5 && !j.yielder) {     // (the nearest coming, on a lane it must cross or join, either way)
+            const lanes = S.dir > 0 ? (j.sd < 0 ? [S.L] : [0, 1, 2]) : (j.sd > 0 ? [2] : [0, 1, 2]);
+            const y = cars.filter(o => !o.side && lanes.includes(o.lane) && (j.at - o.at) * o.dir > 10 && (j.at - o.at) * o.dir < 32).sort((a, b) => (j.at - a.at) * a.dir - (j.at - b.at) * b.dir)[0];
+            if (y) { j.yielder = y; y.yieldTo = j; y.yieldT = 0; }
+          }
+          if (S.t > 0.8 && clearFor(j, S.L, S.dir)) { S.phase = 'turn'; S.t = 0; S.dur = c.two ? 1.4 : 2.0; c.blink = 0; }
+        }
+      });
+      // turning out of the side road on to the road, on a curve
+      for (const c of j.cars) {
+        const S = c.side; if (!S) continue;
+        if (S.phase === 'turn') {
+          S.t = Math.min(1, S.t + dt / S.dur);
+          const t = S.t, a0 = j.at, x0 = j.sd * STOP_O, x2 = LANES[S.L], a2 = j.at + S.dir * 7;
+          c.at = bez(a0, a0, a2, t); c.x = bez(x0, x2, x2, t);
+          c.head = -Math.atan2(bezD(x0, x2, x2, t), bezD(a0, a0, a2, t) || 1e-6); c.v = 3.5;
+          if (t > 0.5) c.lane = S.L;
+          if (t >= 1) { c.side = null; c.dir = S.dir; c.lane = S.L; c.x = x2; c.vx = 0; c.v = S.dir * 3.5; c.cruise = S.dir > 0 ? 7 + Math.random() * 3 : 9 + Math.random() * 3; c.head = undefined; }
+        } else if (S.phase === 'into') {      // one off the road, turning into the side road
+          S.t = Math.min(1, S.t + dt / S.dur);
+          const t = S.t, a2 = j.at, x2 = j.sd * STOP_O;
+          c.at = bez(S.a0, a2, a2, t); c.x = bez(S.x0, S.x0, x2, t);
+          c.head = -Math.atan2(bezD(S.x0, S.x0, x2, t), bezD(S.a0, a2, a2, t) || 1e-6); c.v = 3.5;
+          if (t > 0.45) c.lane = -1;
+          if (t >= 1) { S.phase = 'away'; S.o = STOP_O; c.blink = 0; }
+        } else if (S.phase === 'away') {      // and up it, out of sight
+          S.o += 4.5 * dt; c.x = j.sd * S.o; c.head = -j.sd * Math.PI / 2; c.v = 4.5;
+          if (S.o > j.len) c.gone = true;
+        }
+      }
+      j.cars = j.cars.filter(c => !c.gone && (c.side || Math.abs(c.at - j.at) < 12));
+      // cars on the road, now and then, turning off into it: ours from the left lane into a side road on the
+      // left, the oncoming ones from theirs into one on the right
+      for (const c of cars) {
+        if (c.side || c.turnOff || c.jam || c.fare || c.yieldTo || (c.seen && c.seen.has(j))) continue;
+        const rel = (j.at - c.at) * c.dir;
+        if (rel < 22 || rel > 60) continue;
+        (c.seen || (c.seen = new Set())).add(j);
+        if ((c.dir > 0 && c.lane === 0 && j.sd < 0) || (c.dir < 0 && c.lane === 2 && j.sd > 0)) {
+          if (Math.random() < (j.main ? 0.32 : 0.2)) { c.turnOff = j; c.blink = c.dir > 0 ? -1 : -1; }
+        }
+      }
+      // the one who stopped to let a car out goes on once it has, or after a while
+      if (j.yielder) {
+        const y = j.yielder; y.yieldT += dt;
+        if (!j.cars.some(c => c.side && c.side.phase === 'wait') || y.yieldT > 9 || !cars.includes(y)) {
+          y.yieldTo = null; j.yielder = null;
+          if (j.waited && !j.paid) { j.paid = true; S.jams++; dailyAdd('jam', 1); coins += 5; burst('#ffd34d'); pops.push({ text: '+5', x: riderXY().x, y: riderXY().y - 120, life: 1.3 }); say('zah', 'respect · you let them out · +5 coins', true); }
+        } else if (y.dir > 0 && lane === y.lane && s < y.at && y.at - s < 30 && v < 1.5) j.waited = true;     // (you waited behind him)
+      }
+      // going round him on the wrong side is not Aizawl's way
+      if (j.yielder && lane === 2 && Math.abs(s - j.yielder.at) < 6) j.waited = false;
+    }
+    // the words, the first time: someone waiting to come out ahead
+    if (!eventWords.has('fimkhur') && juncs.some(j => j.at - s > 0 && j.at - s < 45 && j.cars.some(c => c.side && c.side.phase === 'wait'))) say('fimkhur', 'careful · someone is coming out of the side road');
+  }
   function traffic(dt) {
     const far = s + VIEW * SEG - 6;
     // New traffic far ahead: slower cars on our side, and cars coming the other way
@@ -1165,11 +1280,19 @@
         if (s > back && s < front) { j.broke = true; say('hmanhmawh', 'hurried · wait your turn', true); }
       }
     }
+    junctionTraffic(dt);
     // Each car, either way: keeps its lane, slows for what is ahead (the one in front, the scooter,
     // people on a zebra crossing), goes round an obstacle if it can
     for (const c of cars) {
+      if (c.side) continue;     // (on a side road, or turning: moved by junctionTraffic)
       const d = c.dir;
       let want = c.fare ? fare(c, dt) : c.cruise;
+      if (c.turnOff) {          // slowing to turn into a side road, then turning
+        const j = c.turnOff, rel = (j.at - c.at) * d;
+        want = Math.min(want, 3.2 + Math.max(0, rel - 8) * 0.35);
+        if (rel < 8) { c.side = { j, phase: 'into', t: 0, dur: c.two ? 1.3 : 1.9, a0: c.at, x0: c.x }; c.turnOff = null; j.cars.push(c); continue; }
+      }
+      if (c.yieldTo) { const g = (c.yieldTo.at - d * 9 - c.at) * d - c.len / 2; want = Math.min(want, Math.max(0, g) * 0.8); }     // (stopped short of the junction, letting a car out)
       if (c.jam) {
         const j = c.jam;
         want = j.state === 'going' && j.t > c.goAt ? 8 : 0;
@@ -1199,13 +1322,14 @@
       c.at += c.v * dt;
       c.vx = (c.vx || 0) + (((c.pullX ?? LANES[c.lane]) - c.x) * 6.8 - 5.2 * (c.vx || 0)) * dt; c.x += c.vx * dt;   // to a new lane (or in to the kerb) on a spring
     }
-    cars = cars.filter(c => c.at > s - 12 && c.at < s + VIEW * SEG + 40);
+    cars = cars.filter(c => !c.gone && c.at > s - 12 && c.at < s + VIEW * SEG + 40);
     // Hints and words: a car for the first time, and the brake when a queue is ahead
     if (!eventWords.has('motor') && cars.some(c => c.dir > 0 && !c.two && c.at - s < 70 && c.at > s)) say('motor', 'car');
     { const b = things.find(t => BLOCK_WORDS[t.kind] && !t.hit && t.at > s && t.at - s < 45); if (b && !eventWords.has(BLOCK_WORDS[b.kind][0])) say(...BLOCK_WORDS[b.kind]); }
     const queue = jams.find(j => (j.state === 'stopped' || j.state === 'waiting') && j.cars && j.cars.some(c => c.at - s < 120 && c.at > s));
     if (queue && !eventWords.has('tlar')) say('tlar', 'row · a queue ahead, hold Brake');
-    brakeHint(!!queue && v > 4 && !braking);
+    const giving = cars.find(c => c.yieldTo && c.lane === lane && c.at > s && c.at - s < 45 && Math.abs(c.v) < 1);
+    brakeHint((!!queue || !!giving) && v > 4 && !braking);
   }
   // ---------- people: on the footpath, and crossing at zebra crossings ----------
   const FOOT = 6.15;                                   // the footpath runs from the kerb to here (m from the middle)
@@ -4585,7 +4709,11 @@ void main() {
       const f = {};
       for (const c of cars) {
         if (c.at < s - 15 || c.at > s + far) continue;
-        frame3(c.at, c.x, f); base(f, -Math.atan2(c.vx || 0, c.dir * Math.max(3, Math.abs(c.v))), c.dir < 0);   // heading the way it moves, also across
+        frame3(c.at, c.x, f);
+        if (c.head !== undefined) {     // on a side road, or turning in or out of one: at its height, heading its way
+          const ax = Math.abs(c.x); if (ax > HALF) f.y += groundAt(clamp(Math.floor(c.at / SEG), 0, W3.n - 1), Math.sign(c.x), ax);
+          f.pitch = 0; base(f, c.head, false);
+        } else base(f, -Math.atan2(c.vx || 0, c.dir * Math.max(3, Math.abs(c.v))), c.dir < 0);   // heading the way it moves, also across
         drawCar(c, dt);
       }
       for (const t of things) {
@@ -5766,7 +5894,9 @@ void main() {
         if (housesOn(sd, k) < 4) continue; n.town++; const h = W3.home[(k * 2 + (sd > 0 ? 1 : 0)) * 3]; if (!h) continue; n.home++; if (Math.abs(h.gy) < 0.6) n.flat++; if (shopAt(k, sd)) n.kept++; }
       return n; };
     const walkable = (i, sd) => { setRoute(); i = clamp(i, 0, W3.n - 1); return !W3.bare[sd][i] && !W3.gone[sd][i] && !W3.ride[i]; };
-    return { draw: draw3, size, setPlan, farReady: () => { if (W3 && built) farAll(); }, w3info: () => W3 && { base: W3.base, spread: W3.baseSpread, fo: W3.fo, n: W3.n, left: W3.corr ? Math.sqrt(W3.P.reduce((a, q, k) => a + (demAt(q.x, q.z) - W3.corr[k] - W3.Y[k]) ** 2, 0) / W3.n) : null }, farCount: () => (farTown ? farTown.userData.count : 0), riderGrip: () => riderGrip, seatAt: (d, v) => { SEAT_AT[d] = v; }, farSkipped: () => (farTown ? farTown.userData.skipped : 0), shop: shopAt, shopsWhy, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, audit9, audit10, audit11, audit12, audit13, audit14, holesSeen, walkable,
+    // the junctions drawn: where, which side, a main road or not, and how far up its side road goes
+    const junctions = () => { setRoute(); return W3.jns.map(([i, sd, c]) => ({ at: i * SEG, sd, main: c === 0, len: Math.min(55, W3.ext[sd][i]) })); };
+    return { draw: draw3, size, setPlan, farReady: () => { if (W3 && built) farAll(); }, w3info: () => W3 && { base: W3.base, spread: W3.baseSpread, fo: W3.fo, n: W3.n, left: W3.corr ? Math.sqrt(W3.P.reduce((a, q, k) => a + (demAt(q.x, q.z) - W3.corr[k] - W3.Y[k]) ** 2, 0) / W3.n) : null }, farCount: () => (farTown ? farTown.userData.count : 0), riderGrip: () => riderGrip, seatAt: (d, v) => { SEAT_AT[d] = v; }, farSkipped: () => (farTown ? farTown.userData.skipped : 0), shop: shopAt, shopsWhy, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, audit9, audit10, audit11, audit12, audit13, audit14, holesSeen, walkable, junctions,
       // for the tests: which earlier stretches of road lie under the middle of sample k, and how high
       under: (k, lat = 0) => { setRoute(); const { P, R, Y, grid, n } = W3, x = P[k].x + R[k].x * lat, z = P[k].z + R[k].z * lat, out = [];
         for (const kk of new Set([...Array(9).keys()].flatMap(i => [...Array(9).keys()].map(j => grid.get((Math.floor(x / 12) + i - 4) + ',' + (Math.floor(z / 12) + j - 4)) || []).flat()))) {
@@ -6711,7 +6841,7 @@ void main() {
   // (the tests may ask for only some roads: window.__only, a list of route ids)
   const testRoutes = () => [...DATA.routes, ...CITY.jobs.map(routeOf)].filter(r => !window.__only || window.__only.includes(r.id));
   if (/[?&]test\b/.test(location.search)) window.__ride = { get: () => ({ mode, s, v, lane, px, coins, length: route.length, things: things.map(t => ({ ...t })), cars: cars.map(c => ({ kind: c.kind, lane: c.lane, at: c.at, v: c.v, dir: c.dir, len: c.len, wid: c.wid, x: c.x, jam: !!c.jam })), jams: jams.map(j => ({ at: j.at, state: j.state, broke: j.broke })), crashBy,
-    peds: peds.map(p => ({ at: p.at, x: p.x, shop: !!p.shop, em: !!p.em, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)), dog: !!p.dog, child: !!p.look.child })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, fareTaxi: (ahead, speed = 8) => { const c = newCar('taxi', 0, s + ahead, speed, 1); c.fare = 'want'; cars.push(c); return c; }, park: (kind, ahead, lane = 1, dir = 1, speed = 0) => { const c = newCar(kind, lane, s + ahead, dir * speed, dir); c.cruise = speed; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), holes: () => R3 && R3.holesSeen(), sizes: () => R3 && R3.sizes(), under: (k, lat) => R3 && R3.under(k, lat), probe: (k, lat, al) => R3 && R3.probe(k, lat, al), mem: () => R3 && R3.mem(), tris: () => R3 && R3.tris(), walker: (ahead, x, va = 1, vx = 0, look, dog, extra) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; if (dog) p.dog = dog; if (extra) Object.assign(p, extra); peds.push(p); return peds.length; },
+    peds: peds.map(p => ({ at: p.at, x: p.x, shop: !!p.shop, em: !!p.em, crossing: !!p.cross, walk: walkHere(p.at / SEG, Math.sign(p.x)), dog: !!p.dog, child: !!p.look.child })), view: R3 ? '3d' : 'flat', quality: R3 ? R3.level() : -1, crossings: crossings.map(c => ({ at: c.at, state: c.state, miss: c.miss })), save: JSON.parse(JSON.stringify(S)), pvx, rider: R3 ? { ...R3.rider } : null }), steer, brake: on => setBrake(on), jump: m => { s = m; nextRow = Math.max(nextRow, m + 30); }, fareTaxi: (ahead, speed = 8) => { const c = newCar('taxi', 0, s + ahead, speed, 1); c.fare = 'want'; cars.push(c); return c; }, park: (kind, ahead, lane = 1, dir = 1, speed = 0) => { const c = newCar(kind, lane, s + ahead, dir * speed, dir); c.cruise = speed; cars.push(c); return cars.length; }, orbit: o => R3 && R3.orbit(o), holes: () => R3 && R3.holesSeen(), sizes: () => R3 && R3.sizes(), under: (k, lat) => R3 && R3.under(k, lat), probe: (k, lat, al) => R3 && R3.probe(k, lat, al), mem: () => R3 && R3.mem(), tris: () => R3 && R3.tris(), juncs: () => (juncs || []).map(j => ({ at: Math.round(j.at), sd: j.sd, main: j.main, len: Math.round(j.len), met: j.met, yielding: !!j.yielder, waited: j.waited, paid: j.paid, cars: j.cars.map(c => c.kind + ':' + (c.side ? c.side.phase : 'road')) })), allJuncs: () => R3 && R3.junctions(), walker: (ahead, x, va = 1, vx = 0, look, dog, extra) => { const p = newPed(s + ahead, x, va, vx); if (look != null) p.look = LOOKS[look]; if (dog) p.dog = dog; if (extra) Object.assign(p, extra); peds.push(p); return peds.length; },
     // every road in the game, built in turn: what stands on the road (nothing, we hope)
     // for the tests: ride a given road; and every road with how many crossings and jams it has
     shopsWhy: sd => R3 && R3.shopsWhy(sd), dress: (scooter, design, box) => { S.bonus = Math.max(S.bonus || 0, 1e6); if (scooter) { S.scooter = scooter; if (!S.owned.includes(scooter)) S.owned.push(scooter); } if (design) S.design = design; if (box) S.cos.box = box; return [myScooter().id, myDesign().id, worn('box').id]; }, farCount: () => R3 && R3.farCount(), riderGrip: () => R3 && R3.riderGrip(), seatAt: (d, v) => R3 && R3.seatAt(d, v), farSkipped: () => R3 && R3.farSkipped(), w3info: () => R3 && R3.w3info(), farLoaded: () => !!FAR, routes: () => [...DATA.routes, ...CITY.jobs.map(routeOf)].map(r => ({ id: r.id, left: (r.housesL || []).slice(0, 300).reduce((a, b) => a + b, 0) })), useRoute: id => { route = [...DATA.routes, ...CITY.jobs.map(routeOf)].find(r => r.id === id); reset(); return route.length; }, go: () => start(),
