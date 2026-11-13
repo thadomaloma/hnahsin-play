@@ -4,6 +4,15 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.74.1 (13 November 2026)
+
+### Aizawl Ride: the city's buildings on the ground
+
+- The city's buildings on the hillside beside the road, and further off, now
+  stand on the ground under all their corners. On a steep slope some of them
+  stood half in the air, as much as 15 m above the ground on their downhill
+  side.
+
 ## 1.74.0 (13 November 2026)
 
 ### Aizawl Ride: side roads that fit
