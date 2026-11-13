@@ -3345,6 +3345,56 @@ void main() {
       return pts;
     };
     // parts of a vehicle: u forward, v up, x to the right (metres)
+    // Round bodies, as a scooter's are pressed from steel, not cut from a side view:
+    //  - a shell: rings along it, each a rounded section (squarer as n grows), narrower towards its top and its
+    //    foot (tw, bw); through stations [u, foot, top, half width, tw, bw], smoothly
+    //  - an arch: a mudguard round a wheel at (cu, cv), from angle a0 to a1 (radians, 0 forward): domed over the
+    //    tyre, its sides coming down past it (d below the tyre's top), t thick
+    //  - a shield: a thin panel at rows [v, its front u, half width], its sides curving back by k x x (round the legs)
+    const solidOf = (pos, idx) => { const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g; };
+    function roundGeo(st, n = 2.4, rings = 44, seg = 36) {
+      const A = new T.CatmullRomCurve3(st.map(q => new T.Vector3(q[0], q[1], q[2])), false, 'catmullrom', 0.5);
+      const W = new T.CatmullRomCurve3(st.map(q => new T.Vector3(q[3], q[4] ?? 0.75, q[5] ?? 0.9)), false, 'catmullrom', 0.5);
+      const pos = [], idx = [], e = 2 / n, sp = c => Math.sign(c) * Math.pow(Math.abs(c), e);
+      for (let i = 0; i <= rings; i++) {
+        const a = A.getPoint(i / rings), w = W.getPoint(i / rings), vc = (a.y + a.z) / 2, h = (a.z - a.y) / 2;
+        for (let j = 0; j < seg; j++) {
+          const th = j / seg * Math.PI * 2, c = Math.cos(th), sn = Math.sin(th), taper = sn > 0 ? 1 - (1 - w.y) * sn : 1 - (1 - w.z) * -sn;
+          pos.push(w.x * sp(c) * taper, vc + h * sp(sn), a.x);
+        }
+      }
+      for (let i = 0; i < rings; i++) for (let j = 0; j < seg; j++) { const a = i * seg + j, b = i * seg + (j + 1) % seg, c = a + seg, d = b + seg; idx.push(a, c, b, b, c, d); }
+      for (const [r, flip] of [[0, false], [rings, true]]) {        // the ends, closed
+        const k = pos.length / 3, q = st[r ? st.length - 1 : 0]; pos.push(0, (q[1] + q[2]) / 2, q[0]);
+        for (let j = 0; j < seg; j++) { const a = r * seg + j, b = r * seg + (j + 1) % seg; flip ? idx.push(k, b, a) : idx.push(k, a, b); }
+      }
+      return solidOf(pos, idx);
+    }
+    function archGeo(cu, cv, R, a0, a1, w, h, d, t = 0.012, steps = 30, seg = 22) {
+      const pos = [], idx = [], ring = (off, ww, hh) => { for (let i = 0; i <= steps; i++) { const a = a0 + (a1 - a0) * i / steps, cu1 = Math.cos(a), sv = Math.sin(a);
+        for (let j = 0; j <= seg; j++) { const x = -ww + 2 * ww * j / seg, rr = R + hh - (hh + d) * Math.pow(Math.abs(x / ww), 4); pos.push(x, cv + sv * rr, cu + cu1 * rr); } } };
+      ring(0, w, h); ring(1, w - t, h - t);
+      const S = seg + 1, n = (steps + 1) * S, at = (k, i, j) => k * n + i * S + j;
+      for (let i = 0; i < steps; i++) for (let j = 0; j < seg; j++) {
+        idx.push(at(0, i, j), at(0, i + 1, j), at(0, i, j + 1), at(0, i, j + 1), at(0, i + 1, j), at(0, i + 1, j + 1));      // outside
+        idx.push(at(1, i, j), at(1, i, j + 1), at(1, i + 1, j), at(1, i, j + 1), at(1, i + 1, j + 1), at(1, i + 1, j));      // inside
+      }
+      for (let i = 0; i < steps; i++) for (const j of [0, seg]) idx.push(at(0, i, j), at(1, i, j), at(0, i + 1, j), at(0, i + 1, j), at(1, i, j), at(1, i + 1, j));   // its lower edges
+      for (const i of [0, steps]) for (let j = 0; j < seg; j++) idx.push(at(0, i, j), at(0, i, j + 1), at(1, i, j), at(1, i, j), at(0, i, j + 1), at(1, i, j + 1));   // its ends
+      return solidOf(pos, idx);
+    }
+    function shieldGeo(rows, k, t = 0.022, cols = 20, steps = 18) {
+      const P = new T.CatmullRomCurve3(rows.map(([v, u, w]) => new T.Vector3(u, v, w)), false, 'catmullrom', 0.5), pos = [], idx = [];
+      for (const off of [0, -t]) for (let i = 0; i <= steps; i++) { const q = P.getPoint(i / steps); for (let j = 0; j <= cols; j++) { const x = -q.z + 2 * q.z * j / cols; pos.push(x, q.y, q.x - k * x * x + off); } }
+      const S = cols + 1, n = (steps + 1) * S, at = (f, i, j) => f * n + i * S + j;
+      for (let i = 0; i < steps; i++) for (let j = 0; j < cols; j++) {
+        idx.push(at(0, i, j), at(0, i, j + 1), at(0, i + 1, j), at(0, i, j + 1), at(0, i + 1, j + 1), at(0, i + 1, j));
+        idx.push(at(1, i, j), at(1, i + 1, j), at(1, i, j + 1), at(1, i, j + 1), at(1, i + 1, j), at(1, i + 1, j + 1));
+      }
+      for (let i = 0; i < steps; i++) for (const j of [0, cols]) idx.push(at(0, i, j), at(0, i + 1, j), at(1, i, j), at(1, i, j), at(0, i + 1, j), at(1, i + 1, j));
+      for (const i of [0, steps]) for (let j = 0; j < cols; j++) idx.push(at(0, i, j), at(1, i, j), at(0, i, j + 1), at(0, i, j + 1), at(1, i, j), at(1, i, j + 1));
+      return solidOf(pos, idx);
+    }
     function parts() {
       const b = build();
       return {
@@ -3361,6 +3411,9 @@ void main() {
         lamp(u, v, x, r, d, hex = '#ffffff', tilt = 0) { b.add(ROD, mtx(-x, v, u, Math.PI / 2 + tilt, 0, 0, r, d, r), hex); },   // a round lamp facing forward
         ball(u, v, x, ru, rv, rx, hex = '#ffffff') { b.add(BALL, mtx(-x, v, u, 0, 0, 0, rx, rv, ru), hex); },
         mesh(geo) { b.add(geo, new T.Matrix4(), null); },     // a mesh with its own colours
+        shell(st, hex = '#ffffff', n) { b.add(roundGeo(st, n), new T.Matrix4(), hex); },
+        arch(cu, cv, R, a0, a1, w, h, d, hex = '#ffffff') { b.add(archGeo(cu, cv, R, a0, a1, w, h, d), new T.Matrix4(), hex); },
+        shield(rows, k, hex = '#ffffff') { b.add(shieldGeo(rows, k), new T.Matrix4(), hex); },
       };
     }
     const DK = '#1b1c1e', SEAM = '#111213';
@@ -4091,22 +4144,45 @@ void main() {
           float cuff = 1.0 - smoothstep(-0.006, 0.006, abs(vRest.x) - mix(0.37, 0.7, uLong));
           float shirt = step(0.9, vRest.y) * neck * cuff;
           col = mix(col, uShirt, clamp(shirt, 0.0, 1.0));
-          float band = fract(vY * 7.0), puan = step(0.25, vMask.a) * step(vMask.a, 0.75);
-          col = mix(col, mix(uPants, uStripe, puan * step(0.66, band) * step(band, 0.84)), step(0.5, vMask.g));   // trousers, or a puan and its stripes
+          float puan = step(0.25, vMask.a) * step(vMask.a, 0.75);
+          ${female ? 'if (vMask.a < 0.25 && vRest.y > 0.31 && vRest.y < 1.0 && abs(vRest.x) < 0.25) discard;   // (the legs under the puan: never through it)' : ''}
+          // A puan as it is woven: on its dark ground, over and over, a broad stripe and two fine lines in its
+          // colour, and a border along the hem; soft folds round it, and the edge of the wrap down the front
+          float rep = fract(vRest.y * 4.5);
+          float st = max(step(0.08, rep) * step(rep, 0.2), max(step(0.3, rep) * step(rep, 0.325), step(0.4, rep) * step(rep, 0.425)));
+          st = max(st, step(0.315, vRest.y) * step(vRest.y, 0.365));
+          vec3 pc = mix(uPants, uStripe, st) * (0.94 + 0.06 * sin(atan(vRest.z + 0.04, vRest.x) * 9.0));
+          pc *= 1.0 - 0.4 * smoothstep(0.007, 0.0, abs(vRest.x - 0.1)) * step(0.0, vRest.z);
+          col = mix(col, mix(uPants, pc, puan), step(0.5, vMask.g));                                    // trousers, or a puan
           col = mix(col, uShoe, step(0.75, vMask.a));
           col = mix(col, uHair, step(0.5, vMask.b));
           diffuseColor.rgb *= col;`);
       };
-      m.customProgramCacheKey = () => 'person';
+      m.customProgramCacheKey = () => female ? 'person-f' : 'person-m';     // (their shaders differ: the neckline, the puan)
       return m;
     };
     (async () => {
       const [{ GLTFLoader }, SK] = await Promise.all([import(ADDONS + 'loaders/GLTFLoader.js'), import(ADDONS + 'utils/SkeletonUtils.js')]);
       const g = await new GLTFLoader().loadAsync('ride/people.glb?v=5ac40a85');
+      // the puan, at each height: as modelled, and as it is wrapped (half its width, its front and its back, in metres)
+      const PUAN_AS = [[0.3, 0.224, 0.079, -0.229], [0.35, 0.216, 0.084, -0.246], [0.55, 0.222, 0.138, -0.192], [0.65, 0.213, 0.106, -0.203], [0.8, 0.212, 0.14, -0.19], [0.9, 0.215, 0.127, -0.203], [1.0, 0.198, 0.155, -0.176]];
+      const PUAN_TO = [[0.3, 0.2, 0.075, -0.165], [0.6, 0.203, 0.08, -0.168], [0.8, 0.205, 0.085, -0.17], [0.9, 0.2, 0.087, -0.168], [1.0, 0.178, 0.098, -0.155]];
+      const along = (tb, y) => { let i = 0; while (i < tb.length - 2 && y > tb[i + 1][0]) i++; const [a, b] = [tb[i], tb[i + 1]], t = Math.max(0, Math.min(1, (y - a[0]) / (b[0] - a[0]))); return [1, 2, 3].map(k => a[k] + (b[k] - a[k]) * t); };
+      function fitPuan(geo) {
+        const P = geo.attributes.position, M = geo.attributes.mask;
+        for (let i = 0; i < P.count; i++) {
+          const a = M.getW(i); if (a < 0.25 || a > 0.75) continue;
+          let y = P.getY(i); if (y < 0.395) P.setY(i, (y = 0.3));      // (its last band down to the hem: as modelled it is open at the back corners)
+          const [r0, f0, b0] = along(PUAN_AS, y), [r1, f1, b1] = along(PUAN_TO, y);
+          P.setX(i, P.getX(i) / r0 * r1);
+          P.setZ(i, (f1 + b1) / 2 + (P.getZ(i) - (f0 + b0) / 2) / ((f0 - b0) / 2) * ((f1 - b1) / 2));
+        }
+        P.needsUpdate = true; geo.computeBoundingSphere();
+      }
       const kind = (name, female, scale) => {
         const rig = g.scene.getObjectByName(name + 'Rig'), clips = { walk: g.animations.find(a => a.name === name + 'Walk'), idle: g.animations.find(a => a.name === name + 'Idle') };
         let map = null;
-        rig.traverse(o => { if (o.isSkinnedMesh) { const a = o.geometry.attributes; o.geometry.setAttribute('mask', a.color_1 || a.color); if (o.material.map) map = o.material.map; } });
+        rig.traverse(o => { if (o.isSkinnedMesh) { const a = o.geometry.attributes; o.geometry.setAttribute('mask', a.color_1 || a.color); if (o.material.map) map = o.material.map; if (female) fitPuan(o.geometry); } });
         map.colorSpace = T.NoColorSpace; map.needsUpdate = true;
         const free = [];
         const make = () => {      // one person: their own skeleton, material and animations
@@ -4853,48 +4929,53 @@ void main() {
     // wheel, an amber light on the shield's front, round mirrors, the exhaust low on the right, and a big
     // delivery box on the rack (the box drawn larger on this one: up to the rider's shoulders)
     design('everyday', 0, [[0.66, 0.23], [-0.56, 0.23]], P => {
-      P.B.curve([[-0.92, 0.36], [-0.98, 0.54], [-0.9, 0.7], [-0.62, 0.78], [-0.2, 0.77], [0.02, 0.66], [0.08, 0.46], [0.0, 0.32], [-0.3, 0.28], [-0.7, 0.29]], 0.54, '#ffffff', 4);   // the rear body
+      const S = (st, tw = 0.62, bw = 0.8) => st.map(q => [q[0], q[1], q[2], q[3], q[4] ?? tw, q[5] ?? bw]);
+      P.B.shell(S([[0.1, 0.4, 0.47, 0.06], [0.04, 0.32, 0.66, 0.14], [-0.12, 0.29, 0.75, 0.2], [-0.34, 0.28, 0.78, 0.26], [-0.58, 0.28, 0.79, 0.29], [-0.8, 0.31, 0.76, 0.27], [-0.93, 0.37, 0.69, 0.2], [-0.99, 0.46, 0.6, 0.08]]), '#ffffff', 2.3);   // the rear body
       P.B.box(0.27, 0.36, 0, 0.5, 0.05, 0.38);                                                        // the floor, in the body's colour
       for (let i = -2; i <= 2; i++) P.K.box(0.27, 0.388, i * 0.065, 0.44, 0.012, 0.02);              // its rubber strips
-      P.B.curve([[0.44, 0.33], [0.5, 0.6], [0.57, 0.9], [0.62, 1.01], [0.7, 0.99], [0.77, 0.72], [0.73, 0.45], [0.6, 0.31]], 0.46, '#ffffff', 3);   // the front shield
-      P.B.curve([[0.5, 0.28], [0.55, 0.46], [0.68, 0.53], [0.86, 0.47], [0.93, 0.32], [0.85, 0.36], [0.68, 0.42], [0.58, 0.36]], 0.24, '#ffffff', 3);   // the big round mudguard
-      P.B.curve([[0.58, 1.0], [0.62, 1.11], [0.78, 1.15], [0.87, 1.08], [0.8, 1.0]], 0.54, '#ffffff', 3);   // the handlebar cover
-      P.H.lamp(0.87, 1.08, 0, 0.085, 0.05);                                                            // the lamp's chrome ring
+      P.B.shield([[0.34, 0.7, 0.2], [0.5, 0.75, 0.23], [0.72, 0.77, 0.22], [0.9, 0.73, 0.17], [1.0, 0.68, 0.1]], 1.6);   // the front shield, round the legs
+      P.B.rod(0.6, 0.36, 0, 0.64, 1.0, 0, 0.055);                                                     // behind it, the steering column's cover
+      P.B.arch(0.66, 0.23, 0.245, -0.15, 2.45, 0.12, 0.06, 0.11);                                     // the big round mudguard over the front wheel
+      P.B.shell(S([[0.56, 1.02, 1.08, 0.07], [0.62, 0.98, 1.15, 0.17], [0.74, 0.97, 1.18, 0.2], [0.87, 0.99, 1.17, 0.17], [0.93, 1.02, 1.14, 0.1]], 0.8, 0.85), '#ffffff', 2.6);   // the handlebar cover
+      for (const e of [-1, 1]) P.B.rod(0.62, 1.1, e * 0.1, 0.6, 1.1, e * 0.28, 0.022);              // its arms out to the grips
+      P.H.lamp(0.925, 1.08, 0, 0.08, 0.04);                                                           // the lamp's chrome ring
       for (const e of [-1, 1]) {
-        P.H.rod(0.7, 1.12, e * 0.24, 0.68, 1.26, e * 0.3, 0.01);                                       // the mirrors' stalks
+        P.H.rod(0.7, 1.14, e * 0.17, 0.68, 1.26, e * 0.3, 0.01);                                       // the mirrors' stalks
         P.H.rod(0.66, 1.11, e * 0.22, 0.67, 1.09, e * 0.38, 0.008);                                    // the brake levers, before the grips
         P.H.box(0.6, 1.08, e * 0.25, 0.06, 0.05, 0.05);                                                // the switches by each grip
       }
-      P.S.curve([[-0.66, 0.76], [-0.62, 0.86], [-0.3, 0.88], [-0.04, 0.86], [0.03, 0.77], [-0.1, 0.74]], 0.34, '#ffffff', 2);   // the long black seat
+      P.S.shell(S([[0.05, 0.78, 0.8, 0.05], [-0.04, 0.76, 0.86, 0.14], [-0.3, 0.76, 0.885, 0.16], [-0.6, 0.76, 0.875, 0.155], [-0.69, 0.77, 0.83, 0.09]], 0.82, 1), '#ffffff', 3);   // the long black seat
       P.H.box(-0.7, 0.78, 0, 0.44, 0.03, 0.42); for (const e of [-1, 1]) P.H.rod(-0.92, 0.79, e * 0.2, -0.48, 0.79, e * 0.2, 0.012);   // the rack, for the box
       for (const e of [-1, 1]) P.H.rod(0.66, 0.23, e * 0.06, 0.62, 0.62, e * 0.06, 0.022);          // the fork
       P.H.rod(-0.8, 0.27, -0.22, -0.12, 0.25, -0.21, 0.058); P.H.rod(-0.93, 0.29, -0.22, -0.78, 0.27, -0.22, 0.036);   // the exhaust, grey metal, low on the side
       P.K.box(-0.3, 0.24, 0.12, 0.5, 0.12, 0.08);                                                    // the engine under the body
-      part(ROD, headMat, 0, 1.08, 0.895, 0.07, 0.01, 0.07, Math.PI / 2);                              // the round lamp
-      part(box, amber, 0, 0.7, 0.772, 0.06, 0.09, 0.02);                                              // the amber light on the shield's front
-      part(box, tailMat, 0, 0.56, -0.975, 0.16, 0.08, 0.02);
-      for (const e of [-1, 1]) part(box, amber, e * 0.3, 1.06, 0.83, 0.05, 0.04, 0.02);
+      part(ROD, headMat, 0, 1.08, 0.952, 0.066, 0.01, 0.066, Math.PI / 2);                            // the round lamp (just before its ring)
+      part(box, amber, 0, 0.7, 0.775, 0.06, 0.09, 0.02);                                              // the amber light on the shield's front
+      part(box, tailMat, 0, 0.56, -0.985, 0.14, 0.07, 0.02);
+      for (const e of [-1, 1]) part(box, amber, e * 0.19, 1.07, 0.86, 0.04, 0.035, 0.03);            // the front indicators, at the cover's sides
       part(plateGeo, plateMat, 0, 0.38, -0.97, 0.24, 0.1, 1);
       P.indY = 0.55; P.tailOut = 0.03; P.boxS = [1.14, 1.3, 1.16];
     });
     // Classic: a round monocoque body swelling at the back, a tall bell of a front mudguard, a round
     // chrome-ringed lamp on the handlebar, chrome trims and a two-tone brown seat
     design('classic', 0.03, [[0.64, 0.23], [-0.56, 0.23]], P => {
-      P.B.curve([[-0.9, 0.36], [-0.95, 0.52], [-0.87, 0.69], [-0.6, 0.77], [-0.18, 0.74], [-0.02, 0.6], [0.02, 0.42], [-0.25, 0.3], [-0.66, 0.29]], 0.5, '#ffffff', 4);
-      P.B.curve([[0.42, 0.32], [0.47, 0.62], [0.52, 0.96], [0.58, 1.03], [0.66, 1.0], [0.7, 0.7], [0.66, 0.42], [0.56, 0.3]], 0.52, '#ffffff', 3);   // the leg shield
-      P.B.curve([[0.5, 0.27], [0.52, 0.45], [0.63, 0.55], [0.78, 0.54], [0.88, 0.42], [0.88, 0.28], [0.8, 0.36], [0.64, 0.44], [0.56, 0.37]], 0.22, '#ffffff', 3);   // the bell mudguard
-      P.B.curve([[0.56, 1.02], [0.6, 1.12], [0.78, 1.15], [0.87, 1.07], [0.8, 1.0]], 0.56, '#ffffff', 3);   // the headset
+      const S = (st, tw = 0.6, bw = 0.8) => st.map(q => [q[0], q[1], q[2], q[3], q[4] ?? tw, q[5] ?? bw]);
+      P.B.shell(S([[0.05, 0.38, 0.46, 0.06], [0.0, 0.31, 0.62, 0.14], [-0.14, 0.29, 0.72, 0.2], [-0.36, 0.29, 0.76, 0.26], [-0.6, 0.29, 0.77, 0.29], [-0.8, 0.32, 0.73, 0.26], [-0.92, 0.38, 0.66, 0.18], [-0.97, 0.47, 0.58, 0.07]]), '#ffffff', 2.1);   // the round body, swelling at the back
+      P.B.shield([[0.33, 0.66, 0.21], [0.5, 0.7, 0.25], [0.72, 0.71, 0.24], [0.92, 0.66, 0.17], [1.02, 0.6, 0.09]], 1.8);   // the leg shield
+      P.B.rod(0.56, 0.36, 0, 0.6, 1.0, 0, 0.055);                                                     // behind it, the steering column's cover
+      P.B.arch(0.64, 0.23, 0.245, -0.3, 2.3, 0.13, 0.075, 0.15);                                      // the tall bell of a mudguard
+      P.B.shell(S([[0.54, 1.02, 1.08, 0.07], [0.6, 0.98, 1.15, 0.17], [0.72, 0.97, 1.18, 0.2], [0.84, 0.99, 1.16, 0.17], [0.9, 1.02, 1.14, 0.1]], 0.8, 0.85), '#ffffff', 2.6);   // the headset
+      for (const e of [-1, 1]) P.B.rod(0.6, 1.1, e * 0.1, 0.6, 1.1, e * 0.28, 0.022);               // its arms out to the grips
       P.A.box(0.25, 0.37, 0, 0.5, 0.04, 0.4);                                                         // the floorboard, in the light tone
       for (let i = -2; i <= 2; i++) P.K.box(0.25, 0.395, i * 0.07, 0.46, 0.012, 0.02);               // its rubber strips
-      for (const e of [-1, 1]) { P.H.bar(-0.86, 0.43, -0.08, 0.45, e * 0.252, 0.006, 0.02); P.H.bar(-0.82, 0.66, -0.12, 0.68, e * 0.248, 0.006, 0.014); }   // chrome trims along the cowls
-      P.H.box(0.705, 0.82, 0, 0.03, 0.2, 0.07);                                                      // the horn cast, the "tie" on the shield
-      P.H.lamp(0.875, 1.08, 0, 0.09, 0.05);                                                          // the lamp's chrome ring
-      P.S.curve([[-0.8, 0.76], [-0.76, 0.87], [-0.4, 0.88], [-0.08, 0.86], [0.02, 0.77], [-0.1, 0.74]], 0.36, '#ffffff', 2); P.seat = seatBrown;
+      P.H.box(0.715, 0.82, 0, 0.03, 0.2, 0.07);                                                      // the horn cast, the "tie" on the shield
+      P.H.lamp(0.895, 1.08, 0, 0.09, 0.05);                                                          // the lamp's chrome ring
+      P.S.shell(S([[0.04, 0.78, 0.8, 0.05], [-0.06, 0.76, 0.865, 0.145], [-0.4, 0.76, 0.885, 0.165], [-0.74, 0.76, 0.87, 0.155], [-0.82, 0.77, 0.82, 0.08]], 0.82, 1), '#ffffff', 3); P.seat = seatBrown;
       P.H.box(-0.66, 0.77, 0, 0.42, 0.03, 0.4); for (const e of [-1, 1]) P.H.rod(-0.88, 0.78, e * 0.19, -0.44, 0.78, e * 0.19, 0.012);   // the chrome rack
       for (const e of [-1, 1]) P.H.rod(0.64, 0.23, e * 0.06, 0.6, 0.62, e * 0.06, 0.022);
-      part(ROD, headMat, 0, 1.08, 0.905, 0.075, 0.01, 0.075, Math.PI / 2);                          // the round lamp
-      part(box, tailMat, 0, 0.56, -0.955, 0.16, 0.08, 0.02);
-      for (const e of [-1, 1]) part(box, amber, e * 0.3, 1.06, 0.83, 0.05, 0.04, 0.02);
+      part(ROD, headMat, 0, 1.08, 0.925, 0.075, 0.01, 0.075, Math.PI / 2);                          // the round lamp (just before its ring)
+      part(box, tailMat, 0, 0.56, -0.965, 0.14, 0.07, 0.02);
+      for (const e of [-1, 1]) part(box, amber, e * 0.19, 1.07, 0.84, 0.04, 0.035, 0.03);
       part(plateGeo, plateMat, 0, 0.38, -0.95, 0.24, 0.1, 1);
       P.indY = 0.55; P.tailOut = 0.02;
     });

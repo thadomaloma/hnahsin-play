@@ -4,6 +4,21 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.68.0 (13 November 2026)
+
+- Aizawl Ride's delivery scooters have real round bodies. The Everyday and
+  the Classic are shaped as a scooter is pressed from steel: the body round
+  and swelling over the back wheel, narrowing up to the seat; the front
+  shield curving back round your legs; the mudguard rounded over the front
+  wheel, its sides coming down past the tyre; a rounded handlebar cover with
+  the lamp in its chrome ring; a rounded seat. Your colours and puan patterns
+  stay as you chose them.
+- The women's puan is wrapped as a puan is: snug at the waist, following the
+  hips and falling straight to the middle of the calf, with a straight hem
+  all round. It is woven as one is: a broad stripe and two fine lines in her
+  colour over and over on a dark ground, a border along the hem, soft folds
+  and the edge of the wrap down the front.
+
 ## 1.67.4 (13 November 2026)
 
 - The people in Aizawl Ride look more at ease: their hands rest a little
