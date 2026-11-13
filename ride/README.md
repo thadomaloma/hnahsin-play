@@ -13,4 +13,4 @@ The game code is not under the ODbL; see the main README.
 
 `moped.glb` is [Delivery Moped](https://polyfork.dev/asset/delivery-moped-1aa2ce) by
 [Polyfork](https://polyfork.dev), under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
-as downloaded (the game recolours it and takes off its box and stand as it draws it).
+as downloaded (the game recolours it, redraws its body panels and wheels, and takes off its box and stand as it draws it).

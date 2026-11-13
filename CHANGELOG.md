@@ -4,6 +4,14 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.68.2 (13 November 2026)
+
+- Aizawl Ride's Moped looks like the real thing: a round rear body under the
+  seat, sweeping back over the wheel to the tail lamp; a cream leg shield
+  curving round your legs, with a rounded cover over the steering head; and
+  a round front mudguard that turns with the handlebar. Its frame, basket,
+  carrier and engine stay as they were.
+
 ## 1.68.1 (13 November 2026)
 
 - Aizawl Ride's Sport and Electric scooters have real round bodies too.

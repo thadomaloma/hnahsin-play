@@ -24,7 +24,8 @@ Hnahsin Games is developed by Maloma Thado.
   [Delivery Moped](https://polyfork.dev/asset/delivery-moped-1aa2ce) by
   [Polyfork](https://polyfork.dev),
   [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). In the game it is
-  recoloured in its parts, and its own box and stand are taken off.
+  recoloured in its parts, its body panels and wheels are redrawn, and its own box
+  and stand are taken off.
 
 ## Maps
 
