@@ -4,6 +4,17 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.71.0 (13 November 2026)
+
+### Aizawl Ride: the rush hours
+
+- In the morning, from half past seven to half past ten, and in the evening,
+  from half past three to half past six, Aizawl's roads are busy: nearly
+  twice the traffic, the side roads full and more coming out of them, more
+  cars turning off, longer queues, and the traffic police stopping the road
+  for the side roads sooner. Not on a Sunday, when the roads are quiet.
+- A delivery made in the rush hour pays 20 coins more.
+
 ## 1.70.0 (13 November 2026)
 
 ### Aizawl Ride: traffic police at the busy junctions
