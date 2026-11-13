@@ -4,6 +4,19 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.70.0 (13 November 2026)
+
+### Aizawl Ride: traffic police at the busy junctions
+
+- At the busiest junctions in town, as at Zarkawt or Treasury Square, a
+  traffic policeman stands at the corner under his white umbrella, in his
+  white shirt and cap and white gloves. He waves the road on while the side
+  road waits; then he blows his whistle and holds both arms out, and the road
+  stops, both ways, while the side road comes out.
+- When his arms are out, stop before the junction: you get +5 coins and
+  *zah* (respect). Ride on through and he whistles at you, *hmanhmawh*
+  (hurried), and it is not Aizawl's way.
+
 ## 1.69.0 (13 November 2026)
 
 ### Aizawl Ride: the side roads come alive
