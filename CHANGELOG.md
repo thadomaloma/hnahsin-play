@@ -4,6 +4,21 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.74.0 (13 November 2026)
+
+### Aizawl Ride: side roads that fit
+
+- Each side road at a junction is now a real road of its own width going up
+  or down the hillside, narrower where the junction is on the inside of a
+  bend. It no longer fans out into a wide grey patch on a bend.
+- Where the hillside beside a side road rises or falls, it now meets the
+  side road with a wall, as a cutting does, instead of a slanted ramp.
+- The kerb and footpath now run right up to the corner of each side road.
+- No house, city building, tree or fern stands in a side road any more
+  (some 200 of them did, across all the routes).
+- A few junctions with no room for a side road, tight on the inside of a
+  bend, are left out.
+
 ## 1.73.1 (13 November 2026)
 
 ### Aizawl Ride: traffic fixes

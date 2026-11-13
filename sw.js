@@ -9,7 +9,7 @@
 //  - FIXED: what never changes under its own address: our files with a fingerprint (?v=…), and the
 //    game engines and libraries, whose version is in their address. Only the newest of each is kept.
 //  - APP: the Flutter app under app/ (some 10 MB, kept as it is fetched). Bump APP when app/ changes.
-const VERSION = 'hnahsin-160', FIXED = 'hnahsin-fixed', APP = 'hnahsin-app-1';
+const VERSION = 'hnahsin-161', FIXED = 'hnahsin-fixed', APP = 'hnahsin-app-1';
 const CORE = [
   './', 'index.html', 'theme.css?v=d03db89c', 'home.js?v=3dc16de9', 'rova.js?v=f35ca6fa', 'stats.js?v=ff1d2eba', 'audio.js', 'progress.js', 'journey.html', 'pics/rova-sheet.webp?v=b2946a39', 'playground.html', 'things.html', 'ride.html', 'ride/city.json?v=9463910e', 'pics/ride.jpg', 'pics/things-zokhua.webp', 'pics/things-zokhua.json', 'pics/things-kumtluang.webp', 'pics/things-kumtluang.json', 'pics/things-loom.svg', 'pics/things-loom.json', 'pics/things-bazar.webp', 'pics/things-bazar.json',
   'favicon.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'manifest.webmanifest',
