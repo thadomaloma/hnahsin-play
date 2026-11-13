@@ -3522,6 +3522,7 @@ void main() {
       for (const [x0, x1] of [[-0.42, -0.03], [0.03, 0.42]]) I.rod(wiper, B.top(wiper) + 0.025, x0, wiper - 0.03, B.top(wiper - 0.03) + 0.025, x1, 0.009, '#141517');   // the wipers
       if (aerial) I.rod(aerial, B.top(aerial), -0.2, aerial - 0.22, B.top(aerial) + 0.3, -0.2, 0.005, '#141517');
     }
+    const bumper = (P, u, v, h, w) => { P.box(u, v, 0, 0.13, h, w * 0.92, DK); for (const e of [-1, 1]) P.ball(u - Math.sign(u) * 0.05, v, e * w * 0.46, 0.1, h / 2, 0.07, DK); };
     function hatchback() {  // a Maruti hatchback (the taxis too): short bonnet, tall cabin, a near-upright hatch
       const P = parts(), G = parts(), H = parts(), I = parts();
       const glass = { side: [-1.6, 0.92], pillars: [[-0.52, -0.42]], ws: [0.24, 0.93], rw: [-1.88, -1.66] };
@@ -3536,11 +3537,11 @@ void main() {
         for (const u of [0.45, -0.72]) H.box(u, 0.84, e * 0.497, 0.12, 0.03, 0.01);                        // door handles
       }
       for (const u of [1.22, -1.22]) P.disc(u, 0.3, 0, 0.4, 0.9, '#0d0d0e');                                // wheel wells
-      for (const u of [1.9, -1.9]) P.box(u, 0.4, 0, 0.12, 0.18, 0.74, DK);                                  // bumpers
+      for (const u of [1.89, -1.89]) bumper(P, u, 0.41, 0.17, 0.86);                                          // bumpers, the whole width
       P.box(1.91, 0.6, 0, 0.03, 0.1, 0.42, '#0e0f10'); H.box(1.925, 0.64, 0, 0.02, 0.02, 0.4);             // grille
       P.box(-1.62, 1.49, 0, 0.12, 0.03, 0.62);                                                              // a little spoiler over the hatch
       return { paint: P.done(), glass: G.done(), chrome: H.done(), cabin: I.done(), len: 3.8, hgt: 1.45, wheels: [[1.22, 0.3], [-1.22, 0.3]], track: 0.43, tw: 0.2, rim: 'cap',
-        head: [1.91, 0.72, 0.28, 0.2, 0.09], tail: [-1.91, 0.86, 0.29, 0.1, 0.18], plate: [-1.93, 0.52], front: [1.93, 0.42], hmsl: [-1.67, 1.44],
+        head: [1.89, 0.66, 0.28, 0.2, 0.085], tail: [-1.9, 0.86, 0.29, 0.1, 0.18], plate: [-1.93, 0.52], front: [1.93, 0.42], hmsl: [-1.67, 1.44],
         seats: { hip: [-0.08, 0.62], rear: [-0.92, 0.64], wheel: [0.38, 1.02] } };
     }
     // Aizawl's taxi: a Maruti Alto 800, all yellow. Small and low: a short sloping bonnet, a steep windscreen,
@@ -3586,10 +3587,10 @@ void main() {
         for (const u of [0.5, -0.6]) H.box(u, 0.84, e * 0.497, 0.12, 0.03, 0.01);
       }
       for (const u of [1.3, -1.25]) P.disc(u, 0.3, 0, 0.4, 0.9, '#0d0d0e');
-      for (const u of [2.0, -2.0]) P.box(u, 0.4, 0, 0.12, 0.18, 0.74, DK);
+      for (const u of [1.99, -1.99]) bumper(P, u, 0.41, 0.17, 0.86);
       P.box(2.01, 0.6, 0, 0.03, 0.1, 0.44, '#0e0f10'); H.box(2.025, 0.64, 0, 0.02, 0.02, 0.42); H.box(-2.02, 0.8, 0, 0.02, 0.03, 0.4);   // grille, the chrome strip on the boot
       return { paint: P.done(), glass: G.done(), chrome: H.done(), cabin: I.done(), len: 4.0, hgt: 1.5, wheels: [[1.3, 0.3], [-1.25, 0.3]], track: 0.43, tw: 0.2,
-        head: [2.01, 0.71, 0.28, 0.22, 0.09], tail: [-2.01, 0.82, 0.3, 0.14, 0.09], plate: [-2.03, 0.58], front: [2.03, 0.42], hmsl: [-1.47, 1.03], fog: [2.03, 0.44, 0.34],
+        head: [1.99, 0.65, 0.28, 0.22, 0.085], tail: [-2.0, 0.82, 0.3, 0.14, 0.09], plate: [-2.03, 0.58], front: [2.03, 0.42], hmsl: [-1.47, 1.03], fog: [2.03, 0.44, 0.34],
         seats: { hip: [0.02, 0.62], rear: [-0.74, 0.64], wheel: [0.46, 1.02] } };
     }
     function jeep() {       // a Bolero: boxy, upright, a spare wheel on the back door
@@ -3608,7 +3609,7 @@ void main() {
         for (const u of [0.55, -0.75]) H.box(u, 1.02, e * 0.497, 0.13, 0.03, 0.01);
       }
       for (const u of [1.42, -1.35]) P.disc(u, 0.42, 0, 0.5, 0.9, '#0d0d0e');
-      for (const u of [2.2, -2.2]) P.box(u, 0.52, 0, 0.16, 0.26, 0.86, DK);
+      for (const u of [2.19, -2.19]) bumper(P, u, 0.52, 0.26, 0.92);
       P.box(0, 0.45, 0, 1.5, 0.05, 1.08, '#202124');                                                        // the side step
       P.box(2.215, 0.84, 0, 0.02, 0.26, 0.56, '#141516'); for (let i = 0; i < 4; i++) H.box(2.225, 0.75 + i * 0.06, 0, 0.02, 0.02, 0.54);
       P.disc(-2.3, 1.02, 0, 0.36, 0.22, DK); P.box(-2.42, 1.02, 0, 0.02, 0.5, 0.5);                          // the spare wheel and its cover
@@ -3710,26 +3711,29 @@ void main() {
     }
     // The two-wheelers. Each says where its rider sits: hip, knee and foot (forward u, up v), the grips
     // (and how far apart) and how far the rider leans forward.
-    function scooterBody(B, A, N, S, H) {   // an Activa or a Jupiter: shared with our own delivery scooter
-      B.curve([[-0.86, 0.36], [-0.91, 0.52], [-0.84, 0.64], [-0.56, 0.71], [-0.12, 0.69], [0.0, 0.58], [0.03, 0.42], [-0.2, 0.31], [-0.62, 0.29]], 0.4, '#ffffff', 3);
-      B.box(0.25, 0.39, 0, 0.5, 0.05, 0.36, '#3a3c3b');                                                      // the floorboard and its mat
-      B.box(-0.3, 0.27, 0, 1.0, 0.07, 0.42, DK);                                                             // the dark skirt along the bottom
-      for (const e of [-1, 1]) B.bar(-0.8, 0.45, -0.08, 0.47, e * 0.207, 0.003, 0.006, SEAM);                // the side panel's seam
-      A.curve([[0.44, 0.34], [0.5, 0.6], [0.54, 0.9], [0.6, 1.04], [0.72, 1.08], [0.82, 0.98], [0.8, 0.66], [0.74, 0.44], [0.62, 0.33]], 0.44, '#ffffff', 3);   // the front apron
-      A.curve([[0.56, 1.02], [0.6, 1.12], [0.8, 1.16], [0.9, 1.07], [0.82, 1.0]], 0.6, '#ffffff', 2);           // the handlebar cover
-      A.side(guard(0.62, 0.23, 0.27, 0.31, 0.1, 0.72), 0.15, 0.01);                                           // front mudguard
-      N.curve([[0.5, 0.42], [0.55, 0.92], [0.5, 1.0], [0.46, 0.6]], 0.36, '#ffffff', 1);                     // the inner panel, at the knees
-      S.curve([[-0.8, 0.67], [-0.76, 0.8], [-0.4, 0.82], [-0.1, 0.8], [0.0, 0.71], [-0.1, 0.67]], 0.35, '#ffffff', 2);   // seat
-      H.bar(0.8, 0.94, 0.86, 0.72, 0, 0.12, 0.03); H.bar(0.86, 0.72, 0.8, 0.5, 0, 0.12, 0.03);              // the chrome V on the front
+    // An Activa or a Jupiter, round as they are pressed: the body swelling at the back over the engine, a dark
+    // skirt along its foot, the apron curving round the knees and filled out in front, a round mudguard, a
+    // rounded handlebar cover and seat; the chrome V on the front, the grab rail, the exhaust, the rear shock
+    function scooterBody(P, H) {
+      const S = (st, tw = 0.65, bw = 0.8) => st.map(q => [q[0], q[1], q[2], q[3], q[4] ?? tw, q[5] ?? bw]);
+      P.shell(S([[0.05, 0.36, 0.46, 0.06], [0.0, 0.3, 0.6, 0.13], [-0.15, 0.29, 0.67, 0.18], [-0.45, 0.3, 0.7, 0.2], [-0.72, 0.33, 0.68, 0.18], [-0.86, 0.4, 0.62, 0.12], [-0.91, 0.47, 0.57, 0.05]]), '#ffffff', 2.8);
+      P.shell(S([[0.0, 0.25, 0.33, 0.1], [-0.3, 0.24, 0.34, 0.205], [-0.7, 0.27, 0.37, 0.185], [-0.85, 0.33, 0.4, 0.1]], 0.95, 0.7), DK, 2.8);   // the dark skirt along its foot
+      P.box(0.25, 0.39, 0, 0.5, 0.05, 0.36, '#3a3c3b');                                                      // the floorboard and its mat
+      P.shield([[0.36, 0.72, 0.18], [0.55, 0.78, 0.21], [0.8, 0.8, 0.2], [0.98, 0.76, 0.14], [1.06, 0.7, 0.08]], 1.2);   // the apron
+      P.shell(S([[0.6, 0.4, 0.98, 0.1], [0.7, 0.38, 1.0, 0.18], [0.78, 0.42, 0.98, 0.17], [0.82, 0.52, 0.9, 0.1]], 0.7, 0.7), '#ffffff', 2.8);   // filled out in front
+      P.shell(S([[0.56, 1.02, 1.08, 0.07], [0.62, 0.99, 1.14, 0.17], [0.76, 1.0, 1.16, 0.19], [0.88, 1.02, 1.12, 0.12], [0.93, 1.05, 1.1, 0.05]], 0.8, 0.85), '#ffffff', 2.6);   // the handlebar cover
+      for (const e of [-1, 1]) P.rod(0.66, 1.1, e * 0.1, 0.72, 1.1, e * 0.28, 0.02);                       // its arms out to the grips
+      P.arch(0.62, 0.23, 0.25, -0.1, 2.2, 0.08, 0.035, 0.05);                                                 // the front mudguard
+      P.shell(S([[0.0, 0.69, 0.71, 0.05], [-0.08, 0.67, 0.79, 0.14], [-0.4, 0.68, 0.81, 0.155], [-0.74, 0.69, 0.8, 0.13], [-0.82, 0.7, 0.76, 0.05]], 0.82, 1), '#1c1c1d', 3);   // the seat
+      H.bar(0.81, 0.94, 0.85, 0.72, 0, 0.12, 0.03); H.bar(0.85, 0.72, 0.8, 0.5, 0, 0.12, 0.03);              // the chrome V on the front
       H.rod(-0.88, 0.71, 0.17, -0.55, 0.74, 0.18, 0.016); H.rod(-0.88, 0.71, -0.17, -0.55, 0.74, -0.18, 0.016); H.rod(-0.88, 0.71, 0.17, -0.88, 0.71, -0.17, 0.016);   // grab rail
-      H.rod(-0.78, 0.28, 0.17, -0.25, 0.26, 0.16, 0.042); H.box(-0.5, 0.31, 0.2, 0.3, 0.06, 0.02, '#8a8d90'); // exhaust and its heat shield, on the right
+      H.rod(-0.78, 0.28, 0.17, -0.25, 0.26, 0.16, 0.042); H.box(-0.5, 0.31, 0.21, 0.3, 0.06, 0.02, '#8a8d90'); // exhaust and its heat shield, on the right
       H.rod(-0.6, 0.24, -0.16, -0.44, 0.6, -0.16, 0.024);                                                     // the rear shock, on the left
-      for (const e of [-1, 1]) { H.rod(0.62, 0.23, e * 0.07, 0.62, 0.62, e * 0.07, 0.022); H.rod(0.7, 1.1, e * 0.27, 0.68, 1.26, e * 0.29, 0.01); }   // fork; mirror stalks
-      B.box(-0.35, 0.3, -0.12, 0.6, 0.14, 0.1, '#2a2b2d');                                                   // the belt case, on the left
+      for (const e of [-1, 1]) { H.rod(0.62, 0.23, e * 0.07, 0.62, 0.62, e * 0.07, 0.022); H.rod(0.7, 1.12, e * 0.2, 0.68, 1.26, e * 0.29, 0.01); }   // fork; mirror stalks
     }
     function scooter() {
       const P = parts(), H = parts();
-      scooterBody(P, P, P, { curve: (pts, w, hex, st) => P.curve(pts, w, '#1c1c1d', st) }, H);
+      scooterBody(P, H);
       for (const e of [-1, 1]) P.ball(0.68, 1.27, e * 0.3, 0.02, 0.045, 0.06, DK);                           // mirrors
       return { paint: P.done(), glass: null, chrome: H.done(), len: 1.8, hgt: 1.16, wheels: [[0.62, 0.24], [-0.56, 0.24]], track: 0, tw: 0.12, single: true,
         head: [0.93, 1.09, 0, 0.16, 0.06], tail: [-0.94, 0.55, 0, 0.18, 0.06], plate: [-0.94, 0.4],
@@ -5248,9 +5252,12 @@ void main() {
     const mR = new T.Matrix4(), hv3 = new T.Vector3();
     function helmetOn(p, hex) {
       const it = PEOPLE.live.get(p); if (!it) return;
-      const h = toL(it.bones.Head.getWorldPosition(hv3));
-      put(pRound, h[0], h[1] + 0.1, h[2] + 0.02, 0.15, 0.16, 0.17, hex);                              // the helmet
-      put(pRound, h[0], h[1] + 0.07, h[2] + 0.11, 0.125, 0.065, 0.06, '#1b2026');                     // its visor
+      const h = toL(it.bones.Head.getWorldPosition(hv3)), dark = C(hex).getHSL({}).l < 0.3;
+      put(pRound, h[0], h[1] + 0.095, h[2] + 0.005, 0.145, 0.155, 0.17, hex);                        // the shell, down over the back of the neck
+      put(pRound, h[0], h[1] + 0.105, h[2] + 0.0, 0.028, 0.158, 0.172, dark ? '#c9ccd0' : '#1d1e20');  // a stripe over the top, as most have
+      const full = p.full ?? (p.full = Math.random() < 0.5);
+      put(pRound, h[0], h[1] + (full ? 0.06 : 0.075), h[2] + 0.098, 0.126, full ? 0.078 : 0.058, 0.08, '#22303a');   // its smoked visor (down to the chin bar, on a full-face one)
+      if (full) put(pRound, h[0], h[1] - 0.012, h[2] + 0.095, 0.112, 0.055, 0.078, hex);                  // and the chin bar, closing the front
     }
     function rideReal(c, R, dt) {
       // (a real arm is shorter than the models' seat-to-bars: the rider sits 18 cm further forward and leans a

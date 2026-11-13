@@ -4,6 +4,16 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.68.5 (13 November 2026)
+
+- Aizawl Ride's traffic looks more like the real thing. The scooters going
+  by are round as they are pressed: a body swelling at the back, a curved
+  apron, a round mudguard, a rounded handlebar cover and seat. The cars have
+  their headlamps set into their fronts and bumpers across their whole
+  width with round ends.
+- The riders' helmets look like helmets: down over the back of the neck, a
+  smoked visor, a stripe over the top, and on about half of them a chin bar.
+
 ## 1.68.4 (13 November 2026)
 
 - Aizawl Ride's taxis look like the real Alto 800: the headlamps set into
