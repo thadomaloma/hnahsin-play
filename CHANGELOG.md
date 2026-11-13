@@ -4,6 +4,16 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.74.2 (13 November 2026)
+
+### Aizawl Ride: the hillside meets the land
+
+- Where the hillside beside the road ends, 60 m out, it now slopes on down
+  into the land beyond, instead of stopping in a shelf hanging over it.
+- Where it stops short, by another stretch of the winding road at another
+  height, its edge now ends in a bank of earth, as a cut bank does, facing
+  the road below.
+
 ## 1.74.1 (13 November 2026)
 
 ### Aizawl Ride: the city's buildings on the ground
