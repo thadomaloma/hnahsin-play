@@ -4,6 +4,25 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.73.1 (13 November 2026)
+
+### Aizawl Ride: traffic fixes
+
+- Stopping for a traffic policeman, or waiting for a bus to pull out, pays
+  its coins once at each junction and each stop, not again and again while
+  you wait there.
+- A bus no longer appears out of nowhere just in front of you to pull in to
+  an empty stop: a bus already on the road comes in to it, or one comes from
+  far ahead. A stop whose bus went another way gets a bus again.
+- At a police junction, the cars from the side road wait until you are
+  through before they turn out.
+- A bus going to its stop, or pulling out of it, no longer turns off into a
+  side road; nor does it, or a taxi taking a passenger, stop to let a car out.
+- A car already over the line when the policeman holds his arms out goes on
+  through, instead of stopping in the middle of the junction.
+- At a bus stop, people get on and off only when the bus is there, and the
+  bus waits for them before it goes.
+
 ## 1.73.0 (13 November 2026)
 
 ### Aizawl Ride: busy junctions on the mini-map
