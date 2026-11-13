@@ -4,6 +4,16 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.73.0 (13 November 2026)
+
+### Aizawl Ride: busy junctions on the mini-map
+
+- The mini-map now marks the busy junctions ahead with a small diamond, as
+  a warning sign is: amber where it is busy (a main road meeting yours, any
+  junction in the rush hours, cars queued on its side road), orange where it
+  is busiest (a traffic policeman, a main road in the rush hours, a long
+  queue). Each goes once you are past it.
+
 ## 1.72.1 (13 November 2026)
 
 ### Aizawl Ride: buses across the lane

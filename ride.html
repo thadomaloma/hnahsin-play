@@ -6071,6 +6071,26 @@ void main() {
     if (!miniPts) return;
     for (let i = 1; i < miniPts.length; i++) miniLen.push(miniLen[i - 1] + Math.hypot(miniPts[i][0] - miniPts[i - 1][0], miniPts[i][1] - miniPts[i - 1][1]));
   }
+  // the point on the shape at m metres along the route (the same share of its length)
+  function alongMini(m) {
+    const want = Math.max(0, Math.min(1, m / route.length)) * miniLen[miniLen.length - 1];
+    let i = 1; while (i < miniLen.length - 1 && miniLen[i] < want) i++;
+    const t = Math.max(0, Math.min(1, (want - miniLen[i - 1]) / ((miniLen[i] - miniLen[i - 1]) || 1)));
+    return [miniPts[i - 1][0] + (miniPts[i][0] - miniPts[i - 1][0]) * t, miniPts[i - 1][1] + (miniPts[i][1] - miniPts[i - 1][1]) * t];
+  }
+  // The junctions ahead that are busy: where a main road meets this one, any in the rush hours, any with cars
+  // queued on its side road now; the busiest have a policeman, or are a main road's in the rush hours, or a long queue
+  function busyAhead() {
+    const out = [];
+    const list = juncs || (route.junctions || []).map(([i, sd, c]) => ({ at: i * SEG, main: c === 0, cars: [] }));
+    for (const j of list) {
+      if (j.at < s + 4) continue;
+      const queue = j.cars.filter(c => c.side && (c.side.phase === 'in' || c.side.phase === 'wait')).length;
+      const very = !!j.police || (j.main && !!cond.rush) || queue >= 4;
+      if (very || j.main || cond.rush || queue >= 2) out.push({ at: j.at, very });
+    }
+    return out;
+  }
   const steps2 = flat => { const out = []; let x = 0, z = 0; for (let i = 0; i < flat.length; i += 2) { x += flat[i]; z += flat[i + 1]; out.push([x, z]); } return out; };
   function mini(force) {
     const c = $('mini'), now = performance.now();
@@ -6095,6 +6115,13 @@ void main() {
     g.lineCap = g.lineJoin = 'round';
     g.strokeStyle = '#b9b3a6'; g.lineWidth = 3.5; g.beginPath(); miniPts.forEach((p, n) => { const [a, b] = P(p); n ? g.lineTo(a, b) : g.moveTo(a, b); }); g.stroke();
     g.strokeStyle = '#2e7d32'; g.lineWidth = 3.5; g.beginPath(); miniPts.slice(0, i).concat([here]).forEach((p, n) => { const [a, b] = P(p); n ? g.lineTo(a, b) : g.moveTo(a, b); }); g.stroke();
+    // the busy junctions ahead: a little diamond, as a warning sign is, amber, and orange where it is busiest
+    // (a policeman, a main road in the rush hours, a long queue)
+    g.strokeStyle = '#231e16'; g.lineWidth = 1;
+    for (const b of busyAhead()) {
+      const [jx, jy] = P(alongMini(b.at)), d = b.very ? 4.2 : 3.4; g.fillStyle = b.very ? '#ef6c00' : '#fbc02d';
+      g.beginPath(); g.moveTo(jx, jy - d); g.lineTo(jx + d, jy); g.lineTo(jx, jy + d); g.lineTo(jx - d, jy); g.closePath(); g.fill(); g.stroke();
+    }
     const [ex, ey] = P(miniPts[miniPts.length - 1]); g.fillStyle = '#c62828'; g.beginPath(); g.arc(ex, ey, 4, 0, 7); g.fill();
     const [hx, hy] = P(here); g.fillStyle = '#1565c0'; g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.arc(hx, hy, 5, 0, 7); g.fill(); g.stroke();
     g.fillStyle = '#5d5547'; g.font = '800 10px "Plus Jakarta Sans", sans-serif'; g.textAlign = 'center'; g.fillText('N', S2 / 2, 11);
