@@ -4,6 +4,13 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.68.6 (13 November 2026)
+
+- Aizawl Ride's city buses and goods trucks are round at their corners, as
+  a coach body and a cab are, not cut sharp. The trucks have their
+  windscreen in two halves under a sun visor, round headlamps in chrome
+  rings, and mud flaps behind the back wheels; the buses have mud flaps too.
+
 ## 1.68.5 (13 November 2026)
 
 - Aizawl Ride's traffic looks more like the real thing. The scooters going
