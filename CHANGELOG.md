@@ -4,6 +4,14 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.68.3 (13 November 2026)
+
+- Aizawl Ride's scooter sounds like a scooter: each firing a kick of gas
+  down a real length of exhaust pipe and through the silencer, the engine's
+  soft clatter under it, a rougher beat at idle, and a little of the sound
+  coming back off the hillside and the walls round you. The belt's whirr is
+  fainter, and the brakes only squeal for a moment as they bite.
+
 ## 1.68.2 (13 November 2026)
 
 - Aizawl Ride's Moped looks like the real thing: a round rear body under the
