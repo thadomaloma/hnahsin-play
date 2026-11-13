@@ -4,6 +4,27 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.75.0 (13 November 2026)
+
+### Aizawl Ride: faster scooters, each its own
+
+- Each scooter now rides as the real one does, loaded with its rider and
+  the parcel: the Everyday as a 110 cc (4.5 kW, cruising 45 then 63 km/h),
+  the Moped as a 100 cc geared low for the hills (56 km/h), the Classic as
+  a 125 cc (67 km/h), the Sport as a 155 cc (8 kW, 76 km/h) and the
+  Electric, strongest from a standstill (70 km/h). The garage shows each
+  one's figures.
+- The rider pulls away briskly and is at full pace in about 25 seconds, not
+  a minute. On a climb the engine runs out of power as a real one does; on
+  a wet road, and at night, the rider goes a little slower.
+- The speedometer now reads to 100 km/h.
+
+### Aizawl Ride: no hole on the inside of a bend
+
+- On some tight bends the hillside on the inside was cut away to nothing
+  beside the footpath, leaving a big hole down to the ground far below. It
+  now carries on beside the road as it should.
+
 ## 1.74.3 (13 November 2026)
 
 ### Aizawl Ride: trees clear of the wires

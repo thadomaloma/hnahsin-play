@@ -572,8 +572,7 @@
   // ---------- constants needed early for SCENE_WORDS ----------
   const LANE = 2.4, LANES = [-LANE, 0, LANE], LANE_T = 0.85;  // lane centres, metres from the road's middle; a lane change takes LANE_T s
   // (0.85 s: at riding speed the scooter steers across, about 5 m/s sideways at most, rather than sliding)
-  // the scooter, loaded: rider and parcel 170 kg; the engine's power at the wheel (W) and its strongest pull (N)
-  const MASS = 170, POWER = 2200, PULL = 650;          // (650 N: enough to pull away up the steepest streets, 1 in 3)
+  // (each scooter's weight, power and pull: in DESIGNS)
   const SEG = 4, VIEW = 50;                         // a segment per sample; how many are drawn ahead
   const PLAYER_Z = 3;                               // the scooter rides this far ahead of the camera
   const CURVE = 0.55, CURVE_MAX = 0.045, HILL = 0.8;  // real bends and hills, softened to fit the screen
@@ -673,12 +672,16 @@
   const SWATCH_BANDS = { puanchei: [['#f4efe4', 5], ['#2a2522', 2], ['#c8323d', 3], ['#2a2522', 2], ['#f4efe4', 4], ['#2f8a4a', 2], ['#f4efe4', 4], ['#f2c230', 2]],
     ngotekherh: [['#f4efe4', 7], ['#2a2522', 2], ['#f4efe4', 7], ['#2a2522', 5]], hmaram: [['#232a48', 6], ['#f4efe4', 2], ['#232a48', 6], ['#f4efe4', 1]] };
   const swatchBands = id => { let y = 0; return SWATCH_BANDS[id].map(([c, h]) => `${c} ${y}px ${(y += h)}px`).join(', '); };
+  // Each rides as the real one does, loaded (the scooter, its rider and the parcel): its power at the wheel (W),
+  // its strongest pull from a standstill (N), and the speeds its rider cruises at on Aizawl's roads (m/s, from the
+  // start of a ride, and once warmed up): a 110 cc town scooter; a 125 cc; a 100 cc delivery moped, geared low for
+  // the hills; a 155 cc; and an electric, all its pull from a standstill
   const DESIGNS = [
-    { id: 'everyday', name: 'Everyday', en: 'the town scooter, as Aizawl rides it', mz: 'khawpui scooter, Aizawl-in a chuan ang chiah', need: 0 },
-    { id: 'classic', name: 'Classic', en: 'round and chrome, a round lamp, the old Italian way', mz: 'a hmel bial leh chrome, light bial, Italy hmanlai dan', need: 3000 },
-    { id: 'moped', name: 'Moped', en: 'the little delivery moped: a carrier for the box, a tray in front', mz: 'delivery moped te: a hnungah box chhuanna, a hmaah bawm', need: 5000 },
-    { id: 'sport', name: 'Sport', en: 'sharp lines, twin lights, a raised tail', mz: 'a hmel hriam, light kawp, a mei chawi sang', need: 8000 },
-    { id: 'electric', name: 'Electric', en: 'smooth and quiet, LED lights and a screen', mz: 'a nem a, a ri lo, LED light leh screen nen', need: 14000 },
+    { id: 'everyday', name: 'Everyday', en: 'the town scooter, as Aizawl rides it', mz: 'khawpui scooter, Aizawl-in a chuan ang chiah', need: 0, cc: '110 cc', mass: 187, power: 4500, pull: 900, cruise: [12.5, 17.5] },
+    { id: 'classic', name: 'Classic', en: 'round and chrome, a round lamp, the old Italian way', mz: 'a hmel bial leh chrome, light bial, Italy hmanlai dan', need: 3000, cc: '125 cc', mass: 195, power: 5200, pull: 950, cruise: [13, 18.5] },
+    { id: 'moped', name: 'Moped', en: 'the little delivery moped: a carrier for the box, a tray in front', mz: 'delivery moped te: a hnungah box chhuanna, a hmaah bawm', need: 5000, cc: '100 cc', mass: 169, power: 3000, pull: 900, cruise: [11.5, 15.5] },
+    { id: 'sport', name: 'Sport', en: 'sharp lines, twin lights, a raised tail', mz: 'a hmel hriam, light kawp, a mei chawi sang', need: 8000, cc: '155 cc', mass: 206, power: 8000, pull: 1100, cruise: [14, 21] },
+    { id: 'electric', name: 'Electric', en: 'smooth and quiet, LED lights and a screen', mz: 'a nem a, a ri lo, LED light leh screen nen', need: 14000, cc: '6 kW', mass: 191, power: 6000, pull: 1300, cruise: [13.5, 19.5] },
   ];
   // Medals for what you do over many rides, each in bronze, silver and gold. Medals, stars and
   // today's missions make your XP; XP makes your rider rank, and each rank adds a tenth to your scores.
@@ -2793,8 +2796,12 @@ void main() {
       for (let k = 0; k < n; k++) for (const sd of [-1, 1]) {
         let e = ext[sd][k];
         for (let j = 0; j < n; j++) {
-          if (Math.abs(S[j] - S[k]) < 8) continue;     // the same part of the road (in metres along it: samples bunch up on bends)
           const dx = P[j].x - P[k].x, dz = P[j].z - P[k].z, lat = (dx * R[k].x + dz * R[k].z) * sd, along = dx * F[k].x + dz * F[k].z;
+          // the same part of the road (in metres along it: samples bunch up on bends), or just further round the same
+          // bend, close by (the way along the road hardly longer than straight across): another stretch is one the road
+          // comes back to, the far side of a hairpin or a U-bend, by a way clearly longer than straight across to it
+          const dd = Math.hypot(dx, dz);
+          if (Math.abs(S[j] - S[k]) < 8 || (dd < 25 && Math.abs(S[j] - S[k]) < 1.25 * dd + 4)) continue;
           if (lat > 0 && lat < e * 2 + 10 && Math.abs(along) < 10) e = Math.min(e, Math.max(lat < HALF + FOOT + 0.5 ? 0 : KERB + 0.4, lat / 2 - 0.5));   // halfway to it
           // another part of the road on this side; or one that came this way before, right on top of this
           // one (that first pass draws the kerbs and all, this pass leaves them out)
@@ -6190,7 +6197,9 @@ void main() {
     // the land beyond it (a cliff edge hanging over it, or a wall of land rising over it), more than 3 m
     function audit17() {
       setRoute();
-      const { n, ext } = W3, out = { rays: 0, overRoad: 0, edges: 0, stepDown: 0, stepUp: 0, worstDown: 0, worstUp: 0, at: [] };
+      const { n, ext } = W3, out = { rays: 0, overRoad: 0, edges: 0, stepDown: 0, stepUp: 0, worstDown: 0, worstUp: 0, cut: 0, at: [] };
+      // a hillside cut down to nothing beside its kerb and footpath (not bare, nor left to another pass): a hole beyond them
+      for (let k = 0; k < n; k++) for (const sd of [-1, 1]) if (!W3.bare[sd][k] && !W3.gone[sd][k] && ext[sd][k] < KERB + 1) out.cut++;
       const ray = new T.Raycaster(), down = new T.Vector3(0, -1, 0), o = new T.Vector3(), f = {};
       const others = [...(fill ? [fill] : []), ...(farLand ? [farLand] : [])];
       if (!others.length) return out;
@@ -6289,7 +6298,19 @@ void main() {
     const walkable = (i, sd) => { setRoute(); i = clamp(i, 0, W3.n - 1); return !W3.bare[sd][i] && !W3.gone[sd][i] && !W3.ride[i]; };
     // the junctions drawn: where, which side, a main road or not, and how far up its side road goes
     const junctions = () => { setRoute(); return W3.jns.map(([i, sd, c]) => ({ at: i * SEG, sd, main: c === 0, len: Math.min(55, sideLen(i, sd)) })); };
-    return { audit15, audit16, audit17, audit18, draw: draw3, size, setPlan, farReady: () => { if (W3 && built) farAll(); }, w3info: () => W3 && { base: W3.base, spread: W3.baseSpread, fo: W3.fo, n: W3.n, left: W3.corr ? Math.sqrt(W3.P.reduce((a, q, k) => a + (demAt(q.x, q.z) - W3.corr[k] - W3.Y[k]) ** 2, 0) / W3.n) : null }, farCount: () => (farTown ? farTown.userData.count : 0), riderGrip: () => riderGrip, seatAt: (d, v) => { SEAT_AT[d] = v; }, farSkipped: () => (farTown ? farTown.userData.skipped : 0), shop: shopAt, shopsWhy, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, audit9, audit10, audit11, audit12, audit13, audit14, holesSeen, walkable, junctions,
+    // For the tests: what the camera sees at a point of the picture (-1..1 across and up): the ground, its kind,
+    // the sample that built it, its side and how far out, and its height against the road's there
+    function pick(nx, ny) {
+      const ray = new T.Raycaster(); ray.setFromCamera(new T.Vector2(nx, ny), camera);
+      const objs = [...pieces.flatMap(g => g.children).filter(c => c.isMesh && !c.isInstancedMesh), ...(fill ? [fill] : []), ...(farLand ? [farLand] : [])];
+      return ray.intersectObjects(objs, false).slice(0, 3).map(h => {
+        const w = h.object.geometry.userData.what, by = h.object.geometry.userData.by, k = by ? by[h.face.a] : null;
+        let lat = null; if (k !== null && k !== undefined && W3.P[k]) lat = +((h.point.x - W3.P[k].x) * W3.R[k].x + (h.point.z - W3.P[k].z) * W3.R[k].z).toFixed(1);
+        return { what: h.object === fill ? 'fill' : h.object === farLand ? 'far' : w ? w[h.face.a] : h.object.material === groundMat ? 'ground?' : 'other', k, lat, dy: k != null && W3.Y[k] !== undefined ? +(h.point.y - W3.Y[k]).toFixed(1) : null, dist: +h.distance.toFixed(1), ny: +h.face.normal.y.toFixed(2), ext: k != null && lat !== null && W3.ext ? +W3.ext[Math.sign(lat) || 1][k].toFixed(1) : null };
+      });
+    }
+    const sideInfo = (k0, k1) => { setRoute(); const o = []; for (let k = k0; k <= k1; k++) o.push([k, +W3.ext[-1][k].toFixed(1), +W3.ext[1][k].toFixed(1), W3.bare[-1][k] ? 'B' : '-', W3.bare[1][k] ? 'B' : '-', W3.gone[-1][k] ? 'G' : '-', W3.gone[1][k] ? 'G' : '-', +W3.half[-1][k].toFixed(1), +W3.half[1][k].toFixed(1), W3.junc[-1][k], W3.junc[1][k]]); return o; };
+    return { audit15, audit16, audit17, audit18, pick, sideInfo, draw: draw3, size, setPlan, farReady: () => { if (W3 && built) farAll(); }, w3info: () => W3 && { base: W3.base, spread: W3.baseSpread, fo: W3.fo, n: W3.n, left: W3.corr ? Math.sqrt(W3.P.reduce((a, q, k) => a + (demAt(q.x, q.z) - W3.corr[k] - W3.Y[k]) ** 2, 0) / W3.n) : null }, farCount: () => (farTown ? farTown.userData.count : 0), riderGrip: () => riderGrip, seatAt: (d, v) => { SEAT_AT[d] = v; }, farSkipped: () => (farTown ? farTown.userData.skipped : 0), shop: shopAt, shopsWhy, rider, level: () => level, orbit: o => { orbit = o; }, audit, audit2, audit3, audit4, audit5, audit6, audit7, audit8, audit9, audit10, audit11, audit12, audit13, audit14, holesSeen, walkable, junctions,
       // for the tests: which earlier stretches of road lie under the middle of sample k, and how high
       under: (k, lat = 0) => { setRoute(); const { P, R, Y, grid, n } = W3, x = P[k].x + R[k].x * lat, z = P[k].z + R[k].z * lat, out = [];
         for (const kk of new Set([...Array(9).keys()].flatMap(i => [...Array(9).keys()].map(j => grid.get((Math.floor(x / 12) + i - 4) + ',' + (Math.floor(z / 12) + j - 4)) || []).flat()))) {
@@ -6406,11 +6427,11 @@ void main() {
     const c = $('dial'), r = Math.min(2, devicePixelRatio || 1), Wd = 104, Hd = 66;
     if (c.width !== Wd * r) { c.width = Wd * r; c.height = Hd * r; }
     const g = c.getContext('2d'); g.setTransform(r, 0, 0, r, 0, 0); g.clearRect(0, 0, Wd, Hd);
-    const cx = Wd / 2, cy = Hd - 8, R = 44, MAX = 70, kmh = v * 3.6, a = Math.PI + Math.min(1, kmh / MAX) * Math.PI;
+    const cx = Wd / 2, cy = Hd - 8, R = 44, MAX = 100, kmh = v * 3.6, a = Math.PI + Math.min(1, kmh / MAX) * Math.PI;
     g.fillStyle = 'rgba(16,20,24,.58)'; g.strokeStyle = 'rgba(255,255,255,.25)'; g.lineWidth = 1;
     g.beginPath(); g.arc(cx, cy, R + 6, Math.PI, 0); g.lineTo(cx + R + 6, cy + 6); g.lineTo(cx - R - 6, cy + 6); g.closePath(); g.fill(); g.stroke();
     g.lineCap = 'round'; g.strokeStyle = 'rgba(255,255,255,.18)'; g.lineWidth = 6; g.beginPath(); g.arc(cx, cy, R - 4, Math.PI, 0); g.stroke();
-    g.strokeStyle = braking ? '#ff5252' : kmh > 55 ? '#ffb300' : '#c6ff00'; g.beginPath(); g.arc(cx, cy, R - 4, Math.PI, a); g.stroke();
+    g.strokeStyle = braking ? '#ff5252' : kmh > 70 ? '#ffb300' : '#c6ff00'; g.beginPath(); g.arc(cx, cy, R - 4, Math.PI, a); g.stroke();
     g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 1.2;
     for (let k = 0; k <= MAX; k += 10) { const t = Math.PI + k / MAX * Math.PI; g.beginPath(); g.moveTo(cx + Math.cos(t) * (R - 12), cy + Math.sin(t) * (R - 12)); g.lineTo(cx + Math.cos(t) * (R - 8), cy + Math.sin(t) * (R - 8)); g.stroke(); }
     g.strokeStyle = '#ff5252'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * (R - 10), cy + Math.sin(a) * (R - 10)); g.stroke();
@@ -6581,23 +6602,25 @@ void main() {
       if (crashT > 0.9) end(false);
       return;
     }
-    // Speed as a loaded delivery scooter has it (rider and parcel, 170 kg): the engine pulls with what power it
-    // has (strong from a standstill, less as the speed grows), against the slope, the tyres and the air. The
-    // rider holds a cruising speed that rises slowly over the ride (40 km/h, then up to 58); on a climb the
-    // engine runs out of power first (about 40 km/h up 1 in 10, 22 up 1 in 5, 15 on Aizawl's steepest), and
-    // down a steep hill the rider brakes gently and goes a little slower than on the flat.
+    // Speed as the scooter has it, loaded (DESIGNS: its weight, its power at the wheel, its pull): the engine pulls
+    // with what power it has (strong from a standstill, less as the speed grows), against the slope, the tyres and
+    // the air. The rider pulls away briskly and is at their cruising speed in a few seconds, and over the first half
+    // minute warms up to their own pace (the Everyday 45 km/h, then 63); on a climb the engine runs out of power
+    // first (the Everyday about 55 km/h up 1 in 10, 40 up 1 in 5, 24 on the steepest), and down a steep hill the rider brakes gently and
+    // goes a little slower than on the flat; on a wet road, and at night, a little slower all the time.
     // The slope it climbs: the rise over the 24 m round it (the map's heights come every 4 m, and from a few
     // metres of error a single step can read as a wall), and never steeper than Aizawl's steepest streets,
     // about 1 in 2.6, however the map has it; the road is drawn as the map has it all the same
     const hAt = x => roadAt(route.height, Math.max(0, x), 0.1), g0 = Math.max(0, s - 12);
     const grade = Math.max(-0.38, Math.min(0.38, (hAt(s + 12) - hAt(g0)) / (s + 12 - g0))), sinA = grade / Math.sqrt(1 + grade * grade), cosA = 1 / Math.sqrt(1 + grade * grade);
-    const top = 11 + Math.min(5, time * 0.08), cruise = top - Math.max(0, -grade) * 18;
-    const resist = MASS * 9.8 * (sinA + 0.015 * cosA) + 0.6 * 0.55 * v * v;          // slope, rolling, air
+    const D = myDesign(), MASS = D.mass, [c0, c1] = D.cruise;
+    const top = (c0 + (c1 - c0) * Math.min(1, time / 25)) * (cond.rain ? 0.86 : 1) * (cond.night ? 0.93 : 1), cruise = top - Math.max(0, -grade) * 18;
+    const resist = MASS * 9.8 * (sinA + 0.015 * cosA) + 0.5 * 1.2 * 0.6 * v * v;     // slope, rolling, air (a rider and scooter: 0.6 m² of drag)
     if (braking) { v = Math.max(0, v - (cond.rain ? 8 : 12) * dt); load = 0; }      // a firm brake: stops in a few metres (more on a wet road)
     else {
       // what the engine can give; and at a walking pace, in its lowest ratio, always a little more than the hill
       // takes, so it creeps on up the steepest bit and never stands stuck on it
-      const pull = Math.max(Math.min(PULL, POWER / Math.max(v, 1)), v < 2.5 ? resist + MASS * 0.6 : 0);
+      const pull = Math.max(Math.min(D.pull, D.power / Math.max(v, 1)), v < 2.5 ? resist + MASS * 0.6 : 0);
       const drive = Math.max(-MASS * 3, Math.min(pull, resist + MASS * (cruise - v) * 1.5));   // what the rider asks of it (brakes when below 0)
       load = Math.max(0, drive) / pull;
       v = Math.max(0, v + (drive - resist) / MASS * dt);
@@ -6935,7 +6958,7 @@ void main() {
     const pts = points(), lock = x => `🔒 ${fmt(x.need)}`;
     $('designs').innerHTML = DESIGNS.map(x => {
       const open = hasDesign(x), on = myDesign() === x;
-      return `<button class="item" type="button" data-design="${x.id}" aria-pressed="${on}" aria-label="${x.name}, ${x.en}${open ? '' : `, opens at ${fmt(x.need)} points`}"${open ? '' : ' aria-disabled="true"'}><span class="sw design ${x.id}" aria-hidden="true">🛵</span><span><b>${x.name}</b><small>${L(x.en, x.mz)}</small></span><span class="tag">${on ? L('Riding', 'I chuan mek') : open ? L('Ride it', 'Chuang rawh') : lock(x)}</span></button>`;
+      return `<button class="item" type="button" data-design="${x.id}" aria-pressed="${on}" aria-label="${x.name}, ${x.en}${open ? '' : `, opens at ${fmt(x.need)} points`}"${open ? '' : ' aria-disabled="true"'}><span class="sw design ${x.id}" aria-hidden="true">🛵</span><span><b>${x.name}</b><small>${L(x.en, x.mz)}</small><small>${x.cc} · ${(x.power / 1000).toFixed(1)} kW · ${Math.round(x.cruise[1] * 3.6)} km/h</small></span><span class="tag">${on ? L('Riding', 'I chuan mek') : open ? L('Ride it', 'Chuang rawh') : lock(x)}</span></button>`;
     }).join('');
     // the colours in their kinds, each swatch showing its look: a paint's shine, a theme's two colours, a puan's bands
     const swatch = x => x.pattern ? `repeating-linear-gradient(0deg, ${swatchBands(x.pattern)})`
@@ -7283,6 +7306,7 @@ void main() {
     audit6All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit6() }); } route = keep; reset(); return out; },
     audit5All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit5() }); } route = keep; reset(); return out; },
     audit4All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; jams = planJams(); crossings = planCrossings(); out.push({ id: r.id, ...R3.audit4() }); } route = keep; reset(); return out; },
+    pick: (x, y) => R3 && R3.pick(x, y), sideInfo: (a, b) => R3 && R3.sideInfo(a, b),
     audit18All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit18() }); } route = keep; reset(); return out; },
     audit17All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit17() }); } route = keep; reset(); return out; },
     audit16All: () => { const keep = route, out = []; for (const r of testRoutes()) { route = r; out.push({ id: r.id, ...R3.audit16() }); } route = keep; reset(); return out; },
