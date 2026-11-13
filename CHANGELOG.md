@@ -4,6 +4,16 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.72.1 (13 November 2026)
+
+### Aizawl Ride: buses across the lane
+
+- A bus leaving its stop now noses out at an angle across both lanes and
+  stands there a moment before it goes. Wait behind it and you earn 5 coins;
+  going round it on the wrong side earns nothing.
+- A bus coming to a stop now stops across the lane for a moment, people
+  jumping off, before it tucks in to the kerb. The cars behind wait for it.
+
 ## 1.72.0 (13 November 2026)
 
 ### Aizawl Ride: buses at their stops
