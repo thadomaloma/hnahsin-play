@@ -4,6 +4,36 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.76.0 (15 November 2026)
+
+### Rova's Journey: a bigger journey
+
+- Sounds: a jump, a coin, a chime for the right door and a thud for a wrong
+  one, a fanfare at the flag. No words are said aloud. One switch turns them
+  off, for every Hnahsin game.
+- A pause button (or Esc or P). The game also waits by itself when you leave
+  it for another app, and counts three, two, one before going on.
+- Rova throws his arms up at a right door and stumbles back at a wrong one.
+  Three right doors in a row and more bring extra coins, and Rova glows.
+- New kinds of door: a picture to find the Mizo word for, a Mizo word to find
+  the English for, and gaps to fill in sentences, each place with its own mix.
+- A word you get wrong comes back at later doors (🔁) until you get it right,
+  with the words the rest of Hnahsin says are due again. The end of a run
+  shows each missed word's example, and a button to practise the missed
+  words at once.
+- Coins are kept now, and spent in the new shop: a red cap, a puan headband,
+  a straw hat, a gold crown and sunglasses for Rova to wear as he runs, and
+  help for your next run (an extra heart, a hint, an easier pace).
+- The places are now a map of Mizoram, Rova's road from Lengpui airport,
+  with a moment of his story before each new place. Three new places on the
+  way home: Serchhip (school and home words), Lunglei (the world and its
+  animals) and Home (Mizo life and sayings).
+- A daily run: the same doors for everyone each day, with a result to share,
+  and a count of days in a row. Endless, after Phawngpui: the words grow
+  harder every ten doors, and your best is kept.
+- Relaxed, for younger players: slower, and no hearts lost.
+- The game in Mizo or English.
+
 ## 1.75.1 (14 November 2026)
 
 ### Aizawl Ride: a gentler lean
