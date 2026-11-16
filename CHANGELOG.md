@@ -4,6 +4,18 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.85.0 (17 November 2026)
+
+### Spelling, now a Playground game
+
+- Spelling is the third of the app's games to become a Playground game.
+- The same rules as in the app: first one missing letter, then two, then the
+  whole word from its letter tiles, then the right spelling among three slips.
+  AW, CH and NG count as one letter, as in the Mizo alphabet.
+- As you get better, the missing letter is more often one that is easy to mix
+  up (â and a, aw and o, n and ng, t and ṭ).
+- Ten words a round, from Hnahsin's core words.
+
 ## 1.84.0 (17 November 2026)
 
 ### Odd One Out, now a Playground game
