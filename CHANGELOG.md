@@ -4,6 +4,18 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.83.0 (17 November 2026)
+
+### Picture Match, now a Playground game
+
+- Picture Match is the first of the app's games to become a Playground game
+  of its own: it opens at once, with no app to load.
+- The same rules as in the app: a level that rises as you get better (look-alike
+  names, then four pictures to choose from, then misspellings), Practice,
+  Classic and Speed, a hint, points for a run of right answers, and stars.
+- The words you miss come back sooner next time.
+- Its words are Hnahsin's 731 core words with a picture, each with an example.
+
 ## 1.82.0 (16 November 2026)
 
 ### One Playground
