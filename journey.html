@@ -196,6 +196,24 @@
   .book li small { grid-column: 1 / -1; color: var(--muted); font-size: 12.5px; }
   .book img.photo { width: 24px; height: 24px; border-radius: 6px; object-fit: cover; }
   .book .empty { color: var(--muted); font-size: 14px; padding: 4px 0 10px; }
+  /* New words before a run, and the medals */
+  .learn { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .learn li { display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 16px; background: #effaf7; }
+  .learn .pic { font-size: 40px; text-align: center; }
+  .learn .pic img { width: 48px; height: 48px; border-radius: 10px; }
+  .learn b { font-size: 19px; }
+  .learn small { display: block; color: var(--muted); font-size: 13.5px; margin-top: 2px; }
+  .medals { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .medals li { display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 16px; background: #f6f8fb; }
+  .medals li i { font-style: normal; font-size: 30px; text-align: center; filter: grayscale(1); opacity: .45; }
+  .medals li.on { background: #fff8e1; }
+  .medals li.on i { filter: none; opacity: 1; }
+  .medals li b { display: block; font-size: 15px; }
+  .medals li small { display: block; color: var(--muted); font-size: 12.5px; }
+  .medals li em { font-style: normal; font-weight: 800; font-size: 13px; color: var(--muted); }
+  .medals li.on em { color: #2e7d32; }
+  .medals .meter { display: block; height: 6px; border-radius: 3px; background: #e3e9f0; margin-top: 5px; overflow: hidden; }
+  .medals .meter span { display: block; height: 100%; background: var(--gold); border-radius: 3px; }
   /* A moment of the story between places */
   .story { display: grid; gap: 10px; text-align: center; }
   .story .scene { font-size: 54px; letter-spacing: 6px; line-height: 1.1; }
@@ -221,7 +239,7 @@
     <small>Rova chu in lam a pan…</small>
     <p id="intro"></p>
     <ul class="howto" id="howto"></ul>
-    <div class="wallet"><span class="total" id="total-stars">⭐ 0</span><span class="coins" id="wallet">🪙 0</span><button class="chip shop" id="shop-btn" type="button">🛍️ Shop</button><button class="chip" id="book-btn" type="button">📖 Words</button></div>
+    <div class="wallet"><span class="total" id="total-stars">⭐ 0</span><span class="coins" id="wallet">🪙 0</span><button class="chip shop" id="shop-btn" type="button">🛍️ Shop</button><button class="chip" id="book-btn" type="button">📖 Words</button><button class="chip" id="medal-btn" type="button">🏅</button></div>
     <div class="modes"><button class="mode daily" id="daily-btn" type="button"></button><button class="mode endless" id="endless-btn" type="button"></button></div>
     <label class="relax"><input type="checkbox" id="relaxed"><span id="relaxed-label"></span></label>
     <div class="journey"><div class="map" id="map" aria-hidden="true"></div><div class="levels" id="levels"></div></div>
@@ -270,6 +288,24 @@
     <div class="items" id="shop-looks"></div>
     <h2 id="shop-help"></h2>
     <div class="items" id="shop-helpers"></div>
+  </div>
+</div>
+
+<div class="screen" id="learn-screen" hidden>
+  <div class="card">
+    <h1 id="learn-title"></h1>
+    <p id="learn-note"></p>
+    <ul class="learn" id="learn-list"></ul>
+    <label class="relax"><input type="checkbox" id="learn-always" checked><span id="learn-always-label"></span></label>
+    <button class="btn leaf" id="learn-go" type="button"></button>
+  </div>
+</div>
+
+<div class="screen" id="medal-screen" hidden>
+  <div class="card">
+    <div class="topbar"><button class="chip" id="medal-back" type="button"></button><span class="coins" id="medal-sum"></span></div>
+    <h1 id="medal-title"></h1>
+    <ul class="medals" id="medal-list"></ul>
   </div>
 </div>
 
@@ -714,14 +750,14 @@ const weighted = mix => { const e = Object.entries(mix); let r = rand() * e.redu
 // Rova lands at Lengpui and runs across Mizoram, home. Each place has its words (a band of word levels, or the
 // dictionary, or some topics), the kinds of door it asks (mix: their shares) and where it is on the map (at).
 const LEVELS = [
-  { name: 'Tlang', title: 'The hills', mz: 'Tlangram', emoji: '⛰️', band: [1, 2], mix: { pic: 4, en2mz: 4, mz2en: 2 }, sky: [0x8fd3ff, 0xe8f7ff], hills: [0x7cc65a, 0x5daE47], far: 0xa9d9a0, sun: 0xfff1a8, speed: 250, at: [23.80, 92.66] },
-  { name: 'Aizawl', title: 'The city on the ridge', mz: 'Tlang chunga khawpui', emoji: '🏙️', band: [3, 4], mix: { pic: 2, en2mz: 4, mz2en: 3, gap: 1 }, sky: [0xffb37a, 0xffe2b8], hills: [0x6fae55, 0x4f8f3d], far: 0x9db7c9, sun: 0xff8a4a, city: true, speed: 280, at: [23.73, 92.72] },
-  { name: 'Bazar', title: 'The market at dusk', mz: 'Tlai lam bazar', emoji: '🛒', band: [5, 7], mix: { en2mz: 4, mz2en: 3, gap: 3 }, sky: [0x3b4f8f, 0x9a86c9], hills: [0x4f7f45, 0x35612f], far: 0x6f6aa0, stars: true, speed: 310, at: [23.60, 92.80] },
-  { name: 'Champhai', title: 'The wide valley', mz: 'Phai zau', emoji: '🌾', band: [4, 5], dict: true, mix: { en2mz: 6, mz2en: 4 }, sky: [0xbfe6ff, 0xfff3d6], hills: [0x9ccc5a, 0x6f9a3e], far: 0x8fb3a0, sun: 0xfff1a8, speed: 300, at: [23.47, 93.33] },
-  { name: 'Phawngpui', title: 'The blue mountain', mz: 'Tlang dum', emoji: '🏔️', band: [6, 7], dict: true, mix: { en2mz: 6, mz2en: 4 }, sky: [0x1d2b5a, 0x5b6fb0], hills: [0x3f6a4a, 0x2c4f36], far: 0x4a5f9a, farH: 340, stars: true, speed: 325, at: [22.63, 93.03] },
-  { name: 'Serchhip', title: 'The town of schools', mz: 'Sikul khawpui', emoji: '🏫', band: [1, 7], topics: ['sikul', 'chhungkua'], mix: { pic: 2, en2mz: 4, mz2en: 3, gap: 1 }, sky: [0x9ad7ff, 0xfff0c8], hills: [0x86c25c, 0x5e9a40], far: 0xa6c9a8, sun: 0xffe08a, speed: 320, at: [23.30, 92.85] },
-  { name: 'Lunglei', title: 'The bridge of rock', mz: 'Lungkawr', emoji: '🌳', band: [1, 7], topics: ['khawvel', 'nungcha'], mix: { pic: 3, en2mz: 4, mz2en: 2, gap: 1 }, sky: [0x7fc4e8, 0xd8f0d0], hills: [0x4e9a46, 0x2f6e30], far: 0x7aa894, farH: 260, sun: 0xfff6c8, speed: 330, at: [22.88, 92.73] },
-  { name: 'Home', nameMz: 'In', title: 'Home at last', mz: 'In lam thlen', emoji: '🏡', band: [1, 7], topics: ['nunphung', 'zokhua', 'zonun'], sayings: true, mix: { en2mz: 4, mz2en: 3, gap: 3 }, sky: [0xffa86b, 0xffe3a8], hills: [0x6ea852, 0x4a7f3a], far: 0xb39c9a, sun: 0xff7a3a, speed: 340, at: [22.70, 92.55] },
+  { name: 'Tlang', title: 'The hills', mz: 'Tlangram', emoji: '⛰️', band: [1, 2], mix: { pic: 4, en2mz: 4, mz2en: 2, count: 2, odd: 1 }, scene: 'village', weather: 'leaves', sky: [0x8fd3ff, 0xe8f7ff], hills: [0x7cc65a, 0x5daE47], far: 0xa9d9a0, sun: 0xfff1a8, speed: 250, at: [23.80, 92.66] },
+  { name: 'Aizawl', title: 'The city on the ridge', mz: 'Tlang chunga khawpui', emoji: '🏙️', band: [3, 4], mix: { pic: 2, en2mz: 4, mz2en: 3, gap: 1, count: 1, odd: 1 }, sky: [0xffb37a, 0xffe2b8], hills: [0x6fae55, 0x4f8f3d], far: 0x9db7c9, sun: 0xff8a4a, city: true, speed: 280, at: [23.73, 92.72] },
+  { name: 'Bazar', title: 'The market at dusk', mz: 'Tlai lam bazar', emoji: '🛒', band: [5, 7], mix: { en2mz: 4, mz2en: 3, gap: 3, count: 2 }, scene: 'stalls', weather: 'fireflies', sky: [0x3b4f8f, 0x9a86c9], hills: [0x4f7f45, 0x35612f], far: 0x6f6aa0, stars: true, speed: 310, at: [23.60, 92.80] },
+  { name: 'Champhai', title: 'The wide valley', mz: 'Phai zau', emoji: '🌾', band: [4, 5], dict: true, mix: { en2mz: 6, mz2en: 4 }, scene: 'fields', weather: 'petals', sky: [0xbfe6ff, 0xfff3d6], hills: [0x9ccc5a, 0x6f9a3e], far: 0x8fb3a0, sun: 0xfff1a8, speed: 300, at: [23.47, 93.33] },
+  { name: 'Phawngpui', title: 'The blue mountain', mz: 'Tlang dum', emoji: '🏔️', band: [6, 7], dict: true, mix: { en2mz: 6, mz2en: 4 }, scene: 'pines', weather: 'mist', sky: [0x1d2b5a, 0x5b6fb0], hills: [0x3f6a4a, 0x2c4f36], far: 0x4a5f9a, farH: 340, stars: true, speed: 325, at: [22.63, 93.03] },
+  { name: 'Serchhip', title: 'The town of schools', mz: 'Sikul khawpui', emoji: '🏫', band: [1, 7], topics: ['sikul', 'chhungkua'], mix: { pic: 2, en2mz: 4, mz2en: 3, gap: 1, count: 1 }, scene: 'school', weather: 'petals', sky: [0x9ad7ff, 0xfff0c8], hills: [0x86c25c, 0x5e9a40], far: 0xa6c9a8, sun: 0xffe08a, speed: 320, at: [23.30, 92.85] },
+  { name: 'Lunglei', title: 'The bridge of rock', mz: 'Lungkawr', emoji: '🌳', band: [1, 7], topics: ['khawvel', 'nungcha'], mix: { pic: 3, en2mz: 4, mz2en: 2, gap: 1, odd: 2 }, scene: 'forest', weather: 'leaves', sky: [0x7fc4e8, 0xd8f0d0], hills: [0x4e9a46, 0x2f6e30], far: 0x7aa894, farH: 260, sun: 0xfff6c8, speed: 330, at: [22.88, 92.73] },
+  { name: 'Home', nameMz: 'In', title: 'Home at last', mz: 'In lam thlen', emoji: '🏡', band: [1, 7], topics: ['nunphung', 'zokhua', 'zonun'], sayings: true, mix: { en2mz: 4, mz2en: 3, gap: 3 }, scene: 'village', weather: 'fireflies', sky: [0xffa86b, 0xffe3a8], hills: [0x6ea852, 0x4a7f3a], far: 0xb39c9a, sun: 0xff7a3a, speed: 340, at: [22.70, 92.55] },
 ];
 const placeName = L0 => L(L0.name, L0.nameMz || L0.name);
 // A moment of the story before each place, the first time it is played
@@ -837,6 +873,8 @@ const pair = (others, kind) => {
 // (which word is this picture?), gap (which word fills the gap in its example?). `used` holds the run's words
 // so far (folded), so none comes twice; `forced` asks about that word (one to practise again).
 function question(cfg, kind, used = new Set(), forced = null) {
+  if (!forced && kind === 'count') return countQuestion(cfg, used) || question(cfg, 'en2mz', used);
+  if (!forced && kind === 'odd') return oddQuestion(cfg, used) || question(cfg, 'en2mz', used);
   const words = cfg.dict ? DICT : WORDS, pool = poolOf(cfg);
   if (!pool.length) return null;
   const fallback = () => (kind === 'en2mz' ? null : question(cfg, 'en2mz', used, forced));
@@ -861,6 +899,32 @@ function question(cfg, kind, used = new Set(), forced = null) {
   // Nothing found that the run has not had yet: a word may come again.
   if (!forced && used.size) return question(cfg, kind);
   return kind === 'en2mz' ? null : question(cfg, 'en2mz', used, forced);
+}
+
+// Counting in Mizo: so many things shown, and which number is it? (one to nine; to six at the first places)
+const NUMBERS = ['pakhat', 'pahnih', 'pathum', 'pali', 'panga', 'paruk', 'pasarih', 'pariat', 'pakua'];
+const NUM_EN = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+const THINGS = ['🍊', '🍌', '🐔', '🐟', '⚽', '🌸', '🥚', '🍎', '🐐', '🌽', '🎈', '⭐'];
+function countQuestion(cfg, used) {
+  const top = cfg.band[1] <= 2 ? 6 : 9, n = 1 + Math.floor(rand() * top);
+  const entry = k => BY_FOLD.get(NUMBERS[k - 1]) || [NUMBERS[k - 1], NUM_EN[k - 1], '', 1, 'number', '', NUM_EN[k - 1], ''];
+  const near = shuffle([n - 2, n - 1, n + 1, n + 2].filter(k => k >= 1 && k <= 9)).slice(0, 2);
+  if (near.length < 2 || used.has(NUMBERS[n - 1])) return null;
+  const thing = pick(THINGS);
+  return { target: entry(n), options: shuffle([entry(n), ...near.map(entry)]), kind: 'count', things: Array.from({ length: n }, () => thing) };
+}
+// The odd one out, among animals: two animals and one thing that is not (which one is not an animal?), or two
+// things and one animal (which one is an animal?). Only the animals (nungcha) are a topic clean enough to ask.
+const ANIMAL_RE = /\b(dog|cat|cow|pig|hen|bird|goat|fish|horse|animal|chicken|duck|rat|mouse|monkey|tiger|snake|bee|ant|buffalo|sheep|elephant|deer|bear|frog|insect|fly|worm|calf|puppy)s?\b/i;
+function oddQuestion(cfg, used) {
+  const [lo, hi] = cfg.band, ok = w => w[3] >= lo && w[3] <= hi && w[0].length <= 16 && !used.has(fold(w[0]));
+  // (the animals' topic also has a few words that are not one animal: a nest, a horn, milk, a sock, an ogress…)
+  const animals = WORDS.filter(w => w[4] === 'nungcha' && ok(w) && !/milk|nest|ogress|horn|sock|\broc\b|creature|animal|meat|hide|sand/i.test(w[1])), things = WORDS.filter(w => w[4] === 'chhungkua' && ok(w) && !ANIMAL_RE.test(w[6] || w[1]) && (isPic(w) || (w[1].split(/\s+/).length <= 2 && w[1].length <= 14)));     // (things you can see)
+  const some = (list, n) => { const out = []; for (const w of shuffle(list.slice())) if (out.length < n && !out.some(o => fold(o[0]) === fold(w[0]))) out.push(w); return out; };
+  const not = rand() < .6;     // (more often: which one is not?)
+  const many = some(not ? animals : things, 2), one = some(not ? things : animals, 1)[0];
+  if (many.length < 2 || !one) return null;
+  return { target: one, options: shuffle([one, ...many]), kind: not ? 'odd-not' : 'odd-is' };
 }
 
 // A boss door from the content's sentences: one of its words, from this band, left out.
@@ -967,6 +1031,18 @@ const review = {
 // the progress.js id of a word met at a door (a Hnahsin word has its own; a dictionary word by its spelling)
 const vocabId = w => (typeof w[7] === 'string' && /^[0-9a-f-]{36}$/.test(w[7]) ? w[7] : WORDS_MAP[fold(w[0])] || WORDS_MAP[w[0].toLowerCase()] || null);
 
+// ---------------------------------------------------------------- the game fits the player
+// A skill from -1 (finding it hard) to 1 (finding it easy), kept between runs: right doors raise it, wrong ones
+// lower it more. It sets the pace (a tenth either way), how early a door's question shows, and which kinds of
+// door come next (more pictures and counting when it is hard; more gaps and meanings when it is easy). The daily
+// run is the same for everyone, so it leaves the daily run alone.
+function fitMix(mix, skill) {
+  const m = { ...mix }, k = (key, f) => { if (m[key]) m[key] *= f; };
+  if (skill < -.25) { k('pic', 2); k('count', 1.5); k('en2mz', 1.3); k('gap', .4); k('mz2en', .6); k('odd', .5); }
+  if (skill > .25) { k('gap', 1.6); k('mz2en', 1.4); k('odd', 1.4); k('pic', .6); k('count', .6); }
+  return m;
+}
+
 // ---------------------------------------------------------------- coins, and what they buy
 // What Rova can wear: drawn in his box's units round a point of his head (top or eyes), for the game and the
 // shop alike. Help for the next run is used up by it.
@@ -1047,14 +1123,21 @@ class Play extends Phaser.Scene {
     if (this.mode === 'practice') for (const w of D.words) this.plan.push(question(cfg, isPic(w) ? 'pic' : 'en2mz', used, w) || question(cfg, 'en2mz', used));
     else if (this.mode !== 'endless') {
       const again = this.mode === 'level' ? review.targets(cfg, 3) : [];
-      const slots = shuffle([...Array(GATES).keys()]).slice(0, again.length);
       // a word place ends on the sentence bridge (in place of its last door and the boss); the dictionary places
       // and home on a saying
       const span = !cfg.dict && !cfg.sayings ? bridge(cfg, used) : null;
       const doors = span ? GATES - 1 : GATES;
+      // new words taught before the run come at their own doors (✨); in a place, a door's question is made as it
+      // comes near, to fit how the player is doing then (the daily run's are all made now, from the day)
+      const fresh = this.mode === 'level' ? (D.fresh || []) : [];
+      const special = [...again.map(w => ({ w, review: true })), ...fresh.map(w => ({ w, fresh: true }))].slice(0, doors);
+      const at = shuffle([...Array(doors).keys()]).slice(0, special.length);
+      for (const sp of special) used.add(fold(sp.w[0]));
       for (let i = 0; i < doors; i++) {
-        const w = again[slots.indexOf(i)], q = w ? question(cfg, weighted(cfg.mix), used, w) : question(cfg, weighted(cfg.mix), used);
-        if (w && q) q.review = true;
+        const sp = special[at.indexOf(i)];
+        if (this.mode === 'level') { this.plan.push({ lazy: true, ...(sp || {}) }); continue; }
+        const q = sp ? question(cfg, weighted(cfg.mix), used, sp.w) : question(cfg, weighted(cfg.mix), used);
+        if (sp && q) q.review = true;
         this.plan.push(q);
         used.add(fold(q.target[0]));
       }
@@ -1062,6 +1145,7 @@ class Play extends Phaser.Scene {
       else this.plan.push(Object.assign(bossQuestion(cfg, used), { boss: true }));
     }
     this.plan = this.plan.filter(Boolean);
+    this.skill = this.mode === 'daily' ? 0 : store.get('rj.skill', 0);
     this.used = used;
     const n = this.mode === 'endless' ? 400 : this.plan.length;
     // The flag stands 700 past the last door; the road goes on a little after it.
@@ -1084,6 +1168,8 @@ class Play extends Phaser.Scene {
     this.far = this.makeHills(look.far, 0.15, 760, look.farH || 140);
     this.near = this.makeHills(look.hills[0], 0.4, 900, 110);
     if (look.city) this.makeCity();
+    if (look.scene) this.makeScene(look);
+    if (look.weather && !STILL) this.makeWeather(look.weather, W);
 
     // The ground: grass on earth, the whole way.
     const ground = this.add.rectangle(this.length / 2, this.groundY + (180 + extra) / 2, this.length, 180 + extra, look.hills[1]);
@@ -1174,6 +1260,7 @@ class Play extends Phaser.Scene {
     if (word) { this.placeWord(word, x + 380); return; }
     const arc = x + 520 + rand() * 200, lane = [0, 1, 2][i % 3];
     this.coinArc(arc, lane);
+    if (this.extras && i % 2 === 0) this.placeSign(x + 1080);
     if (!this.extras) return;
     if (endless ? i % 7 === 3 : i === 2 || i === 6) this.placePower(arc - 170, this.lanes()[lane === 1 ? 0 : 1], pick(['magnet', 'shield', 'slow']));
     if (!this.relaxed && (endless ? i > 2 : this.mode !== 'level' || this.level > 0 || i % 2 === 1) && rand() < (this.mode === 'level' && this.level === 0 ? .5 : .8)) this.placeRock(x + 300);
@@ -1294,9 +1381,9 @@ class Play extends Phaser.Scene {
   addEndlessGate() {
     const i = this.made++, step = Math.floor(i / 10), bands = [[1, 2], [2, 4], [3, 5], [4, 7]];
     const cfg = this.endlessCfg ||= {}, band = bands[Math.min(step, bands.length - 1)];
-    if (!cfg.band || cfg.band[0] !== band[0]) { cfg.band = band; cfg.pool = null; cfg.mix = { pic: 2, en2mz: 4, mz2en: 3, gap: 1 }; }
+    if (!cfg.band || cfg.band[0] !== band[0]) { cfg.band = band; cfg.pool = null; cfg.mix = { pic: 2, en2mz: 4, mz2en: 3, gap: 1, count: 1, odd: 1 }; }
     const boss = i % 10 === 9;
-    let q = boss ? Object.assign(bossQuestion(cfg, this.used) || question(cfg, 'en2mz', this.used), { boss: true }) : question(cfg, weighted(cfg.mix), this.used);
+    let q = boss ? Object.assign(bossQuestion(cfg, this.used) || question(cfg, 'en2mz', this.used), { boss: true }) : question(cfg, weighted(fitMix(cfg.mix, this.skill)), this.used);
     if (!q) { this.used.clear(); q = question(cfg, 'en2mz', this.used); }
     this.used.add(fold(q.target[0]));
     this.addGate(q, i);
@@ -1406,6 +1493,78 @@ class Play extends Phaser.Scene {
     this.strip('city', top, .25);
   }
 
+  // Each place's own scenery behind the road, a strip that repeats: stilt houses and bamboo in the hills,
+  // market stalls with their lamps, terraced rice fields, pines on the mountain, a school, a forest.
+  makeScene(look) {
+    const TILE = 1600, top = 760, key = 'scene-' + look.scene + '-' + look.hills[1], hex = n => '#' + n.toString(16).padStart(6, '0');
+    const dark = hex(look.hills[1]), base = this.groundY - top;
+    this.paint(key, TILE, 1280 - top, c => {
+      const r = (a, b) => a + Math.random() * (b - a);
+      const tree = (x, h, col) => { c.fillStyle = col; c.fillRect(x - 5, base - h * .6, 10, h * .6); c.beginPath(); c.arc(x, base - h * .7, h * .32, 0, 7); c.fill(); };
+      const bamboo = x => { c.strokeStyle = '#5f8f3a'; c.lineWidth = 5; for (let k = -2; k <= 2; k++) { c.beginPath(); c.moveTo(x, base); c.quadraticCurveTo(x + k * 10, base - 120, x + k * 30, base - 180 - (2 - Math.abs(k)) * 12); c.stroke(); } };
+      const house = (x, w, h) => {
+        c.fillStyle = '#7a5a3a'; for (let k = 0; k < 4; k++) c.fillRect(x + k * w / 3 - 3, base - 60, 6, 60);       // the stilts
+        c.fillStyle = '#c8a56e'; c.fillRect(x - 6, base - 60 - h, w + 12, h);
+        c.fillStyle = '#7d8a96'; c.beginPath(); c.moveTo(x - 18, base - 60 - h); c.lineTo(x + w / 2, base - 100 - h); c.lineTo(x + w + 18, base - 60 - h); c.closePath(); c.fill();
+        c.fillStyle = '#4a3523'; c.fillRect(x + w / 2 - 10, base - 60 - h + 14, 20, h - 14);
+      };
+      const draw = {
+        village: () => { for (let x = 40; x < TILE - 160; x += r(260, 380)) { house(x, r(90, 130), r(55, 75)); bamboo(x + r(170, 220)); } },
+        stalls: () => { for (let x = 30; x < TILE - 200; x += r(200, 260)) {
+          const w = r(140, 180), cols = ['#e53935', '#fdd835', '#43a047', '#1e88e5', '#fb8c00'], k = cols[Math.floor(r(0, 5))];
+          c.fillStyle = '#6d4c41'; c.fillRect(x, base - 120, 8, 120); c.fillRect(x + w, base - 120, 8, 120); c.fillStyle = '#8d6e63'; c.fillRect(x, base - 60, w + 8, 60);
+          for (let st = 0; st < 6; st++) { c.fillStyle = st % 2 ? '#fff' : k; c.fillRect(x - 10 + st * (w + 28) / 6, base - 150, (w + 28) / 6 + 1, 30); }
+          c.fillStyle = 'rgba(255, 224, 130, .25)'; c.beginPath(); c.arc(x + w / 2, base - 108, 26, 0, 7); c.fill();
+          c.fillStyle = 'rgba(255, 224, 130, .95)'; c.beginPath(); c.arc(x + w / 2, base - 108, 9, 0, 7); c.fill();
+          for (let f = 0; f < 4; f++) { c.fillStyle = ['#ff9800', '#ffeb3b', '#8bc34a', '#e91e63'][f]; c.beginPath(); c.arc(x + 24 + f * 30, base - 66, 10, 0, 7); c.fill(); } } },
+        fields: () => { for (let k = 0; k < 4; k++) { c.fillStyle = ['#a5d16a', '#8fc059', '#b9dc7c', '#9ccb63'][k]; c.fillRect(0, base - 40 - k * 34, TILE, 30); }
+          for (let x = 60; x < TILE - 60; x += r(240, 360)) { c.fillStyle = '#e0b84a'; c.beginPath(); c.ellipse(x, base - 10, 34, 46, 0, Math.PI, 0); c.fill(); c.fillStyle = '#c99a2e'; c.fillRect(x - 34, base - 12, 68, 6); } },
+        pines: () => { for (let x = 20; x < TILE - 20; x += r(70, 120)) { const h = r(130, 220); c.fillStyle = Math.random() < .5 ? '#2c4f43' : '#355c4c'; c.beginPath(); c.moveTo(x, base - h); c.lineTo(x + h * .28, base); c.lineTo(x - h * .28, base); c.closePath(); c.fill(); } },
+        school: () => { for (let x = 80; x < TILE; x += 800) {
+          c.fillStyle = '#f2e6c9'; c.fillRect(x, base - 150, 380, 150); c.fillStyle = '#b5523b'; c.fillRect(x - 14, base - 168, 408, 22);
+          c.fillStyle = '#6b8fb5'; for (let k = 0; k < 6; k++) c.fillRect(x + 22 + k * 60, base - 120, 34, 40);
+          c.fillStyle = '#5a3d2b'; c.fillRect(x + 170, base - 70, 40, 70);
+          c.fillStyle = '#777'; c.fillRect(x + 470, base - 230, 6, 230); c.fillStyle = '#f39c12'; c.fillRect(x + 476, base - 228, 60, 36);
+          c.strokeStyle = '#8d6e63'; c.lineWidth = 4; for (let f = x + 560; f < x + 780; f += 24) { c.beginPath(); c.moveTo(f, base); c.lineTo(f, base - 44); c.stroke(); } } },
+        forest: () => { for (let x = 20; x < TILE - 40; x += r(90, 150)) tree(x, r(160, 250), Math.random() < .5 ? '#3f7d3a' : '#2f6a33'); for (let x = 80; x < TILE - 120; x += r(300, 420)) bamboo(x); },
+      };
+      c.globalAlpha = .92; (draw[look.scene] || (() => {}))();
+      c.globalAlpha = 1; c.fillStyle = dark; c.fillRect(0, base - 2, TILE, 1280 - top - base + 2);
+    });
+    this.strip(key, top, .6);
+  }
+
+  // The weather of a place, drifting across the screen: leaves, fireflies at dusk, petals, mist on the mountain.
+  makeWeather(kind, W) {
+    const g = this.make.graphics({ add: false });
+    if (!this.textures.exists('leaf')) { g.fillStyle(0xffffff); g.fillEllipse(10, 6, 20, 10); g.generateTexture('leaf', 20, 12); g.clear(); }
+    if (!this.textures.exists('mist')) { g.fillStyle(0xffffff, .5); g.fillEllipse(160, 40, 320, 80); g.fillStyle(0xffffff, .5); g.fillEllipse(160, 40, 220, 50); g.generateTexture('mist', 320, 80); g.clear(); }
+    const at = { x: { min: 0, max: W + 200 }, y: -20 };
+    const cfgs = {
+      leaves: { ...at, texture: 'leaf', speedX: { min: -140, max: -50 }, speedY: { min: 50, max: 110 }, rotate: { min: 0, max: 360 }, lifespan: 12000, frequency: 600, tint: [0xd4a017, 0xe57c23, 0x7cb342, 0xa1887f], scale: { min: .8, max: 1.4 } },
+      petals: { ...at, texture: 'leaf', speedX: { min: -120, max: -40 }, speedY: { min: 40, max: 90 }, rotate: { min: 0, max: 360 }, lifespan: 12000, frequency: 500, tint: [0xf8bbd0, 0xffffff, 0xfff59d], scale: { min: .6, max: 1 } },
+      fireflies: { x: { min: 0, max: W }, y: { min: 420, max: 1000 }, texture: 'spark', speedX: { min: -30, max: 30 }, speedY: { min: -30, max: 10 }, lifespan: 2600, frequency: 260, tint: 0xfff59d, scale: { start: .5, end: .1 }, alpha: { start: 1, end: 0 }, blendMode: 'ADD' },
+      mist: { x: W + 160, y: { min: 560, max: 940 }, texture: 'mist', speedX: { min: -60, max: -30 }, lifespan: 26000, frequency: 2200, alpha: { start: .35, end: .35 }, scale: { min: 1, max: 2 } },
+    };
+    const c = cfgs[kind];
+    const e = this.add.particles(0, 0, c.texture, c).setScrollFactor(0).setDepth(kind === 'mist' ? 2 : 7);
+    if (kind === 'mist' || kind === 'fireflies') e.fastForward(8000);
+  }
+
+  // A sign by the road with a Mizo word and its picture: something to read between the doors.
+  placeSign(x) {
+    const pool = poolOf(this.mode === 'endless' ? this.endlessCfg : this.cfg).filter(w => isPic(w) && w[0].length <= 12);
+    if (!pool.length) return;
+    const w = pick(pool), c = this.add.container(x, this.groundY - 10).setDepth(1);
+    const post = this.add.rectangle(0, -60, 10, 120, 0x6d4c41);
+    const word = this.add.text(0, -150, `${w[5]} ${w[0]}`, { fontFamily: 'Plus Jakarta Sans', fontSize: '30px', fontStyle: '800', color: '#3e2723', padding: { y: 4 } }).setOrigin(.5);
+    const meaning = this.add.text(0, -114, asks(w), { fontFamily: 'Plus Jakarta Sans', fontSize: '20px', fontStyle: '700', color: '#6d4c41' }).setOrigin(.5);
+    const bw = Math.max(word.width, meaning.width) + 30;
+    const board = this.add.rectangle(0, -136, bw, 84, 0xf3d9a4).setStrokeStyle(5, 0x8d6e63);
+    c.add([post, board, word, meaning]);
+    c.signX = x; (this.signs ||= []).push(c);
+  }
+
   // The three doors' middles. The top one sits low enough to leave room above it for a
   // long boss question; a double jump still takes Rova well into it.
   lanes() { return [this.groundY - 70, this.groundY - 420, this.groundY - 720]; }
@@ -1429,8 +1588,21 @@ class Play extends Phaser.Scene {
   }
 
   // Doors, built as they come near: low, middle and high, each with a word.
+  // a door's question, made now: of a kind that fits the player, or about the word it is for
+  realize(gate) {
+    const p = gate.q, cfg = this.cfg, kind = weighted(fitMix(cfg.mix, this.skill));
+    let q = p.w ? question(cfg, p.fresh ? (isPic(p.w) ? 'pic' : 'en2mz') : kind, this.used, p.w) : question(cfg, kind, this.used);
+    if (!q) q = question(cfg, 'en2mz', this.used) || question(cfg, 'en2mz');
+    if (p.review) q.review = true;
+    if (p.fresh) q.fresh = true;
+    this.used.add(fold(q.target[0]));
+    this.plan[this.plan.indexOf(p)] = q;
+    gate.q = q;
+  }
+
   buildGate(gate) {
     gate.built = true;
+    if (gate.q.lazy) this.realize(gate);
     const ys = this.lanes(), q = gate.q, kind = q.kind;
     // help from the shop: at the first doors, one wrong door fades
     const faded = this.hints > 0 && !gate.boss ? q.options.findIndex(o => o !== q.target) : -1;
@@ -1438,7 +1610,7 @@ class Play extends Phaser.Scene {
     gate.doors = q.options.map((opt, lane) => {
       const y = ys[lane];
       const c = this.add.container(gate.x, y);
-      const frame = this.add.rectangle(0, 0, 230, 190, gate.boss ? 0x7a4bc2 : q.review ? 0x2f6b22 : 0x8a5a33).setStrokeStyle(8, gate.boss ? 0xffc94a : q.review ? 0x1d4a14 : 0x5a3a20);
+      const frame = this.add.rectangle(0, 0, 230, 190, gate.boss ? 0x7a4bc2 : q.review ? 0x2f6b22 : q.fresh ? 0x00897b : 0x8a5a33).setStrokeStyle(8, gate.boss ? 0xffc94a : q.review ? 0x1d4a14 : q.fresh ? 0xffd54f : 0x5a3a20);
       const glow = this.add.rectangle(0, 0, 196, 160, 0xfff6dd);
       const text = doorText(opt, kind);
       const size = text.length > 34 ? 19 : text.length > 16 ? 23 : text.length > 11 ? 26 : text.length > 8 ? 32 : 40;
@@ -1452,7 +1624,7 @@ class Play extends Phaser.Scene {
     // later places (and endless after twenty doors): the doors bob up and down
     if (this.mode === 'level' ? this.level >= 5 : this.mode === 'endless' && gate.i >= 20)
       gate.doors.forEach((c, lane) => this.tweens.add({ targets: c, y: c.y - 46, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.InOut', delay: 380 + lane * 360 }));
-    const again = q.review ? '🔁 ' : '', boss = gate.boss && kind !== 'bridge' ? L('Boss! ', 'Boss! ') : '';
+    const again = q.review ? '🔁 ' : q.fresh ? '✨ ' : '', boss = gate.boss && kind !== 'bridge' ? L('Boss! ', 'Boss! ') : '';
     const B = q.bridge, built = B ? [...B.prefix, ...B.built, ...B.steps.slice(B.built.length).map(() => '____')].join(' ') : '';
     const m = asks(q.target), w = q.target[0];
     this.ask.setText(B ? `🌉 ${L('Build the sentence', 'Thu siam rawh')} (${q.step + 1}/${B.steps.length}):\n“${B.english}”\n${built}`
@@ -1460,14 +1632,22 @@ class Play extends Phaser.Scene {
       : kind === 'gap' ? boss + L(`Fill the gap:\n${q.gap}`, `A awm lohna dah khat rawh:\n${q.gap}`) + (q.english ? `\n(${q.english})` : '')
       : kind === 'mz2en' ? again + boss + L(`What does\n“${w}” mean?`, `“${w}” awmzia\nkhawi zawk nge?`)
       : kind === 'pic' ? again + boss + L('Which one is this?', 'Hei hi eng nge?')
+      : kind === 'count' ? boss + L('How many?', 'Engzat nge?')
+      : kind === 'odd-not' ? boss + L('Which one is not an animal?', 'Ramsa ni lo chu khawi nge?')
+      : kind === 'odd-is' ? boss + L('Which one is an animal?', 'Ramsa chu khawi nge?')
       : again + boss + L(`Which one means\n“${m}”?`, `“${m}” tihna\nkhawi zawk nge?`)).setVisible(true);
     // A long boss question gets smaller letters (down to 28, about 15px on a phone), so it
     // stays above the top door. The top door's frame is at its lane less 95.
-    const room = this.lanes()[2] - 95 + (GH - 1280) - 6 - (kind === 'pic' ? 112 : 0);
+    const room = this.lanes()[2] - 95 + (GH - 1280) - 6 - (kind === 'pic' ? 112 : kind === 'count' ? (q.things.length > 5 ? 150 : 82) : 0);
     this.ask.setScale(1);
     for (const size of [40, 36, 32, 30, 28]) { this.ask.setFontSize(size); if (this.ask.getBounds().bottom <= room) break; }
-    this.askPic.setVisible(kind === 'pic');
-    if (kind === 'pic') { this.askPic.setText(q.target[5]).setY(this.ask.getBounds().bottom + 2).setScale(.6); this.tweens.add({ targets: this.askPic, scale: 1, duration: 300, ease: 'Back.Out' }); }
+    this.askPic.setVisible(kind === 'pic' || kind === 'count');
+    if (kind === 'pic' || kind === 'count') {
+      // the picture, or the things to count (five a row)
+      const things = kind === 'count' ? q.things.reduce((a, t, k) => a + t + (k % 5 === 4 && k < q.things.length - 1 ? '\n' : ''), '') : q.target[5];
+      this.askPic.setText(things).setFontSize(kind === 'count' ? 62 : 92).setY(this.ask.getBounds().bottom + 2).setScale(.6);
+      this.tweens.add({ targets: this.askPic, scale: 1, duration: 300, ease: 'Back.Out' });
+    }
     // On tall screens the last door's word sits where the question goes: the question wins.
     if (this.banner.alpha > 0 && Phaser.Geom.Intersects.RectangleToRectangle(this.banner.getBounds(), this.ask.getBounds())) {
       this.tweens.killTweensOf(this.banner);
@@ -1485,6 +1665,8 @@ class Play extends Phaser.Scene {
     const right = picked === gate.q.target;
     const t = gate.q.target, B = gate.q.bridge, word = gate.q.saying || B ? null : t;
     this.met.push({ w: gate.q.saying ? [t[1], t[0]] : t, right, kind: gate.q.kind });
+    if (this.mode !== 'daily') this.skill = Math.max(-1, Math.min(1, this.skill + (right ? .07 + (this.streak >= 2 ? .03 : 0) : -.22)));
+    if (right && gate.q.kind === 'count') this.counted = (this.counted || 0) + 1;
     this.marks.push(right);
     const door = gate.doors[lane];
     if (right) {
@@ -1589,7 +1771,7 @@ class Play extends Phaser.Scene {
     this.follow();
     if (this.over) { this.placeLooks(this.frameNow || 0); return; }
     const now = this.time.now;
-    if (this.started) this.rova.body.setVelocityX(this.speed * (this.slowUntil > now ? .7 : 1) * (this.calmUntil > now ? .72 : 1));
+    if (this.started) this.rova.body.setVelocityX(this.speed * (1 + .1 * this.skill) * (this.slowUntil > now ? .7 : 1) * (this.calmUntil > now ? .72 : 1));
     // the magnet: coins ahead and near come to Rova
     if (this.magnetUntil > now) for (const c of this.coins.getChildren()) {
       const dx = c.x - this.rova.x, dy = c.y - (this.rova.y - 30);
@@ -1609,7 +1791,7 @@ class Play extends Phaser.Scene {
     this.rova.setFrame(f); this.frameNow = f;
     this.placeLooks(f);
     for (const gate of this.gates) {
-      if (!gate.built && gate.x - this.rova.x < this.ahead) this.buildGate(gate);
+      if (!gate.built && gate.x - this.rova.x < this.ahead + (this.skill < 0 ? -this.skill * 260 : -this.skill * 120)) this.buildGate(gate);
       if (gate.built && !gate.done && this.rova.x >= gate.x) this.passGate(gate);
     }
     if (this.mode === 'endless') {
@@ -1620,6 +1802,7 @@ class Play extends Phaser.Scene {
       this.coins.getChildren().slice().forEach(c => { if (c.x < this.rova.x - 600) c.destroy(); });
       for (const g of [this.letters, this.powers]) g.getChildren().slice().forEach(b => { if (b.x < this.rova.x - 600) { b.label.destroy(); b.destroy(); } });
       this.rocks.getChildren().slice().forEach(r => { if (r.x < this.rova.x - 600) r.destroy(); });
+      if (this.signs) this.signs = this.signs.filter(c => { if (c.signX < this.rova.x - 800) { c.destroy(); return false; } return true; });
       this.spells = this.spells.filter(sp => !sp.done || sp.x0 > this.rova.x - 2000);
     }
     if (this.rova.x >= this.finishX) this.finish(true);
@@ -1637,7 +1820,9 @@ class Play extends Phaser.Scene {
     else SFX.lose();
     const doors = this.marks.length;
     const goals = [this.spells.length > 0 && this.spelledOk === this.spells.length, this.coinsGot >= 30, this.stumbles === 0];
-    this.time.delayedCall(won ? 900 : 300, () => showEnd({ mode: this.mode, level: this.level, won, right: this.right, met: this.met, marks: this.marks, coins: this.coinsGot, streak: this.bestStreak, doors, relaxed: this.relaxed, data: this.data0, goals, spelled: this.spelledOk }));
+    if (this.mode !== 'daily') store.set('rj.skill', Math.round(this.skill * 100) / 100);
+    const bridges = this.plan.some(q => q.bridge && q.bridge.ok && q.bridge.built.length === q.bridge.steps.length) ? 1 : 0;
+    this.time.delayedCall(won ? 900 : 300, () => showEnd({ mode: this.mode, level: this.level, won, right: this.right, met: this.met, marks: this.marks, coins: this.coinsGot, streak: this.bestStreak, doors, relaxed: this.relaxed, data: this.data0, goals, spelled: this.spelledOk, stumbles: this.stumbles, bridges, counted: this.counted || 0 }));
   }
 }
 
@@ -1658,7 +1843,7 @@ const game = new Phaser.Game({
 game.events.once('step', () => { if (!game.scene.getScene('play')) game.loop.sleep(); });
 
 const $ = id => document.getElementById(id);
-const screens = ['title-screen', 'story-screen', 'end-screen', 'pause-screen', 'shop-screen', 'book-screen'];
+const screens = ['title-screen', 'story-screen', 'end-screen', 'pause-screen', 'shop-screen', 'book-screen', 'learn-screen', 'medal-screen'];
 const show = id => { for (const s of screens) $(s).hidden = s !== id; $('pause-btn').hidden = id !== null; };
 function toast(text) { const t = $('toast'); t.textContent = text; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), 2200); }
 
@@ -1723,6 +1908,11 @@ function applyLang() {
   $('howto').innerHTML = [['👆', L('Tap or Space to jump, twice to go higher', 'Hmet la zuang rawh, vawi hnih hmet chuan a sang zawk')], ['🚪', L('Be at the door with the right word', 'Thumal dik nei kawngkhar-ah awm rawh')], ['✏️', L('Take the letters to spell the word. Jump the rocks!', 'Thumal ziak turin hawrawp la rawh. Lung zuang kan rawh!')]].map(([i, t]) => `<li><i>${i}</i>${t}</li>`).join('');
   $('shop-btn').textContent = `🛍️ ${L('Shop', 'Dawr')}`;
   $('book-btn').textContent = `📖 ${L('Words', 'Thumal')}`;
+  $('medal-btn').setAttribute('aria-label', L('Medals', 'Medal'));
+  $('medal-back').textContent = `← ${L('Back', 'Kir leh')}`;
+  $('medal-title').textContent = `🏅 ${L('Medals', 'Medal')}`;
+  $('learn-go').textContent = L("Let's go!", 'Kal ang!');
+  $('learn-always-label').innerHTML = `${L('New words before each run', 'Tlan tin hmain thumal thar')}<small>${L('Three words to learn first', 'Thumal pathum zir hmasak')}</small>`;
   $('book-back').textContent = `← ${L('Back', 'Kir leh')}`;
   $('book-title').textContent = `📖 ${L('Word book', 'Thumal bu')}`;
   $('relaxed-label').innerHTML = `${L('Relaxed', 'Muang takin')}<small>${L('Slower, and no hearts lost: for younger players', 'A muang zawk, nunna a bo lo: naupang tan')}</small>`;
@@ -1758,6 +1948,24 @@ function play(data) {
   game.loop.wake();
   game.scene.add('play', Play, true, data);
 }
+// New words for a place: three it has that the player has not met yet (half with pictures), to learn before the
+// run; they then come at its doors.
+function freshWords(level) {
+  const met = book.all(), pool = poolOf(LEVELS[level]).filter(w => !(fold(w[0]) in met) && !w[0].includes(' ') && (isPic(w) || w[2]));
+  const easy = pool.slice().sort((a, b) => a[3] - b[3]).slice(0, 40);
+  const pics = shuffle(easy.filter(isPic)), rest = shuffle(easy.filter(w => !isPic(w)));
+  return [...pics.slice(0, 2), ...rest].slice(0, 3);
+}
+function learn(level) {
+  const ws = store.get('rj.learn', true) ? freshWords(level) : [];
+  if (!ws.length) { play({ mode: 'level', level }); return; }
+  $('learn-title').textContent = `✨ ${L('New words', 'Thumal thar')} · ${placeName(LEVELS[level])}`;
+  $('learn-note').textContent = L('Learn them now: they are waiting at the doors (✨).', 'Tunah zir rawh: kawngkhar-ah an lo nghak e (✨).');
+  $('learn-list').innerHTML = ws.map(w => `<li><span class="pic">${isPic(w) ? w[5] : pic(w)}</span><span><b>${esc(w[0])}</b> · ${esc(asks(w))}${w[2] ? `<small>${esc(w[2])}</small>` : ''}</span></li>`).join('');
+  $('learn-always').checked = true;
+  $('learn-go').onclick = () => { store.set('rj.learn', $('learn-always').checked); SFX.click(); play({ mode: 'level', level, fresh: ws }); };
+  show('learn-screen'); $('learn-go').focus();
+}
 // a place: its story first, the first time
 function start(level) {
   const seen = store.get('rj.story', []);
@@ -1767,15 +1975,15 @@ function start(level) {
     $('story-scene').textContent = s.e;
     $('story-text').textContent = L(s.en, s.mz); $('story-text').lang = LANG === 'mz' ? 'lus' : 'en';
     $('story-other').textContent = L(s.mz, s.en); $('story-other').lang = LANG === 'mz' ? 'en' : 'lus';
-    $('story-go').onclick = () => { store.set('rj.story', [...seen, level]); SFX.click(); play({ mode: 'level', level }); };
+    $('story-go').onclick = () => { store.set('rj.story', [...seen, level]); SFX.click(); learn(level); };
     show('story-screen'); $('story-go').focus();
     return;
   }
-  play({ mode: 'level', level });
+  learn(level);
 }
 function startDaily() {
   const key = today(), seed = Number(key.replace(/-/g, ''));
-  play({ mode: 'daily', level: 0, seed, look: LEVELS[seed % 5], cfg: { band: [1, 5], mix: { pic: 2, en2mz: 4, mz2en: 3, gap: 1 } } });
+  play({ mode: 'daily', level: 0, seed, look: LEVELS[seed % 5], cfg: { band: [1, 5], mix: { pic: 2, en2mz: 4, mz2en: 3, gap: 1, count: 1, odd: 1 } } });
 }
 function startEndless() { play({ mode: 'endless', level: 1, look: LEVELS[1], cfg: { band: [1, 2], mix: { en2mz: 1 } } }); }
 function practise(level, words) {
@@ -1842,6 +2050,7 @@ function showEnd(r) {
       const st = store.get('rj.dailyStreak', { n: 0, last: '' }), y = new Date(); y.setDate(y.getDate() - 1);
       const yk = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, '0')}-${String(y.getDate()).padStart(2, '0')}`;
       store.set('rj.dailyStreak', { n: st.last === yk ? st.n + 1 : 1, last: key });
+      store.set('rj.dailyBest', Math.max(store.get('rj.dailyBest', 0), st.last === yk ? st.n + 1 : 1));
       if (won) bonus = 40;
     }
   } else if (mode === 'endless') {
@@ -1850,6 +2059,16 @@ function showEnd(r) {
     bonus = right * 2;
   }
   wallet.add(coins + bonus);
+  // the run's numbers for the medals
+  if (mode !== 'practice') {
+    const s = lifeStats();
+    s.right = (s.right || 0) + right; s.spelled = (s.spelled || 0) + (r.spelled || 0); s.bridges = (s.bridges || 0) + (r.bridges || 0);
+    s.counted = (s.counted || 0) + (r.counted || 0);
+    if (won && !r.stumbles) s.clean = (s.clean || 0) + 1;
+    if (mode === 'level' && won && right === met.length) s.perfect = (s.perfect || 0) + 1;
+    store.set('rj.stats', s);
+  }
+  const medals = newMedals();
   // the title
   $('end-title').textContent = mode === 'endless' ? `♾️ ${L(`${right} doors!`, `Kawngkhar ${right}!`)}`
     : mode === 'practice' ? `🔁 ${L('Practice done', 'Zir nawnna a zo')}`
@@ -1859,7 +2078,7 @@ function showEnd(r) {
   $('end-note').textContent = `${L(`${right} of ${met.length} doors right`, `Kawngkhar ${met.length} zingah ${right} dik`)} · ${L('The words you met:', 'I thumal tawh te:')}`;
   earn.push(`🪙 +${coins + bonus}`);
   if (r.streak >= 3) earn.push(`🔥 ${r.streak}`);
-  $('end-earn').innerHTML = earn.map(t => `<span>${t}</span>`).join('') + `<span>${L('You have', 'I nei')} 🪙 ${wallet.get()}</span>` + (best && mode !== 'practice' ? `<span class="best">${L('New best!', 'A tha ber thar!')}</span>` : '');
+  $('end-earn').innerHTML = medals.map(m => `<span class="best">🏅 ${m.icon} ${L(m.en, m.mz)} +50</span>`).join('') + earn.map(t => `<span>${t}</span>`).join('') + `<span>${L('You have', 'I nei')} 🪙 ${wallet.get()}</span>` + (best && mode !== 'practice' ? `<span class="best">${L('New best!', 'A tha ber thar!')}</span>` : '');
   // the place's three goals: done this time, and done before
   $('end-goals').hidden = mode !== 'level';
   if (mode === 'level') { const had = goalsOf(level); $('end-goals').innerHTML = GOALS.map(([i, en, mz], k) => `<li class="${r.goals[k] && won ? 'done' : ''}"><span>${i} ${L(en, mz)}</span><span>${r.goals[k] && won ? '✓' : had[k] ? '☆' : '–'}</span></li>`).join(''); }
@@ -1929,6 +2148,7 @@ $('shop-looks').addEventListener('click', e => {
   if (!have.includes(id)) {
     if (wallet.get() < it.price) { toast(L(`You need 🪙 ${it.price - wallet.get()} more`, `🪙 ${it.price - wallet.get()} i mamawh belh`)); return; }
     wallet.add(-it.price); store.set('rj.owned', [...have, id]); on[it.slot] = id; SFX.buy();
+    for (const m of newMedals()) toast(`🏅 ${m.icon} ${L(m.en, m.mz)} +50 🪙`);
     hnStat('journey/shop/' + id, "Rova's Journey: bought " + id);
   } else { if (on[it.slot] === id) delete on[it.slot]; else on[it.slot] = id; SFX.click(); }
   store.set('rj.worn', on); renderShop();
@@ -1942,6 +2162,44 @@ $('shop-helpers').addEventListener('click', e => {
 });
 $('shop-btn').onclick = () => { SFX.click(); renderShop(); show('shop-screen'); $('shop-back').focus(); };
 $('shop-back').onclick = () => { SFX.click(); toMenu(); };
+
+// ---------------------------------------------------------------- medals, for what is done over many runs
+// Each is earned once, for 50 coins. The numbers they count are kept in rj.stats.
+const lifeStats = () => store.get('rj.stats', {});
+const goalsDone = () => LEVELS.reduce((n, l, i) => n + goalsOf(i).filter(Boolean).length, 0);
+const placesDone = () => LEVELS.filter((l, i) => stars(i) > 0).length;
+const MEDALS = [
+  { id: 'first', icon: '🚩', en: 'First steps', mz: 'Ke pen hmasa', d: ['Finish a place', 'Hmun pakhat zo rawh'], have: () => placesDone(), need: 1 },
+  { id: 'door100', icon: '🚪', en: 'Word walker', mz: 'Thumal kawngzawh', d: ['100 doors right', 'Kawngkhar 100 dik'], have: s => s.right || 0, need: 100 },
+  { id: 'door500', icon: '🏃', en: 'Word runner', mz: 'Thumal tlan', d: ['500 doors right', 'Kawngkhar 500 dik'], have: s => s.right || 0, need: 500 },
+  { id: 'spell10', icon: '✏️', en: 'Speller', mz: 'Ziaktu', d: ['Spell 10 words on the run', 'Thumal 10 ziak rawh'], have: s => s.spelled || 0, need: 10 },
+  { id: 'spell50', icon: '🖋️', en: 'Master speller', mz: 'Ziak thiam', d: ['Spell 50 words on the run', 'Thumal 50 ziak rawh'], have: s => s.spelled || 0, need: 50 },
+  { id: 'bridge5', icon: '🌉', en: 'Bridge builder', mz: 'Lei siamtu', d: ['Build 5 sentences without a slip', 'Thu 5 dik takin siam rawh'], have: s => s.bridges || 0, need: 5 },
+  { id: 'count20', icon: '🔢', en: 'Counter', mz: 'Chhiartu', d: ['20 counting doors right', 'Chhiarna kawngkhar 20 dik'], have: s => s.counted || 0, need: 20 },
+  { id: 'light10', icon: '🍃', en: 'Light feet', mz: 'Ke zang', d: ['10 runs without a stumble', 'Tlu lova tlan 10'], have: s => s.clean || 0, need: 10 },
+  { id: 'perfect', icon: '💯', en: 'Perfect run', mz: 'Tlan famkim', d: ['Every door right at a place', 'Hmun pakhatah kawngkhar zawng zawng dik'], have: s => s.perfect || 0, need: 1 },
+  { id: 'goals', icon: '🎯', en: 'Every goal', mz: 'Tum zawng zawng', d: [`All ${LEVELS.length * 3} goals of the journey`, `Tum ${LEVELS.length * 3} zawng zawng`], have: () => goalsDone(), need: LEVELS.length * 3 },
+  { id: 'home', icon: '🏡', en: 'Home!', mz: 'In lam thleng!', d: ['Reach home', 'In lam thleng rawh'], have: () => (stars(LEVELS.length - 1) > 0 ? 1 : 0), need: 1 },
+  { id: 'daily7', icon: '📅', en: 'Daily habit', mz: 'Ni tin tlan', d: ['The daily run 7 days in a row', 'Ni 7 zawn ni tin tlan'], have: () => store.get('rj.dailyBest', 0), need: 7 },
+  { id: 'endless50', icon: '♾️', en: 'Endless runner', mz: 'Tlan tawp lo', d: ['50 doors in endless', 'Tawp loah kawngkhar 50'], have: () => store.get('rj.endlessBest', 0), need: 50 },
+  { id: 'known50', icon: '📖', en: 'Word keeper', mz: 'Thumal vawngtu', d: ['Know 50 words well (⭐⭐⭐)', 'Thumal 50 hre chiang rawh'], have: () => Object.values(book.all()).filter(e => mastery(e) >= 3).length, need: 50 },
+  { id: 'shop3', icon: '🛍️', en: 'Collector', mz: 'Khawltu', d: ['Buy 3 things for Rova', 'Rova tan thil 3 lei rawh'], have: () => owned().length, need: 3 },
+];
+// medals newly earned: kept, paid, and given back to be shown
+function newMedals() {
+  const got = store.get('rj.medals', []), s = lifeStats(), out = [];
+  for (const m of MEDALS) if (!got.includes(m.id) && m.have(s) >= m.need) { got.push(m.id); out.push(m); wallet.add(50); }
+  if (out.length) store.set('rj.medals', got);
+  return out;
+}
+function renderMedals() {
+  const got = store.get('rj.medals', []), s = lifeStats();
+  $('medal-sum').textContent = `🏅 ${got.length} / ${MEDALS.length}`;
+  $('medal-list').innerHTML = MEDALS.map(m => {
+    const have = Math.min(m.have(s), m.need), on = got.includes(m.id);
+    return `<li class="${on ? 'on' : ''}"><i aria-hidden="true">${m.icon}</i><span><b>${L(m.en, m.mz)}</b><small>${L(m.d[0], m.d[1])}</small><span class="meter"><span style="width:${(have / m.need) * 100}%"></span></span></span><em>${on ? '✓' : `${have}/${m.need}`}</em></li>`;
+  }).join('');
+}
 
 // ---------------------------------------------------------------- the word book
 function renderBook() {
@@ -1957,6 +2215,8 @@ function renderBook() {
       `<li><b>${pic(w)}${esc(w[0])}${e[3] ? ' ✏️' : ''}</b><span>${esc(asks(w))} ${'⭐'.repeat(mastery(e))}${'☆'.repeat(3 - mastery(e))}</span>${w[2] ? `<small>${esc(w[2])}</small>` : ''}</li>`).join('')}</ul></details>`;
   }).join('') : `<p class="empty">${L('The words Rova meets on the road will be kept here.', 'Rova’n kawngah thumal a tawh te hetah a awm ang.')}</p>`;
 }
+$('medal-btn').onclick = () => { SFX.click(); renderMedals(); show('medal-screen'); $('medal-back').focus(); };
+$('medal-back').onclick = () => { SFX.click(); toMenu(); };
 $('book-btn').onclick = () => { SFX.click(); renderBook(); show('book-screen'); $('book-back').focus(); };
 $('book-back').onclick = () => { SFX.click(); toMenu(); };
 

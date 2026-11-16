@@ -4,6 +4,28 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.78.0 (16 November 2026)
+
+### Rova's Journey: a game that learns you
+
+- The game fits the player: as you play it learns how you are doing. Finding
+  it hard, Rova runs a little slower, each question shows sooner, and more
+  doors are pictures and counting; finding it easy, he runs faster and asks
+  more meanings and gaps. (The daily run stays the same for everyone.)
+- New words first: before a run, three words of the place you have not met
+  yet, with their pictures and examples, to learn. They then wait for you at
+  their own doors (✨). It can be turned off.
+- Two new kinds of door: counting in Mizo (how many? pakhat to pakua) and
+  the odd one out (which one is not an animal?).
+- Fifteen medals for what you do over many runs: spelling, building
+  sentences, the daily run day after day, reaching home, knowing your words.
+  Each one gives 50 coins.
+- Every place looks like itself now: stilt houses and bamboo in the hills,
+  market stalls with their lamps at the Bazar, rice fields at Champhai, pines
+  on Phawngpui, a school at Serchhip, a forest at Lunglei; with falling
+  leaves, fireflies at dusk, petals and mountain mist. Signs by the road show
+  Mizo words with their pictures.
+
 ## 1.77.0 (16 November 2026)
 
 ### Rova's Journey: more than a run
