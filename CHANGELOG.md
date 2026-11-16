@@ -4,6 +4,21 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.79.0 (16 November 2026)
+
+### The words behind the games
+
+- A new list of the 2,027 Mizo words used most from day to day, for the
+  games to use from now on. Each meaning is from J.F. Laldailova's
+  dictionary, and checked against the Hnahsin app's words; 27 everyday
+  words the dictionary does not have (the days of the week, bazar, sahbawn
+  …) are in too, marked for a Mizo speaker to confirm.
+- Every word for a thing you can see has a picture: 545 new pictures, most
+  of them Noto Emoji, and some drawn for Hnahsin (the parts of the body, a
+  bamboo mat, a gourd …). They also show on older phones that lack the
+  newest emoji.
+- The games do not use the new list yet; that comes next.
+
 ## 1.78.0 (16 November 2026)
 
 ### Rova's Journey: a game that learns you
