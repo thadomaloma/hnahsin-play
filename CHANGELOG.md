@@ -4,6 +4,16 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.81.0 (16 November 2026)
+
+### The Playground's own pictures
+
+- The Playground shows each word's own picture instead of the phone's
+  emoji: in the picture games, the market, Dress Rova, the food stall, the
+  weather report, counting, days and times, and the word tubes. They look
+  the same on every phone, also on an older one that has no newer emoji.
+- The photos of Mizo things stay as they are.
+
 ## 1.80.1 (16 November 2026)
 
 ### The games people play
