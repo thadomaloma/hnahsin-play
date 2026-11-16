@@ -4,6 +4,17 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.87.0 (17 November 2026)
+
+### One site, no separate app
+
+- The Hnahsin app's preview has left the site: all its games are in the
+  Playground now. If you had it on your phone, the space it took is freed on
+  the next update.
+- The footer no longer links to the app.
+- The Playground page is smaller, so it opens a little faster.
+- The credits now name where the word pictures come from.
+
 ## 1.86.0 (17 November 2026)
 
 ### All the app's games, now Playground games

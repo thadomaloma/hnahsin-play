@@ -8,8 +8,8 @@
 // Kept from one release to the next, so a release does not fetch them all again:
 //  - FIXED: what never changes under its own address: our files with a fingerprint (?v=…), and the
 //    game engines and libraries, whose version is in their address. Only the newest of each is kept.
-//  - APP: the Flutter app under app/ (some 10 MB, kept as it is fetched). Bump APP when app/ changes.
-const VERSION = 'hnahsin-178', FIXED = 'hnahsin-fixed', APP = 'hnahsin-app-1';
+// (The Flutter app under app/ had a cache of its own, hnahsin-app-1; the app is gone, and activate drops it.)
+const VERSION = 'hnahsin-179', FIXED = 'hnahsin-fixed';
 const CORE = [
   './', 'index.html', 'theme.css?v=d03db89c', 'home.js?v=c03d7602', 'rova.js?v=f35ca6fa', 'stats.js?v=ff1d2eba', 'audio.js', 'progress.js', 'journey.html', 'pics/rova-sheet.webp?v=08a54d4b', 'playground.html', 'things.html', 'ride.html', 'ride/city.json?v=9463910e', 'pics/ride.jpg', 'pics/things-zokhua.webp', 'pics/things-zokhua.json', 'pics/things-kumtluang.webp', 'pics/things-kumtluang.json', 'pics/things-loom.svg', 'pics/things-loom.json', 'pics/things-bazar.webp', 'pics/things-bazar.json',
   'favicon.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'manifest.webmanifest',
@@ -40,13 +40,12 @@ self.addEventListener('install', e => {
       }
       const res = await fetch(url, { cache: 'no-cache' }); if (!ok(res)) throw new Error(path); await c.put(path, res);
     }));
-    // what older releases kept as it was asked for: the fixed files into FIXED, the app's into APP (not fetched again)
+    // what older releases kept as it was asked for: the fixed files into FIXED (not fetched again)
     for (const k of await caches.keys()) {
-      if (k === VERSION || k === FIXED || k === APP) continue;
-      const old = await caches.open(k), app = await caches.open(APP);
+      if (k === VERSION || k === FIXED) continue;
+      const old = await caches.open(k);
       for (const r of await old.keys()) {
-        if (new URL(r.url).pathname.includes('/app/')) { if (!(await app.match(r))) await app.put(r, await old.match(r)); }
-        else if (fixed(r.url) && !(await caches.match(r, { cacheName: FIXED }))) await keepFixed(r, await old.match(r));
+        if (fixed(r.url) && !(await caches.match(r, { cacheName: FIXED }))) await keepFixed(r, await old.match(r));
       }
     }
     await self.skipWaiting();
@@ -55,7 +54,7 @@ self.addEventListener('install', e => {
 
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys()
-    .then(keys => Promise.all(keys.filter(k => k !== VERSION && k !== FIXED && k !== APP).map(k => caches.delete(k))))
+    .then(keys => Promise.all(keys.filter(k => k !== VERSION && k !== FIXED).map(k => caches.delete(k))))
     .then(() => self.clients.claim()));
 });
 
@@ -71,15 +70,6 @@ self.addEventListener('fetch', e => {
   // Video goes straight to the network: it comes in ranges, which a kept copy cannot answer
   if (req.headers.has('range') || /\.(mp4|webm)$/.test(url.pathname)) return;
   const mine = url.origin === location.origin;
-  // The app (Flutter): its files are big, so once fetched they are kept and served
-  // from the phone at once, refreshed in the background.
-  if (mine && url.pathname.includes('/app/')) {
-    e.respondWith(caches.open(APP).then(c => c.match(req, { ignoreSearch: true }).then(hit => {
-      const fresh = fetch(req).then(res => { if (ok(res)) c.put(req, res.clone()); return res; }).catch(() => hit);
-      return hit || fresh;
-    })));
-    return;
-  }
 
   if (req.mode === 'navigate') {
     // GitHub lets browsers reuse a page for 10 minutes; ask the server each time instead

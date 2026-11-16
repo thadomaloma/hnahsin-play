@@ -11,9 +11,11 @@ Hnahsin Games is developed by Maloma Thado.
 
 ## Pictures
 
-- **Photos** of words come from [Wikimedia Commons](https://commons.wikimedia.org/).
-  Each photo's author and licence (mostly CC BY-SA) are listed in the Hnahsin
-  app under Settings → Photo credits.
+- **Word pictures** in the games: [Noto Emoji](https://github.com/googlefonts/noto-emoji)
+  by Google (Apache 2.0); [OpenMoji](https://openmoji.org) (CC BY-SA 4.0);
+  [game-icons.net](https://game-icons.net) by Lorc, Delapouite and others
+  (CC BY 3.0); [Healthicons](https://healthicons.org) (MIT). A few are drawn
+  for Hnahsin.
 - **Emoji pictures** come from Microsoft's
   [Fluent Emoji](https://github.com/microsoft/fluentui-emoji) (MIT licence).
 - Rova, Mami, his family and the game scenes are drawn for Hnahsin.

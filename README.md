@@ -11,17 +11,16 @@ Learn Mizo words by playing. Free, on any phone, no sign-up.
 - **Rova's Journey.** Rova runs across Mizoram, from the hills to Phawngpui.
   Jump into the door with the right Mizo word. Five levels, with Mizo
   sayings (tawng upa) and sentences at the end of each level.
-- **Hnahsin Playground.** 33 games:
-  - word quests: Word dungeon (beat monsters with Mizo words), Falling letters,
-    Crossword cave (a crossword that lights up word by word)
-  - word puzzles: Spelling bee, Waffle, Strands, Word tubes, Sort it
-  - quick games: Rova run, Bubble pop, Whack the rat
-  - everyday Mizo: Bazar, I Spy, Count, Dress Rova, Big and small, Days and
-    times, Rova says, Colour it, Rova's family, Weather report, Food stall
-  - sentences and sayings: Sentence builder, Saying match
-  - Review: the words you have met in the games come back when they are due
-  - from the Hnahsin app, just as they are in the app: Picture Match, Spelling,
-    Word Search, Word Chain, Tawng Upa, Crossword, Odd One Out, Sentence Builder
+- **Hnahsin Playground.** 10 games:
+  - word quests: Word dungeon (beat monsters with Mizo words), Crossword cave
+    (a crossword that lights up word by word)
+  - word puzzles: Odd One Out, Spelling, Word Search, Word Chain (take turns
+    with Rova), Crossword
+  - everyday Mizo: Picture Match
+  - sentences and sayings: Tawng Upa (what old Mizo sayings mean), Sentence
+    Builder
+  All but the two word quests have a level of their own that rises as you get
+  better, and three ways to play: Practice, Classic and Speed.
 - **Touch and learn.** Things you can tap, turn and play with, to learn their
   Mizo names, with Find it to test yourself. Zokhua: an old Mizo village as at
   Falkawn, with its stockade and gate, the chief's house and the zawlbuk, the
@@ -54,17 +53,16 @@ Learn Mizo words by playing. Free, on any phone, no sign-up.
   veng open as your points grow. Share the road with cars, buses and bikes,
   wait your turn in traffic jams and stop for people at zebra crossings, the
   Aizawl way.
-- **The Hnahsin app.** A preview of the app in your browser. The app is
-  coming to Android and iPhone.
 
 A **word of the day** on the home page: tap the card to see what it means.
 
 ## Words
 
-- 1,254 Mizo words, 383 sentences and 203 sayings from the Hnahsin app
-- 1,928 more words from J.F. Laldailova's English–Lushai Dictionary
-- photos from Wikimedia Commons (credited in the app) and pictures from
-  Microsoft's Fluent Emoji
+- 2,027 core Mizo words (the 2,000 most used, and 27 everyday ones), each
+  with an example sentence; 1,755 sentences and 203 sayings
+- their meanings from J.F. Laldailova's English–Lushai Dictionary
+- pictures from Noto Emoji, OpenMoji, game-icons.net, Healthicons and
+  Microsoft's Fluent Emoji (see [CREDITS.md](CREDITS.md))
 
 ## Put it on your phone
 
