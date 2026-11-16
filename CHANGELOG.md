@@ -4,6 +4,18 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.84.0 (17 November 2026)
+
+### Odd One Out, now a Playground game
+
+- Odd One Out is the second of the app's games to become a Playground game:
+  find the word that doesn't belong.
+- The same rules as in the app: at first the odd one is a different kind of
+  thing and the words have pictures; as you get better it comes from a close
+  group (three birds and a dog), then there are five words to look through.
+- Its 36 word groups (birds, fruit, colours, ways of moving …) use Hnahsin's
+  core words.
+
 ## 1.83.0 (17 November 2026)
 
 ### Picture Match, now a Playground game
