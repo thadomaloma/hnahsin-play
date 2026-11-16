@@ -4,6 +4,17 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.82.0 (16 November 2026)
+
+### One Playground
+
+- The Playground keeps two games of its own, Word dungeon and Crossword
+  cave, now with Hnahsin's core words and clues.
+- The Hnahsin app's eight games (Picture Match, Spelling, Word Search, Word
+  Chain, Tawng Upa, Crossword, Odd One Out, Sentence Builder) open right
+  in the Playground: no need to leave it. The back button brings you back.
+- The other Playground games are gone, to make way for the app's games.
+
 ## 1.81.0 (16 November 2026)
 
 ### The Playground's own pictures
