@@ -4,6 +4,31 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.77.0 (16 November 2026)
+
+### Rova's Journey: more than a run
+
+- Spell on the run: twice a run a word's letters float along the road at
+  three heights, the right one and another beside it. Take them in order to
+  spell the word (the top of the screen shows its picture or meaning), for
+  ten coins. Mizo's letters stay whole: ṭhui is ṭ-h-u-i.
+- Things in the way: rocks, logs and chickens to jump over. Running into one
+  costs two coins and a stumble, never a heart (none in Relaxed).
+- Powers in bubbles: a magnet for the coins, a shield that forgives one wrong
+  door, and slow time for longer to read.
+- The sentence bridge: a word place now ends by building a Mizo sentence, a
+  word a door, from its English. One wrong door is always another word of
+  the same sentence, so the order is what counts. Built without a slip, 15
+  coins.
+- From Serchhip on (and in endless after twenty doors) the doors move up
+  and down.
+- Three goals at each place: spell every word, collect 30 coins, and no
+  stumbles. Each one reached for the first time gives ten coins, and they
+  show on the list of places.
+- A word book: every word met, place by place, with stars for how well you
+  know it, ✏️ for the ones you spelled, and its example.
+- Fixed: the title screen's card could slide off the side of the screen.
+
 ## 1.76.0 (15 November 2026)
 
 ### Rova's Journey: a bigger journey

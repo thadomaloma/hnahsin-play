@@ -84,7 +84,9 @@
   #game canvas { max-width: 100%; max-height: 100%; touch-action: none; }
   .screen { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(9, 24, 44, .55); z-index: 5; }
   /* The title screen sits on its own sunny hillside. */
-  #title-screen, #story-screen { background: radial-gradient(circle at 85% 8%, rgba(255, 255, 255, .9), rgba(255, 249, 220, .3) 12%, transparent 30%), linear-gradient(180deg, #3c9fea, #8fd0fa 55%, #cdeeff); overflow: hidden; }
+  /* (clip, not hidden: the hills reach past the sides, and a hidden overflow can still be scrolled to them by the
+     browser, which slid the card off the screen) */
+  #title-screen, #story-screen { background: radial-gradient(circle at 85% 8%, rgba(255, 255, 255, .9), rgba(255, 249, 220, .3) 12%, transparent 30%), linear-gradient(180deg, #3c9fea, #8fd0fa 55%, #cdeeff); overflow: hidden; overflow: clip; }
   #title-screen::before, #title-screen::after { content: ""; position: absolute; left: -20%; right: -20%; border-radius: 50% 50% 0 0 / 100% 100% 0 0; z-index: -1; }
   #title-screen::before { bottom: -6%; height: 34%; background: #8fd27a; }
   #title-screen::after { bottom: -14%; height: 30%; background: #6dbe5e; left: -40%; }
@@ -174,6 +176,26 @@
   .item.on { border-color: var(--leaf); background: #f3fbf0; }
   .item.on .tag { background: #e3f4dc; color: #2f6b22; }
   .item.poor .tag { opacity: .55; }
+  /* The three goals of a place, and the word book */
+  .goals { display: inline-flex; gap: 3px; margin-top: 2px; font-size: 12px; }
+  .goals i { font-style: normal; opacity: .28; filter: grayscale(1); }
+  .goals i.on { opacity: 1; filter: none; }
+  .goal-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+  .goal-list li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 12px; border-radius: 12px; background: #f4f7fb; font-weight: 700; font-size: 14.5px; }
+  .goal-list li.done { background: #eaf6e6; color: #2f6b22; }
+  .book-sum { display: flex; gap: 8px; flex-wrap: wrap; }
+  .book-sum span { font-weight: 800; font-size: 13.5px; padding: 6px 12px; border-radius: 99px; background: #f1f8fe; color: var(--brand); }
+  .book details { border: 1px solid #e3ebf3; border-radius: 16px; padding: 4px 12px; }
+  .book details + details { margin-top: 8px; }
+  .book summary { cursor: pointer; font-weight: 800; padding: 8px 0; display: flex; justify-content: space-between; gap: 8px; }
+  .book summary span { color: var(--muted); font-weight: 700; font-size: 13.5px; }
+  .book ul { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 0; }
+  .book li { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 7px 0; border-top: 1px solid #eef3f8; font-size: 14.5px; }
+  .book li b { display: inline-flex; align-items: center; gap: 6px; }
+  .book li span { color: var(--muted); text-align: right; }
+  .book li small { grid-column: 1 / -1; color: var(--muted); font-size: 12.5px; }
+  .book img.photo { width: 24px; height: 24px; border-radius: 6px; object-fit: cover; }
+  .book .empty { color: var(--muted); font-size: 14px; padding: 4px 0 10px; }
   /* A moment of the story between places */
   .story { display: grid; gap: 10px; text-align: center; }
   .story .scene { font-size: 54px; letter-spacing: 6px; line-height: 1.1; }
@@ -199,7 +221,7 @@
     <small>Rova chu in lam a pan…</small>
     <p id="intro"></p>
     <ul class="howto" id="howto"></ul>
-    <div class="wallet"><span class="total" id="total-stars">⭐ 0</span><span class="coins" id="wallet">🪙 0</span><button class="chip shop" id="shop-btn" type="button">🛍️ Shop</button></div>
+    <div class="wallet"><span class="total" id="total-stars">⭐ 0</span><span class="coins" id="wallet">🪙 0</span><button class="chip shop" id="shop-btn" type="button">🛍️ Shop</button><button class="chip" id="book-btn" type="button">📖 Words</button></div>
     <div class="modes"><button class="mode daily" id="daily-btn" type="button"></button><button class="mode endless" id="endless-btn" type="button"></button></div>
     <label class="relax"><input type="checkbox" id="relaxed"><span id="relaxed-label"></span></label>
     <div class="journey"><div class="map" id="map" aria-hidden="true"></div><div class="levels" id="levels"></div></div>
@@ -222,6 +244,7 @@
     <div class="big-stars" id="end-stars"></div>
     <p id="end-note"></p>
     <div class="earn" id="end-earn"></div>
+    <ul class="goal-list" id="end-goals" hidden></ul>
     <div class="share" id="end-share" hidden><div class="marks" id="end-marks"></div><button class="btn ghost" id="end-share-btn" type="button"></button></div>
     <ul class="recap" id="end-recap"></ul>
     <button class="btn leaf" id="end-practise" type="button" hidden></button>
@@ -247,6 +270,15 @@
     <div class="items" id="shop-looks"></div>
     <h2 id="shop-help"></h2>
     <div class="items" id="shop-helpers"></div>
+  </div>
+</div>
+
+<div class="screen" id="book-screen" hidden>
+  <div class="card book">
+    <div class="topbar"><button class="chip" id="book-back" type="button"></button></div>
+    <h1 id="book-title"></h1>
+    <div class="book-sum" id="book-sum"></div>
+    <div id="book-list"></div>
   </div>
 </div>
 
@@ -866,6 +898,52 @@ function bossQuestion(cfg, used) {
   return (rand() < .6 && fromSentence(cfg, used)) || question(cfg, 'gap', used) || question(cfg, 'en2mz', used);
 }
 
+// ---------------------------------------------------------------- spelling on the run: a word in Mizo letters
+// Mizo's letters (aw, ch, ng and ṭ are letters of their own); a word to spell has three to five of them.
+const LETTER_RE = /aw|ch|ng|ṭ|[a-zâêîôû]/gi;
+const ALPHABET = ['a', 'aw', 'b', 'ch', 'd', 'e', 'f', 'g', 'ng', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'r', 's', 't', 'ṭ', 'u', 'v', 'z'];
+const lettersOf = s => String(s).toLowerCase().match(LETTER_RE) || [];
+const spellable = w => { const l = lettersOf(w[0]); return l.join('') === w[0].toLowerCase() && l.length >= 3 && l.length <= 5; };
+
+// ---------------------------------------------------------------- the sentence bridge
+// The last doors of a place build a sentence, a word a door, in order: its English is the question, the words
+// so far show, and each door offers the next word, another word of the sentence (the order is the test) and a
+// word from elsewhere.
+const wordsOf = s => s.split(/\s+/).map(t => t.replace(/[^\p{L}'’]/gu, '')).filter(Boolean);
+function bridge(cfg, used) {
+  const [lo, hi] = cfg.band, words = WORDS.filter(w => w[3] >= lo && w[3] <= hi && !w[0].includes(' ') && w[0].length <= 12);
+  for (const [mizo, english] of shuffle(SENTENCES.slice())) {
+    const ws = wordsOf(mizo);
+    if (ws.length < 3 || ws.length > 6 || english.length > 70 || ws.some(t => t.length > 14)) continue;
+    const n = Math.min(4, ws.length), prefix = ws.slice(0, ws.length - n), steps = ws.slice(ws.length - n);
+    const B = { english, prefix, steps, built: [], ok: true }, out = [];
+    for (let k = 0; k < n; k++) {
+      const right = steps[k], seen = new Set([fold(right)]), wrong = [];
+      for (const t of shuffle([...steps.slice(k + 1), ...prefix])) if (wrong.length < 1 && !seen.has(fold(t))) { seen.add(fold(t)); wrong.push(t); }
+      for (let tries = 0; wrong.length < 2 && tries < 60; tries++) { const t = pick(words)[0]; if (!seen.has(fold(t)) && !ws.some(x => fold(x) === fold(t))) { seen.add(fold(t)); wrong.push(t); } }
+      if (wrong.length < 2) break;
+      const target = [right, english];
+      out.push({ kind: 'bridge', bridge: B, step: k, target, options: shuffle([target, ...wrong.map(t => [t, ''])]), boss: true });
+    }
+    if (out.length === n) return out;
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------- the word book, and each place's goals
+// Every word met at a door: [times right, times wrong, the place first met (-1: the daily run, endless), spelled]
+const BY_FOLD = (() => { const m = new Map(); for (const w of [...WORDS, ...DICT]) if (!m.has(fold(w[0]))) m.set(fold(w[0]), w); return m; })();
+const book = {
+  all: () => store.get('rj.album', {}),
+  entry(a, w, place) { const f = fold(w[0]); return (a[f] ||= [0, 0, place, 0]); },
+  met(w, right, place) { const a = this.all(), e = this.entry(a, w, place); e[right ? 0 : 1]++; if (e[2] < 0 && place >= 0) e[2] = place; store.set('rj.album', a); },
+  spelled(w, place) { const a = this.all(), e = this.entry(a, w, place); e[3] = 1; store.set('rj.album', a); },
+};
+// how well a word is known: met, right twice, right four times and more
+const mastery = e => (e[0] >= 4 ? 3 : e[0] >= 2 ? 2 : e[0] >= 1 ? 1 : 0);
+const GOALS = [['✏️', 'Spell every word', 'Thumal zawng zawng ziak rawh'], ['🪙', 'Collect 30 coins', 'Pawisa 30 la khawm rawh'], ['🍃', 'No stumbles', 'Tlu lovin']];
+const goalsOf = level => store.get('rj.goals', {})[level] || [false, false, false];
+
 // ---------------------------------------------------------------- words to meet again
 // A word missed at a door comes back at later doors of its place (and the whole app's practice, progress.js,
 // adds the words it says are due again) until it is got right.
@@ -950,6 +1028,9 @@ class Play extends Phaser.Scene {
     g.fillStyle(0xffffff); g.fillCircle(8, 8, 8); g.generateTexture('spark', 16, 16); g.clear();
     g.fillStyle(0xffc94a); g.fillCircle(22, 22, 22); g.fillStyle(0xffe08a); g.fillCircle(16, 16, 9);
     g.lineStyle(4, 0xf2a516); g.strokeCircle(22, 22, 20); g.generateTexture('coin', 44, 44); g.clear();
+    g.fillStyle(0xffffff); g.fillCircle(41, 41, 39); g.lineStyle(7, 0x7a4bc2); g.strokeCircle(41, 41, 35); g.generateTexture('letter', 82, 82); g.clear();
+    g.fillStyle(0xdff3ff, .85); g.fillCircle(48, 48, 46); g.lineStyle(6, 0x8fd3ff); g.strokeCircle(48, 48, 43); g.fillStyle(0xffffff, .8); g.fillCircle(31, 29, 10); g.generateTexture('power', 96, 96); g.clear();
+    g.lineStyle(7, 0x8fd3ff, .9); g.strokeCircle(80, 80, 74); g.lineStyle(3, 0xffffff, .7); g.strokeCircle(80, 80, 66); g.generateTexture('shield', 160, 160); g.clear();
   }
 
   create() {
@@ -967,13 +1048,18 @@ class Play extends Phaser.Scene {
     else if (this.mode !== 'endless') {
       const again = this.mode === 'level' ? review.targets(cfg, 3) : [];
       const slots = shuffle([...Array(GATES).keys()]).slice(0, again.length);
-      for (let i = 0; i < GATES; i++) {
+      // a word place ends on the sentence bridge (in place of its last door and the boss); the dictionary places
+      // and home on a saying
+      const span = !cfg.dict && !cfg.sayings ? bridge(cfg, used) : null;
+      const doors = span ? GATES - 1 : GATES;
+      for (let i = 0; i < doors; i++) {
         const w = again[slots.indexOf(i)], q = w ? question(cfg, weighted(cfg.mix), used, w) : question(cfg, weighted(cfg.mix), used);
         if (w && q) q.review = true;
         this.plan.push(q);
         used.add(fold(q.target[0]));
       }
-      this.plan.push(Object.assign(bossQuestion(cfg, used), { boss: true }));
+      if (span) this.plan.push(...span);
+      else this.plan.push(Object.assign(bossQuestion(cfg, used), { boss: true }));
     }
     this.plan = this.plan.filter(Boolean);
     this.used = used;
@@ -1025,9 +1111,18 @@ class Play extends Phaser.Scene {
     this.glow = this.add.particles(0, 0, 'spark', { speedX: { min: -220, max: -120 }, speedY: { min: -40, max: 40 }, lifespan: 420, scale: { start: .7, end: 0 }, alpha: { start: .9, end: 0 }, tint: [0xffc94a, 0xffe08a, 0xffffff], frequency: 40, emitting: false }).setDepth(4);
     this.glow.startFollow(this.rova, 0, 10);
 
-    // Gates and coins.
+    // Gates and coins; and on the road between them (not when practising): letters to spell a word, things to
+    // jump over, and now and then a power in a bubble.
     this.gates = [];
     this.coins = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.extras = this.mode !== 'practice';
+    this.letters = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.rocks = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.powers = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.spells = []; this.spelledOk = 0; this.stumbles = 0;
+    this.physics.add.overlap(this.rova, this.letters, (r, t) => this.takeLetter(t));
+    this.physics.add.overlap(this.rova, this.rocks, (r, k) => this.hitRock(k));
+    this.physics.add.overlap(this.rova, this.powers, (r, p) => this.takePower(p));
     if (this.mode === 'endless') { this.made = 0; while (this.gates.length < 3) this.addEndlessGate(); }
     else this.plan.forEach((q, i) => this.addGate(q, i));
     if (this.mode !== 'endless') {
@@ -1052,6 +1147,8 @@ class Play extends Phaser.Scene {
     this.ask = this.add.text(W / 2, 88 + Math.max(0, extra - 120), '', { fontFamily: 'Plus Jakarta Sans', fontSize: '40px', fontStyle: '800', color: '#15213a', backgroundColor: '#ffffffee', padding: { x: 22, y: 10 }, align: 'center', wordWrap: { width: Math.min(W - 80, 760) } }).setOrigin(.5, 0).setScrollFactor(0).setDepth(10).setVisible(false);
     // a picture door's picture, big, under its question
     this.askPic = this.add.text(W / 2, 0, '', { fontSize: '92px', padding: { y: 6 } }).setOrigin(.5, 0).setScrollFactor(0).setDepth(10).setVisible(false);
+    this.spellHud = this.add.text(24, 84, '', { fontFamily: 'Plus Jakarta Sans', fontSize: '30px', fontStyle: '800', color: '#fff3b0', stroke: '#0d2a4a', strokeThickness: 7 }).setScrollFactor(0).setDepth(10).setVisible(false);
+    this.ring = this.add.image(0, 0, 'shield').setDepth(6).setVisible(false);
     this.banner = this.add.text(W / 2, 330, '', { fontFamily: 'Plus Jakarta Sans', fontSize: '36px', fontStyle: '800', color: '#ffffff', stroke: '#0d2a4a', strokeThickness: 8, align: 'center', wordWrap: { width: 660 } }).setOrigin(.5).setScrollFactor(0).setDepth(10).setAlpha(0);
     this.updateHud();
 
@@ -1068,8 +1165,129 @@ class Play extends Phaser.Scene {
 
   addGate(q, i) {
     const x = 1500 + i * GAP;
-    this.gates.push({ x, q, boss: !!q.boss, done: false, built: false });
-    if (!q.boss) this.coinArc(x + 520 + rand() * 200, [0, 1, 2][i % 3]);
+    this.gates.push({ x, q, boss: !!q.boss, done: false, built: false, i });
+    if (q.boss) return;
+    const endless = this.mode === 'endless';
+    // after the second and fifth doors (endless: every sixth), a word to spell; elsewhere coins, a thing in the
+    // way, and (third and seventh doors, endless every seventh) a power
+    const word = this.extras && (endless ? i % 6 === 2 : i === 1 || i === 4) ? this.spellWord() : null;
+    if (word) { this.placeWord(word, x + 380); return; }
+    const arc = x + 520 + rand() * 200, lane = [0, 1, 2][i % 3];
+    this.coinArc(arc, lane);
+    if (!this.extras) return;
+    if (endless ? i % 7 === 3 : i === 2 || i === 6) this.placePower(arc - 170, this.lanes()[lane === 1 ? 0 : 1], pick(['magnet', 'shield', 'slow']));
+    if (!this.relaxed && (endless ? i > 2 : this.mode !== 'level' || this.level > 0 || i % 2 === 1) && rand() < (this.mode === 'level' && this.level === 0 ? .5 : .8)) this.placeRock(x + 300);
+  }
+
+  // A word to spell: one of the place's words of three to five letters, not met yet this run.
+  spellWord() {
+    const pool = poolOf(this.mode === 'endless' ? this.endlessCfg : this.cfg).filter(w => spellable(w) && !this.used.has(fold(w[0])));
+    if (!pool.length) return null;
+    const w = pick(pool); this.used.add(fold(w[0]));
+    return w;
+  }
+
+  // Its letters along the road, each in a bubble at one of three heights (on the ground, a jump up, a double
+  // jump up), with another letter at another height beside it: Rova takes them in order.
+  placeWord(w, x0) {
+    const ls = lettersOf(w[0]), step = Math.min(230, 1000 / ls.length), Y = [this.groundY - 64, 770, 480];
+    const sp = { w, ls, got: [], slots: [], failed: false, x0, done: false };
+    ls.forEach((l, k) => {
+      const x = x0 + k * step, at = Math.floor(rand() * 3), other = (at + 1 + Math.floor(rand() * 2)) % 3;
+      let decoy = pick(ALPHABET); while (decoy === l) decoy = pick(ALPHABET);
+      const slot = { x, l, done: false, toks: [] };
+      slot.toks.push(this.letterBubble(x, Y[at], l, slot, true), this.letterBubble(x, Y[other], decoy, slot, false));
+      sp.slots.push(slot);
+    });
+    for (const s of sp.slots) s.sp = sp;
+    this.spells.push(sp);
+  }
+
+  letterBubble(x, y, l, slot, right) {
+    const b = this.letters.create(x, y, 'letter').setDepth(4);
+    b.body.setCircle(36, 5, 5);
+    b.label = this.add.text(x, y, l, { fontFamily: 'Plus Jakarta Sans', fontSize: '42px', fontStyle: '800', color: '#4a2a8a' }).setOrigin(.5).setDepth(4);
+    b.slot = slot; b.right = right; b.l = l;
+    this.tweens.add({ targets: [b, b.label], y: y - 10, duration: 700 + rand() * 300, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+    return b;
+  }
+
+  takeLetter(b) {
+    const slot = b.slot; if (slot.done || b.popped) return;
+    if (b.right) {
+      slot.done = true; slot.sp.got.push(slot.l);
+      this.sparks.explode(10, b.x, b.y); SFX.coin();
+      slot.toks.forEach(t => this.popBubble(t));
+      this.checkWord(slot.sp);
+    } else {
+      // the wrong letter: it bursts, and the right one is not taken this time
+      this.popBubble(b); SFX.click(); this.floatText('✖', b.x, b.y - 40);
+    }
+    this.updateSpell();
+  }
+
+  popBubble(b) { if (!b.active || b.popped) return; b.popped = true; b.body.enable = false; this.tweens.killTweensOf([b, b.label]); this.tweens.add({ targets: [b, b.label], scale: 1.4, alpha: 0, duration: 200, onComplete: () => { b.label.destroy(); b.destroy(); } }); }
+
+  checkWord(sp) {
+    if (sp.done || sp.slots.some(s => !s.done)) return;
+    sp.done = true;
+    const w = sp.w, say = `${emo(w)}${w[0]} · ${asks(w)}`;
+    if (!sp.failed) {
+      this.spelledOk++; this.coinsGot += 10; this.floatText('+10 🪙', this.rova.x, this.rova.y - 160);
+      this.showBanner(`✏️ ${say}`, '#fff3b0', 1800); SFX.right();
+      book.spelled(w, this.mode === 'level' ? this.level : -1);
+    } else this.showBanner(`✏️ ${say}`, '#ffd6e4', 1800);
+    this.time.delayedCall(1600, () => this.updateSpell());
+    this.updateHud();
+  }
+
+  // the word being spelled, at the top: its picture or meaning, and its letters as they come
+  updateSpell() {
+    const sp = this.spells.find(s => !s.done && s.x0 - this.rova.x < 1300) || this.spells.find(s => s.done && this.time.now - (s.at ||= this.time.now) < 1500);
+    if (!sp) { this.spellHud.setVisible(false); return; }
+    const shown = sp.ls.map((l, k) => (k < sp.got.length ? (sp.slots[k].missed ? '·' : l) : '_')).join(' ');
+    this.spellHud.setText(`✏️ ${isPic(sp.w) ? sp.w[5] : `“${asks(sp.w)}”`}  ${shown}`).setVisible(true);
+  }
+
+  // Things in the way, on the ground: a rock, a log, a chicken. Run into one and Rova stumbles and drops two
+  // coins (never a heart); jump over it.
+  placeRock(x) {
+    const kind = pick(['🪨', '🪵', '🐔']);
+    const r = this.add.text(x, this.groundY + 6, kind, { fontSize: '86px', padding: { y: 10 } }).setOrigin(.5, 1).setDepth(3);
+    this.rocks.add(r);
+    r.body.setSize(54, 48).setOffset((r.width - 54) / 2, r.height - 62);
+    if (kind === '🐔') this.tweens.add({ targets: r, scaleX: { from: 1, to: -1 }, duration: 900, yoyo: true, repeat: -1, ease: 'Stepped' });
+  }
+
+  hitRock(r) {
+    if (r.hit || this.over) return;
+    r.hit = true; this.stumbles++;
+    const lost = Math.min(2, this.coinsGot); this.coinsGot -= lost;
+    if (lost) this.floatText(`-${lost} 🪙`, this.rova.x, this.rova.y - 150);
+    this.slowUntil = this.time.now + 900;
+    this.pose(STUMBLE, 500); SFX.wrong();
+    this.tweens.add({ targets: r, y: r.y - 60, angle: 40, alpha: 0, duration: 500 });
+    this.updateHud();
+  }
+
+  // A power in a bubble: a magnet pulls the coins in, a shield forgives one wrong door, slow time gives longer to read.
+  placePower(x, y, kind) {
+    const p = this.powers.create(x, y, 'power').setDepth(4);
+    p.body.setCircle(42, 6, 6);
+    p.label = this.add.text(x, y, { magnet: '🧲', shield: '🛡️', slow: '⏳' }[kind], { fontSize: '54px', padding: { y: 6 } }).setOrigin(.5).setDepth(4);
+    p.kind = kind;
+    this.tweens.add({ targets: [p, p.label], y: y - 16, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+  }
+
+  takePower(p) {
+    if (!p.active || p.popped) return;
+    const k = p.kind, now = this.time.now;
+    this.popBubble(p); SFX.buy();
+    if (k === 'magnet') this.magnetUntil = now + 8000;
+    if (k === 'slow') this.calmUntil = now + 6000;
+    if (k === 'shield') this.shield = true;
+    this.showBanner({ magnet: `🧲 ${L('Magnet!', 'Magnet!')}`, shield: `🛡️ ${L('Shield: one wrong door is forgiven', 'Venna: kawngkhar dik lo pakhat a ngaihdam ang')}`, slow: `⏳ ${L('Slow time', 'Hun muang')}` }[k], '#e3f4ff', 1500);
+    this.updateHud();
   }
 
   // Endless: the words grow harder every ten doors, and every tenth door is a boss.
@@ -1231,9 +1449,14 @@ class Play extends Phaser.Scene {
       c.setScale(0); this.tweens.add({ targets: c, scale: 1, alpha: lane === faded ? .3 : 1, duration: 380, ease: 'Back.Out', delay: lane * 80 });
       return c;
     });
-    const again = q.review ? '🔁 ' : '', boss = gate.boss ? L('Boss! ', 'Boss! ') : '';
+    // later places (and endless after twenty doors): the doors bob up and down
+    if (this.mode === 'level' ? this.level >= 5 : this.mode === 'endless' && gate.i >= 20)
+      gate.doors.forEach((c, lane) => this.tweens.add({ targets: c, y: c.y - 46, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.InOut', delay: 380 + lane * 360 }));
+    const again = q.review ? '🔁 ' : '', boss = gate.boss && kind !== 'bridge' ? L('Boss! ', 'Boss! ') : '';
+    const B = q.bridge, built = B ? [...B.prefix, ...B.built, ...B.steps.slice(B.built.length).map(() => '____')].join(' ') : '';
     const m = asks(q.target), w = q.target[0];
-    this.ask.setText(q.saying ? boss + L(`What does\n“${q.saying}” mean?`, `“${q.saying}” awmzia\nkhawi zawk nge?`)
+    this.ask.setText(B ? `🌉 ${L('Build the sentence', 'Thu siam rawh')} (${q.step + 1}/${B.steps.length}):\n“${B.english}”\n${built}`
+      : q.saying ? boss + L(`What does\n“${q.saying}” mean?`, `“${q.saying}” awmzia\nkhawi zawk nge?`)
       : kind === 'gap' ? boss + L(`Fill the gap:\n${q.gap}`, `A awm lohna dah khat rawh:\n${q.gap}`) + (q.english ? `\n(${q.english})` : '')
       : kind === 'mz2en' ? again + boss + L(`What does\n“${w}” mean?`, `“${w}” awmzia\nkhawi zawk nge?`)
       : kind === 'pic' ? again + boss + L('Which one is this?', 'Hei hi eng nge?')
@@ -1251,7 +1474,7 @@ class Play extends Phaser.Scene {
       this.tweens.add({ targets: this.banner, alpha: 0, duration: 200 });
     }
     this.ask.setScale(.6); this.tweens.add({ targets: this.ask, scale: 1, duration: 300, ease: 'Back.Out' });
-    if (gate.boss) SFX.boss();
+    if (gate.boss && (!B || q.step === 0)) SFX.boss();
   }
 
   passGate(gate) {
@@ -1260,7 +1483,7 @@ class Play extends Phaser.Scene {
     const lane = y > (ys[0] + ys[1]) / 2 ? 0 : y > (ys[1] + ys[2]) / 2 ? 1 : 2;
     const picked = gate.q.options[lane];
     const right = picked === gate.q.target;
-    const t = gate.q.target, word = gate.q.saying ? null : t;
+    const t = gate.q.target, B = gate.q.bridge, word = gate.q.saying || B ? null : t;
     this.met.push({ w: gate.q.saying ? [t[1], t[0]] : t, right, kind: gate.q.kind });
     this.marks.push(right);
     const door = gate.doors[lane];
@@ -1273,13 +1496,15 @@ class Play extends Phaser.Scene {
       const extra = this.streak >= 3 ? this.streak - 2 : 0;
       if (extra) { this.coinsGot += extra; this.floatText(`+${extra} 🪙`, this.rova.x, this.rova.y - 150); }
       this.glow.emitting = this.streak >= 3;
-      this.showBanner((this.streak >= 3 ? `🔥 ${L(`${this.streak} in a row!`, `${this.streak} zawnin!`)}\n` : '') + (gate.q.saying ? `“${t[1]}”\n${t[0]}` : `${emo(t)}${t[0]} · ${asks(t)}`), '#ffffff');
+      this.showBanner((this.streak >= 3 ? `🔥 ${L(`${this.streak} in a row!`, `${this.streak} zawnin!`)}\n` : '') + (gate.q.saying ? `“${t[1]}”\n${t[0]}` : B ? `🌉 ${[...B.prefix, ...B.built, t[0]].join(' ')}` : `${emo(t)}${t[0]} · ${asks(t)}`), '#ffffff');
       this.speed = Math.min(this.speed + 6, 440);     // (faster after each right door, to a pace still to be read at)
       this.pose(CHEER, 520);
       SFX.right(); if (this.streak >= 3) SFX.combo(this.streak);
       if (word && this.mode !== 'daily') review.hit(word);
     } else {
-      if (!this.relaxed) this.hearts--;
+      // a shield takes the heart's place, once
+      if (this.shield) { this.shield = false; this.floatText('🛡️', this.rova.x, this.rova.y - 150); }
+      else if (!this.relaxed) this.hearts--;
       this.streak = 0; this.glow.emitting = false;
       // Hit-stop, then a shake: the miss lands.
       this.physics.world.pause();
@@ -1288,10 +1513,21 @@ class Play extends Phaser.Scene {
       this.tweens.add({ targets: this.rova, alpha: .3, duration: 90, yoyo: true, repeat: 4 });
       this.tweens.add({ targets: this.rova, angle: { from: -14, to: 0 }, duration: 520, ease: 'Back.Out' });
       this.pose(STUMBLE, 600);
-      this.showBanner(gate.q.saying ? `“${t[1]}”\n${t[0]}` : L(`It was ${t[0]}\n${asks(t)}`, `${t[0]} a ni\n${asks(t)}`), '#ffd6e4', 2400);
+      this.showBanner(gate.q.saying ? `“${t[1]}”\n${t[0]}` : B ? L(`It was “${t[0]}”`, `“${t[0]}” a ni`) : L(`It was ${t[0]}\n${asks(t)}`, `${t[0]} a ni\n${asks(t)}`), '#ffd6e4', 2400);
       SFX.wrong();
       if (word && this.mode !== 'daily') review.miss(word);
     }
+    // the sentence bridge: the word goes into the sentence (the right one, if a wrong door was taken); built
+    // without a slip, a bonus
+    if (B) {
+      B.built.push(t[0]); if (!right) B.ok = false;
+      if (B.built.length === B.steps.length) this.time.delayedCall(right ? 900 : 2500, () => {
+        if (B.ok) { this.coinsGot += 15; this.floatText('+15 🪙', this.rova.x, this.rova.y - 170); SFX.finish(); }
+        this.showBanner(`🌉 ${B.ok ? L('Sentence built!', 'Thu i siam zo!') : ''}\n${[...B.prefix, ...B.built].join(' ')}\n“${B.english}”`, B.ok ? '#fff3b0' : '#ffffff', 2600);
+        this.updateHud();
+      });
+    }
+    if (word && this.mode !== 'practice') book.met(t, right, this.mode === 'level' ? this.level : -1);
     // Record encounter for progress tracking
     if (window.Progress && word) {
       const vid = vocabId(t);
@@ -1322,7 +1558,8 @@ class Play extends Phaser.Scene {
     const done = this.marks ? this.marks.length : 0, h = Math.max(this.hearts, 0);
     const hearts = this.relaxed ? '💚'.repeat(this.maxHearts) : '❤️'.repeat(h) + '🖤'.repeat(Math.max(0, this.maxHearts - h));
     const doors = this.mode === 'endless' ? `🚪 ${done}` : `🚪 ${done}/${this.plan.length}`;
-    this.hud.setText(`${hearts}   🪙 ${this.coinsGot}   ${doors}${this.streak >= 2 ? `   🔥${this.streak}` : ''}`);
+    const now = this.time.now, on = (this.magnetUntil > now ? '🧲' : '') + (this.shield ? '🛡️' : '') + (this.calmUntil > now ? '⏳' : '');
+    this.hud.setText(`${hearts}   🪙 ${this.coinsGot}   ${doors}${this.streak >= 2 ? `   🔥${this.streak}` : ''}${on ? `   ${on}` : ''}`);
   }
 
   jump() {
@@ -1351,7 +1588,19 @@ class Play extends Phaser.Scene {
   update() {
     this.follow();
     if (this.over) { this.placeLooks(this.frameNow || 0); return; }
-    if (this.started) this.rova.body.setVelocityX(this.speed);
+    const now = this.time.now;
+    if (this.started) this.rova.body.setVelocityX(this.speed * (this.slowUntil > now ? .7 : 1) * (this.calmUntil > now ? .72 : 1));
+    // the magnet: coins ahead and near come to Rova
+    if (this.magnetUntil > now) for (const c of this.coins.getChildren()) {
+      const dx = c.x - this.rova.x, dy = c.y - (this.rova.y - 30);
+      if (dx > -60 && dx < 380 && Math.abs(dy) < 520) { c.x -= dx * .16; c.y -= dy * .16; }
+    }
+    this.ring.setVisible(!!this.shield).setPosition(this.rova.x, this.rova.y - 6);
+    // a letter not taken by the time Rova is past it: the word is missed (its letter shows as a dot)
+    for (const sp of this.spells) if (!sp.done) for (const sl of sp.slots) if (!sl.done && this.rova.x > sl.x + 50) {
+      sl.done = sl.missed = true; sp.failed = true; sp.got.push(sl.l); sl.toks.forEach(t => this.popBubble(t)); this.checkWord(sp); this.updateSpell();
+    }
+    if (Math.floor(now / 250) !== this.hudTick) { this.hudTick = Math.floor(now / 250); this.updateSpell(); this.updateHud(); }
     // Legs and arms: a run frame in time with the speed, or the jump pose in the air, or a pose held a moment.
     // (One stride takes the same time whatever the frame count: 8 × 24000 / speed ms.)
     const f = this.posed && this.time.now < this.posed.until ? this.posed.f
@@ -1369,6 +1618,9 @@ class Play extends Phaser.Scene {
       if (last.x - this.rova.x < GAP * 3) this.addEndlessGate();
       while (this.gates.length && this.gates[0].done && this.gates[0].x < this.rova.x - 1400) { const g = this.gates.shift(); this.gone = (this.gone || 0) + 1; g.doors.forEach(d => d.destroy()); }
       this.coins.getChildren().slice().forEach(c => { if (c.x < this.rova.x - 600) c.destroy(); });
+      for (const g of [this.letters, this.powers]) g.getChildren().slice().forEach(b => { if (b.x < this.rova.x - 600) { b.label.destroy(); b.destroy(); } });
+      this.rocks.getChildren().slice().forEach(r => { if (r.x < this.rova.x - 600) r.destroy(); });
+      this.spells = this.spells.filter(sp => !sp.done || sp.x0 > this.rova.x - 2000);
     }
     if (this.rova.x >= this.finishX) this.finish(true);
   }
@@ -1384,7 +1636,8 @@ class Play extends Phaser.Scene {
     }
     else SFX.lose();
     const doors = this.marks.length;
-    this.time.delayedCall(won ? 900 : 300, () => showEnd({ mode: this.mode, level: this.level, won, right: this.right, met: this.met, marks: this.marks, coins: this.coinsGot, streak: this.bestStreak, doors, relaxed: this.relaxed, data: this.data0 }));
+    const goals = [this.spells.length > 0 && this.spelledOk === this.spells.length, this.coinsGot >= 30, this.stumbles === 0];
+    this.time.delayedCall(won ? 900 : 300, () => showEnd({ mode: this.mode, level: this.level, won, right: this.right, met: this.met, marks: this.marks, coins: this.coinsGot, streak: this.bestStreak, doors, relaxed: this.relaxed, data: this.data0, goals, spelled: this.spelledOk }));
   }
 }
 
@@ -1405,7 +1658,7 @@ const game = new Phaser.Game({
 game.events.once('step', () => { if (!game.scene.getScene('play')) game.loop.sleep(); });
 
 const $ = id => document.getElementById(id);
-const screens = ['title-screen', 'story-screen', 'end-screen', 'pause-screen', 'shop-screen'];
+const screens = ['title-screen', 'story-screen', 'end-screen', 'pause-screen', 'shop-screen', 'book-screen'];
 const show = id => { for (const s of screens) $(s).hidden = s !== id; $('pause-btn').hidden = id !== null; };
 function toast(text) { const t = $('toast'); t.textContent = text; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), 2200); }
 
@@ -1448,7 +1701,7 @@ function renderLevels() {
   $('levels').innerHTML = LEVELS.map((l, i) => `
     <button class="level${i === u ? ' here' : ''}" data-level="${i}" ${i > u ? 'disabled' : ''} style="--s1:${hex(l.sky[0])};--s2:${hex(l.hills[0])};--d:${i * 50}ms">
       <span class="e">${i > u ? '🔒' : l.emoji}</span>
-      <span><b>${i + 1}. ${placeName(l)}</b><span class="sub">${i > u ? L(`Finish ${placeName(LEVELS[i - 1])} to open`, `${placeName(LEVELS[i - 1])} zo hmasa rawh`) : L(l.title, l.mz)}</span></span>
+      <span><b>${i + 1}. ${placeName(l)}</b><span class="sub">${i > u ? L(`Finish ${placeName(LEVELS[i - 1])} to open`, `${placeName(LEVELS[i - 1])} zo hmasa rawh`) : L(l.title, l.mz)}</span>${i <= u ? `<span class="goals" aria-label="${L('Goals', 'Tum')}: ${goalsOf(i).filter(Boolean).length}/3">${GOALS.map(([g], k) => `<i class="${goalsOf(i)[k] ? 'on' : ''}">${g}</i>`).join('')}</span>` : ''}</span>
       <span class="stars">${'⭐'.repeat(stars(i))}${'☆'.repeat(3 - stars(i))}</span>
     </button>`).join('');
   $('total-stars').textContent = `⭐ ${LEVELS.reduce((n, l, i) => n + stars(i), 0)} / ${LEVELS.length * 3}`;
@@ -1467,8 +1720,11 @@ function applyLang() {
   document.documentElement.lang = LANG === 'mz' ? 'lus' : 'en';
   $('lang-btn').textContent = LANG === 'mz' ? 'English' : 'Mizo';
   $('intro').textContent = L('Rova is home from Japan and runs across Mizoram. Jump into the door with the right Mizo word.', 'Rova chu Japan atangin a haw a, Mizoram a tlan kual. Mizo thumal dik nei kawngkhar-ah zuang lut rawh.');
-  $('howto').innerHTML = [['👆', L('Tap or Space to jump, twice to go higher', 'Hmet la zuang rawh, vawi hnih hmet chuan a sang zawk')], ['🚪', L('Be at the door with the right word', 'Thumal dik nei kawngkhar-ah awm rawh')], ['❤️', L('Three hearts. Grab the coins!', 'Nunna pathum. Pawisa la khawm rawh!')]].map(([i, t]) => `<li><i>${i}</i>${t}</li>`).join('');
+  $('howto').innerHTML = [['👆', L('Tap or Space to jump, twice to go higher', 'Hmet la zuang rawh, vawi hnih hmet chuan a sang zawk')], ['🚪', L('Be at the door with the right word', 'Thumal dik nei kawngkhar-ah awm rawh')], ['✏️', L('Take the letters to spell the word. Jump the rocks!', 'Thumal ziak turin hawrawp la rawh. Lung zuang kan rawh!')]].map(([i, t]) => `<li><i>${i}</i>${t}</li>`).join('');
   $('shop-btn').textContent = `🛍️ ${L('Shop', 'Dawr')}`;
+  $('book-btn').textContent = `📖 ${L('Words', 'Thumal')}`;
+  $('book-back').textContent = `← ${L('Back', 'Kir leh')}`;
+  $('book-title').textContent = `📖 ${L('Word book', 'Thumal bu')}`;
   $('relaxed-label').innerHTML = `${L('Relaxed', 'Muang takin')}<small>${L('Slower, and no hearts lost: for younger players', 'A muang zawk, nunna a bo lo: naupang tan')}</small>`;
   $('pause-title').textContent = L('Paused', 'Chawl lai');
   $('pause-resume').textContent = `▶ ${L('Resume', 'Chhunzawm rawh')}`;
@@ -1573,7 +1829,12 @@ function showEnd(r) {
     const all = store.get('rj.stars', {});
     best = got > (all[level] || 0);
     all[level] = Math.max(all[level] || 0, got); store.set('rj.stars', all);
-    if (won) { store.set('rj.unlocked', Math.max(store.get('rj.unlocked', 0), Math.min(level + 1, LEVELS.length - 1))); bonus = 25; }
+    if (won) {
+      store.set('rj.unlocked', Math.max(store.get('rj.unlocked', 0), Math.min(level + 1, LEVELS.length - 1))); bonus = 25;
+      const g = store.get('rj.goals', {}), had = g[level] || [false, false, false];
+      g[level] = had.map((d, k) => d || r.goals[k]); store.set('rj.goals', g);
+      bonus += 10 * r.goals.filter((d, k) => d && !had[k]).length;     // (a goal reached for the first time: ten coins)
+    }
   } else if (mode === 'daily') {
     const key = today(), d = store.get('rj.daily', {});
     if (d.date !== key) {
@@ -1599,6 +1860,9 @@ function showEnd(r) {
   earn.push(`🪙 +${coins + bonus}`);
   if (r.streak >= 3) earn.push(`🔥 ${r.streak}`);
   $('end-earn').innerHTML = earn.map(t => `<span>${t}</span>`).join('') + `<span>${L('You have', 'I nei')} 🪙 ${wallet.get()}</span>` + (best && mode !== 'practice' ? `<span class="best">${L('New best!', 'A tha ber thar!')}</span>` : '');
+  // the place's three goals: done this time, and done before
+  $('end-goals').hidden = mode !== 'level';
+  if (mode === 'level') { const had = goalsOf(level); $('end-goals').innerHTML = GOALS.map(([i, en, mz], k) => `<li class="${r.goals[k] && won ? 'done' : ''}"><span>${i} ${L(en, mz)}</span><span>${r.goals[k] && won ? '✓' : had[k] ? '☆' : '–'}</span></li>`).join(''); }
   // the daily run's result, to share
   $('end-share').hidden = mode !== 'daily';
   if (mode === 'daily') {
@@ -1613,7 +1877,7 @@ function showEnd(r) {
   // the words met: each with its picture; a missed one with its example
   $('end-recap').innerHTML = met.map(({ w, right }, i) => `<li class="${right ? '' : 'missed'}" style="--d:${500 + i * 60}ms"><b>${pic(w)}${esc(w[0])}</b><span>${esc(w[1])}</span>${!right && w[2] ? `<em>${esc(w[2])}</em>` : ''}</li>`).join('');
   // practise the missed words (not sayings), at once
-  const missed = met.filter(m => !m.right && m.kind !== 'saying').map(m => m.w);
+  const missed = met.filter(m => !m.right && m.kind !== 'saying' && m.kind !== 'bridge').map(m => m.w);
   $('end-practise').hidden = !missed.length || mode === 'practice';
   $('end-practise').textContent = `🔁 ${L(`Practise the ${missed.length} missed word${missed.length > 1 ? 's' : ''}`, `I dik lohna ${missed.length} zir nawn rawh`)}`;
   $('end-practise').onclick = () => practise(level, missed);
@@ -1678,6 +1942,23 @@ $('shop-helpers').addEventListener('click', e => {
 });
 $('shop-btn').onclick = () => { SFX.click(); renderShop(); show('shop-screen'); $('shop-back').focus(); };
 $('shop-back').onclick = () => { SFX.click(); toMenu(); };
+
+// ---------------------------------------------------------------- the word book
+function renderBook() {
+  const a = book.all(), all = Object.entries(a).map(([f, e]) => ({ w: BY_FOLD.get(f), e })).filter(x => x.w);
+  const known = all.filter(x => mastery(x.e) >= 3).length, spelled = all.filter(x => x.e[3]).length;
+  $('book-sum').innerHTML = `<span>${L('Met', 'I tawh')} ${all.length}</span><span>⭐⭐⭐ ${L('Known', 'I hre chiang')} ${known}</span><span>✏️ ${L('Spelled', 'I ziak')} ${spelled}</span>`;
+  const groups = [...LEVELS.map((l, i) => ({ i, title: `${l.emoji} ${placeName(l)}` })), { i: -1, title: `📅♾️ ${L('Daily run and endless', 'Ni tin leh tawp lo')}` }];
+  $('book-list').innerHTML = all.length ? groups.map(g => {
+    const ws = all.filter(x => x.e[2] === g.i).sort((p, q) => mastery(q.e) - mastery(p.e) || p.w[0].localeCompare(q.w[0]));
+    if (!ws.length) return '';
+    const k = ws.filter(x => mastery(x.e) >= 3).length;
+    return `<details${g.i === unlocked() ? ' open' : ''}><summary>${g.title}<span>${ws.length} · ⭐ ${k}</span></summary><ul>${ws.map(({ w, e }) =>
+      `<li><b>${pic(w)}${esc(w[0])}${e[3] ? ' ✏️' : ''}</b><span>${esc(asks(w))} ${'⭐'.repeat(mastery(e))}${'☆'.repeat(3 - mastery(e))}</span>${w[2] ? `<small>${esc(w[2])}</small>` : ''}</li>`).join('')}</ul></details>`;
+  }).join('') : `<p class="empty">${L('The words Rova meets on the road will be kept here.', 'Rova’n kawngah thumal a tawh te hetah a awm ang.')}</p>`;
+}
+$('book-btn').onclick = () => { SFX.click(); renderBook(); show('book-screen'); $('book-back').focus(); };
+$('book-back').onclick = () => { SFX.click(); toMenu(); };
 
 // ---------------------------------------------------------------- the title screen's buttons
 $('levels').addEventListener('click', e => {
