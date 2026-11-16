@@ -4,6 +4,24 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.86.0 (17 November 2026)
+
+### All the app's games, now Playground games
+
+- Five more of the app's games are now Playground games of their own:
+  Word Search, Tawng Upa, Sentence Builder, Word Chain and Crossword. With
+  Picture Match, Odd One Out and Spelling, all eight are here.
+- They play by the same rules as in the app: a level of their own that rises
+  as you get better, Practice, Classic and Speed, a hint, and stars.
+- Word Search: swipe across a word or tap its letters.
+- Tawng Upa: what each of 203 old Mizo sayings means.
+- Sentence Builder: put the word tiles in order, or find the missing word.
+- Word Chain: take turns with Rova, each word starting with the last letter
+  of the one before.
+- Crossword: a real crossword of Hnahsin's words, with the Mizo letters on
+  the keys.
+- The Playground no longer opens the Hnahsin app.
+
 ## 1.85.0 (17 November 2026)
 
 ### Spelling, now a Playground game
