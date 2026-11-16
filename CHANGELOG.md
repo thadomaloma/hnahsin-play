@@ -4,6 +4,22 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.80.0 (16 November 2026)
+
+### The games use the new words
+
+- Rova's Journey and the Playground now play with the 2,027 core words, the
+  1,755 sentences and the 203 ṭawng upa. Each meaning is from J.F.
+  Laldailova's dictionary.
+- Every word in Rova's Journey has an example sentence, and its English shows
+  under it: in the new words before a run, the word book and the end of a run.
+- Picture doors show each word's own picture, the same on every phone, and
+  never two words with the same picture at once.
+- The market in the Playground sells real things to buy, and its counting
+  goes from pakhat to sâwm in order.
+- The home page's footer says how many words, sentences and ṭawng upa there
+  are.
+
 ## 1.79.0 (16 November 2026)
 
 ### The words behind the games
