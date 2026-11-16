@@ -4,6 +4,14 @@ Each version of the Hnahsin web games. The newest is at the top.
 Versions follow `major.minor.patch`: a new game or a big change is a new
 minor version, a fix is a new patch version.
 
+## 1.80.1 (16 November 2026)
+
+### The games people play
+
+- The chart on the home page says what it counts: the people who have
+  played each game since 23 October 2026, and how many of them in the
+  last seven days.
+
 ## 1.80.0 (16 November 2026)
 
 ### The games use the new words

@@ -9,9 +9,9 @@
 //  - FIXED: what never changes under its own address: our files with a fingerprint (?v=…), and the
 //    game engines and libraries, whose version is in their address. Only the newest of each is kept.
 //  - APP: the Flutter app under app/ (some 10 MB, kept as it is fetched). Bump APP when app/ changes.
-const VERSION = 'hnahsin-171', FIXED = 'hnahsin-fixed', APP = 'hnahsin-app-1';
+const VERSION = 'hnahsin-172', FIXED = 'hnahsin-fixed', APP = 'hnahsin-app-1';
 const CORE = [
-  './', 'index.html', 'theme.css?v=d03db89c', 'home.js?v=3dc16de9', 'rova.js?v=f35ca6fa', 'stats.js?v=ff1d2eba', 'audio.js', 'progress.js', 'journey.html', 'pics/rova-sheet.webp?v=08a54d4b', 'playground.html', 'things.html', 'ride.html', 'ride/city.json?v=9463910e', 'pics/ride.jpg', 'pics/things-zokhua.webp', 'pics/things-zokhua.json', 'pics/things-kumtluang.webp', 'pics/things-kumtluang.json', 'pics/things-loom.svg', 'pics/things-loom.json', 'pics/things-bazar.webp', 'pics/things-bazar.json',
+  './', 'index.html', 'theme.css?v=d03db89c', 'home.js?v=c03d7602', 'rova.js?v=f35ca6fa', 'stats.js?v=ff1d2eba', 'audio.js', 'progress.js', 'journey.html', 'pics/rova-sheet.webp?v=08a54d4b', 'playground.html', 'things.html', 'ride.html', 'ride/city.json?v=9463910e', 'pics/ride.jpg', 'pics/things-zokhua.webp', 'pics/things-zokhua.json', 'pics/things-kumtluang.webp', 'pics/things-kumtluang.json', 'pics/things-loom.svg', 'pics/things-loom.json', 'pics/things-bazar.webp', 'pics/things-bazar.json',
   'favicon.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'manifest.webmanifest',
   'https://cdnjs.cloudflare.com/ajax/libs/phaser/3.90.0/phaser.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.module.min.js',
